@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -1691,17 +1692,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (deviceMNode.isEntity()) {
       if (plan.isAligned()) {
         if (!deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are not aligned, " + "please use non-aligned interface",
+              devicePath.getFullPath());
         }
       } else {
         if (deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are aligned, " + "please use aligned interface",
+              devicePath.getFullPath());
         }
       }
     }

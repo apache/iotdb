@@ -1930,13 +1930,32 @@ public class IoTDBDescriptor {
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
-    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
-    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
-    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
-    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
-    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
-    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
-    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
+    conf.setDataRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getDataAppenderBufferSize());
+    conf.setSchemaRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getSchemaAppenderBufferSize());
+
+    conf.setDataRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getDataSnapshotTriggerThreshold());
+    conf.setSchemaRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getSchemaSnapshotTriggerThreshold());
+
+    conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
+    conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
+    conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
+    conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
+
+    conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
+    conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getDataLeaderElectionTimeoutMin());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMin());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getDataLeaderElectionTimeoutMax());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMax());
   }
 
   public void initClusterSchemaMemoryAllocate() {

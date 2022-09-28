@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.partition.GreedyPartitionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.partition.IPartitionAllocator;
@@ -48,7 +49,8 @@ public class PartitionBalancer {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return genPartitionAllocator().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
 
@@ -60,7 +62,8 @@ public class PartitionBalancer {
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap) {
+          unassignedDataPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return genPartitionAllocator().allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 

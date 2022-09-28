@@ -19,13 +19,11 @@
 package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
@@ -97,18 +95,17 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
   private void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
-    if (args.length != 3) {
-      LOGGER.info("Usage: -r <internal_address>:<internal_port>");
+    if (args.length != 2) {
+      LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
       return;
     }
 
     try {
-      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
       TConfigNodeLocation removeConfigNodeLocation =
-          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
+          ConfigNodeRemoveCheck.getInstance().removeCheck(args[1]);
       if (removeConfigNodeLocation == null) {
         LOGGER.error(
-            "The ConfigNode to be removed is not in the cluster, please check the ip:port input.");
+            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
         return;
       }
 

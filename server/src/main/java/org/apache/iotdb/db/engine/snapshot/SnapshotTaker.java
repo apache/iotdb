@@ -68,17 +68,21 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
-    if (flushBeforeSnapshot) {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    }
-
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
-      boolean success = true;
+      boolean success;
 
-      readLockTheFile();
       try {
+        readLockTheFile();
+        if (flushBeforeSnapshot) {
+          try {
+            dataRegion.writeLock("snapshotTaker");
+            dataRegion.syncCloseAllWorkingTsFileProcessors();
+          } finally {
+            dataRegion.writeUnlock();
+          }
+        }
         success = createSnapshot(seqFiles, snapshotDir.getName());
         success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
       } finally {
