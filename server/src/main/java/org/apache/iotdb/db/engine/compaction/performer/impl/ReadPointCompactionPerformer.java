@@ -301,10 +301,20 @@ public class ReadPointCompactionPerformer
             tsBlock.getPositionCount());
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
+        TimeValuePair timeValuePair = null;
+        boolean updateFirstTime = false;
         while (pointReader.hasNextTimeValuePair()) {
-          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+          timeValuePair = pointReader.nextTimeValuePair();
+          if (!updateFirstTime) {
+            // update start time
+            writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
+            updateFirstTime = true;
+          }
           writer.write(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        }
+        // update end time
+        if (timeValuePair != null) {
           writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
         }
       }

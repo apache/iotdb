@@ -26,15 +26,22 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InnerSpaceCompactionWriter.class);
   private TsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
   private TsFileResource resource;
+  private AtomicLong[] startTimeOfCurDevice;
+  private AtomicLong[] endTimeOfCurDevice;
 
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
@@ -47,6 +54,14 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
     isEmptyFile = true;
     resource = targetFileResource;
+    int concurrentThreadNum =
+        Math.max(1, IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum());
+    startTimeOfCurDevice = new AtomicLong[concurrentThreadNum];
+    endTimeOfCurDevice = new AtomicLong[concurrentThreadNum];
+    for (int i = 0; i < concurrentThreadNum; ++i) {
+      startTimeOfCurDevice[i] = new AtomicLong(Long.MAX_VALUE);
+      endTimeOfCurDevice[i] = new AtomicLong(Long.MIN_VALUE);
+    }
   }
 
   @Override
@@ -58,6 +73,14 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endChunkGroup() throws IOException {
+    for (int i = 0; i < startTimeOfCurDevice.length; ++i) {
+      resource.updateStartTime(
+          fileWriter.getCurrentChunkGroupDeviceId(), startTimeOfCurDevice[i].get());
+      resource.updateEndTime(
+          fileWriter.getCurrentChunkGroupDeviceId(), endTimeOfCurDevice[i].get());
+      startTimeOfCurDevice[i].set(Long.MAX_VALUE);
+      endTimeOfCurDevice[i].set(Long.MIN_VALUE);
+    }
     fileWriter.endChunkGroup();
   }
 
@@ -82,11 +105,10 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
-    synchronized (this) {
-      // we need to synchronized here to avoid multi-thread competition in sub-task
-      resource.updateStartTime(device, timestamps.getStartTime());
-      resource.updateEndTime(device, timestamps.getEndTime());
-    }
+    startTimeOfCurDevice[subTaskId].set(
+        Math.min(startTimeOfCurDevice[subTaskId].get(), timestamps.getStartTime()));
+    endTimeOfCurDevice[subTaskId].set(
+        Math.max(endTimeOfCurDevice[subTaskId].get(), timestamps.getEndTime()));
     isEmptyFile = false;
   }
 
@@ -109,10 +131,8 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
     // we need to synchronized here to avoid multi-thread competition in sub-task
-    synchronized (this) {
-      resource.updateStartTime(device, time);
-      resource.updateEndTime(device, time);
-    }
+    startTimeOfCurDevice[subTaskId].set(Math.min(startTimeOfCurDevice[subTaskId].get(), time));
+    endTimeOfCurDevice[subTaskId].set(Math.max(endTimeOfCurDevice[subTaskId].get(), time));
   }
 
   @Override

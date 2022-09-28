@@ -685,4 +685,8 @@ public class TsFileIOWriter implements AutoCloseable {
     ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
     buffer.writeTo(tempOutput);
   }
+
+  public String getCurrentChunkGroupDeviceId() {
+    return currentChunkGroupDeviceId;
+  }
 }
