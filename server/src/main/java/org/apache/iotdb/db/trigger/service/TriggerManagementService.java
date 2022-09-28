@@ -22,15 +22,14 @@ package org.apache.iotdb.db.trigger.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.commons.path.PatternTreeMapFactory;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
 
@@ -62,7 +61,7 @@ public class TriggerManagementService {
    * Maintain a PatternTree: PathPattern -> List<String> triggerNames Return the triggerNames of
    * triggers whose PathPatterns match the given one.
    */
-  private final PatternTreeMap<String, PathPatternNode.StringSerializer> patternTreeMap;
+  private final PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> patternTreeMap;
 
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
