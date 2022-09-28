@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -464,6 +464,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setResultSet(result);
+    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }
@@ -1075,6 +1076,21 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
     }
     return leafMNodes;
+  }
+
+  public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
+      throws MetadataException {
+    List<IMeasurementMNode> result = new ArrayList<>();
+    MeasurementCollector<List<IMeasurementMNode>> collector =
+        new MeasurementCollector<List<IMeasurementMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            result.add(node);
+          }
+        };
+    collector.setShouldTraverseTemplate(false);
+    collector.traverse();
+    return result;
   }
 
   // endregion

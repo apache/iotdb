@@ -264,7 +264,9 @@ struct TCreateTriggerReq {
   6: required byte triggerType
   7: required binary pathPattern,
   8: required map<string, string> attributes,
-  9: optional binary jarFile
+  9: optional binary jarFile,
+  10: optional string jarMD5,
+  11: required i32 failureStrategy
 }
 
 struct TDropTriggerReq {
@@ -389,7 +391,7 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// Show pipe
+// SYNC
 struct TPipeInfo {
   1: required i64 createTime
   2: required string pipeName
@@ -397,6 +399,25 @@ struct TPipeInfo {
   4: required string remote
   5: required string status
   6: required string message
+}
+
+struct TPipeSinkInfo {
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
+}
+
+struct TDropPipeSinkReq {
+  1: required string pipeSinkName
+}
+
+struct TGetPipeSinkReq {
+  1: optional string pipeSinkName
+}
+
+struct TGetPipeSinkResp {
+  1: required common.TSStatus status
+  2: required list<TPipeSinkInfo> pipeSinkInfoList
 }
 
 struct TShowPipeResp {
@@ -748,5 +769,18 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  // ======================================================
+  // Sync
+  // ======================================================
+
+  /** Create PipeSink */
+  common.TSStatus createPipeSink(TPipeSinkInfo req)
+
+  /** Drop PipeSink */
+  common.TSStatus dropPipeSink(TDropPipeSinkReq req)
+
+  /** Get PipeSink by name, if name is empty, get all PipeSink */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 }
 

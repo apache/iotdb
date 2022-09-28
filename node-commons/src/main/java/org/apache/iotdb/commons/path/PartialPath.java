@@ -677,6 +677,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
+  public void serialize(PublicBAOS stream) throws IOException {
+    PathType.Partial.serialize(stream);
+    serializeWithoutType(stream);
+  }
+
+  @Override
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);

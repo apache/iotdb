@@ -37,12 +37,12 @@ public class GreedyRegionAllocator implements IRegionAllocator {
 
   @Override
   public TRegionReplicaSet allocateRegion(
-      List<TDataNodeConfiguration> onlineDataNodes,
+      List<TDataNodeConfiguration> targetDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     // Build weightList order by number of regions allocated asc
-    List<TDataNodeLocation> weightList = buildWeightList(onlineDataNodes, allocatedRegions);
+    List<TDataNodeLocation> weightList = buildWeightList(targetDataNodes, allocatedRegions);
     return new TRegionReplicaSet(
         consensusGroupId,
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));

@@ -55,10 +55,8 @@
 
 ## 使用建议
 
-使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Reference/DataNode-Config-Manual.md)）。
+使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能，共 6 个相关配置参数（详情见 [timed_flush配置项](../Reference/DataNode-Config-Manual.md)）。
 
 * enable_timed_flush_unseq_memtable: 是否开启乱序 Memtable 的定时刷盘，默认打开。
 
 * enable_timed_flush_seq_memtable: 是否开启顺序 Memtable 的定时刷盘，默认关闭。应当在开启时间分区后打开，定时刷盘非活跃时间分区下的 Memtable，为定时关闭 TsFileProcessor 作准备。
-
-* enable_timed_close_tsfile: 是否开启 TsFileProcessor 的定时关闭，默认关闭。应当在开启时间分区后打开，定时关闭非活跃时间分区下的 TsFileProcessor，减少内存占用。
