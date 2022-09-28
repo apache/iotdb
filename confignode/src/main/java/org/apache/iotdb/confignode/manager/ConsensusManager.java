@@ -38,8 +38,11 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.SizeInBytes;
+import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +85,47 @@ public class ConsensusManager {
                 CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                    .setRatisConfig(
+                        RatisConfig.newBuilder()
+                            .setLeaderLogAppender(
+                                RatisConfig.LeaderLogAppender.newBuilder()
+                                    .setBufferByteLimit(
+                                        CONF
+                                            .getPartitionRegionRatisConsensusLogAppenderBufferSize())
+                                    .build())
+                            .setSnapshot(
+                                RatisConfig.Snapshot.newBuilder()
+                                    .setAutoTriggerThreshold(
+                                        CONF.getPartitionRegionRatisSnapshotTriggerThreshold())
+                                    .build())
+                            .setLog(
+                                RatisConfig.Log.newBuilder()
+                                    .setUnsafeFlushEnabled(
+                                        CONF.isPartitionRegionRatisLogUnsafeFlushEnable())
+                                    .setSegmentCacheSizeMax(
+                                        SizeInBytes.valueOf(
+                                            CONF.getPartitionRegionRatisLogSegmentSizeMax()))
+                                    .build())
+                            .setGrpc(
+                                RatisConfig.Grpc.newBuilder()
+                                    .setFlowControlWindow(
+                                        SizeInBytes.valueOf(
+                                            CONF.getPartitionRegionRatisGrpcFlowControlWindow()))
+                                    .build())
+                            .setRpc(
+                                RatisConfig.Rpc.newBuilder()
+                                    .setTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF
+                                                .getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF
+                                                .getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .build())
+                            .build())
                     .setStorageDir(CONF.getConsensusDir())
                     .build(),
                 gid -> stateMachine)
