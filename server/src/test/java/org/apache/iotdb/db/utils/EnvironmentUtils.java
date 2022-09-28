@@ -50,7 +50,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -193,7 +193,7 @@ public class EnvironmentUtils {
     LastQueryExecutor.clear();
 
     // clear SyncLogger
-    SyncLogWriter.getInstance().close();
+    LocalSyncInfoFetcher.getInstance().close();
 
     // delete all directory
     cleanAllDir();
