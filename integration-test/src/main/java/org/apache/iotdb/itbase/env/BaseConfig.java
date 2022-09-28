@@ -261,6 +261,8 @@ public interface BaseConfig {
 
   default int getRatisSnapshotTriggerThreshold() {
     return 400000;
+  }
+
   default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
     return this;
   }
