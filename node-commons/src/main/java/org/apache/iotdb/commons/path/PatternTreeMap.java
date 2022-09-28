@@ -135,7 +135,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param pos current index of pathNodes
    * @param resultList result list
    */
-  public void searchOverlapped(
+  private void searchOverlapped(
       PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
@@ -148,4 +148,17 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
       searchOverlapped(child, pathNodes, pos + 1, resultList);
     }
   }
+
+  /**
+   * Get a list of value lists related to PathPattern that overlapped with measurements under the same device.
+   *
+   * @param devicePath device path without wildcard
+   * @param measurements list of measurements
+   * @return value list,
+   * null if all entry is empty?
+   */
+  public List<List<V>> getOverlapped(PartialPath devicePath,List<String> measurements) {
+    return null;
+  }
+
 }
