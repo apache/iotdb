@@ -112,7 +112,7 @@ public class IoTDBConfigNodeSnapshotIT {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 100;
-    final int timePartitionSlotsNum = 100;
+    final int timePartitionSlotsNum = 10;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
