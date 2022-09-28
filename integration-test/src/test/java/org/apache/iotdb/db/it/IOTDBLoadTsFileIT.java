@@ -58,6 +58,7 @@ public class IOTDBLoadTsFileIT {
 
   private boolean originEnablePartition;
   private long originPartitionInterval;
+  private long originConfigNodePartitionInterval;
 
   private File tmpDir;
 
@@ -66,7 +67,10 @@ public class IOTDBLoadTsFileIT {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     originEnablePartition = ConfigFactory.getConfig().isEnablePartition();
     originPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
+    originConfigNodePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
+    ConfigFactory.getConfig().setEnablePartition(true);
     ConfigFactory.getConfig().setPartitionInterval(PARTITION_INTERVAL);
+    ConfigFactory.getConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().initBeforeTest();
   }
 
@@ -77,6 +81,7 @@ public class IOTDBLoadTsFileIT {
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setEnablePartition(originEnablePartition);
     ConfigFactory.getConfig().setPartitionInterval(originPartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originConfigNodePartitionInterval);
 
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");

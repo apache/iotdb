@@ -230,7 +230,7 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
-        "time_partition_interval", String.valueOf(timePartitionInterval));
+        "time_partition_interval_for_routing", String.valueOf(timePartitionInterval));
     return this;
   }
 
