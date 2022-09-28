@@ -185,4 +185,9 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   public void reset() {
     localSyncInfo = new LocalSyncInfo();
   }
+
+  @TestOnly
+  public void close() throws IOException {
+    localSyncInfo.close();
+  }
 }
