@@ -213,8 +213,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine (mainly from test), we should set a temp device
     // id for it
     if (insertRowNode.getDeviceID() == null) {
-      insertRowNode.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowNode.getDevicePath()));
+      insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
     }
 
     // updatePlanIndexes(insertRowNode.getIndex());
@@ -496,8 +495,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void write(InsertTabletNode insertTabletNode, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletNode.getDeviceID() == null) {
-      insertTabletNode.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletNode.getDevicePath()));
+      insertTabletNode.setDeviceID(deviceIDFactory.getDeviceID(insertTabletNode.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -555,8 +553,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletNode.getDeviceID() == null) {
-      insertTabletNode.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletNode.getDevicePath()));
+      insertTabletNode.setDeviceID(deviceIDFactory.getDeviceID(insertTabletNode.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -678,7 +675,8 @@ public abstract class AbstractMemTable implements IMemTable {
             targetDevice.right, originalPath, targetDevice.left, startTimestamp, endTimestamp);
       }
     } else {
-      IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(devicePath));
+      IWritableMemChunkGroup memChunkGroup =
+          memTableMap.get(deviceIDFactory.getDeviceID(devicePath));
       if (memChunkGroup == null) {
         return;
       }
@@ -694,7 +692,7 @@ public abstract class AbstractMemTable implements IMemTable {
       long endTimestamp) {
     totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
     if (memChunkGroup.getMemChunkMap().isEmpty()) {
-      memTableMap.remove(getDeviceID(devicePath));
+      memTableMap.remove(deviceIDFactory.getDeviceID(devicePath));
     }
   }
 
@@ -773,10 +771,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void setFlushStatus(FlushStatus flushStatus) {
     this.flushStatus = flushStatus;
-  }
-
-  private IDeviceID getDeviceID(PartialPath deviceId) {
-    return deviceIDFactory.getDeviceID(deviceId);
   }
 
   /** Notice: this method is concurrent unsafe */
