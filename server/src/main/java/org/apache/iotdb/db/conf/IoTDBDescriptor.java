@@ -1992,9 +1992,9 @@ public class IoTDBDescriptor {
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
+  public long convertMilliWithPrecision(long milliTime) {
     long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    String timePrecision = conf.getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         result = milliTime * 1000_000L;
