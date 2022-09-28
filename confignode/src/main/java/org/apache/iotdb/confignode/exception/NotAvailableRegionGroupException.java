@@ -16,18 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
+package org.apache.iotdb.confignode.exception;
 
-import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
+public class NotAvailableRegionGroupException extends ConfigNodeException {
 
-import java.util.HashSet;
-
-public class PatternTreeMapFactory {
-  public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
-    return new PatternTreeMap<>(
-        HashSet::new,
-        (triggerName, set) -> set.add(triggerName),
-        (triggerName, set) -> set.remove(triggerName),
-        StringSerializer.getInstance());
+  public NotAvailableRegionGroupException() {
+    super(
+        "There are no available RegionGroups currently, please check the status of cluster DataNodes");
   }
 }

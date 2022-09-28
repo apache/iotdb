@@ -67,7 +67,7 @@ public interface IChunkMetadata {
 
   String getMeasurementUid();
 
-  void insertIntoSortedDeletions(long startTime, long endTime);
+  void insertIntoSortedDeletions(TimeRange timeRange);
 
   List<TimeRange> getDeleteIntervalList();
 

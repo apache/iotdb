@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -118,7 +119,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
 
@@ -130,7 +132,8 @@ public class LoadManager {
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap) {
+          unassignedDataPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 

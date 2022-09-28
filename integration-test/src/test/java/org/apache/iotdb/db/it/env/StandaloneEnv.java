@@ -172,4 +172,14 @@ public class StandaloneEnv implements BaseEnv {
     session.open();
     return session;
   }
+
+  @Override
+  public void restartDataNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    // Do nothing
+  }
 }
