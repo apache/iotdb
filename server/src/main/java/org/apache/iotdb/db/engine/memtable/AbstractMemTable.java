@@ -638,6 +638,12 @@ public abstract class AbstractMemTable implements IMemTable {
         .getReadOnlyMemChunkFromMemTable(this, modsToMemtable, ttlLowerBound);
   }
 
+  /**
+   * @param originalPath the original path pattern or full path to be used to match timeseries
+   * @param devicePath the device path of the timeseries to be deleted.
+   * @param startTimestamp the lower-bound of deletion time.
+   * @param endTimestamp the upper-bound of deletion time
+   */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void delete(
