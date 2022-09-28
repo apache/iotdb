@@ -34,59 +34,60 @@ import java.util.List;
 
 public class ClusterAlertingExample implements Trigger {
 
-    private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+  private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
-    private final AlertManagerConfiguration alertManagerConfiguration =
-            new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+  private final AlertManagerConfiguration alertManagerConfiguration =
+      new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
 
-    private String alertname;
+  private String alertname;
 
-    private final HashMap<String, String> labels = new HashMap<>();
+  private final HashMap<String, String> labels = new HashMap<>();
 
-    private final HashMap<String, String> annotations = new HashMap<>();
+  private final HashMap<String, String> annotations = new HashMap<>();
 
-    @Override
-    public void onCreate(TriggerAttributes attributes) throws Exception {
-        alertname = "alert_test";
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    alertname = "alert_test";
 
-        labels.put("series", "root.ln.wf01.wt01.temperature");
-        labels.put("value", "");
-        labels.put("severity", "");
+    labels.put("series", "root.ln.wf01.wt01.temperature");
+    labels.put("value", "");
+    labels.put("severity", "");
 
-        annotations.put("summary", "high temperature");
-        annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+    annotations.put("summary", "high temperature");
+    annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
 
-        alertManagerHandler.open(alertManagerConfiguration);
+    alertManagerHandler.open(alertManagerConfiguration);
+  }
 
-    }
+  @Override
+  public void onDrop() throws IOException {
+    alertManagerHandler.close();
+  }
 
-    @Override
-    public void onDrop() throws IOException {
-        alertManagerHandler.close();
-    }
-
-    @Override
-    public boolean fire(Tablet tablet) throws Exception {
-        List<MeasurementSchema> measurementSchemaList = tablet.getSchemas();
-        for(int i=0,n = measurementSchemaList.size();i< n;i++){
-            if(measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)){
-                // for example, we only deal with the columns of Double type
-                double[] values = (double[]) tablet.values[i];
-                for(double value : values){
-                    if (value > 100.0) {
-                        labels.put("value", String.valueOf(value));
-                        labels.put("severity", "critical");
-                        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                        alertManagerHandler.onEvent(alertManagerEvent);
-                    } else if (value > 50.0) {
-                        labels.put("value", String.valueOf(value));
-                        labels.put("severity", "warning");
-                        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                        alertManagerHandler.onEvent(alertManagerEvent);
-                    }
-                }
-            }
+  @Override
+  public boolean fire(Tablet tablet) throws Exception {
+    List<MeasurementSchema> measurementSchemaList = tablet.getSchemas();
+    for (int i = 0, n = measurementSchemaList.size(); i < n; i++) {
+      if (measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)) {
+        // for example, we only deal with the columns of Double type
+        double[] values = (double[]) tablet.values[i];
+        for (double value : values) {
+          if (value > 100.0) {
+            labels.put("value", String.valueOf(value));
+            labels.put("severity", "critical");
+            AlertManagerEvent alertManagerEvent =
+                new AlertManagerEvent(alertname, labels, annotations);
+            alertManagerHandler.onEvent(alertManagerEvent);
+          } else if (value > 50.0) {
+            labels.put("value", String.valueOf(value));
+            labels.put("severity", "warning");
+            AlertManagerEvent alertManagerEvent =
+                new AlertManagerEvent(alertname, labels, annotations);
+            alertManagerHandler.onEvent(alertManagerEvent);
+          }
         }
-        return true;
+      }
     }
+    return true;
+  }
 }
