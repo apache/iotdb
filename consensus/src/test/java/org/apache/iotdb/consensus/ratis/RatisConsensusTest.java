@@ -71,7 +71,8 @@ public class RatisConsensusTest {
               .setSnapshot(
                   RatisConfig.Snapshot.newBuilder()
                       .setAutoTriggerThreshold(100)
-                      .setTriggerSnapshotFileSize(1024)
+                      .setTriggerSnapshotFileSize(10)
+                      .setTriggerSnapshotTime(5)
                       .build())
               .build();
       int finalI = i;
@@ -195,7 +196,7 @@ public class RatisConsensusTest {
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createPeer(group.getGroupId(), group.getPeers());
 
-    doConsensus(servers.get(0), group.getGroupId(), 50, 50);
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
