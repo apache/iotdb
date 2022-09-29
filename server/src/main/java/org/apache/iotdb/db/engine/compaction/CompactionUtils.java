@@ -417,7 +417,7 @@ public class CompactionUtils {
 
   private static void checkThreadInterrupted(List<TsFileResource> tsFileResource)
       throws InterruptedException {
-    if (Thread.currentThread().isInterrupted() || !IoTDB.activated) {
+    if (Thread.interrupted() || !IoTDB.activated) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));

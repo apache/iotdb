@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
@@ -248,7 +249,8 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized void submitTaskFromTaskQueue() {
     try {
-      while (currentTaskNum.get()
+      while (IoTDB.activated
+          && currentTaskNum.get()
               < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
           && !candidateCompactionTaskQueue.isEmpty()) {
         AbstractCompactionTask task = candidateCompactionTaskQueue.take();
