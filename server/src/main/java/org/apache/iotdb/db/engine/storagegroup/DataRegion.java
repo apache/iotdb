@@ -36,6 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -461,6 +462,7 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -477,6 +479,7 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -749,6 +752,8 @@ public class DataRegion {
         logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
       }
       tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+      TsFileMetricManager.getInstance()
+          .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
     } else {
       // the last file is not closed, continue writing to it
       RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
