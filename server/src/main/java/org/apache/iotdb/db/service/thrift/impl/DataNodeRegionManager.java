@@ -90,6 +90,11 @@ public class DataNodeRegionManager {
             dataRegionId -> dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false)));
   }
 
+  public void clear() {
+    schemaRegionLockMap.clear();
+    dataRegionLockMap.clear();
+  }
+
   private DataNodeRegionManager() {}
 
   public ReentrantReadWriteLock getRegionLock(ConsensusGroupId consensusGroupId) {
