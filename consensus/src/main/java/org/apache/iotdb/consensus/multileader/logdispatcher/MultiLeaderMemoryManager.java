@@ -54,9 +54,7 @@ public class MultiLeaderMemoryManager {
   }
 
   public void init(long maxMemorySize) {
-    if (this.maxMemorySizeInByte == null) {
-      this.maxMemorySizeInByte = maxMemorySize;
-    }
+    this.maxMemorySizeInByte = maxMemorySize;
   }
 
   public long getMemorySizeInByte() {
