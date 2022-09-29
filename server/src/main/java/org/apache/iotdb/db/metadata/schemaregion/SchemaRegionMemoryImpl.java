@@ -884,19 +884,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
-    List<PartialPath> pathList = new ArrayList<>();
+    Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      pathList.addAll(mtree.getPreDeleteTimeseries(pathPattern));
+      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeseries(pathPattern)) {
+        deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
+      }
     }
-    return pathList;
+    return deviceBasedPathPatternSet;
   }
 
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getPreDeleteTimeseries(pathPattern)) {
+      for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(new DeleteTimeSeriesPlan(Collections.singletonList(path)));
