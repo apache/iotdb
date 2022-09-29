@@ -81,7 +81,7 @@ public class IoTDBClusterPartitionIT {
   private static final int testReplicationFactor = 3;
 
   protected static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 86400;
+  private static final long testTimePartitionInterval = 86400000;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;

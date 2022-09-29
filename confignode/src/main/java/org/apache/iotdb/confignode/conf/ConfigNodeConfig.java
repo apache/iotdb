@@ -104,8 +104,8 @@ public class ConfigNodeConfig {
   private String temporaryLibDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
-  /** Time partition interval in seconds */
-  private long timePartitionInterval = 86400;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 86400000;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
