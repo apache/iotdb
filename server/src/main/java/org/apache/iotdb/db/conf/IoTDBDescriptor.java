@@ -521,11 +521,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-    conf.setCrossCompactionMemoryBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_memory_budget",
-                Long.toString(conf.getCrossCompactionMemoryBudget()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -571,6 +566,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_cross_compaction_candidate_file_num",
                 Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
+
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -1363,7 +1364,7 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForWrite(
+        conf.setAllocateMemoryForStorageEngine(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
@@ -1373,7 +1374,7 @@ public class IoTDBDescriptor {
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     conf.setMaxQueryDeduplicatedPathNum(
@@ -1413,6 +1414,7 @@ public class IoTDBDescriptor {
         }
       }
     }
+    initStorageEngineAllocate(properties);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1502,6 +1504,19 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
+  }
+
+  private void initStorageEngineAllocate(Properties properties) {
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
+    String[] proportions = allocationRatio.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    conf.setWriteProportion(
+        ((double) (proportionForMemTable)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+    conf.setCompactionProportion(
+        ((double) (proportionForCompaction)
+            / (double) (proportionForCompaction + proportionForMemTable)));
   }
 
   /** Get default encode algorithm by data type */

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.apache.commons.io.FileUtils;
@@ -55,6 +56,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
+  private long memoryCost = -1;
 
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
@@ -67,7 +69,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList,
-      AtomicInteger currentTaskNum) {
+      AtomicInteger currentTaskNum,
+      long memoryCost) {
     super(
         logicalStorageGroupName + "-" + virtualStorageGroupName,
         timePartitionId,
@@ -79,10 +82,17 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     this.selectedUnSeqTsFileResourceList = selectedUnSeqTsFileResourceList;
     this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    this.memoryCost = memoryCost;
   }
 
   @Override
   protected void doCompaction() throws Exception {
+    try {
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
+    } catch (InterruptedException e) {
+      logger.error("Thread get interrupted when allocating memory for compaction", e);
+      return;
+    }
     try {
       executeCompaction();
     } catch (Throwable throwable) {
@@ -100,6 +110,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           true);
       throw throwable;
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLock();
     }
   }
@@ -123,19 +134,27 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       return;
     }
 
-    long totalSize = 0L;
+    double totalSize = 0;
+    double seqSize = 0;
+    double unseqSize = 0;
     for (TsFileResource resource : selectedSeqTsFileResourceList) {
       totalSize += resource.getTsFileSize();
     }
+    seqSize = totalSize;
     for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
       totalSize += resource.getTsFileSize();
     }
+    unseqSize = totalSize - seqSize;
 
     logger.info(
-        "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
+        "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {},"
+            + " seq files size is {} MB, unseq file size is {} MB, total size is {} MB",
         fullStorageGroupName,
         selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList);
+        selectedUnSeqTsFileResourceList,
+        seqSize / 1024 / 1024,
+        unseqSize / 1024 / 1024,
+        totalSize / 1024 / 1024);
     logFile =
         new File(
             selectedSeqTsFileResourceList.get(0).getTsFile().getParent()

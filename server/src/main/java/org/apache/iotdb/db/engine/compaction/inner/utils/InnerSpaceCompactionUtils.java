@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceM
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,7 +42,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +49,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -93,7 +90,7 @@ public class InnerSpaceCompactionUtils {
 
   private static void checkThreadInterrupted(TsFileResource tsFileResource)
       throws InterruptedException {
-    if (Thread.currentThread().isInterrupted() || !IoTDB.activated) {
+    if (Thread.interrupted() || !IoTDB.activated) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
@@ -172,34 +169,6 @@ public class InnerSpaceCompactionUtils {
   }
 
   /**
-   * This method is called to recover modifications while an exception occurs during compaction. It
-   * append new modifications of each selected tsfile to its corresponding old mods file and delete
-   * the compaction mods file.
-   *
-   * @param selectedTsFileResources
-   * @throws IOException
-   */
-  public static void appendNewModificationsToOldModsFile(
-      List<TsFileResource> selectedTsFileResources) throws IOException {
-    for (TsFileResource sourceFile : selectedTsFileResources) {
-      // if there are modifications to this seqFile during compaction
-      if (sourceFile.getCompactionModFile().exists()) {
-        ModificationFile compactionModificationFile =
-            ModificationFile.getCompactionMods(sourceFile);
-        Collection<Modification> newModification = compactionModificationFile.getModifications();
-        compactionModificationFile.close();
-        // write the new modifications to its old modification file
-        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
-          for (Modification modification : newModification) {
-            oldModificationFile.write(modification);
-          }
-        }
-        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
-      }
-    }
-  }
-
-  /**
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
    */
@@ -248,13 +217,6 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
-  public static class TsFileNameComparator implements Comparator<TsFileSequenceReader> {
-
-    @Override
-    public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
-      return TsFileManager.compareFileName(new File(o1.getFileName()), new File(o2.getFileName()));
-    }
-  }
   /**
    * Update the targetResource. Move xxx.target to xxx.tsfile and serialize xxx.tsfile.resource .
    *

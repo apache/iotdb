@@ -179,6 +179,9 @@ public class StorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
+        logger.warn(
+            "the sg {} may not ready now, please wait and retry later",
+            storageGroupMNode.getFullPath());
         throw new StorageGroupNotReadyException(
             storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
@@ -215,6 +218,9 @@ public class StorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
+        logger.warn(
+            "the sg {} may not ready now, please wait and retry later",
+            storageGroupMNode.getFullPath());
         throw new StorageGroupNotReadyException(
             storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }

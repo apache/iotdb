@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -285,9 +286,14 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
+    long originSize = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            2
+                * 1024L
+                * 1024L
+                * 1024L
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     String sgName = COMPACTION_TEST_SG + "test2";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -388,6 +394,7 @@ public class CompactionSchedulerTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      SystemInfo.getInstance().setMemorySizeForCompaction(originSize);
     }
   }
 

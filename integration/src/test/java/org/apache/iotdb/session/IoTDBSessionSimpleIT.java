@@ -125,6 +125,12 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
+    session.createTimeseries(
+        "root.sg.d.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.LZ4);
+    session.createTimeseries(
+        "root.sg.d.s2", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.LZ4);
+    session.createTimeseries(
+        "root.sg.d.s3", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.LZ4);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
@@ -132,33 +138,39 @@ public class IoTDBSessionSimpleIT {
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
-    long timestamp = System.currentTimeMillis();
-
     for (long row = 0; row < 15; row++) {
       int rowIndex = tablet.rowSize++;
-      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addTimestamp(rowIndex, row);
       tablet.addValue("s1", rowIndex, 1L);
       tablet.addValue("s2", rowIndex, 1D);
       tablet.addValue("s3", rowIndex, new Binary("1"));
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        try {
+          session.insertTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          Assert.assertTrue(e.getMessage().contains("DataType mismatch"));
+        }
         tablet.reset();
       }
-      timestamp++;
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      try {
+        session.insertTablet(tablet);
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains("DataType mismatch"));
+      }
       tablet.reset();
     }
 
-    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.**");
     while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
       Assert.assertEquals(15L, rowRecord.getFields().get(0).getLongV());
       Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
-      Assert.assertEquals(15L, rowRecord.getFields().get(2).getLongV());
+      Assert.assertEquals(0, rowRecord.getFields().get(2).getLongV());
     }
+    dataSet.close();
     session.close();
   }
 
@@ -1288,7 +1300,7 @@ public class IoTDBSessionSimpleIT {
       session.insertAlignedRecord("root.sg.loc1.sector.GPS", 3L, measurements, values);
     } catch (StatementExecutionException e) {
       assertEquals(
-          "303: Timeseries under path [root.sg.loc1.sector.GPS] is not aligned , please set InsertPlan.isAligned() = false",
+          "319: timeseries under this device are not aligned, please use non-aligned interface (Path: root.sg.loc1.sector.GPS)",
           e.getMessage());
     }
 

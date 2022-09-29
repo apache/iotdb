@@ -69,16 +69,12 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -403,16 +399,7 @@ public class VirtualStorageGroupProcessor {
     // recover tsfiles
     recover();
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              storageGroupInfo,
-              StorageGroupInfo::getMemCost,
-              Tag.NAME.toString(),
-              "storageGroup_" + getLogicalStorageGroupName());
-    }
+    MetricService.getInstance().addMetricSet(new VirtualStorageGroupProcessorMetrics(this));
 
     // start trim task at last
     walTrimScheduleTask =
@@ -427,6 +414,10 @@ public class VirtualStorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
+  }
+
+  public long getStorageGroupMemCost() {
+    return storageGroupInfo.getMemCost();
   }
 
   public String getLogicalStorageGroupName() {
@@ -549,8 +540,18 @@ public class VirtualStorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
-    for (TsFileResource resource : seqTsFileResources) {
+    // recover and start timed compaction thread
+    initCompaction();
+
+    logger.info(
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
+  }
+
+  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
+    //  only update flush time when it is a seq file
+    if (isSeq) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
@@ -561,14 +562,6 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
-
-    // recover and start timed compaction thread
-    initCompaction();
-
-    logger.info(
-        "The virtual storage group {}[{}] is recovered successfully",
-        logicalStorageGroupName,
-        virtualStorageGroupId);
   }
 
   private void initCompaction() {
@@ -777,6 +770,7 @@ public class VirtualStorageGroupProcessor {
           } else {
             tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
+            updateLastFlushTime(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
@@ -788,6 +782,8 @@ public class VirtualStorageGroupProcessor {
         if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } else if (writer.canWrite()) {
           // the last file is not closed, continue writing to in
@@ -842,12 +838,12 @@ public class VirtualStorageGroupProcessor {
             }
             tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
           }
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
         }
-        tsFileManager.add(tsFileResource, isSeq);
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
-        continue;
       } finally {
         if (writer != null) {
           writer.close();

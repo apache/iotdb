@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.SubCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
@@ -38,21 +37,16 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -67,7 +61,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,7 +91,6 @@ public class CompactionUtils {
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
-    Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new HashMap<>();
 
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources)) {
@@ -114,20 +106,10 @@ public class CompactionUtils {
 
         if (isAligned) {
           compactAlignedSeries(
-              device,
-              deviceIterator,
-              compactionWriter,
-              queryContext,
-              queryDataSource,
-              readerCacheMap);
+              device, deviceIterator, compactionWriter, queryContext, queryDataSource);
         } else {
           compactNonAlignedSeries(
-              device,
-              deviceIterator,
-              compactionWriter,
-              queryContext,
-              queryDataSource,
-              readerCacheMap);
+              device, deviceIterator, compactionWriter, queryContext, queryDataSource);
         }
       }
 
@@ -135,7 +117,6 @@ public class CompactionUtils {
       updateDeviceStartTimeAndEndTime(targetFileResources, compactionWriter);
       updatePlanIndexes(targetFileResources, seqFileResources, unseqFileResources);
     } finally {
-      clearReaderCache(readerCacheMap);
       QueryResourceManager.getInstance().endQuery(queryId);
     }
   }
@@ -145,19 +126,10 @@ public class CompactionUtils {
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
-      QueryDataSource queryDataSource,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
+      QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
-        deviceIterator.iterateAlignedSeries(device);
-    Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
-    Map<String, MeasurementSchema> schemaMap =
-        getMeasurementSchema(
-            device,
-            allMeasurements,
-            queryDataSource.getSeqResources(),
-            queryDataSource.getUnseqResources(),
-            readerCacheMap);
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -171,7 +143,7 @@ public class CompactionUtils {
             device,
             existedMeasurements,
             measurementSchemas,
-            allMeasurements,
+            schemaMap.keySet(),
             queryContext,
             queryDataSource,
             true);
@@ -191,25 +163,16 @@ public class CompactionUtils {
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
-      QueryDataSource queryDataSource,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
-      throws IOException, InterruptedException, IllegalPathException {
-    MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
-        deviceIterator.iterateNotAlignedSeries(device, false);
-    Set<String> allMeasurements = measurementIterator.getAllMeasurements();
-    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
-    Map<String, MeasurementSchema> schemaMap =
-        getMeasurementSchema(
-            device,
-            allMeasurements,
-            queryDataSource.getSeqResources(),
-            queryDataSource.getUnseqResources(),
-            readerCacheMap);
+      QueryDataSource queryDataSource)
+      throws IOException, InterruptedException {
+    Map<String, MeasurementSchema> measurementSchemaMap =
+        deviceIterator.getAllSchemasOfCurrentDevice();
+    int subTaskNums = Math.min(measurementSchemaMap.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
     int idx = 0;
-    for (String measurement : allMeasurements) {
+    for (String measurement : measurementSchemaMap.keySet()) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
         measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
       }
@@ -229,7 +192,7 @@ public class CompactionUtils {
                       queryContext,
                       queryDataSource,
                       compactionWriter,
-                      schemaMap,
+                      measurementSchemaMap,
                       i)));
     }
 
@@ -247,60 +210,6 @@ public class CompactionUtils {
     compactionWriter.endChunkGroup();
   }
 
-  private static Map<String, MeasurementSchema> getMeasurementSchema(
-      String device,
-      Set<String> measurements,
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
-      throws IllegalPathException, IOException {
-    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
-    List<TsFileResource> allResources = new LinkedList<>(seqFiles);
-    allResources.addAll(unseqFiles);
-    // sort the tsfile by version, so that we can iterate the tsfile from the newest to oldest
-    allResources.sort(
-        (o1, o2) -> {
-          try {
-            TsFileNameGenerator.TsFileName n1 =
-                TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
-            TsFileNameGenerator.TsFileName n2 =
-                TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-            return (int) (n2.getVersion() - n1.getVersion());
-          } catch (IOException e) {
-            return 0;
-          }
-        });
-    for (String measurement : measurements) {
-      for (TsFileResource tsFileResource : allResources) {
-        if (!tsFileResource.mayContainsDevice(device)) {
-          continue;
-        }
-        MeasurementSchema schema =
-            getMeasurementSchemaFromReader(
-                tsFileResource,
-                readerCacheMap.computeIfAbsent(
-                    tsFileResource,
-                    x -> {
-                      try {
-                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
-                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
-                      } catch (IOException e) {
-                        throw new RuntimeException(
-                            String.format(
-                                "Failed to construct sequence reader for %s", tsFileResource));
-                      }
-                    }),
-                device,
-                measurement);
-        if (schema != null) {
-          schemaMap.put(measurement, schema);
-          break;
-        }
-      }
-    }
-    return schemaMap;
-  }
-
   public static void writeWithReader(
       AbstractCompactionWriter writer, IBatchReader reader, int subTaskId) throws IOException {
     while (reader.hasNextBatch()) {
@@ -310,21 +219,6 @@ public class CompactionUtils {
         batchData.next();
       }
     }
-  }
-
-  private static MeasurementSchema getMeasurementSchemaFromReader(
-      TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
-      throws IllegalPathException, IOException {
-    List<ChunkMetadata> chunkMetadata =
-        reader.getChunkMetadataList(new PartialPath(device, measurement), true);
-    if (chunkMetadata.size() > 0) {
-      chunkMetadata.get(0).setFilePath(resource.getTsFilePath());
-      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
-      ChunkHeader header = chunk.getHeader();
-      return new MeasurementSchema(
-          measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());
-    }
-    return null;
   }
 
   /**
@@ -523,17 +417,10 @@ public class CompactionUtils {
 
   private static void checkThreadInterrupted(List<TsFileResource> tsFileResource)
       throws InterruptedException {
-    if (Thread.currentThread().isInterrupted() || !IoTDB.activated) {
+    if (Thread.interrupted() || !IoTDB.activated) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
-    }
-  }
-
-  private static void clearReaderCache(Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
-      throws IOException {
-    for (TsFileResource resource : readerCacheMap.keySet()) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
     }
   }
 }

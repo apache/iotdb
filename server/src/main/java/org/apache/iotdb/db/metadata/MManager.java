@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
@@ -86,14 +87,10 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -323,78 +320,37 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      startStatisticCounts();
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              mtree,
-              RamUsageEstimator::sizeOf,
-              Tag.NAME.toString(),
-              "mtree");
-    }
+    MetricService.getInstance().addMetricSet(new MManagerMetrics(this));
   }
 
-  private void startStatisticCounts() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalNormalSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries",
-            Tag.TYPE.toString(),
-            "normal");
+  public long getNormalSeriesNumber() {
+    return totalNormalSeriesNumber.get();
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalTemplateSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries",
-            Tag.TYPE.toString(),
-            "template");
+  public long getTemplateSeriesNumber() {
+    return totalTemplateSeriesNumber.get();
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
-              try {
-                return tree.getDevicesNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get deviceNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "device",
-            Tag.TYPE.toString(),
-            "total");
+  public long getDeviceNumber() {
+    try {
+      return mtree.getDevicesNum(new PartialPath("root.**"));
+    } catch (MetadataException e) {
+      logger.error("get deviceNum error", e);
+    }
+    return 0;
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
-              try {
-                return tree.getStorageGroupNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get storageGroupNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "storageGroup",
-            Tag.TYPE.toString(),
-            "total");
+  public long getStorageGroupNumber() {
+    try {
+      return mtree.getStorageGroupNum(new PartialPath("root.**"));
+    } catch (MetadataException e) {
+      logger.error("get storageGroupNum error", e);
+    }
+    return 0;
+  }
+
+  public long getMtreeSize() {
+    return RamUsageEstimator.sizeOf(mtree);
   }
 
   private void forceMlog() {
@@ -2076,17 +2032,15 @@ public class MManager {
     if (deviceMNode.isEntity()) {
       if (plan.isAligned()) {
         if (!deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are not aligned, " + "please use non-aligned interface",
+              devicePath.getFullPath());
         }
       } else {
         if (deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are aligned, " + "please use aligned interface",
+              devicePath.getFullPath());
         }
       }
     }
