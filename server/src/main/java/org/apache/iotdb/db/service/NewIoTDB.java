@@ -83,10 +83,8 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
     config.setMppMode(true);
-    // TODO: (xingtanzjr) tmp impl
-    config.setAllocateMemoryForStorageEngine(
-        config.getAllocateMemoryForStorageEngine() + config.getAllocateMemoryForConsensus());
-    SystemInfo.getInstance().allocateWriteMemory();
+    // In standalone mode, Consensus memory should be reclaimed
+    IoTDBDescriptor.getInstance().reclaimConsensusMemory();
     loadExternLib(config);
 
     daemon.active();

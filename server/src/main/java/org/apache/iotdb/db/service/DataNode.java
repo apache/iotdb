@@ -59,7 +59,6 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -214,12 +213,11 @@ public class DataNode implements DataNodeMBean {
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
 
-          // TODO: (xingtanzjr) tmp impl
-          if (!config.getDataRegionConsensusProtocolClass().contains("MultiLeader")) {
-            config.setAllocateMemoryForStorageEngine(
-                config.getAllocateMemoryForStorageEngine()
-                    + config.getAllocateMemoryForConsensus());
-            SystemInfo.getInstance().allocateWriteMemory();
+          // In current implementation, only MultiLeader need separated memory from Consensus
+          if (!config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
 
           IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
