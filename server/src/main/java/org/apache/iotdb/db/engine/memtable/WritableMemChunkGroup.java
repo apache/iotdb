@@ -134,10 +134,12 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       }
     } else {
       IWritableMemChunk chunk = memChunkMap.get(targetMeasurement);
-      if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-        memChunkMap.remove(targetMeasurement);
+      if (chunk != null) {
+        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+          memChunkMap.remove(targetMeasurement);
+        }
+        deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
       }
-      deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
     }
 
     return deletedPointsNumber;

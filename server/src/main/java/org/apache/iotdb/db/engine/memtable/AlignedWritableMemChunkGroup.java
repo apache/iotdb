@@ -114,11 +114,13 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
         }
       }
     } else {
-      Pair<Integer, Boolean> deleteInfo =
-          memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, targetMeasurement);
-      deletedPointsNumber += deleteInfo.left;
-      if (Boolean.TRUE.equals(deleteInfo.right)) {
-        columnsToBeRemoved.add(targetMeasurement);
+      if (measurements.contains(targetMeasurement)) {
+        Pair<Integer, Boolean> deleteInfo =
+            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, targetMeasurement);
+        deletedPointsNumber += deleteInfo.left;
+        if (Boolean.TRUE.equals(deleteInfo.right)) {
+          columnsToBeRemoved.add(targetMeasurement);
+        }
       }
     }
 
