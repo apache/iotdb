@@ -1013,6 +1013,9 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
+
+    conf.setTimePartitionIntervalForStorage(
+        convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1921,18 +1924,38 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(
+        convertMilliWithPrecision(globalConfig.timePartitionInterval));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
-    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
-    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
-    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
-    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
-    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
-    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
-    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
+    conf.setDataRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getDataAppenderBufferSize());
+    conf.setSchemaRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getSchemaAppenderBufferSize());
+
+    conf.setDataRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getDataSnapshotTriggerThreshold());
+    conf.setSchemaRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getSchemaSnapshotTriggerThreshold());
+
+    conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
+    conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
+    conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
+    conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
+
+    conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
+    conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getDataLeaderElectionTimeoutMin());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMin());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getDataLeaderElectionTimeoutMax());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMax());
   }
 
   public void initClusterSchemaMemoryAllocate() {
@@ -1967,6 +1990,22 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
+  }
+
+  public long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = conf.getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
+        break;
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
+    }
+    return result;
   }
 
   private static class IoTDBDescriptorHolder {

@@ -143,13 +143,34 @@ public class NodeManager {
   private void setRatisConfig(DataNodeRegisterResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
-    ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
-    ratisConfig.setSnapshotTriggerThreshold(conf.getRatisSnapshotTriggerThreshold());
-    ratisConfig.setLogUnsafeFlushEnable(conf.isRatisLogUnsafeFlushEnable());
-    ratisConfig.setLogSegmentSizeMax(conf.getRatisLogSegmentSizeMax());
-    ratisConfig.setGrpcFlowControlWindow(conf.getRatisGrpcFlowControlWindow());
-    ratisConfig.setLeaderElectionTimeoutMin(conf.getRatisRpcLeaderElectionTimeoutMinMs());
-    ratisConfig.setLeaderElectionTimeoutMax(conf.getRatisRpcLeaderElectionTimeoutMaxMs());
+
+    ratisConfig.setDataAppenderBufferSize(conf.getDataRegionRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setSchemaAppenderBufferSize(
+        conf.getSchemaRegionRatisConsensusLogAppenderBufferSize());
+
+    ratisConfig.setDataSnapshotTriggerThreshold(conf.getDataRegionRatisSnapshotTriggerThreshold());
+    ratisConfig.setSchemaSnapshotTriggerThreshold(
+        conf.getSchemaRegionRatisSnapshotTriggerThreshold());
+
+    ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
+    ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
+
+    ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
+    ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
+
+    ratisConfig.setDataGrpcFlowControlWindow(conf.getDataRegionRatisGrpcFlowControlWindow());
+    ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
+
+    ratisConfig.setDataLeaderElectionTimeoutMin(
+        conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
+    ratisConfig.setSchemaLeaderElectionTimeoutMin(
+        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs());
+
+    ratisConfig.setDataLeaderElectionTimeoutMax(
+        conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs());
+    ratisConfig.setSchemaLeaderElectionTimeoutMax(
+        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
