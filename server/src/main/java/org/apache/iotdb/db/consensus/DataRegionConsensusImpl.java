@@ -85,8 +85,9 @@ public class DataRegionConsensusImpl {
                               .setReplication(
                                   MultiLeaderConfig.Replication.newBuilder()
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
+                                      .setAllocateMemoryForConsensus(
+                                          conf.getAllocateMemoryForConsensus())
                                       .build())
-                              .setAllocateMemoryForConsensus(conf.getAllocateMemoryForConsensus())
                               .build())
                       .setRatisConfig(
                           RatisConfig.newBuilder()

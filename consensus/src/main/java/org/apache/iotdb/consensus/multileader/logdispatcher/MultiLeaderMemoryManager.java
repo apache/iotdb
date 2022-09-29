@@ -32,10 +32,12 @@ public class MultiLeaderMemoryManager {
   private MultiLeaderMemoryManager() {}
 
   public boolean reserve(long size) {
-    if (memorySizeInByte.get() < maxMemorySizeInByte - size) {
-      return false;
+    synchronized (this) {
+      if (memorySizeInByte.get() < maxMemorySizeInByte - size) {
+        return false;
+      }
+      memorySizeInByte.addAndGet(size);
     }
-    memorySizeInByte.addAndGet(size);
     logger.debug(
         "{} add {} bytes, total memory size: {} bytes.",
         Thread.currentThread().getName(),
@@ -45,20 +47,15 @@ public class MultiLeaderMemoryManager {
   }
 
   public void free(long size) {
-    memorySizeInByte.addAndGet(-size);
     logger.debug(
         "{} add {} bytes, total memory size: {} bytes.",
         Thread.currentThread().getName(),
         size,
-        memorySizeInByte.get());
+        memorySizeInByte.addAndGet(-size));
   }
 
   public void init(long maxMemorySize) {
     this.maxMemorySizeInByte = maxMemorySize;
-  }
-
-  public long getMemorySizeInByte() {
-    return memorySizeInByte.get();
   }
 
   private static final MultiLeaderMemoryManager INSTANCE = new MultiLeaderMemoryManager();

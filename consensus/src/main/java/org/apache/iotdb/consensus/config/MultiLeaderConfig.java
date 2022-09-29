@@ -25,12 +25,10 @@ public class MultiLeaderConfig {
 
   private final RPC rpc;
   private final Replication replication;
-  private final Long allocateMemoryForConsensus;
 
-  private MultiLeaderConfig(RPC rpc, Replication replication, long allocateMemoryForConsensus) {
+  private MultiLeaderConfig(RPC rpc, Replication replication) {
     this.rpc = rpc;
     this.replication = replication;
-    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
   }
 
   public RPC getRpc() {
@@ -41,10 +39,6 @@ public class MultiLeaderConfig {
     return replication;
   }
 
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -53,13 +47,11 @@ public class MultiLeaderConfig {
 
     private RPC rpc;
     private Replication replication;
-    private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
     public MultiLeaderConfig build() {
       return new MultiLeaderConfig(
           rpc != null ? rpc : new RPC.Builder().build(),
-          replication != null ? replication : new Replication.Builder().build(),
-          allocateMemoryForConsensus);
+          replication != null ? replication : new Replication.Builder().build());
     }
 
     public Builder setRpc(RPC rpc) {
@@ -69,11 +61,6 @@ public class MultiLeaderConfig {
 
     public Builder setReplication(Replication replication) {
       this.replication = replication;
-      return this;
-    }
-
-    public Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
-      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
       return this;
     }
   }
@@ -219,6 +206,7 @@ public class MultiLeaderConfig {
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
     private final long checkpointGap;
+    private final Long allocateMemoryForConsensus;
 
     private Replication(
         int maxPendingRequestNumPerNode,
@@ -230,7 +218,8 @@ public class MultiLeaderConfig {
         long maxRetryWaitTimeMs,
         long walThrottleThreshold,
         long throttleTimeOutMs,
-        long checkpointGap) {
+        long checkpointGap,
+        long allocateMemoryForConsensus) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
@@ -241,6 +230,7 @@ public class MultiLeaderConfig {
       this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
+      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
     }
 
     public int getMaxPendingRequestNumPerNode() {
@@ -283,6 +273,10 @@ public class MultiLeaderConfig {
       return checkpointGap;
     }
 
+    public Long getAllocateMemoryForConsensus() {
+      return allocateMemoryForConsensus;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -300,6 +294,7 @@ public class MultiLeaderConfig {
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
+      private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
         this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -347,6 +342,11 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+        this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxPendingRequestNumPerNode,
@@ -358,7 +358,8 @@ public class MultiLeaderConfig {
             maxRetryWaitTimeMs,
             walThrottleThreshold,
             throttleTimeOutMs,
-            checkpointGap);
+            checkpointGap,
+            allocateMemoryForConsensus);
       }
     }
   }
