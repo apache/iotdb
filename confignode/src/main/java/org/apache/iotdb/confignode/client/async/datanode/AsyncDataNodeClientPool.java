@@ -45,18 +45,23 @@ import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
 import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.TriggerManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.client.async.task.AbstractDataNodeTask;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -117,6 +122,18 @@ public class AsyncDataNodeClientPool {
           case DROP_FUNCTION:
             handler =
                 new FunctionManagementHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case CREATE_TRIGGER_INSTANCE:
+          case DROP_TRIGGER_INSTANCE:
+          case ACTIVE_TRIGGER_INSTANCE:
+          case INACTIVE_TRIGGER_INSTANCE:
+            handler =
+                new TriggerManagementHandler(
                     countDownLatch,
                     requestType,
                     targetDataNode,
@@ -275,6 +292,22 @@ public class AsyncDataNodeClientPool {
           break;
         case DROP_FUNCTION:
           client.dropFunction((TDropFunctionRequest) req, (FunctionManagementHandler) handler);
+          break;
+        case CREATE_TRIGGER_INSTANCE:
+          client.createTriggerInstance(
+              (TCreateTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+          break;
+        case DROP_TRIGGER_INSTANCE:
+          client.dropTriggerInstance(
+              (TDropTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+          break;
+        case ACTIVE_TRIGGER_INSTANCE:
+          client.activeTriggerInstance(
+              (TActiveTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+          break;
+        case INACTIVE_TRIGGER_INSTANCE:
+          client.inactiveTriggerInstance(
+              (TInactiveTriggerInstanceReq) req, (TriggerManagementHandler) handler);
           break;
         case MERGE:
         case FULL_MERGE:

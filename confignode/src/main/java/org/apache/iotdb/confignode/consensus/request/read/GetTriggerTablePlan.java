@@ -16,36 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public enum PathType {
-  Measurement((byte) 0),
-  Aligned((byte) 1),
-  Partial((byte) 2),
-  Path((byte) 3);
+public class GetTriggerTablePlan extends ConfigPhysicalPlan {
 
-  private final byte pathType;
-
-  PathType(byte pathType) {
-    this.pathType = pathType;
+  public GetTriggerTablePlan() {
+    super(ConfigPhysicalPlanType.GetTriggerTable);
   }
 
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(pathType, buffer);
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.GetTriggerTable.ordinal());
   }
 
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
-  }
-
-  public void serialize(PublicBAOS stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
-  }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

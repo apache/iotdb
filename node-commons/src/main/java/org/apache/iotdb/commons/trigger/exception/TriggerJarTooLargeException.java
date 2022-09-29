@@ -16,36 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+package org.apache.iotdb.commons.trigger.exception;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-
-public enum PathType {
-  Measurement((byte) 0),
-  Aligned((byte) 1),
-  Partial((byte) 2),
-  Path((byte) 3);
-
-  private final byte pathType;
-
-  PathType(byte pathType) {
-    this.pathType = pathType;
+public class TriggerJarTooLargeException extends RuntimeException {
+  public TriggerJarTooLargeException(String message) {
+    super(message);
   }
 
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(pathType, buffer);
-  }
-
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
-  }
-
-  public void serialize(PublicBAOS stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
+  public TriggerJarTooLargeException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

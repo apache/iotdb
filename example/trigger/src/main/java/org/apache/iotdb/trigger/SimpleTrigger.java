@@ -16,36 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
+package org.apache.iotdb.trigger;
 
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.trigger.api.Trigger;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-public enum PathType {
-  Measurement((byte) 0),
-  Aligned((byte) 1),
-  Partial((byte) 2),
-  Path((byte) 3);
+public class SimpleTrigger implements Trigger {
 
-  private final byte pathType;
-
-  PathType(byte pathType) {
-    this.pathType = pathType;
-  }
-
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(pathType, buffer);
-  }
-
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
-  }
-
-  public void serialize(PublicBAOS stream) throws IOException {
-    ReadWriteIOUtils.write(pathType, stream);
+  @Override
+  public boolean fire(Tablet tablet) {
+    System.out.println("receive a tablet, device name is " + tablet.deviceId);
+    System.out.println("measurements are: ");
+    tablet
+        .getSchemas()
+        .forEach(measurementSchema -> System.out.println(measurementSchema.getMeasurementId()));
+    System.out.println("time are: " + Arrays.toString(tablet.timestamps));
+    return true;
   }
 }
