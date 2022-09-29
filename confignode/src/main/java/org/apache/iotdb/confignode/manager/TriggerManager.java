@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 
 public class TriggerManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
@@ -56,6 +57,20 @@ public class TriggerManager {
     return triggerInfo;
   }
 
+  /**
+   * Create a trigger in cluster.
+   *
+   * <p>If TriggerType is STATELESS, we should create TriggerInstance on all DataNodes, the
+   * DataNodeLocation in TriggerInformation will be null.
+   *
+   * <p>If TriggerType is STATEFUL, we should create TriggerInstance on the DataNode with the lowest
+   * load, and DataNodeLocation of this DataNode will be saved.
+   *
+   * <p>All DataNodes will add TriggerInformation of this trigger in local TriggerTable.
+   *
+   * @param req the createTrigger request
+   * @return status of create this trigger
+   */
   public TSStatus createTrigger(TCreateTriggerReq req) {
     boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
     TDataNodeLocation dataNodeLocation =
@@ -88,9 +103,11 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerTablePlan()).getDataset())
           .convertToThriftResponse();
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.error("Fail to get TriggerTable", e);
       return new TGetTriggerTableResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()), null);
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
     }
   }
 }

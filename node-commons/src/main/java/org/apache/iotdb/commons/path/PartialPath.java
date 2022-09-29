@@ -659,7 +659,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public ByteBuffer serialize() throws IOException {
     PublicBAOS publicBAOS = new PublicBAOS();
-    serialize(publicBAOS);
+    serialize((OutputStream) publicBAOS);
     return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
   }
 

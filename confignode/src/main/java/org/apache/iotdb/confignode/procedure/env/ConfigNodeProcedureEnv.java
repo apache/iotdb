@@ -380,7 +380,8 @@ public class ConfigNodeProcedureEnv {
     final TCreateTriggerInstanceReq request =
         new TCreateTriggerInstanceReq(
             triggerInformation.serialize(), ByteBuffer.wrap(jarFile.getValues()));
-    // TODO: The request sent to DataNodes which stateful trigger needn't to be created don't set
+    // TODO: The request sent to DataNodes which stateful triggerInstance needn't to be created
+    // don't set
     // JarFile
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(

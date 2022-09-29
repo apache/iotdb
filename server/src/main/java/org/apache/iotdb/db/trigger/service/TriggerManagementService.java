@@ -75,11 +75,6 @@ public class TriggerManagementService {
       acquireLock();
       checkIfRegistered(triggerInformation);
       doRegister(triggerInformation);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to register trigger({}) on data node, the cause is ",
-          triggerInformation.getTriggerName(),
-          e);
     } finally {
       releaseLock();
     }
@@ -89,8 +84,6 @@ public class TriggerManagementService {
     try {
       acquireLock();
       triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
-    } catch (Exception e) {
-      LOGGER.warn("Failed to active trigger({}) on data node, the cause is ", triggerName, e);
     } finally {
       releaseLock();
     }
@@ -100,8 +93,6 @@ public class TriggerManagementService {
     try {
       acquireLock();
       triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
-    } catch (Exception e) {
-      LOGGER.warn("Failed to active trigger({}) on data node, the cause is: ", triggerName, e);
     } finally {
       releaseLock();
     }

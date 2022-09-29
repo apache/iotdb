@@ -159,7 +159,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.error("{}", e);
+        LOG.error("Fail in CreateTriggerProcedure", e);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOG.error(
@@ -252,6 +252,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   @Override
   protected CreateTriggerState getInitialState() {
     return CreateTriggerState.INIT;
+  }
+
+  public Binary getJarFile() {
+    return jarFile;
   }
 
   @Override

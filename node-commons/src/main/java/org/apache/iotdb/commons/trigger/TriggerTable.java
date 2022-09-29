@@ -22,11 +22,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
 @NotThreadSafe
@@ -78,7 +78,7 @@ public class TriggerTable {
   }
   // for getTriggerTable
   public List<TriggerInformation> getAllTriggerInformation() {
-    return triggerTable.values().stream().collect(Collectors.toList());
+    return new ArrayList<>(triggerTable.values());
   }
 
   public boolean isEmpty() {

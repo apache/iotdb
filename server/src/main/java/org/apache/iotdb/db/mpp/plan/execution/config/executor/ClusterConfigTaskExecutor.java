@@ -391,7 +391,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (TException | IOException e) {
       future.setException(e);
     }
     return future;
