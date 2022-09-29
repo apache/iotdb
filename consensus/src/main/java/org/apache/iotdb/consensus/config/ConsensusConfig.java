@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 public class ConsensusConfig {
 
+  private final int thisNodeId;
   private final TEndPoint thisNode;
   private final String storageDir;
   private final RatisConfig ratisConfig;
@@ -30,13 +31,19 @@ public class ConsensusConfig {
 
   private ConsensusConfig(
       TEndPoint thisNode,
+      int thisNodeId,
       String storageDir,
       RatisConfig ratisConfig,
       MultiLeaderConfig multiLeaderConfig) {
     this.thisNode = thisNode;
+    this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.ratisConfig = ratisConfig;
     this.multiLeaderConfig = multiLeaderConfig;
+  }
+
+  public int getThisNodeId() {
+    return thisNodeId;
   }
 
   public TEndPoint getThisNode() {
@@ -61,6 +68,7 @@ public class ConsensusConfig {
 
   public static class Builder {
 
+    private int thisNodeId;
     private TEndPoint thisNode;
     private String storageDir;
     private RatisConfig ratisConfig;
@@ -69,6 +77,7 @@ public class ConsensusConfig {
     public ConsensusConfig build() {
       return new ConsensusConfig(
           thisNode,
+          thisNodeId,
           storageDir,
           ratisConfig != null ? ratisConfig : RatisConfig.newBuilder().build(),
           multiLeaderConfig != null ? multiLeaderConfig : MultiLeaderConfig.newBuilder().build());
@@ -76,6 +85,11 @@ public class ConsensusConfig {
 
     public Builder setThisNode(TEndPoint thisNode) {
       this.thisNode = thisNode;
+      return this;
+    }
+
+    public Builder setThisNodeId(int thisNodeId) {
+      this.thisNodeId = thisNodeId;
       return this;
     }
 

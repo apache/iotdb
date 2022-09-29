@@ -222,7 +222,7 @@ public class DataNodeRegionManager {
             new TEndPoint(
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
-        peers.add(new Peer(schemaRegionId, endpoint));
+        peers.add(new Peer(schemaRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
           SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
@@ -258,7 +258,7 @@ public class DataNodeRegionManager {
             new TEndPoint(
                 dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
                 dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
-        peers.add(new Peer(dataRegionId, endpoint));
+        peers.add(new Peer(dataRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
           DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);

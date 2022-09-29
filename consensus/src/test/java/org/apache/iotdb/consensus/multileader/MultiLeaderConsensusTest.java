@@ -48,12 +48,12 @@ public class MultiLeaderConsensusTest {
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderConsensusTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
-
+  private final int nodeId = 2;
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, new TEndPoint("127.0.0.1", 6000)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6001)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+          new Peer(gid, nodeId, new TEndPoint("127.0.0.1", 6000)),
+          new Peer(gid, nodeId, new TEndPoint("127.0.0.1", 6001)),
+          new Peer(gid, nodeId, new TEndPoint("127.0.0.1", 6002)));
 
   private final List<File> peersStorage =
       Arrays.asList(

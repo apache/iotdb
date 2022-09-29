@@ -49,7 +49,7 @@ public class StandAloneServerImpl implements IStateMachine {
   public void start() {
     stateMachine.start();
     // Notify itself as the leader
-    stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getEndpoint());
+    stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
   }
 
   @Override

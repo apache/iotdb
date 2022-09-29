@@ -81,6 +81,22 @@ public class ThriftCommonsSerDeUtils {
     return endPoint;
   }
 
+  public static void serializeNodeId(int nodeId, DataOutputStream stream) {
+    try {
+      stream.writeInt(nodeId);
+    } catch (Exception e) {
+      throw new ThriftSerDeException("Write nodeId failed: ", e);
+    }
+  }
+
+  public static int deserializeNodeId(ByteBuffer buffer) {
+    try {
+      return buffer.getInt();
+    } catch (Exception e) {
+      throw new ThriftSerDeException("Read nodeId failed: ", e);
+    }
+  }
+
   public static void serializeTDataNodeLocation(
       TDataNodeLocation dataNodeLocation, DataOutputStream stream) {
     try {

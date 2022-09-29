@@ -66,13 +66,12 @@ public class Utils {
     return groupCode;
   }
 
-  public static RaftPeerId fromTEndPointToRaftPeerId(TEndPoint endpoint) {
-    return RaftPeerId.valueOf(fromTEndPointToString(endpoint));
+  public static RaftPeerId fromNodeIdToRaftPeerId(int nodeId) {
+    return RaftPeerId.valueOf(String.valueOf(nodeId));
   }
 
-  public static TEndPoint formRaftPeerIdToTEndPoint(RaftPeerId id) {
-    String[] items = id.toString().split("_");
-    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+  public static int formRaftPeerIdToNodeId(RaftPeerId id) {
+    return Integer.parseInt(id.toString());
   }
 
   public static TEndPoint formRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
@@ -80,22 +79,32 @@ public class Utils {
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
+  public static TEndPoint formRaftPeerToTEndPoint(RaftPeer peer) {
+    String[] items = peer.getAddress().split(":");
+    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+  }
+
+  public static int formRaftPeerProtoToNodeId(RaftPeerProto proto) {
+    return Integer.parseInt(proto.getId().toStringUtf8());
+  }
+
   // priority is used as ordinal of leader election
-  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(TEndPoint endpoint, int priority) {
+  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(
+      int nodeId, TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
-        .setId(fromTEndPointToRaftPeerId(endpoint))
+        .setId(fromNodeIdToRaftPeerId(nodeId))
         .setAddress(HostAddress(endpoint))
         .setPriority(priority)
         .build();
   }
 
-  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
-    return fromTEndPointAndPriorityToRaftPeer(peer.getEndpoint(), priority);
+  public static RaftPeer fromNodeIdAndTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
+    return fromTEndPointAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
   }
 
   public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
     return peers.stream()
-        .map(peer -> Utils.fromTEndPointAndPriorityToRaftPeer(peer, priority))
+        .map(peer -> Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer, priority))
         .collect(Collectors.toList());
   }
 
@@ -103,7 +112,12 @@ public class Utils {
       List<RaftPeerProto> raftProtoList, RaftGroupId id) {
     ConsensusGroupId consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
     return raftProtoList.stream()
-        .map(peer -> new Peer(consensusGroupId, Utils.formRaftPeerProtoToTEndPoint(peer)))
+        .map(
+            peer ->
+                new Peer(
+                    consensusGroupId,
+                    Utils.formRaftPeerProtoToNodeId(peer),
+                    Utils.formRaftPeerProtoToTEndPoint(peer)))
         .collect(Collectors.toList());
   }
 
