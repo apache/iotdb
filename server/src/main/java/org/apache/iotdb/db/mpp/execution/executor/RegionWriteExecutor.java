@@ -174,7 +174,7 @@ public class RegionWriteExecutor {
         }
 
         ConsensusWriteResponse writeResponse =
-            executePlanNodeInConsensusLayer(context.getRegionId(), insertNode);
+            DataRegionConsensusImpl.getInstance().write(context.getRegionId(), insertNode);
 
         // TODO need consider more status
         if (writeResponse.getStatus() != null) {
