@@ -197,7 +197,7 @@ deleteStorageGroup
 
 // Delete Timeseries
 deleteTimeseries
-    : DELETE TIMESERIES prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Partition
