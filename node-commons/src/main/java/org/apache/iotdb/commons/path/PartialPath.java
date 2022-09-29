@@ -103,6 +103,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
   }
 
+  public boolean hasWildcard() {
+    for (String node : nodes) {
+      if (ONE_LEVEL_PATH_WILDCARD.equals(node) || MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * it will return a new partial path
    *
@@ -615,6 +624,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath getDevicePath() {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+  }
+
+  public List<PartialPath> getDevicePathPattern() {
+    List<PartialPath> result = new ArrayList<>();
+    result.add(getDevicePath());
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      result.add(new PartialPath(nodes));
+    }
+    return result;
   }
 
   @TestOnly
