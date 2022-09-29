@@ -171,7 +171,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
             logger.error(sendPlanNodeResp.getStatus().message);
-            throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
+            if (sendPlanNodeResp.getStatus() == null) {
+              throw new FragmentInstanceDispatchException(
+                  RpcUtils.getStatus(
+                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendPlanNodeResp.getMessage()));
+            } else {
+              throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
+            }
           }
           break;
         default:
@@ -223,7 +229,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
           logger.error(writeResult.getMessage());
-          throw new FragmentInstanceDispatchException(writeResult.getStatus());
+          if (writeResult.getStatus() == null) {
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
+          } else {
+            throw new FragmentInstanceDispatchException(writeResult.getStatus());
+          }
         }
         break;
       default:

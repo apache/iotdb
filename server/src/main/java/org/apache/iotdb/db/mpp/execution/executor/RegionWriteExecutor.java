@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -153,6 +154,13 @@ public class RegionWriteExecutor {
         } catch (SemanticException e) {
           response.setAccepted(false);
           response.setMessage(e.getMessage());
+          if (e.getCause() instanceof IoTDBException) {
+            IoTDBException ioTDBException = (IoTDBException) e.getCause();
+            response.setStatus(
+                RpcUtils.getStatus(ioTDBException.getErrorCode(), ioTDBException.getMessage()));
+          } else {
+            response.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+          }
           return response;
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
