@@ -50,6 +50,11 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void cleanAfterClass() {
     cleanAfterTest();
   }
@@ -171,5 +176,15 @@ public class StandaloneEnv implements BaseEnv {
 
     session.open();
     return session;
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    // Do nothing
   }
 }

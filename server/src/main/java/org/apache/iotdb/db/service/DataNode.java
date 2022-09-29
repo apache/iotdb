@@ -171,7 +171,7 @@ public class DataNode implements DataNodeMBean {
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
-      logger.info("start registering to the cluster.");
+      logger.info("Start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
@@ -248,7 +248,7 @@ public class DataNode implements DataNodeMBean {
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
-      logger.error("meet error while starting up.", e);
+      logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
@@ -269,7 +269,7 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    logger.info("recover the schema...");
+    logger.info("Recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
@@ -393,7 +393,7 @@ public class DataNode implements DataNodeMBean {
     long time = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
-    logger.info("spend {}ms to recover schema.", end);
+    logger.info("Spent {}ms to recover schema.", end);
     logger.info(
         "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
         config.getSeqTsFileSize(),
@@ -408,7 +408,7 @@ public class DataNode implements DataNodeMBean {
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {
-      logger.error("stop data node error", e);
+      logger.error("Stop data node error", e);
     }
   }
 

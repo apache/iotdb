@@ -27,5 +27,6 @@ public enum CreateRegionGroupsState {
   // RegionReplicas created successfully on the same RegionGroup
   // 3. Delete redundant RegionReplicas in contrast to case 2.
   SHUNT_REGION_REPLICAS,
+  BUILD_REGION_GROUP_CACHE,
   CREATE_REGION_GROUPS_FINISH
 }

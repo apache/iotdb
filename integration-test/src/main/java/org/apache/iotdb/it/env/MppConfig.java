@@ -228,6 +228,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    confignodeProperties.setProperty(
+        "schema_replication_factor", String.valueOf(schemaReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    confignodeProperties.setProperty(
+        "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
+
+  @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
         "time_partition_interval", String.valueOf(timePartitionInterval));
@@ -237,6 +251,13 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setEnableMemControl(boolean enableMemControl) {
     confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    confignodeProperties.setProperty(
+        "ratis_snapshot_trigger_threshold", String.valueOf(ratisSnapshotTriggerThreshold));
     return this;
   }
 

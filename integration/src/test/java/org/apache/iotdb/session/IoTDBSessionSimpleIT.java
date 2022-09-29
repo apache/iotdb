@@ -1282,7 +1282,7 @@ public class IoTDBSessionSimpleIT {
       session.insertAlignedRecord("root.sg.loc1.sector.GPS", 3L, measurements, values);
     } catch (StatementExecutionException e) {
       assertEquals(
-          "303: Timeseries under path [root.sg.loc1.sector.GPS] is not aligned , please set InsertPlan.isAligned() = false",
+          "319: timeseries under this device are not aligned, please use non-aligned interface (Path: root.sg.loc1.sector.GPS)",
           e.getMessage());
     }
 

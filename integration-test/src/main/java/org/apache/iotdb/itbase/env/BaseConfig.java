@@ -231,12 +231,36 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   }
 
+  default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    return this;
+  }
+
+  default int getSchemaReplicationFactor() {
+    return 1;
+  }
+
+  default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    return this;
+  }
+
+  default int getDataReplicationFactor() {
+    return 1;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 
   default long getTimePartitionInterval() {
     return 86400;
+  }
+
+  default BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    return this;
+  }
+
+  default int getRatisSnapshotTriggerThreshold() {
+    return 400000;
   }
 
   default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {

@@ -20,8 +20,10 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -120,16 +122,14 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
+  public void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.validateAndSetSchema(schemaTree)) {
-        return false;
-      }
+      insertRowNode.validateAndSetSchema(schemaTree);
       if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
         this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
       }
     }
-    return true;
   }
 
   @Override

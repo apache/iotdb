@@ -142,13 +142,34 @@ public class NodeManager {
   private void setRatisConfig(DataNodeRegisterResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
-    ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
-    ratisConfig.setSnapshotTriggerThreshold(conf.getRatisSnapshotTriggerThreshold());
-    ratisConfig.setLogUnsafeFlushEnable(conf.isRatisLogUnsafeFlushEnable());
-    ratisConfig.setLogSegmentSizeMax(conf.getRatisLogSegmentSizeMax());
-    ratisConfig.setGrpcFlowControlWindow(conf.getRatisGrpcFlowControlWindow());
-    ratisConfig.setLeaderElectionTimeoutMin(conf.getRatisRpcLeaderElectionTimeoutMinMs());
-    ratisConfig.setLeaderElectionTimeoutMax(conf.getRatisRpcLeaderElectionTimeoutMaxMs());
+
+    ratisConfig.setDataAppenderBufferSize(conf.getDataRegionRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setSchemaAppenderBufferSize(
+        conf.getSchemaRegionRatisConsensusLogAppenderBufferSize());
+
+    ratisConfig.setDataSnapshotTriggerThreshold(conf.getDataRegionRatisSnapshotTriggerThreshold());
+    ratisConfig.setSchemaSnapshotTriggerThreshold(
+        conf.getSchemaRegionRatisSnapshotTriggerThreshold());
+
+    ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
+    ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
+
+    ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
+    ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
+
+    ratisConfig.setDataGrpcFlowControlWindow(conf.getDataRegionRatisGrpcFlowControlWindow());
+    ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
+
+    ratisConfig.setDataLeaderElectionTimeoutMin(
+        conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
+    ratisConfig.setSchemaLeaderElectionTimeoutMin(
+        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs());
+
+    ratisConfig.setDataLeaderElectionTimeoutMax(
+        conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs());
+    ratisConfig.setSchemaLeaderElectionTimeoutMax(
+        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
@@ -517,7 +538,7 @@ public class NodeManager {
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    // the consensusManager of configManager may not be fully initialized at this time
+    // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
         .ifPresent(
             consensusManager -> {
@@ -638,13 +659,14 @@ public class NodeManager {
    * @param status The specific NodeStatus
    * @return Filtered ConfigNodes with the specific NodeStatus
    */
-  public List<TConfigNodeLocation> filterConfigNodeThroughStatus(NodeStatus status) {
+  public List<TConfigNodeLocation> filterConfigNodeThroughStatus(NodeStatus... status) {
     return getRegisteredConfigNodes().stream()
         .filter(
             registeredConfigNode -> {
               int configNodeId = registeredConfigNode.getConfigNodeId();
               return nodeCacheMap.containsKey(configNodeId)
-                  && status.equals(nodeCacheMap.get(configNodeId).getNodeStatus());
+                  && Arrays.stream(status)
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(configNodeId).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }
@@ -659,10 +681,10 @@ public class NodeManager {
     return getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
-              int id = registeredDataNode.getLocation().getDataNodeId();
-              return nodeCacheMap.containsKey(id)
+              int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+              return nodeCacheMap.containsKey(dataNodeId)
                   && Arrays.stream(status)
-                      .anyMatch(s -> s.equals(nodeCacheMap.get(id).getNodeStatus()));
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(dataNodeId).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }

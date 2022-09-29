@@ -266,6 +266,40 @@ public class IoTDBInsertAlignedValuesIT {
   }
 
   @Test
+  public void testInsertAlignedTimeseriesWithoutAligned() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS2(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
+      statement.execute("insert into root.lz.dev.GPS2(time,latitude,longitude) values(1,1.3,6.7)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains("timeseries under this device are aligned, please use aligned interface"));
+    }
+  }
+
+  @Test
+  public void testInsertNonAlignedTimeseriesWithAligned() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.lz.dev.GPS3.latitude with datatype=INT32");
+      statement.execute("CREATE TIMESERIES root.lz.dev.GPS3.longitude with datatype=INT32");
+      statement.execute(
+          "insert into root.lz.dev.GPS3(time,latitude,longitude) aligned values(1,1.3,6.7)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains(
+                  "timeseries under this device are not aligned, please use non-aligned interface"));
+    }
+  }
+
+  @Test
   public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
