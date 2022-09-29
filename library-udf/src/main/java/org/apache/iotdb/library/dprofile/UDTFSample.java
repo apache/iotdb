@@ -127,7 +127,6 @@ public class UDTFSample implements UDTF {
     if (this.k < n) {
       if (this.method == Method.TRIANGLE)
       {
-        System.out.println("use triangle");
         List<Point> input = new LinkedList<>();
         for (long i = 0; i < n; i++) {
           Row row = rowWindow.getRow((int) i);
@@ -139,7 +138,6 @@ public class UDTFSample implements UDTF {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Point> output = LTThreeBuckets.sorted(input, k - 2);
           for (Point p : output) {
-            System.out.println("point: " + p);
             switch (dataType) {
               case INT32:
                 Util.putValue(collector, dataType, p.getX().longValue(), p.getY().intValue());
