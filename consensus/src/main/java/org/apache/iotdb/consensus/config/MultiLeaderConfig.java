@@ -25,10 +25,12 @@ public class MultiLeaderConfig {
 
   private final RPC rpc;
   private final Replication replication;
+  private final Long allocateMemoryForConsensus;
 
-  private MultiLeaderConfig(RPC rpc, Replication replication) {
+  private MultiLeaderConfig(RPC rpc, Replication replication, long allocateMemoryForConsensus) {
     this.rpc = rpc;
     this.replication = replication;
+    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
   }
 
   public RPC getRpc() {
@@ -39,6 +41,10 @@ public class MultiLeaderConfig {
     return replication;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -47,11 +53,13 @@ public class MultiLeaderConfig {
 
     private RPC rpc;
     private Replication replication;
+    private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
     public MultiLeaderConfig build() {
       return new MultiLeaderConfig(
           rpc != null ? rpc : new RPC.Builder().build(),
-          replication != null ? replication : new Replication.Builder().build());
+          replication != null ? replication : new Replication.Builder().build(),
+          allocateMemoryForConsensus);
     }
 
     public Builder setRpc(RPC rpc) {
@@ -61,6 +69,11 @@ public class MultiLeaderConfig {
 
     public Builder setReplication(Replication replication) {
       this.replication = replication;
+      return this;
+    }
+
+    public Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
       return this;
     }
   }

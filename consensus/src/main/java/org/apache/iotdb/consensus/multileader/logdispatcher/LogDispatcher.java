@@ -225,11 +225,9 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (multiLeaderMemoryManager.getMemorySizeInByte()
-          > config.getReplication().getMaxPendingBatchSizeInByte()) {
+      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
         return false;
       }
-      multiLeaderMemoryManager.addMemorySize(indexedConsensusRequest.getSerializedSize());
       return pendingRequest.offer(indexedConsensusRequest);
     }
 
@@ -238,16 +236,16 @@ public class LogDispatcher {
         IndexedConsensusRequest indexedConsensusRequest,
         Iterator<IndexedConsensusRequest> iterator) {
       iterator.remove();
-      multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
+      multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
       stopped = true;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
-        multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
       }
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
-        multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
       }
     }
 

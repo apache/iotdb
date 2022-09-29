@@ -26,12 +26,26 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class MultiLeaderMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(MultiLeaderMemoryManager.class);
-  private AtomicLong memorySizeInByte = new AtomicLong(0);
+  private final AtomicLong memorySizeInByte = new AtomicLong(0);
+  private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
 
   private MultiLeaderMemoryManager() {}
 
-  public void addMemorySize(long size) {
+  public boolean reserve(long size) {
+    if (memorySizeInByte.get() < maxMemorySizeInByte - size) {
+      return false;
+    }
     memorySizeInByte.addAndGet(size);
+    logger.debug(
+        "{} add {} bytes, total memory size: {} bytes.",
+        Thread.currentThread().getName(),
+        size,
+        memorySizeInByte.get());
+    return true;
+  }
+
+  public void free(long size) {
+    memorySizeInByte.addAndGet(-size);
     logger.debug(
         "{} add {} bytes, total memory size: {} bytes.",
         Thread.currentThread().getName(),
@@ -39,13 +53,10 @@ public class MultiLeaderMemoryManager {
         memorySizeInByte.get());
   }
 
-  public void decrMemorySize(long size) {
-    memorySizeInByte.addAndGet(-size);
-    logger.debug(
-        "{} add {} bytes, total memory size: {} bytes.",
-        Thread.currentThread().getName(),
-        size,
-        memorySizeInByte.get());
+  public void init(long maxMemorySize) {
+    if (this.maxMemorySizeInByte == null) {
+      this.maxMemorySizeInByte = maxMemorySize;
+    }
   }
 
   public long getMemorySizeInByte() {
