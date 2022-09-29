@@ -284,7 +284,7 @@ public class IoTDBClusterPartitionIT {
   }
 
   @Test
-  public void testGetAndCreateDataPartition() throws TException, IOException {
+  public void testGetAndCreateDataPartition() throws TException, IOException, InterruptedException {
     final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
@@ -324,7 +324,22 @@ public class IoTDBClusterPartitionIT {
 
             // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
             dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-            dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+            for (int retry = 0; retry < 5; retry++) {
+              // Build new Client since it's unstable
+              try (SyncConfigNodeIServiceClient configNodeClient =
+                  (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+                dataPartitionTableResp =
+                    configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+                if (dataPartitionTableResp != null) {
+                  break;
+                }
+              } catch (Exception e) {
+                // Retry sometimes in order to avoid request timeout
+                LOGGER.error(e.getMessage());
+                TimeUnit.SECONDS.sleep(1);
+              }
+            }
+            Assert.assertNotNull(dataPartitionTableResp);
             Assert.assertEquals(
                 TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                 dataPartitionTableResp.getStatus().getCode());
