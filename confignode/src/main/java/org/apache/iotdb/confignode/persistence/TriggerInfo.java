@@ -113,6 +113,20 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Validate whether the trigger can be dropped
+   *
+   * @param triggerName
+   */
+  public void validate(String triggerName) {
+    if (triggerTable.containsTrigger(triggerName)) {
+      return;
+    }
+    throw new TriggerManagementException(
+        String.format(
+            "Failed to drop trigger [%s], this trigger has not been created", triggerName));
+  }
+
   public boolean needToSaveJar(String jarName) {
     return !existedJarToMD5.containsKey(jarName);
   }

@@ -93,8 +93,7 @@ public class TriggerManager {
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {
-    // TODO
-    return null;
+    return configManager.getProcedureManager().dropTrigger(req.getTriggerName());
   }
 
   public TGetTriggerTableResp getTriggerTable() {
