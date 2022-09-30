@@ -80,6 +80,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);
@@ -336,5 +337,10 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean mayContainsDevice(String device) {
     return deviceToIndex.containsKey(device);
+  }
+
+  @Override
+  public byte getTimeIndexType() {
+    return ITimeIndex.DEVICE_TIME_INDEX_TYPE;
   }
 }

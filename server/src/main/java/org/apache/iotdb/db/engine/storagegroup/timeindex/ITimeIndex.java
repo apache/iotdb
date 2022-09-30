@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +30,10 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 public interface ITimeIndex {
+
+  byte V012_FILE_TIME_INDEX_TYPE = 0;
+  byte DEVICE_TIME_INDEX_TYPE = 1;
+  byte FILE_TIME_INDEX_TYPE = 2;
 
   int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
 
@@ -186,4 +191,12 @@ public interface ITimeIndex {
    * it may or may not contain this device
    */
   boolean mayContainsDevice(String device);
+
+  /** @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
+  byte getTimeIndexType();
+
+  static ITimeIndex createTimeIndex(InputStream inputStream) throws IOException {
+    byte timeIndexType = ReadWriteIOUtils.readByte(inputStream);
+    return TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+  }
 }

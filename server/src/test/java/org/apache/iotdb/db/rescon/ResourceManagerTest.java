@@ -356,7 +356,7 @@ public class ResourceManagerTest {
   @Test(expected = RuntimeException.class)
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
     long reducedMemory = 0;
-    CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
+    //    CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
     double curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     try {
@@ -374,11 +374,11 @@ public class ResourceManagerTest {
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
         tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-        tsFileResource.updatePlanIndexes((long) i);
-        seqResources.add(tsFileResource);
+        tsFileResource.updatePlanIndexes(i);
         assertEquals(
-            TimeIndexLevel.FILE_TIME_INDEX,
+            TimeIndexLevel.DEVICE_TIME_INDEX,
             TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+        seqResources.add(tsFileResource);
         long previousRamSize = tsFileResource.calculateRamSize();
         prepareFile(tsFileResource, i * ptNum, ptNum, 0);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
@@ -388,7 +388,7 @@ public class ResourceManagerTest {
         reducedMemory = previousRamSize - tsFileResource.calculateRamSize();
       }
     } catch (RuntimeException e) {
-      assertEquals(0, reducedMemory);
+      assertEquals(1088, reducedMemory);
       assertEquals(7, seqResources.size());
       throw e;
     }
