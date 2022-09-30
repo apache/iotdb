@@ -55,6 +55,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void cleanAfterClass() {}
 
   @Override
@@ -151,5 +156,15 @@ public class RemoteServerEnv implements BaseEnv {
     Session session = new Session(ip_addr, Integer.parseInt(port));
     session.open();
     return session;
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    getDataNodeWrapperList().get(index).start();
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    getDataNodeWrapperList().get(index).stop();
   }
 }

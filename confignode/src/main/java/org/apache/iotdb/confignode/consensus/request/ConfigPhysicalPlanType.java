@@ -81,5 +81,9 @@ public enum ConfigPhysicalPlanType {
   PollRegionMaintainTask,
   CreatePipeSink,
   DropPipeSink,
-  GetPipeSink
+  GetPipeSink,
+  AddTriggerInTable,
+  DeleteTriggerInTable,
+  GetTriggerTable,
+  UpdateTriggerStateInTable
 }

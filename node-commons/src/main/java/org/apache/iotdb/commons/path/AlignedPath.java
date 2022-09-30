@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -275,7 +275,7 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     PathType.Aligned.serialize(stream);
     super.serializeWithoutType(stream);
     ReadWriteIOUtils.write(measurementList.size(), stream);

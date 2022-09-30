@@ -16,21 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.confignode;
+package org.apache.iotdb.confignode;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -48,6 +53,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,24 +62,31 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBClusterPartitionTableTest {
+public class IoTDBClusterPartitionIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClusterPartitionIT.class);
 
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
+  private static final String testConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  protected static int originSchemaReplicationFactor;
+  protected static int originalDataReplicationFactor;
+  private static final int testReplicationFactor = 3;
 
   protected static long originalTimePartitionInterval;
+  private static final long testTimePartitionInterval = 86400000;
 
-  private static final long testTimePartitionInterval = 86400;
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
   private static final int seriesPartitionSlotsNum = 10000;
-  private static final int seriesPartitionBatchSize = 1000;
   private static final int timePartitionSlotsNum = 10;
-  private static final int timePartitionBatchSize = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -82,14 +96,16 @@ public class IoTDBClusterPartitionTableTest {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
+    originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
+    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
+    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
+    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+
+    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     EnvFactory.getEnv().initBeforeClass();
@@ -243,14 +259,14 @@ public class IoTDBClusterPartitionTableTest {
     Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
         seriesPartitionTable = dataPartitionTable.get(storageGroup);
-    Assert.assertEquals(seriesPartitionBatchSize, seriesPartitionTable.size());
+    Assert.assertEquals(seriesSlotEnd - seriesSlotStart, seriesPartitionTable.size());
 
     for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
       Assert.assertTrue(seriesPartitionTable.containsKey(seriesPartitionSlot));
       Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionTable =
           seriesPartitionTable.get(seriesPartitionSlot);
-      Assert.assertEquals(timePartitionBatchSize, timePartitionTable.size());
+      Assert.assertEquals(timeSlotEnd - timeSlotStart, timePartitionTable.size());
 
       for (long j = timeSlotStart; j < timeSlotEnd; j++) {
         TTimePartitionSlot timePartitionSlot =
@@ -268,7 +284,10 @@ public class IoTDBClusterPartitionTableTest {
   }
 
   @Test
-  public void testGetAndCreateDataPartition() throws TException, IOException {
+  public void testGetAndCreateDataPartition() throws TException, IOException, InterruptedException {
+    final int seriesPartitionBatchSize = 100;
+    final int timePartitionBatchSize = 10;
+
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
       TSStatus status;
@@ -305,7 +324,22 @@ public class IoTDBClusterPartitionTableTest {
 
             // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
             dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-            dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+            for (int retry = 0; retry < 5; retry++) {
+              // Build new Client since it's unstable
+              try (SyncConfigNodeIServiceClient configNodeClient =
+                  (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+                dataPartitionTableResp =
+                    configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+                if (dataPartitionTableResp != null) {
+                  break;
+                }
+              } catch (Exception e) {
+                // Retry sometimes in order to avoid request timeout
+                LOGGER.error(e.getMessage());
+                TimeUnit.SECONDS.sleep(1);
+              }
+            }
+            Assert.assertNotNull(dataPartitionTableResp);
             Assert.assertEquals(
                 TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                 dataPartitionTableResp.getStatus().getCode());
@@ -347,6 +381,195 @@ public class IoTDBClusterPartitionTableTest {
                 Assert.assertEquals(
                     regionInfo.getSeriesSlots() * timePartitionSlotsNum, regionInfo.getTimeSlots());
               });
+    }
+  }
+
+  @Test
+  public void testPartitionDurable() throws IOException, TException, InterruptedException {
+    final int testDataNodeId = 0;
+    final int seriesPartitionBatchSize = 10;
+    final int timePartitionBatchSize = 10;
+
+    // Shutdown the first DataNode
+    EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+      final String sg0 = sg + 0;
+      final String sg1 = sg + 1;
+
+      // Set StorageGroup, the result should be success
+      TSetStorageGroupReq setStorageGroupReq =
+          new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+      TSStatus status = client.setStorageGroup(setStorageGroupReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
+      status = client.setStorageGroup(setStorageGroupReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+          constructPartitionSlotsMap(sg0, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
+      TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+      TDataPartitionTableResp dataPartitionTableResp = null;
+      for (int retry = 0; retry < 5; retry++) {
+        // Build new Client since it's unstable in Win8 environment
+        try (SyncConfigNodeIServiceClient configNodeClient =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+          if (dataPartitionTableResp != null) {
+            break;
+          }
+        } catch (Exception e) {
+          // Retry sometimes in order to avoid request timeout
+          LOGGER.error(e.getMessage());
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertNotNull(dataPartitionTableResp);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          dataPartitionTableResp.getStatus().getCode());
+      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+      checkDataPartitionMap(
+          sg0,
+          0,
+          seriesPartitionBatchSize,
+          0,
+          timePartitionBatchSize,
+          dataPartitionTableResp.getDataPartitionTable());
+
+      // Check Region count
+      int runningCnt = 0;
+      int unknownCnt = 0;
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+        if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
+          runningCnt += 1;
+        } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
+          unknownCnt += 1;
+        }
+      }
+      // The runningCnt should be exactly twice as the unknownCnt
+      // since there exists one DataNode is shutdown
+      Assert.assertEquals(unknownCnt * 2, runningCnt);
+
+      // Wait for shutdown check
+      TShowClusterResp showClusterResp;
+      while (true) {
+        boolean containUnknown = false;
+        showClusterResp = client.showCluster();
+        for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+          if (NodeStatus.Unknown.getStatus()
+              .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+            containUnknown = true;
+            break;
+          }
+        }
+        if (containUnknown) {
+          break;
+        }
+      }
+      runningCnt = 0;
+      unknownCnt = 0;
+      showClusterResp = client.showCluster();
+      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+        if (NodeStatus.Running.getStatus()
+            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+          runningCnt += 1;
+        } else if (NodeStatus.Unknown.getStatus()
+            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+          unknownCnt += 1;
+        }
+      }
+      Assert.assertEquals(2, runningCnt);
+      Assert.assertEquals(1, unknownCnt);
+
+      // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
+      partitionSlotsMap =
+          constructPartitionSlotsMap(sg1, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
+      dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+      for (int retry = 0; retry < 5; retry++) {
+        // Build new Client since it's unstable in Win8 environment
+        try (SyncConfigNodeIServiceClient configNodeClient =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+          if (dataPartitionTableResp != null) {
+            break;
+          }
+        } catch (Exception e) {
+          // Retry sometimes in order to avoid request timeout
+          LOGGER.error(e.getMessage());
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertNotNull(dataPartitionTableResp);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          dataPartitionTableResp.getStatus().getCode());
+      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+      checkDataPartitionMap(
+          sg1,
+          0,
+          seriesPartitionBatchSize,
+          0,
+          timePartitionBatchSize,
+          dataPartitionTableResp.getDataPartitionTable());
+
+      // Check Region count and status
+      runningCnt = 0;
+      unknownCnt = 0;
+      showRegionResp = client.showRegion(new TShowRegionReq());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+        if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
+          runningCnt += 1;
+        } else if (RegionStatus.Unknown.getStatus().equals(regionInfo.getStatus())) {
+          unknownCnt += 1;
+        }
+      }
+      // The runningCnt should be exactly twice as the unknownCnt
+      // since there exists one DataNode is shutdown
+      Assert.assertEquals(unknownCnt * 2, runningCnt);
+
+      EnvFactory.getEnv().restartDataNode(testDataNodeId);
+      // Wait for heartbeat check
+      while (true) {
+        boolean containUnknown = false;
+        showClusterResp = client.showCluster();
+        for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+          if (NodeStatus.Unknown.getStatus()
+              .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+            containUnknown = true;
+            break;
+          }
+        }
+        if (!containUnknown) {
+          break;
+        }
+      }
+
+      // All Regions should alive after the testDataNode is restarted
+      boolean allRunning = true;
+      for (int retry = 0; retry < 30; retry++) {
+        allRunning = true;
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+          if (!RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
+            allRunning = false;
+            break;
+          }
+        }
+        if (allRunning) {
+          break;
+        }
+
+        TimeUnit.SECONDS.sleep(1);
+      }
+      Assert.assertTrue(allRunning);
     }
   }
 }

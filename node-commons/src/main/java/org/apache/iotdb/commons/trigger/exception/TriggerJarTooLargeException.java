@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
+package org.apache.iotdb.commons.trigger.exception;
 
-import java.util.HashSet;
+public class TriggerJarTooLargeException extends RuntimeException {
+  public TriggerJarTooLargeException(String message) {
+    super(message);
+  }
 
-public class PatternTreeMapFactory {
-  public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
-    return new PatternTreeMap<>(
-        HashSet::new,
-        (triggerName, set) -> set.add(triggerName),
-        (triggerName, set) -> set.remove(triggerName),
-        StringSerializer.getInstance());
+  public TriggerJarTooLargeException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -127,6 +128,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -475,6 +477,7 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -491,6 +494,7 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -577,7 +581,7 @@ public class DataRegion {
           "The data region {}[{}] is recovered successfully", storageGroupName, dataRegionId);
     }
   }
-
+  
   private void recoverAlter() throws DataRegionException, IOException {
 
     final String logKey = this.getStorageGroupPath();
@@ -611,6 +615,20 @@ public class DataRegion {
       }
     }
     logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
+}
+  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
+    //  only update flush time when it is a seq file
+    if (isSeq) {
+      long timePartitionId = resource.getTimePartition();
+      Map<String, Long> endTimeMap = new HashMap<>();
+      for (String deviceId : resource.getDevices()) {
+        long endTime = resource.getEndTime(deviceId);
+        endTimeMap.put(deviceId.intern(), endTime);
+      }
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    }
   }
 
   private void initCompaction() {
@@ -840,6 +858,7 @@ public class DataRegion {
   private void callbackAfterUnsealedTsFileRecovered(
       UnsealedTsFileRecoverPerformer recoverPerformer) {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
+    boolean isSeq = recoverPerformer.isSequence();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
       for (ISyncManager syncManager :
@@ -851,12 +870,14 @@ public class DataRegion {
       } catch (IOException e) {
         logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
       }
+      updateLastFlushTime(tsFileResource, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+      TsFileMetricManager.getInstance()
+          .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
     } else {
       // the last file is not closed, continue writing to it
       RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
       long timePartitionId = tsFileResource.getTimePartition();
-      boolean isSeq = recoverPerformer.isSequence();
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
               dataRegionId,
@@ -890,6 +911,7 @@ public class DataRegion {
         }
         tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
       }
+      updateLastFlushTime(tsFileResource, isSeq);
     }
     tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
@@ -913,6 +935,7 @@ public class DataRegion {
       }
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
+      updateLastFlushTime(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (DataRegionException | IOException e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
@@ -2372,8 +2395,7 @@ public class DataRegion {
 
     try {
 
-      PartialPath devicePath = pattern.getDevicePath();
-      Set<PartialPath> devicePaths = Collections.singleton(devicePath);
+      Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
 
       // delete Last cache record if necessary
       // todo implement more precise process
@@ -2497,21 +2519,32 @@ public class DataRegion {
     }
 
     for (PartialPath device : devicePaths) {
-      String deviceId = device.getFullPath();
-      if (!tsFileResource.mayContainsDevice(deviceId)) {
-        // resource does not contain this device
-        continue;
+      long deviceStartTime, deviceEndTime;
+      if (device.hasWildcard()) {
+        Pair<Long, Long> startAndEndTime = tsFileResource.getPossibleStartTimeAndEndTime(device);
+        if (startAndEndTime == null) {
+          continue;
+        }
+        deviceStartTime = startAndEndTime.getLeft();
+        deviceEndTime = startAndEndTime.getRight();
+      } else {
+        String deviceId = device.getFullPath();
+        if (!tsFileResource.mayContainsDevice(deviceId)) {
+          // resource does not contain this device
+          continue;
+        }
+        deviceStartTime = tsFileResource.getStartTime(deviceId);
+        deviceEndTime = tsFileResource.getEndTime(deviceId);
       }
 
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
       if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
         // unsealed seq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+        if (deleteEnd >= deviceStartTime) {
           return false;
         }
       } else {
         // sealed file or unsealed unseq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+        if (deleteEnd >= deviceStartTime && deleteStart <= deviceEndTime) {
           // time range of device has overlap with the deletion
           return false;
         }

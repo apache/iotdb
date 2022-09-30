@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.store;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
@@ -69,6 +70,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure();
         break;
+      case CREATE_TRIGGER_PROCEDURE:
+        procedure = new CreateTriggerProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -92,6 +96,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof CreateTriggerProcedure) {
+      return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     }
     return null;
   }
@@ -103,7 +109,8 @@ public class ProcedureFactory implements IProcedureFactory {
     REMOVE_DATA_NODE_PROCEDURE,
     REGION_MIGRATE_PROCEDURE,
     CREATE_REGION_GROUPS,
-    DELETE_TIMESERIES_PROCEDURE
+    DELETE_TIMESERIES_PROCEDURE,
+    CREATE_TRIGGER_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

@@ -380,6 +380,7 @@ public abstract class AbstractEnv implements BaseEnv {
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
       try {
+        // Return ConfigNode connection of the Seed-ConfigNode
         return clientManager.borrowClient(
             new TEndPoint(
                 configNodeWrapperList.get(0).getIp(), configNodeWrapperList.get(0).getPort()));
@@ -387,5 +388,14 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     throw new IOException("Failed to get config node connection");
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    dataNodeWrapperList.get(index).start();
+  }
+
+  public void shutdownDataNode(int index) {
+    dataNodeWrapperList.get(index).stop();
   }
 }
