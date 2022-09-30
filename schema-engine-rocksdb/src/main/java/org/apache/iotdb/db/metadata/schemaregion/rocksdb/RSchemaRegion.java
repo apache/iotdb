@@ -532,6 +532,12 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    throw new UnsupportedOperationException();
+  }
+
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
@@ -693,7 +699,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

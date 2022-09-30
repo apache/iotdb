@@ -1013,6 +1013,9 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
+
+    conf.setTimePartitionIntervalForStorage(
+        convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1921,7 +1924,8 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(
+        convertMilliWithPrecision(globalConfig.timePartitionInterval));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
@@ -1986,6 +1990,22 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
+  }
+
+  public long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = conf.getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
+        break;
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
+    }
+    return result;
   }
 
   private static class IoTDBDescriptorHolder {

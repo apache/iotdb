@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.trigger;
+package org.apache.iotdb.trigger.old;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;

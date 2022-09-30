@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.commons.trigger.TriggerInformation;
-import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -37,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,14 +49,16 @@ public class ShowTriggersTask implements IConfigTask {
   }
 
   public static void buildTsBlock(
-      TriggerTable triggerTable, SettableFuture<ConfigTaskResult> future) {
+      List<ByteBuffer> allTriggerInformation, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTriggersColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    if (triggerTable != null && !triggerTable.isEmpty()) {
-      for (TriggerInformation triggerInformation : triggerTable.getTable().values()) {
+    if (allTriggerInformation != null && !allTriggerInformation.isEmpty()) {
+      for (ByteBuffer triggerInformationByteBuffer : allTriggerInformation) {
+        TriggerInformation triggerInformation =
+            TriggerInformation.deserialize(triggerInformationByteBuffer);
         builder.getTimeColumnBuilder().writeLong(0L);
         builder
             .getColumnBuilder(0)
@@ -77,13 +79,15 @@ public class ShowTriggersTask implements IConfigTask {
         builder
             .getColumnBuilder(4)
             .writeBinary(Binary.valueOf(triggerInformation.getPathPattern().toString()));
+        builder.getColumnBuilder(5).writeBinary(Binary.valueOf(triggerInformation.getClassName()));
         builder
-            .getColumnBuilder(5)
+            .getColumnBuilder(6)
             .writeBinary(
                 Binary.valueOf(
                     !triggerInformation.isStateful()
                         ? "ALL"
-                        : triggerInformation.getDataNodeLocation().internalEndPoint.getIp()));
+                        : String.valueOf(
+                            triggerInformation.getDataNodeLocation().getDataNodeId())));
         builder.declarePosition();
       }
     }

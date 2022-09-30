@@ -21,9 +21,8 @@ package org.apache.iotdb.db.service.metrics.predefined;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.wal.WALManager;
@@ -138,22 +137,8 @@ public class FileMetrics implements IMetricSet {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
-    sequenceFileTotalSize =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                  return FileUtils.getDirSize(dir);
-                })
-            .sum();
-    unsequenceFileTotalSize =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                  return FileUtils.getDirSize(dir);
-                })
-            .sum();
+    sequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(true);
+    unsequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(false);
     walFileTotalCount =
         Stream.of(walDirs)
             .mapToLong(
@@ -185,44 +170,8 @@ public class FileMetrics implements IMetricSet {
                   }
                 })
             .sum();
-    sequenceFileTotalCount =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                  File folder = new File(dir);
-                  if (folder.exists()) {
-                    try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    } catch (UncheckedIOException exception) {
-                      // do nothing
-                      logger.debug("Failed when count sequence tsfile: ", exception);
-                    }
-                  }
-                  return 0L;
-                })
-            .sum();
-    unsequenceFileTotalCount =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                  File folder = new File(dir);
-                  if (folder.exists()) {
-                    try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    } catch (UncheckedIOException exception) {
-                      // do nothing
-                      logger.debug("Failed when count unsequence tsfile: ", exception);
-                    }
-                  }
-                  return 0L;
-                })
-            .sum();
+    sequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(true);
+    unsequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(false);
   }
 
   public long getWalFileTotalSize() {

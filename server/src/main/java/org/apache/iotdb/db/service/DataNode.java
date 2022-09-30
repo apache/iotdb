@@ -63,6 +63,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -303,6 +304,9 @@ public class DataNode implements DataNodeMBean {
         return;
       }
     }
+
+    // must init after SchemaEngine and StorageEngine prepared well
+    DataNodeRegionManager.getInstance().init();
 
     registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
