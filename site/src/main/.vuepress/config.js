@@ -932,8 +932,6 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
-							['Process-Data/Alerting','Alerting'],
 						]
 					},
 					{
@@ -1867,8 +1865,6 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
-							['Process-Data/Triggers','触发器'],
-							['Process-Data/Alerting','告警机制'],
 						]
 					},
 					{
