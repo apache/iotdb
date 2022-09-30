@@ -62,6 +62,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private AtomicLong[] startTimeForCurDeviceForEachFile;
   private AtomicLong[] endTimeForCurDeviceForEachFile;
   private AtomicBoolean[] hasCurDeviceForEachFile;
+  private AtomicLong[][] startTimeForEachDevice;
+  private AtomicLong[][] endTimeForEachDevice;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -90,6 +92,14 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       hasCurDeviceForEachFile[i] = new AtomicBoolean(false);
     }
     this.seqTsFileResources = seqFileResources;
+    for (int i = 0, size = targetResources.size(); i < subTaskNum; ++i) {
+      startTimeForEachDevice[i] = new AtomicLong[size];
+      endTimeForEachDevice[i] = new AtomicLong[size];
+      for (int j = 0; j < size; ++j) {
+        startTimeForEachDevice[i][j] = new AtomicLong(Long.MAX_VALUE);
+        endTimeForEachDevice[i][j] = new AtomicLong(Long.MIN_VALUE);
+      }
+    }
   }
 
   @Override
@@ -112,20 +122,16 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       } else {
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
       }
-      isDeviceExistedInTargetFiles[i] = false;
     }
-    for (int i = 0; i < targetTsFileResources.size(); ++i) {
-      if (hasCurDeviceForEachFile[i].get()) {
+    for (int i = 0, size = targetTsFileResources.size(); i < size; ++i) {
+      for (int j = 0; j < subTaskNum; ++j) {
         targetTsFileResources
             .get(i)
-            .updateStartTime(deviceId, startTimeForCurDeviceForEachFile[i].get());
+            .updateStartTime(deviceId, startTimeForEachDevice[j][i].getAndSet(Long.MAX_VALUE));
         targetTsFileResources
             .get(i)
-            .updateEndTime(deviceId, endTimeForCurDeviceForEachFile[i].get());
+            .updateEndTime(deviceId, endTimeForEachDevice[j][i].getAndSet(Long.MIN_VALUE));
       }
-      hasCurDeviceForEachFile[i].set(false);
-      startTimeForCurDeviceForEachFile[i].set(Long.MAX_VALUE);
-      endTimeForCurDeviceForEachFile[i].set(Long.MIN_VALUE);
     }
     deviceId = null;
   }
@@ -140,6 +146,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    startTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamp, Math::min);
+    endTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamp, Math::max);
     if (measurementPointCountArray[subTaskId] % 10 == 0) {
       checkChunkSizeAndMayOpenANewChunk(
           fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
@@ -156,12 +165,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
-    synchronized (this) {
-      // we need to synchronized here to avoid multi-thread competition in sub-task
-      TsFileResource resource = targetTsFileResources.get(seqFileIndexArray[subTaskId]);
-      resource.updateStartTime(device, timestamps.getStartTime());
-      resource.updateEndTime(device, timestamps.getEndTime());
-    }
+    int fileIndex = seqFileIndexArray[subTaskId];
+    startTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(
+        timestamps.getStartTime(), Math::min);
+    endTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamps.getEndTime(), Math::max);
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;

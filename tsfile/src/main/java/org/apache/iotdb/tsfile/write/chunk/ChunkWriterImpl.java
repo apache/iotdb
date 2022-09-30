@@ -92,9 +92,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private Statistics<?> firstPageStatistics;
 
-  /**
-   * @param schema schema of this measurement
-   */
+  /** @param schema schema of this measurement */
   public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
