@@ -3343,10 +3343,6 @@ public class IoTDBConfig {
     this.rewriteCandidateStatusWaitTimeoutInMs = rewriteCandidateStatusWaitTimeoutInMs;
   }
 
-  public long getRatisConsensusSnapshotTriggerThreshold() {
-    return ratisConsensusSnapshotTriggerThreshold;
-  }
-
   public long getDataRatisConsensusSnapshotTriggerThreshold() {
     return dataRatisConsensusSnapshotTriggerThreshold;
   }
