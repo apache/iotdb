@@ -62,8 +62,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   private AtomicLong[] startTimeForCurDeviceForEachFile;
   private AtomicLong[] endTimeForCurDeviceForEachFile;
   private AtomicBoolean[] hasCurDeviceForEachFile;
-  private AtomicLong[][] startTimeForEachDevice;
-  private AtomicLong[][] endTimeForEachDevice;
+  private AtomicLong[][] startTimeForEachDevice = new AtomicLong[subTaskNum][];
+  private AtomicLong[][] endTimeForEachDevice = new AtomicLong[subTaskNum][];
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
