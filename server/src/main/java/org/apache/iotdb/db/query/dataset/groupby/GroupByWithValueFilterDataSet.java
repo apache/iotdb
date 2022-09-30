@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -181,12 +182,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     curAggregateResults = new AggregateResult[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      curAggregateResults[i] =
-          AggregateResultFactory.getAggrResultByName(
-              groupByTimePlan.getDeduplicatedAggregations().get(i),
-              groupByTimePlan.getDeduplicatedDataTypes().get(i),
-              ascending);
+    List<String> gbAggregations = groupByTimePlan.getDeduplicatedAggregations();
+    List<TSDataType> gbTsDataTypes = groupByTimePlan.getDeduplicatedDataTypes();
+    for (int i = 0; i < curAggregateResults.length; ++i) {
+      curAggregateResults[i] = AggregateResultFactory.getAggrResultByName(
+          gbAggregations.get(i), gbTsDataTypes.get(i), ascending);
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
