@@ -196,7 +196,11 @@ public interface ITimeIndex {
 
   Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern);
 
-  /** @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
+  /**
+   * Get TimeIndex Type
+   *
+   * @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2
+   */
   byte getTimeIndexType();
 
   static ITimeIndex createTimeIndex(InputStream inputStream) throws IOException {
