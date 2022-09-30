@@ -225,15 +225,15 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      //      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
-      //        return false;
-      //      }
+      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
+        return false;
+      }
       return pendingRequest.offer(indexedConsensusRequest);
     }
 
     /** try to remove a request from queue with memory control */
     private void remove(IndexedConsensusRequest indexedConsensusRequest) {
-      // multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
