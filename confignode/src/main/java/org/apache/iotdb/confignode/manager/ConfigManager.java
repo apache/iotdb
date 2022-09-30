@@ -78,6 +78,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -85,8 +86,10 @@ import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -98,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -159,6 +163,8 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
+  /** Manage Trigger */
+  private final TriggerManager triggerManager;
   /** Sync */
   private final SyncManager syncManager;
 
@@ -170,6 +176,7 @@ public class ConfigManager implements IManager {
     AuthorInfo authorInfo = new AuthorInfo();
     ProcedureInfo procedureInfo = new ProcedureInfo();
     UDFInfo udfInfo = new UDFInfo();
+    TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
 
     // Build state machine and executor
@@ -181,6 +188,7 @@ public class ConfigManager implements IManager {
             authorInfo,
             procedureInfo,
             udfInfo,
+            triggerInfo,
             syncInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
@@ -191,6 +199,7 @@ public class ConfigManager implements IManager {
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
+    this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
 
@@ -599,6 +608,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TriggerManager getTriggerManager() {
+    return triggerManager;
+  }
+
+  @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -748,6 +762,30 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? udfManager.dropFunction(udfName)
         : status;
+  }
+
+  @Override
+  public TSStatus createTrigger(TCreateTriggerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.createTrigger(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropTrigger(TDropTriggerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.dropTrigger(req)
+        : status;
+  }
+
+  @Override
+  public TGetTriggerTableResp getTriggerTable() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.getTriggerTable()
+        : new TGetTriggerTableResp().setStatus(status);
   }
 
   @Override

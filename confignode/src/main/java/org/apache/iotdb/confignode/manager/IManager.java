@@ -45,13 +45,16 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -113,6 +116,13 @@ public interface IManager {
    * @return UDFManager instance
    */
   UDFManager getUDFManager();
+
+  /**
+   * Get TriggerManager
+   *
+   * @return TriggerManager instance
+   */
+  TriggerManager getTriggerManager();
 
   /**
    * Get ProcedureManager
@@ -270,6 +280,15 @@ public interface IManager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  /** Create trigger */
+  TSStatus createTrigger(TCreateTriggerReq req);
+
+  /** Drop trigger */
+  TSStatus dropTrigger(TDropTriggerReq req);
+
+  /** Show trigger & DataNode start */
+  TGetTriggerTableResp getTriggerTable();
 
   /** Merge on all DataNodes */
   TSStatus merge();

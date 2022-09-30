@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -426,6 +427,14 @@ public class TsFileResource {
    */
   public boolean mayContainsDevice(String device) {
     return timeIndex.mayContainsDevice(device);
+  }
+
+  /**
+   * Get the min start time and max end time of devices matched by given devicePattern. If there's
+   * no device matched by given pattern, return null.
+   */
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern);
   }
 
   public boolean isClosed() {

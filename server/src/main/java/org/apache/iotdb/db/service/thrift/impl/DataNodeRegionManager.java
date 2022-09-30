@@ -32,17 +32,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -63,17 +57,25 @@ public class DataNodeRegionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRegionManager.class);
 
-  private final SchemaEngine schemaEngine;
-  private final StorageEngineV2 storageEngine;
+  private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
   private final Map<SchemaRegionId, ReentrantReadWriteLock> schemaRegionLockMap =
       new ConcurrentHashMap<>();
   private final Map<DataRegionId, ReentrantReadWriteLock> dataRegionLockMap =
       new ConcurrentHashMap<>();
 
-  public DataNodeRegionManager(SchemaEngine schemaEngine, StorageEngineV2 storageEngine) {
-    this.schemaEngine = schemaEngine;
-    this.storageEngine = storageEngine;
+  private static class DataNodeRegionManagerHolder {
+    private static final DataNodeRegionManager INSTANCE = new DataNodeRegionManager();
+
+    private DataNodeRegionManagerHolder() {}
+  }
+
+  public static DataNodeRegionManager getInstance() {
+    return DataNodeRegionManagerHolder.INSTANCE;
+  }
+
+  public void init() {
     schemaEngine
         .getAllSchemaRegions()
         .forEach(
@@ -88,125 +90,17 @@ public class DataNodeRegionManager {
             dataRegionId -> dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false)));
   }
 
-  public TSendPlanNodeResp executePlanNode(ConsensusGroupId groupId, PlanNode planNode) {
-    if (planNode instanceof InsertNode) {
-      return executeDataInsert((DataRegionId) groupId, (InsertNode) planNode);
-    } else {
-      TSendPlanNodeResp response = new TSendPlanNodeResp();
-      ConsensusWriteResponse writeResponse = executePlanNodeInConsensusLayer(groupId, planNode);
-      // TODO need consider more status
-      if (writeResponse.getStatus() != null) {
-        response.setAccepted(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
-        response.setMessage(writeResponse.getStatus().message);
-        response.setStatus(writeResponse.getStatus());
-      } else {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's write API.",
-            writeResponse.getException());
-        response.setAccepted(false);
-        response.setMessage(writeResponse.getException().getMessage());
-      }
-      return response;
-    }
+  public void clear() {
+    schemaRegionLockMap.clear();
+    dataRegionLockMap.clear();
   }
 
-  private ConsensusWriteResponse executePlanNodeInConsensusLayer(
-      ConsensusGroupId groupId, PlanNode planNode) {
-    if (groupId instanceof DataRegionId) {
-      return DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-    } else {
-      return SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
-    }
-  }
+  private DataNodeRegionManager() {}
 
-  private TSendPlanNodeResp executeDataInsert(DataRegionId dataRegionId, InsertNode insertNode) {
-    TSendPlanNodeResp response = new TSendPlanNodeResp();
-    dataRegionLockMap.get(dataRegionId).readLock().lock();
-    try {
-      try {
-        SchemaValidator.validate(insertNode);
-      } catch (SemanticException e) {
-        response.setAccepted(false);
-        response.setStatus(
-            RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getMessage()));
-        response.setMessage(e.getMessage());
-        return response;
-      }
-      boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
-      String partialInsertMessage = null;
-      if (hasFailedMeasurement) {
-        partialInsertMessage =
-            String.format(
-                "Fail to insert measurements %s caused by %s",
-                insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
-        LOGGER.warn(partialInsertMessage);
-      }
-
-      ConsensusWriteResponse writeResponse =
-          executePlanNodeInConsensusLayer(dataRegionId, insertNode);
-
-      // TODO need consider more status
-      if (writeResponse.getStatus() != null) {
-        response.setAccepted(
-            !hasFailedMeasurement
-                && TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    == writeResponse.getStatus().getCode());
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
-          response.setMessage(writeResponse.getStatus().message);
-          response.setStatus(writeResponse.getStatus());
-        } else if (hasFailedMeasurement) {
-          response.setMessage(partialInsertMessage);
-          response.setStatus(
-              RpcUtils.getStatus(
-                  TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
-        } else {
-          response.setMessage(writeResponse.getStatus().message);
-        }
-      } else {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's write API.",
-            writeResponse.getException());
-        response.setAccepted(false);
-        response.setMessage(writeResponse.getException().getMessage());
-      }
-
-      return response;
-    } finally {
-      dataRegionLockMap.get(dataRegionId).readLock().unlock();
-    }
-  }
-
-  public TSStatus executeSchemaPlanNode(SchemaRegionId schemaRegionId, PlanNode planNode) {
-    ConsensusWriteResponse writeResponse =
-        executePlanNodeInConsensusLayer(schemaRegionId, planNode);
-    TSStatus status = writeResponse.getStatus();
-    if (status == null) {
-      LOGGER.error(
-          "Something wrong happened while calling consensus layer's write API.",
-          writeResponse.getException());
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    }
-    return status;
-  }
-
-  public TSStatus executeDeleteDataForDeleteTimeSeries(
-      DataRegionId dataRegionId, PlanNode planNode) {
-    dataRegionLockMap.get(dataRegionId).writeLock().lock();
-    try {
-      ConsensusWriteResponse writeResponse =
-          executePlanNodeInConsensusLayer(dataRegionId, planNode);
-      TSStatus status = writeResponse.getStatus();
-      if (status == null) {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's write API.",
-            writeResponse.getException());
-        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-      }
-      return status;
-    } finally {
-      dataRegionLockMap.get(dataRegionId).writeLock().unlock();
-    }
+  public ReentrantReadWriteLock getRegionLock(ConsensusGroupId consensusGroupId) {
+    return consensusGroupId instanceof DataRegionId
+        ? dataRegionLockMap.get((DataRegionId) consensusGroupId)
+        : schemaRegionLockMap.get((SchemaRegionId) consensusGroupId);
   }
 
   public TSStatus createSchemaRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
