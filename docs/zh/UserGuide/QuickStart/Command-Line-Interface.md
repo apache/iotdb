@@ -90,6 +90,18 @@ Windows 系统启动命令如下：
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
+### CLI 特殊命令
+下面列举了一些CLI的特殊命令。
+| 命令 | 描述 / 例子 |
+|:---|:---|
+| `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | show time display type |
+| `set time_zone=xxx` | eg. +08:00, Asia/Shanghai |
+| `show time_zone` | show cli time zone |
+| `set fetch_size=xxx` | set fetch size when querying data from server |
+| `show fetch_size` |  show fetch size |
+| `set max_display_num=xxx` | eg. set max lines for cli to ouput, -1 equals to unlimited |
+
 ### 使用 OpenID 作为用户名认证登录
 
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
