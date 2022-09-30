@@ -44,7 +44,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** remove config node procedure */
+/** create trigger procedure */
 public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerState> {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTriggerProcedure.class);
   private static final int retryThreshold = 5;
@@ -202,7 +202,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
             "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
             triggerInformation.getTriggerName());
 
-        if (RpcUtils.squashResponseStatusList(env.dropTriggerOnDataNodes(triggerInformation))
+        if (RpcUtils.squashResponseStatusList(
+                    env.dropTriggerOnDataNodes(triggerInformation.getTriggerName(), false))
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         } else {

@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
@@ -240,6 +241,24 @@ public class ProcedureManager {
       return RpcUtils.SUCCESS_STATUS;
     } else {
       return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
+    }
+  }
+
+  /**
+   * Generate DropTriggerProcedure and wait for it finished
+   *
+   * @return SUCCESS_STATUS if trigger dropped successfully, DROP_TRIGGER_ERROR otherwise
+   */
+  public TSStatus dropTrigger(String triggerName) {
+    long procedureId = executor.submitProcedure(new DropTriggerProcedure(triggerName));
+    List<TSStatus> statusList = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
   }

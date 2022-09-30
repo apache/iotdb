@@ -392,15 +392,14 @@ public class ConfigNodeProcedureEnv {
     return dataNodeResponseStatus;
   }
 
-  public List<TSStatus> dropTriggerOnDataNodes(TriggerInformation triggerInformation)
-      throws IOException {
+  public List<TSStatus> dropTriggerOnDataNodes(String triggerName, boolean needToDeleteJarFile) {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TDropTriggerInstanceReq request =
-        new TDropTriggerInstanceReq(triggerInformation.getTriggerName(), false);
+        new TDropTriggerInstanceReq(triggerName, needToDeleteJarFile);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             request,
@@ -410,7 +409,7 @@ public class ConfigNodeProcedureEnv {
     return dataNodeResponseStatus;
   }
 
-  public List<TSStatus> activeTriggerOnDataNodes(String triggerName) throws IOException {
+  public List<TSStatus> activeTriggerOnDataNodes(String triggerName) {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
@@ -427,7 +426,7 @@ public class ConfigNodeProcedureEnv {
     return dataNodeResponseStatus;
   }
 
-  public List<TSStatus> inactiveTriggerOnDataNodes(String triggerName) throws IOException {
+  public List<TSStatus> inactiveTriggerOnDataNodes(String triggerName) {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
