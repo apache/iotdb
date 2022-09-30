@@ -114,6 +114,8 @@ Special commands of Cli are  below.
 | `set fetch_size=xxx` | set fetch size when querying data from server |
 | `show fetch_size` |  show fetch size |
 | `set max_display_num=xxx` | eg. set max lines for cli to ouput, -1 equals to unlimited |
+| `help` |  Get hints for CLI special commands |
+| `exit/quit` |  Exit CLI |
 
 ### Note on using the CLI with OpenID Connect Auth enabled on Server side
 

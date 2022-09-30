@@ -94,13 +94,15 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 下面列举了一些CLI的特殊命令。
 | 命令 | 描述 / 例子 |
 |:---|:---|
-| `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
-| `show time_display_type` | show time display type |
-| `set time_zone=xxx` | eg. +08:00, Asia/Shanghai |
-| `show time_zone` | show cli time zone |
-| `set fetch_size=xxx` | set fetch size when querying data from server |
-| `show fetch_size` |  show fetch size |
-| `set max_display_num=xxx` | eg. set max lines for cli to ouput, -1 equals to unlimited |
+| `set time_display_type=xxx` | 例如： long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | 显示时间显示方式 |
+| `set time_zone=xxx` | 例如： +08:00, Asia/Shanghai |
+| `show time_zone` | 显示CLI的时区 |
+| `set fetch_size=xxx` | 从服务器查询数据时设置读取条数 |
+| `show fetch_size` |  显示读取条数的大小 |
+| `set max_display_num=xxx` | 例如： set max lines for cli to ouput, -1 equals to unlimited |
+| `help` | 获取CLI特殊命令的提示 |
+| `exit/quit` | 退出CLI |
 
 ### 使用 OpenID 作为用户名认证登录
 

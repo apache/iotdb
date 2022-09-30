@@ -943,14 +943,6 @@ var config = {
 						]
 					},
 					{
-						title: 'Alert',
-						sidebarDepth: 1,
-						children: [
-							['Alert/Alerting','Alerting'],
-							['Alert/Triggers','Triggers'],
-						]
-					},
-					{
 						title: 'Administration Management',
 						children: [
 							['Administration-Management/Administration','Administration']
