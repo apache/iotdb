@@ -73,13 +73,6 @@ import java.util.List;
 public interface IManager {
 
   /**
-   * if a service stop
-   *
-   * @return true if service stopped
-   */
-  boolean isStopped();
-
-  /**
    * Get DataManager
    *
    * @return DataNodeManager instance

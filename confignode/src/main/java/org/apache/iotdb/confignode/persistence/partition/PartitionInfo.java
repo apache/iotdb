@@ -770,6 +770,33 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
+  public List<TConsensusGroupId> getRouting(
+      String storageGroup, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+      return new ArrayList<>();
+    }
+    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
+    return sgPartitionTable.getRouting(seriesSlotId, timeSlotId);
+  }
+
+  public List<TTimePartitionSlot> getTimeSlotList(
+      String storageGroup, TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
+    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+      return new ArrayList<>();
+    }
+    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
+    return sgPartitionTable.getTimeSlotList(seriesSlotId, startTime, endTime);
+  }
+
+  public List<TSeriesPartitionSlot> getSeriesSlotList(
+      String storageGroup, TConsensusGroupType type) {
+    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+      return new ArrayList<>();
+    }
+    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
+    return sgPartitionTable.getSeriesSlotList(type);
+  }
+
   public int getStorageGroupPartitionTableSize() {
     return storageGroupPartitionTables.size();
   }

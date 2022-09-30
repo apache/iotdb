@@ -586,6 +586,20 @@ public class PartitionManager {
     return getConsensusManager().write(req).getStatus();
   }
 
+  public List<TConsensusGroupId> getRouting(
+      String storageGroup, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    return partitionInfo.getRouting(storageGroup, seriesSlotId, timeSlotId);
+  }
+
+  public List<TTimePartitionSlot> getTimeSlotList(
+      String storageGroup, TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
+    return partitionInfo.getTimeSlotList(storageGroup, seriesSlotId, startTime, endTime);
+  }
+
+  public List<TSeriesPartitionSlot> getSeriesSlotList(
+      String storageGroup, TConsensusGroupType type) {
+    return partitionInfo.getSeriesSlotList(storageGroup, type);
+  }
   /**
    * get storage group for region
    *

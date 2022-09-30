@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -129,6 +130,10 @@ public class SchemaPartitionTable {
         });
 
     return result;
+  }
+
+  public List<TSeriesPartitionSlot> getSeriesSlotList() {
+    return new ArrayList<>(schemaPartitionMap.keySet());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

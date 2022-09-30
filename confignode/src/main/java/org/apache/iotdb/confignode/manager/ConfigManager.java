@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -89,7 +91,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -195,11 +203,6 @@ public class ConfigManager implements IManager {
     consensusManager.close();
     partitionManager.getRegionMaintainer().shutdown();
     procedureManager.shiftExecutor(false);
-  }
-
-  @Override
-  public boolean isStopped() {
-    return false;
   }
 
   @Override
@@ -967,6 +970,50 @@ public class ConfigManager implements IManager {
     TGetPipeSinkResp resp = new TGetPipeSinkResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return syncManager.getPipeSink(req.getPipeSinkName());
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @TestOnly
+  public TGetRoutingResp getRouting(TGetRoutingReq req) {
+    TSStatus status = confirmLeader();
+    TGetRoutingResp resp = new TGetRoutingResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setDataRegionIdList(
+          partitionManager.getRouting(
+              req.getStorageGroup(), req.getSeriesSlotId(), req.getTimeSlotId()));
+      return resp;
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @TestOnly
+  public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
+    TSStatus status = confirmLeader();
+    TGetTimeSlotListResp resp = new TGetTimeSlotListResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+      long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+      resp.setTimeSlotList(
+          partitionManager.getTimeSlotList(
+              req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime));
+      return resp;
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @TestOnly
+  public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+    TSStatus status = confirmLeader();
+    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TConsensusGroupType type =
+          req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
+      resp.setSeriesSlotList(partitionManager.getSeriesSlotList(req.getStorageGroup(), type));
+      return resp;
     } else {
       return resp.setStatus(status);
     }
