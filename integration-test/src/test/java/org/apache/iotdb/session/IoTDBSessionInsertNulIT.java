@@ -51,6 +51,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSessionInsertNulIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionInsertNulIT.class);
+  private final int retry = 30;
 
   @Before
   public void setUp() throws Exception {
@@ -139,37 +140,41 @@ public class IoTDBSessionInsertNulIT {
 
   @Test
   public void insertAlignedRecordNullTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      prepareData(session);
+    for (int i = 0; i < retry; i++) {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        prepareData(session);
 
-      String deviceId = "root.sg1.clsu.aligned_d1";
-      session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
-      List<String> t = new ArrayList<>();
-      t.add(null);
-      session.insertAlignedRecord(deviceId, 200, Arrays.asList("s1"), t);
-      session.insertAlignedRecord(
-          deviceId,
-          300,
-          Arrays.asList("s1", "s2"),
-          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-          Arrays.asList(true, 30));
-      session.insertAlignedRecord(
-          deviceId,
-          400,
-          Arrays.asList("s1", "s2"),
-          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-          Arrays.asList(true, null));
-      session.insertAlignedRecord(
-          deviceId,
-          500,
-          Arrays.asList("s1", "s2"),
-          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-          Arrays.asList(null, null));
-      long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
-      assertEquals(3, nums);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+        String deviceId = "root.sg1.clsu.aligned_d1";
+        session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
+        List<String> t = new ArrayList<>();
+        t.add(null);
+        session.insertAlignedRecord(deviceId, 200, Arrays.asList("s1"), t);
+        session.insertAlignedRecord(
+            deviceId,
+            300,
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+            Arrays.asList(true, 30));
+        session.insertAlignedRecord(
+            deviceId,
+            400,
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+            Arrays.asList(true, null));
+        session.insertAlignedRecord(
+            deviceId,
+            500,
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+            Arrays.asList(null, null));
+        long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+        assertEquals(3, nums);
+      } catch (Exception e) {
+        if (i == retry - 1) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
     }
   }
 
