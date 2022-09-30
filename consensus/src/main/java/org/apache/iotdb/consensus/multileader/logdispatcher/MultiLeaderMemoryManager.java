@@ -33,7 +33,7 @@ public class MultiLeaderMemoryManager {
 
   public boolean reserve(long size) {
     synchronized (this) {
-      if (memorySizeInByte.get() < maxMemorySizeInByte - size) {
+      if (size > maxMemorySizeInByte - memorySizeInByte.get()) {
         logger.info(
             "consensus memory limited. required: {}, used: {}, total: {}",
             size,
