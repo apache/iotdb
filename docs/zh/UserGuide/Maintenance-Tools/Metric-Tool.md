@@ -94,8 +94,8 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_count | name="compaction/flush"                                                       | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
 | cost_task_seconds_max   | name="compaction/flush"                                                       | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
 | cost_task_seconds_sum   | name="compaction/flush"                                                       | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
-| data_read               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
+| data_written_total      | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
+| data_read_total         | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
 
 #### 1.3.3.3. 内存占用
 
