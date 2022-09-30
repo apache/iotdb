@@ -314,8 +314,7 @@ var config = {
 						children: [
 							['8-System Design/1-Hierarchy','Hierarchy'],
 							['8-System Design/2-Files','Files'],
-							['8-System Design/3-Writing Data on HDFS','Writing Data on HDFS'],
-							['8-System Design/4-Shared Nothing Cluster','Shared Nothing Cluster'],
+							['8-System Design/4-Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
 				],
@@ -407,7 +406,6 @@ var config = {
 						title: 'Architecture',
 						children: [
 							['Architecture/Files','Files'],
-							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
@@ -500,7 +498,6 @@ var config = {
 						title: 'Architecture',
 						children: [
 							['Architecture/Files','Files'],
-							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
@@ -617,8 +614,7 @@ var config = {
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Flink TsFile','Flink TsFile']
 						]
 					},
 					{
@@ -1265,7 +1261,6 @@ var config = {
 						children: [
 							['8-System Design/1-Hierarchy','层次结构'],
 							['8-System Design/2-Files','文件'],
-							['8-System Design/3-Writing Data on HDFS','使用HDFS存储数据'],
 							['8-System Design/4-Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					},
@@ -1358,7 +1353,6 @@ var config = {
 						title: '系统设计',
 						children: [
 							['Architecture/Files','文件'],
-							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
 							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					}
@@ -1451,7 +1445,6 @@ var config = {
 						title: '系统设计',
 						children: [
 							['Architecture/Files','文件'],
-							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
 							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					}
