@@ -34,30 +34,30 @@ public class MultiLeaderMemoryManager {
   public boolean reserve(long size) {
     synchronized (this) {
       if (size > maxMemorySizeInByte - memorySizeInByte.get()) {
-        logger.info(
-            "consensus memory limited. required: {}, used: {}, total: {}",
-            size,
-            memorySizeInByte.get(),
-            maxMemorySizeInByte);
+        //        logger.info(
+        //            "consensus memory limited. required: {}, used: {}, total: {}",
+        //            size,
+        //            memorySizeInByte.get(),
+        //            maxMemorySizeInByte);
         return false;
       }
       memorySizeInByte.addAndGet(size);
     }
-    logger.info(
-        "{} add {} bytes, total memory size: {} bytes.",
-        Thread.currentThread().getName(),
-        size,
-        memorySizeInByte.get());
+    //    logger.info(
+    //        "{} add {} bytes, total memory size: {} bytes.",
+    //        Thread.currentThread().getName(),
+    //        size,
+    //        memorySizeInByte.get());
     return true;
   }
 
   public void free(long size) {
     long currentUsedMemory = memorySizeInByte.addAndGet(-size);
-    logger.info(
-        "{} free {} bytes, total memory size: {} bytes.",
-        Thread.currentThread().getName(),
-        size,
-        currentUsedMemory);
+    //    logger.info(
+    //        "{} free {} bytes, total memory size: {} bytes.",
+    //        Thread.currentThread().getName(),
+    //        size,
+    //        currentUsedMemory);
   }
 
   public void init(long maxMemorySize) {
