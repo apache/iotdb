@@ -98,9 +98,9 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 | `show time_display_type` | 显示时间显示方式 |
 | `set time_zone=xxx` | 例如： +08:00, Asia/Shanghai |
 | `show time_zone` | 显示CLI的时区 |
-| `set fetch_size=xxx` | 从服务器查询数据时设置读取条数 |
+| `set fetch_size=xxx` | 设置从服务器查询数据时的读取条数 |
 | `show fetch_size` |  显示读取条数的大小 |
-| `set max_display_num=xxx` | 例如： set max lines for cli to ouput, -1 equals to unlimited |
+| `set max_display_num=xxx` | 设置 CLI 一次展示的最大数据条数， 设置为-1表示无限制 |
 | `help` | 获取CLI特殊命令的提示 |
 | `exit/quit` | 退出CLI |
 

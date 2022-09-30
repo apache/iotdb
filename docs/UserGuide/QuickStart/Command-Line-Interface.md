@@ -104,7 +104,7 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 ```
 
 ### CLI Special Command
-Special commands of Cli are  below.
+Special commands of Cli are below.
 | Command | Description / Example |
 |:---|:---|
 | `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
@@ -113,7 +113,7 @@ Special commands of Cli are  below.
 | `show time_zone` | show cli time zone |
 | `set fetch_size=xxx` | set fetch size when querying data from server |
 | `show fetch_size` |  show fetch size |
-| `set max_display_num=xxx` | eg. set max lines for cli to ouput, -1 equals to unlimited |
+| `set max_display_num=xxx` |  set max lines for cli to output, -1 equals to unlimited |
 | `help` |  Get hints for CLI special commands |
 | `exit/quit` |  Exit CLI |
 
