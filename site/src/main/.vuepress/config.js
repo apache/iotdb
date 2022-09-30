@@ -1876,14 +1876,6 @@ var config = {
 						]
 					},
 					{
-						title: '告警',
-						sidebarDepth: 1,
-						children: [
-							['Alert/Alerting','告警机制'],
-							['Alert/Triggers','触发器'],
-						]
-					},
-					{
 						title: '权限管理',
 						children: [
 							['Administration-Management/Administration','权限管理']
