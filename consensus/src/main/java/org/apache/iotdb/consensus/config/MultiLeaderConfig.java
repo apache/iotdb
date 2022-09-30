@@ -196,7 +196,6 @@ public class MultiLeaderConfig {
   }
 
   public static class Replication {
-    private final int maxPendingRequestNumPerNode;
     private final int maxRequestPerBatch;
     private final int maxPendingBatch;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
@@ -208,7 +207,6 @@ public class MultiLeaderConfig {
     private final Long allocateMemoryForConsensus;
 
     private Replication(
-        int maxPendingRequestNumPerNode,
         int maxRequestPerBatch,
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
@@ -218,7 +216,6 @@ public class MultiLeaderConfig {
         long throttleTimeOutMs,
         long checkpointGap,
         long allocateMemoryForConsensus) {
-      this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
@@ -228,10 +225,6 @@ public class MultiLeaderConfig {
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
       this.allocateMemoryForConsensus = allocateMemoryForConsensus;
-    }
-
-    public int getMaxPendingRequestNumPerNode() {
-      return maxPendingRequestNumPerNode;
     }
 
     public int getMaxRequestPerBatch() {
@@ -275,7 +268,6 @@ public class MultiLeaderConfig {
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 600;
       private int maxRequestPerBatch = 30;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
@@ -287,11 +279,6 @@ public class MultiLeaderConfig {
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
       private long allocateMemoryForConsensus;
-
-      public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
-        this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
-        return this;
-      }
 
       public Replication.Builder setMaxRequestPerBatch(int maxRequestPerBatch) {
         this.maxRequestPerBatch = maxRequestPerBatch;
@@ -336,7 +323,6 @@ public class MultiLeaderConfig {
 
       public Replication build() {
         return new Replication(
-            maxPendingRequestNumPerNode,
             maxRequestPerBatch,
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
