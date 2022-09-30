@@ -68,7 +68,7 @@ It is also supported to set an alias, tag, and attribute for aligned timeseries.
 
 ## Delete Timeseries
 
-To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PathPattern>` statement.
+To delete the timeseries we created before, we are able to use `(DELETE | DROP) TimeSeries <PathPattern>` statement.
 
 The usage are as follows:
 
@@ -76,6 +76,7 @@ The usage are as follows:
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
+IoTDB> drop timeseries root.ln.wf02.*
 ```
 
 ## Show Timeseries
