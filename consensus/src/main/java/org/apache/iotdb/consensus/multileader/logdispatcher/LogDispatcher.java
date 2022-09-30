@@ -228,7 +228,19 @@ public class LogDispatcher {
       if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
         return false;
       }
-      return pendingRequest.offer(indexedConsensusRequest);
+      boolean success;
+      try {
+        success = pendingRequest.offer(indexedConsensusRequest);
+      } catch (Throwable t) {
+        // If exception occurs during request offer, the reserved memory should be released
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        throw t;
+      }
+      if (!success) {
+        // If offer failed, the reserved memory should be released
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      }
+      return success;
     }
 
     /** try to remove a request from queue with memory control */
