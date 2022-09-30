@@ -75,11 +75,13 @@ public class MemoryPool {
 
   public MemoryPool(String id, long maxBytes, long maxBytesPerQuery) {
     this.id = Validate.notNull(id);
-    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero.");
+    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero: %d", maxBytes);
     this.maxBytes = maxBytes;
     Validate.isTrue(
         maxBytesPerQuery > 0L && maxBytesPerQuery <= maxBytes,
-        "max bytes per query should be greater than zero while less than or equal to max bytes.");
+        "max bytes per query should be greater than zero while less than or equal to max bytes. maxBytesPerQuery: %d, maxBytes: %d",
+        maxBytesPerQuery,
+        maxBytes);
     this.maxBytesPerQuery = maxBytesPerQuery;
   }
 
@@ -96,7 +98,8 @@ public class MemoryPool {
     Validate.notNull(queryId);
     Validate.isTrue(
         bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query.");
+        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
+        bytes);
 
     ListenableFuture<Void> result;
     synchronized (this) {
@@ -118,7 +121,8 @@ public class MemoryPool {
     Validate.notNull(queryId);
     Validate.isTrue(
         bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query.");
+        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
+        bytes);
 
     if (maxBytes - reservedBytes < bytes
         || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {

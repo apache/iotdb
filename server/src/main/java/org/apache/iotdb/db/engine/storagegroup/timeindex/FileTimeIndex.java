@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -222,6 +224,11 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public boolean mayContainsDevice(String device) {
     return true;
+  }
+
+  @Override
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+    return new Pair<>(startTime, endTime);
   }
 
   @Override

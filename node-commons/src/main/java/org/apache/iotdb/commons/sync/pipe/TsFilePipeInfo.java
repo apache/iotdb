@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Objects;
 
 public class TsFilePipeInfo extends PipeInfo {
   private boolean syncDelOp;
   private long dataStartTimestamp;
+
+  // only used for serialization
+  protected TsFilePipeInfo() {}
 
   public TsFilePipeInfo(
       String pipeName,
@@ -61,6 +69,25 @@ public class TsFilePipeInfo extends PipeInfo {
 
   public void setDataStartTimestamp(long dataStartTimestamp) {
     this.dataStartTimestamp = dataStartTimestamp;
+  }
+
+  @Override
+  PipeType getType() {
+    return PipeType.TsFilePipe;
+  }
+
+  @Override
+  public void serialize(OutputStream outputStream) throws IOException {
+    super.serialize(outputStream);
+    ReadWriteIOUtils.write(syncDelOp, outputStream);
+    ReadWriteIOUtils.write(dataStartTimestamp, outputStream);
+  }
+
+  @Override
+  protected void deserialize(InputStream inputStream) throws IOException {
+    super.deserialize(inputStream);
+    syncDelOp = ReadWriteIOUtils.readBool(inputStream);
+    dataStartTimestamp = ReadWriteIOUtils.readLong(inputStream);
   }
 
   @Override

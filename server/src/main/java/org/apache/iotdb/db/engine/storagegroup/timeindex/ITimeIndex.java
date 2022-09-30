@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -191,6 +193,8 @@ public interface ITimeIndex {
    * it may or may not contain this device
    */
   boolean mayContainsDevice(String device);
+
+  Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern);
 
   /** @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   byte getTimeIndexType();
