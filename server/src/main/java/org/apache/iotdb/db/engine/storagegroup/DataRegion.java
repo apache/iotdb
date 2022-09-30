@@ -36,10 +36,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -581,7 +581,7 @@ public class DataRegion {
           "The data region {}[{}] is recovered successfully", storageGroupName, dataRegionId);
     }
   }
-  
+
   private void recoverAlter() throws DataRegionException, IOException {
 
     final String logKey = this.getStorageGroupPath();
@@ -615,7 +615,8 @@ public class DataRegion {
       }
     }
     logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
-}
+  }
+
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
     //  only update flush time when it is a seq file
     if (isSeq) {

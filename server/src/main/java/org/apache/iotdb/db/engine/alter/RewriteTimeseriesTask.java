@@ -224,7 +224,8 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
   }
 
   private void rewriteDataInTsFile(TsFileResource tsFileResource)
-          throws IOException, StorageEngineException, InterruptedException, MetadataException, ExecutionException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          ExecutionException {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(

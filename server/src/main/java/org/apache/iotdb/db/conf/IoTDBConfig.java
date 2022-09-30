@@ -3346,7 +3346,7 @@ public class IoTDBConfig {
   public long getRatisConsensusSnapshotTriggerThreshold() {
     return ratisConsensusSnapshotTriggerThreshold;
   }
-  
+
   public long getDataRatisConsensusSnapshotTriggerThreshold() {
     return dataRatisConsensusSnapshotTriggerThreshold;
   }
