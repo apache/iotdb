@@ -17,15 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.db.mpp.execution.executor;
 
-public class SemanticException extends RuntimeException {
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
-  public SemanticException(String message) {
-    super(message);
+public class RegionExecutionResult {
+
+  private boolean accepted;
+
+  private String message;
+
+  private TSStatus status;
+
+  public boolean isAccepted() {
+    return accepted;
   }
 
-  public SemanticException(Throwable cause) {
-    super(cause);
+  public void setAccepted(boolean accepted) {
+    this.accepted = accepted;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setMessage(String message) {
+    this.message = message;
+  }
+
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
   }
 }
