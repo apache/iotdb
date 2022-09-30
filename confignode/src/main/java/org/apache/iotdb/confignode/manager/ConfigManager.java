@@ -1057,7 +1057,7 @@ public class ConfigManager implements IManager {
     }
   }
 
-  /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */
+  /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
@@ -1078,12 +1078,12 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Get all related dataRegion which may contains the data of specific timeseries matched by given
+   * Get all related dataRegion which may contains the data of specific timeSeries matched by given
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // get all storage group and slot by getting schema partition
+    // get all storage groups and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
