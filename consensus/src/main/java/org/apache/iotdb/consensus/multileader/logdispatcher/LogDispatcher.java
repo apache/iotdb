@@ -225,18 +225,15 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
-        return false;
-      }
+      //      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
+      //        return false;
+      //      }
       return pendingRequest.offer(indexedConsensusRequest);
     }
 
     /** try to remove a request from queue with memory control */
-    private void remove(
-        IndexedConsensusRequest indexedConsensusRequest,
-        Iterator<IndexedConsensusRequest> iterator) {
-      iterator.remove();
-      multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+    private void remove(IndexedConsensusRequest indexedConsensusRequest) {
+      // multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
@@ -325,7 +322,8 @@ public class LogDispatcher {
         while (iterator.hasNext()) {
           IndexedConsensusRequest request = iterator.next();
           if (request.getSearchIndex() < startIndex) {
-            remove(request, iterator);
+            iterator.remove();
+            remove(request);
           } else {
             break;
           }
@@ -355,7 +353,8 @@ public class LogDispatcher {
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
-        remove(prev, iterator);
+        iterator.remove();
+        remove(prev);
         while (iterator.hasNext()
             && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
           IndexedConsensusRequest current = iterator.next();
@@ -379,7 +378,8 @@ public class LogDispatcher {
           // We might not be able to remove all the elements in the bufferedRequest in the
           // current function, but that's fine, we'll continue processing these elements in the
           // bufferedRequest the next time we go into the function, they're never lost
-          remove(current, iterator);
+          iterator.remove();
+          remove(current);
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.debug(
