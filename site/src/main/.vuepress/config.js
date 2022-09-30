@@ -789,7 +789,6 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
@@ -982,7 +981,6 @@ var config = {
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
 							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
 							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
-							['Ecosystem-Integration/Writing-Data-on-HDFS','Writing-Data-on-HDFS'],
 							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
@@ -1564,8 +1562,7 @@ var config = {
 							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB']
 						]
 					},
 					{
@@ -1730,8 +1727,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
-							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
 						]
 					},
 					{
@@ -1923,8 +1919,7 @@ var config = {
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
 							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
 							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
-							['Ecosystem-Integration/Writing-Data-on-HDFS','HDFS集成'],
-							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB']
 						]
 					},
 					{
