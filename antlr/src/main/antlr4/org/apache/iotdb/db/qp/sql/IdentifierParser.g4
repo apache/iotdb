@@ -43,7 +43,6 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
-    | AUTOREGISTER
     | BEFORE
     | BEGIN
     | BOUNDARY
