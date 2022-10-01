@@ -145,7 +145,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -169,6 +169,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return schemaMap;
   }
 
+  public Map<String, Map<TsFileResource, Pair<Long, Long>>>
+      getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
+    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        new HashMap<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<Long, Long>> entrySet :
+          reader
+              .getTimeseriesMetadataOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice())
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
+          timeseriesMetadataOffsetMap.put(measurementId, new HashMap<>());
+        }
+        timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue());
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
   /**
    * Get all measurements and schemas of the current device from source files. Traverse all the
    * files from the newest to the oldest in turn and start traversing the index tree from the
@@ -180,7 +204,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, Pair<MeasurementSchema, List<IChunkMetadata>>> schemaMap = new LinkedHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -226,7 +250,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         new Pair<>(new ArrayList<>(), new LinkedHashMap<>());
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
         continue;
       }
 

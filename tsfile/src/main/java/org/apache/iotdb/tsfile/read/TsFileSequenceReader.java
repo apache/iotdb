@@ -841,6 +841,31 @@ public class TsFileSequenceReader implements AutoCloseable {
     return null;
   }
 
+  public Map<String, Pair<Long, Long>> getTimeseriesMetadataOffsetByDevice(
+      MetadataIndexNode measurementNode) throws IOException {
+    Map<String, Pair<Long, Long>> timeseriesMetadataOffsetMap = new HashMap<>();
+    List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
+    for (int i = 0; i < childrenEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = childrenEntryList.get(i);
+      long startOffset = metadataIndexEntry.getOffset();
+      long endOffset =
+          i == childrenEntryList.size() - 1
+              ? measurementNode.getEndOffset()
+              : childrenEntryList.get(i + 1).getOffset();
+      if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        // leaf measurement node
+        timeseriesMetadataOffsetMap.put(
+            metadataIndexEntry.getName(), new Pair<>(startOffset, endOffset));
+      } else {
+        // internal measurement node
+        ByteBuffer nextBuffer = readData(startOffset, endOffset);
+        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+        return getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode);
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
   /**
    * Get timeseries metadata under the measurementNode and put them into timeseriesMetadataList.
    * Skip timeseries whose measurementId is in the excludedMeasurementIds.

@@ -149,7 +149,8 @@ public class ReadPointCompactionPerformer
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    Map<String, MeasurementSchema> schemaMap =
+        deviceIterator.getAllAlignedSchemasAndMetadatasOfCurrentDevice().right;
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;

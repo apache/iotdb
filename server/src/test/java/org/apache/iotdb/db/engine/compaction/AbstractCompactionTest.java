@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,8 +38,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
@@ -217,7 +216,7 @@ public class AbstractCompactionTest {
       boolean isAlign,
       boolean isSeq)
       throws IOException, WriteProcessException {
-
+    String value = isSeq ? "seqTestValue" : "unseqTestValue";
     for (int i = 0; i < fileNum; i++) {
       String fileName =
           System.currentTimeMillis()
@@ -239,6 +238,7 @@ public class AbstractCompactionTest {
                 measurementIndexes,
                 pointNum,
                 startTime + pointNum * i + timeInterval * i,
+                value,
                 chunkGroupSize,
                 pageSize);
       } else {
@@ -249,6 +249,7 @@ public class AbstractCompactionTest {
                 measurementIndexes,
                 pointNum,
                 startTime + pointNum * i + timeInterval * i,
+                value,
                 chunkGroupSize,
                 pageSize);
       }

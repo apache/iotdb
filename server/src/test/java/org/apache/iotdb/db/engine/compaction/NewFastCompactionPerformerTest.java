@@ -2235,6 +2235,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
+        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
             Long.MIN_VALUE);
