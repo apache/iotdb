@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -44,8 +46,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.writer.tsmiterator.TSMIterator;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -267,6 +267,30 @@ public class TsFileIOWriter implements AutoCloseable {
           chunkHeader.getMeasurementID(),
           chunkMetadata.getNumOfPoints());
     }
+  }
+
+  /** Write an empty value chunk into file directly. Only used for aligned timeseries. */
+  public void writeEmptyValueChunk(
+      String measurementId,
+      CompressionType compressionType,
+      TSDataType tsDataType,
+      TSEncoding encodingType,
+      Statistics<? extends Serializable> statistics)
+      throws IOException {
+    currentChunkMetadata =
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
+    currentChunkMetadata.setMask(TsFileConstant.VALUE_COLUMN_MASK);
+    ChunkHeader emptyChunkHeader =
+        new ChunkHeader(
+            measurementId,
+            0,
+            tsDataType,
+            compressionType,
+            encodingType,
+            0,
+            TsFileConstant.VALUE_COLUMN_MASK);
+    emptyChunkHeader.serializeTo(out.wrapAsStream());
+    endCurrentChunk();
   }
 
   public void writeChunk(Chunk chunk) throws IOException {

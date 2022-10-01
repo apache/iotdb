@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,6 +180,7 @@ public class TimeChunkWriter {
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
+        this.sizeWithoutStatistic = 0;
         this.firstPageStatistics = header.getStatistics();
         this.sizeWithoutStatistic +=
             ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);

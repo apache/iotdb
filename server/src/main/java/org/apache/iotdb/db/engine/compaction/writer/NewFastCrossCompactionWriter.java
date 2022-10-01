@@ -12,6 +12,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -67,7 +68,22 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
         ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
         tsFileIOWriter.writeChunk(ChunkCache.getInstance().get(chunkMetadata), chunkMetadata);
         // flush value chunks
-        for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+          IChunkMetadata valueChunkMetadata =
+              alignedChunkMetadata.getValueChunkMetadataList().get(i);
+          if (valueChunkMetadata == null) {
+            // value chunk has been deleted completely
+            AlignedChunkWriterImpl alignedChunkWriter =
+                (AlignedChunkWriterImpl) chunkWriters[subTaskId];
+            ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
+            tsFileIOWriter.writeEmptyValueChunk(
+                valueChunkWriter.getMeasurementId(),
+                valueChunkWriter.getCompressionType(),
+                valueChunkWriter.getDataType(),
+                valueChunkWriter.getEncodingType(),
+                valueChunkWriter.getStatistics());
+            continue;
+          }
           chunkMetadata = (ChunkMetadata) valueChunkMetadata;
           tsFileIOWriter.writeChunk(ChunkCache.getInstance().get(chunkMetadata), chunkMetadata);
         }
@@ -105,6 +121,10 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
 
     // flush new value pages to chunk writer directly
     for (int i = 0; i < valuePageHeaders.size(); i++) {
+      if (valuePageHeaders.get(i) == null) {
+        alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
+        continue;
+      }
       alignedChunkWriter.writePageHeaderAndDataIntoValueBuff(
           compressedValuePageDatas.get(i), valuePageHeaders.get(i), i);
     }

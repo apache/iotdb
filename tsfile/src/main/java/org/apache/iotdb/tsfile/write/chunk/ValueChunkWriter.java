@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,6 +199,7 @@ public class ValueChunkWriter {
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
+        this.sizeWithoutStatistic = 0;
         if (header.getStatistics() != null) {
           this.firstPageStatistics = header.getStatistics();
         }
@@ -382,6 +382,22 @@ public class ValueChunkWriter {
     }
 
     writer.endCurrentChunk();
+  }
+
+  public String getMeasurementId() {
+    return measurementId;
+  }
+
+  public TSEncoding getEncodingType() {
+    return encodingType;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
+  }
+
+  public Statistics<? extends Serializable> getStatistics() {
+    return statistics;
   }
 
   /** only used for test */

@@ -26,14 +26,12 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -103,29 +101,10 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
 
         compactionWriter.startChunkGroup(device, isAligned);
 
-        //        List<AlignedChunkMetadata> alignedMeasurementChunkMetadatas =
-        //            getModifiedAlignedChunkMetadatasByDevice(device);
-        // alignedMeasurementChunkMetadatas.get(0)
-
-        Map<String, List<ChunkMetadata>> measurementChunkMetadatas =
-            getModifiedChunkMetadatasByDevice(device);
-
-        Map<String, MeasurementSchema> measurementSchemaMap =
-            CompactionUtils.getMeasurementSchema(
-                device, measurementChunkMetadatas.keySet(), sortedSourceFiles, readerCacheMap);
-
         if (isAligned) {
-          compactAlignedSeries(
-              new ArrayList<>(measurementChunkMetadatas.keySet()),
-              new ArrayList<>(measurementChunkMetadatas.values()),
-              new ArrayList<>(measurementSchemaMap.values()),
-              compactionWriter);
+          compactAlignedSeries(deviceIterator, compactionWriter);
         } else {
-          compactNonAlignedSeries(
-              new ArrayList<>(measurementChunkMetadatas.keySet()),
-              new ArrayList<>(measurementChunkMetadatas.values()),
-              new ArrayList<>(measurementSchemaMap.values()),
-              compactionWriter);
+          compactNonAlignedSeries(deviceIterator, compactionWriter);
         }
 
         compactionWriter.endChunkGroup();
@@ -171,30 +150,38 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   }
 
   private void compactAlignedSeries(
-      List<String> allMeasurements,
-      List<List<ChunkMetadata>> allChunkMetadataList,
-      List<IMeasurementSchema> measurementSchemas,
+      MultiTsFileDeviceIterator deviceIterator,
       NewFastCrossCompactionWriter newFastCrossCompactionWriter)
-      throws PageException, IOException, WriteProcessException {
+      throws PageException, IOException, WriteProcessException, IllegalPathException {
+    Pair<List<AlignedChunkMetadata>, Map<String, MeasurementSchema>> measurementsPair =
+        deviceIterator.getAllAlignedSchemasAndMetadatasOfCurrentDevice();
     new NewFastCompactionPerformerSubTask(
-            allMeasurements,
-            Collections.emptyList(),
-            allChunkMetadataList,
-            null,
-            measurementSchemas,
-            true,
             newFastCrossCompactionWriter,
+            measurementsPair.left,
+            new ArrayList<>(measurementsPair.right.values()),
             0)
         .call();
   }
 
   private void compactNonAlignedSeries(
-      List<String> allMeasurements,
-      List<List<ChunkMetadata>> allChunkMetadataList,
-      List<IMeasurementSchema> measurementSchemas,
+      MultiTsFileDeviceIterator deviceIterator,
       NewFastCrossCompactionWriter newFastCrossCompactionWriter)
-      throws IOException, InterruptedException {
-    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+      throws IOException, InterruptedException, IllegalPathException {
+    Map<String, Pair<MeasurementSchema, List<IChunkMetadata>>> measurementMap =
+        deviceIterator.getAllNonAlignedSchemasAndMetadatasOfCurrentDevice();
+
+    List<String> allMeasurements = new ArrayList<>(measurementMap.keySet());
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<List<IChunkMetadata>> measurementChunkMetadatas = new ArrayList<>();
+    measurementMap
+        .values()
+        .forEach(
+            x -> {
+              measurementSchemas.add(x.left);
+              measurementChunkMetadatas.add(x.right);
+            });
+
+    int subTaskNums = Math.min(measurementChunkMetadatas.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
     List<Integer>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
@@ -212,13 +199,10 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
           CompactionTaskManager.getInstance()
               .submitSubTask(
                   new NewFastCompactionPerformerSubTask(
-                      allMeasurements,
-                      measurementsForEachSubTask[i],
-                      allChunkMetadataList,
-                      null,
-                      measurementSchemas,
-                      false,
                       newFastCrossCompactionWriter,
+                      measurementsForEachSubTask[i],
+                      measurementChunkMetadatas,
+                      measurementSchemas,
                       i)));
     }
 

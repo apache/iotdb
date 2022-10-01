@@ -267,12 +267,18 @@ public class AlignedChunkReader implements IChunkReader {
     List<TSDataType> valueTypes = new ArrayList<>();
     List<Decoder> valueDecoders = new ArrayList<>();
     for (int i = 0; i < valuePageHeaders.size(); i++) {
-      uncompressedValuePageDatas.add(
-          uncompressPageData(valuePageHeaders.get(i), compressedValuePageDatas.get(i)));
-      ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
-      TSDataType valueType = valueChunkHeader.getDataType();
-      valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
-      valueTypes.add(valueType);
+      if (valuePageHeaders.get(i) == null) {
+        uncompressedValuePageDatas.add(null);
+        valueTypes.add(TSDataType.BOOLEAN);
+        valueDecoders.add(null);
+      } else {
+        uncompressedValuePageDatas.add(
+            uncompressPageData(valuePageHeaders.get(i), compressedValuePageDatas.get(i)));
+        ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
+        TSDataType valueType = valueChunkHeader.getDataType();
+        valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
+        valueTypes.add(valueType);
+      }
     }
 
     // decode page data
