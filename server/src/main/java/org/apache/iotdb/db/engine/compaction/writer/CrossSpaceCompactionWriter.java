@@ -122,6 +122,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       } else {
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
       }
+      isDeviceExistedInTargetFiles[i] = false;
     }
     for (int i = 0, size = targetTsFileResources.size(); i < size; ++i) {
       for (int j = 0; j < subTaskNum; ++j) {
