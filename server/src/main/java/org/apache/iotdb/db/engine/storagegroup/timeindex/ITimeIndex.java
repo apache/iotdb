@@ -205,6 +205,9 @@ public interface ITimeIndex {
 
   static ITimeIndex createTimeIndex(InputStream inputStream) throws IOException {
     byte timeIndexType = ReadWriteIOUtils.readByte(inputStream);
+    if (timeIndexType == -1) {
+      throw new IOException("The end of stream has been reached");
+    }
     return TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
   }
 }

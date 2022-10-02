@@ -82,13 +82,13 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+    tsFileResource.readLock();
     try (InputStream inputStream =
         FSFactoryProducer.getFSFactory()
             .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readBytes(inputStream, 2);
-      ITimeIndex timeIndex = new DeviceTimeIndex().deserialize(inputStream);
-      return timeIndex.getDevices(tsFilePath, tsFileResource);
+      return DeviceTimeIndex.getDevices(inputStream);
     } catch (NoSuchFileException e) {
       // deleted by ttl
       if (tsFileResource.isDeleted()) {
@@ -103,7 +103,9 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error(
           "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
       throw new RuntimeException(
-          "Failed to get devices from tsfile:: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+    } finally {
+      tsFileResource.readUnlock();
     }
   }
 

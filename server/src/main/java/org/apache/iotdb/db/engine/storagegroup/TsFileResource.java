@@ -96,9 +96,6 @@ public class TsFileResource {
   /** time index */
   protected ITimeIndex timeIndex;
 
-  /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
-  //  private byte timeIndexType;
-
   private volatile ModificationFile modFile;
 
   private volatile ModificationFile compactionModFile;
