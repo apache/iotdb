@@ -49,26 +49,26 @@ struct TGlobalConfig {
 }
 
 struct TRatisConfig {
-  1: optional i64 schemaAppenderBufferSize
-  2: optional i64 dataAppenderBufferSize
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
 
-  3: optional i64 schemaSnapshotTriggerThreshold
-  4: optional i64 dataSnapshotTriggerThreshold
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
 
-  5: optional bool schemaLogUnsafeFlushEnable
-  6: optional bool dataLogUnsafeFlushEnable
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
 
-  7: optional i64 schemaLogSegmentSizeMax
-  8: optional i64 dataLogSegmentSizeMax
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
 
-  9: optional i64 schemaGrpcFlowControlWindow
-  10: optional i64 dataGrpcFlowControlWindow
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
 
-  11: optional i64 schemaLeaderElectionTimeoutMin
-  12: optional i64 dataLeaderElectionTimeoutMin
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
 
-  13: optional i64 schemaLeaderElectionTimeoutMax
-  14: optional i64 dataLeaderElectionTimeoutMax
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -260,9 +260,7 @@ struct TDropFunctionReq {
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
@@ -289,7 +287,7 @@ struct TDropTriggerReq {
 // Get trigger table from config node
 struct TGetTriggerTableResp {
   1: required common.TSStatus status
-  2: required binary triggerTable
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster
