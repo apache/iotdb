@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class TimeIndexTest {
+public class TsFileResourceTest {
   private final File file =
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
