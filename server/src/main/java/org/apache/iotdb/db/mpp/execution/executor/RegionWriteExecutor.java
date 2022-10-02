@@ -98,7 +98,7 @@ public class RegionWriteExecutor {
             "Something wrong happened while calling consensus layer's write API.",
             writeResponse.getException());
         response.setAccepted(false);
-        response.setMessage(writeResponse.getException().getMessage());
+        response.setMessage(writeResponse.getException().toString());
         response.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
       }
       return response;
@@ -198,7 +198,10 @@ public class RegionWriteExecutor {
               "Something wrong happened while calling consensus layer's write API.",
               writeResponse.getException());
           response.setAccepted(false);
-          response.setMessage(writeResponse.getException().getMessage());
+          response.setMessage(writeResponse.getException().toString());
+          response.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.WRITE_PROCESS_ERROR, writeResponse.getException().toString()));
         }
 
         return response;
