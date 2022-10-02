@@ -846,24 +846,39 @@ public class TsFileSequenceReader implements AutoCloseable {
     Map<String, Pair<Long, Long>> timeseriesMetadataOffsetMap = new HashMap<>();
     List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
     for (int i = 0; i < childrenEntryList.size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = childrenEntryList.get(i);
-      long startOffset = metadataIndexEntry.getOffset();
+      long startOffset = childrenEntryList.get(i).getOffset();
       long endOffset =
           i == childrenEntryList.size() - 1
               ? measurementNode.getEndOffset()
               : childrenEntryList.get(i + 1).getOffset();
+      ByteBuffer nextBuffer = readData(startOffset, endOffset);
       if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
         // leaf measurement node
-        timeseriesMetadataOffsetMap.put(
-            metadataIndexEntry.getName(), new Pair<>(startOffset, endOffset));
+        while (nextBuffer.hasRemaining()) {
+          int metadataStartOffset = nextBuffer.position();
+          String measurementId =
+              TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId();
+          timeseriesMetadataOffsetMap.put(
+              measurementId,
+              new Pair<>(startOffset + metadataStartOffset, startOffset + nextBuffer.position()));
+        }
+
       } else {
         // internal measurement node
-        ByteBuffer nextBuffer = readData(startOffset, endOffset);
         MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
         return getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode);
       }
     }
     return timeseriesMetadataOffsetMap;
+  }
+
+  public List<IChunkMetadata> getChunkMetadataListByTimeseriesMetadataOffset(
+      long startOffset, long endOffset) throws IOException {
+    ByteBuffer timeseriesMetadataBuffer = readData(startOffset, endOffset);
+
+    TimeseriesMetadata timeseriesMetadata =
+        TimeseriesMetadata.deserializeFrom(timeseriesMetadataBuffer, true);
+    return timeseriesMetadata.getChunkMetadataList();
   }
 
   /**

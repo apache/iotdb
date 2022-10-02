@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -83,7 +83,6 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
-    sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
     // Todo: use one tsfileSequenceReader，instead of opening a new reader in device iterator.
     try (NewFastCrossCompactionWriter compactionWriter =
             new NewFastCrossCompactionWriter(targetFiles, seqFiles);
@@ -99,12 +98,16 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
 
+        sortedSourceFiles = new ArrayList<>(seqFiles);
+        sortedSourceFiles.addAll(unseqFiles);
+        sortedSourceFiles.removeIf(x -> !x.mayContainsDevice(device));
+        sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
           compactAlignedSeries(deviceIterator, compactionWriter);
         } else {
-          compactNonAlignedSeries(deviceIterator, compactionWriter);
+          compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }
 
         compactionWriter.endChunkGroup();
@@ -164,24 +167,28 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   }
 
   private void compactNonAlignedSeries(
+      String deviceID,
       MultiTsFileDeviceIterator deviceIterator,
       NewFastCrossCompactionWriter newFastCrossCompactionWriter)
       throws IOException, InterruptedException, IllegalPathException {
-    Map<String, Pair<MeasurementSchema, List<IChunkMetadata>>> measurementMap =
-        deviceIterator.getAllNonAlignedSchemasAndMetadatasOfCurrentDevice();
+    //    Map<String, Pair<MeasurementSchema, List<IChunkMetadata>>> measurementMap =
+    //        deviceIterator.getAllNonAlignedSchemasAndMetadatasOfCurrentDevice();
 
-    List<String> allMeasurements = new ArrayList<>(measurementMap.keySet());
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<List<IChunkMetadata>> measurementChunkMetadatas = new ArrayList<>();
-    measurementMap
-        .values()
-        .forEach(
-            x -> {
-              measurementSchemas.add(x.left);
-              measurementChunkMetadatas.add(x.right);
-            });
+    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
 
-    int subTaskNums = Math.min(measurementChunkMetadatas.size(), subTaskNum);
+    List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+    //    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    //    List<List<IChunkMetadata>> measurementChunkMetadatas = new ArrayList<>();
+    //    measurementMap
+    //        .values()
+    //        .forEach(
+    //            x -> {
+    //              measurementSchemas.add(x.left);
+    //              measurementChunkMetadatas.add(x.right);
+    //            });
+
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
     List<Integer>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
@@ -200,9 +207,10 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
               .submitSubTask(
                   new NewFastCompactionPerformerSubTask(
                       newFastCrossCompactionWriter,
+                      deviceID,
                       measurementsForEachSubTask[i],
-                      measurementChunkMetadatas,
-                      measurementSchemas,
+                      this,
+                      new ArrayList<>(timeseriesMetadataOffsetMap.values()),
                       i)));
     }
 
@@ -321,6 +329,10 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
       }
     }
     return pathModifications;
+  }
+
+  public List<TsFileResource> getSortedSourceFiles() {
+    return sortedSourceFiles;
   }
 
   public TsFileSequenceReader getReaderFromCache(TsFileResource resource) {

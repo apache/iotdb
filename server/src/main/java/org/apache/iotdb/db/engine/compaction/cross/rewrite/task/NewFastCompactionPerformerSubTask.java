@@ -5,8 +5,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
+import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.NewFastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -23,7 +24,9 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,16 +50,18 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   @FunctionalInterface
   public interface RemovePage {
     void call(PageElement pageElement, List<PageElement> newOverlappedPages)
-        throws WriteProcessException, IOException;
+        throws WriteProcessException, IOException, IllegalPathException;
   }
 
   private final PriorityQueue<ChunkMetadataElement> chunkMetadataQueue;
 
   private final PriorityQueue<PageElement> pageQueue;
 
-  private final NewFastCrossCompactionWriter compactionWriter;
+  private NewFastCrossCompactionWriter compactionWriter;
 
-  private final int subTaskId;
+  private NewFastCompactionPerformer newFastCompactionPerformer;
+
+  private int subTaskId;
 
   // the indexs of the timseries to be compacted to which the current sub thread is assigned
   private List<Integer> pathsIndex;
@@ -66,18 +71,25 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<AlignedChunkMetadata> alignedSensorMetadatas;
 
-  private final List<IMeasurementSchema> measurementSchemas;
+  private List<IMeasurementSchema> measurementSchemas;
+
+  // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+  private List<Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
   // sorted source files by the start time of device
-  private final List<TsFileResource> sortedSourceFiles = new ArrayList<>();
+  private List<FileElement> fileList = new ArrayList<>();
 
-  private FastCompactionPerformer fastCompactionPerformer;
+  private List<Boolean> hasFileSelected;
 
   private boolean isAligned;
 
   private String deviceId;
+
+  private int currentSensorIndex = 0;
+
+  boolean hasStartMeasurement = false;
 
   private NewFastCompactionPerformerSubTask(
       List<IMeasurementSchema> measurementSchemas,
@@ -106,14 +118,32 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   /** Used for constructing nonAligned timeseries compaction. */
   public NewFastCompactionPerformerSubTask(
       NewFastCrossCompactionWriter compactionWriter,
+      String deviceId,
       List<Integer> pathsIndex,
-      List<List<IChunkMetadata>> allSensorMetadatas,
-      List<IMeasurementSchema> measurementSchemas,
+      NewFastCompactionPerformer newFastCompactionPerformer,
+      List<Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       int subTaskId) {
-    this(measurementSchemas, false, compactionWriter, subTaskId);
+    this.compactionWriter = compactionWriter;
+    this.newFastCompactionPerformer = newFastCompactionPerformer;
+    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.pathsIndex = pathsIndex;
-    this.allSensorMetadatas = allSensorMetadatas;
+    this.deviceId = deviceId;
+    this.subTaskId = subTaskId;
+    chunkMetadataQueue =
+        new PriorityQueue<>(
+            (o1, o2) -> {
+              int timeCompare = Long.compare(o1.startTime, o2.startTime);
+              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+            });
+
+    pageQueue =
+        new PriorityQueue<>(
+            (o1, o2) -> {
+              int timeCompare = Long.compare(o1.startTime, o2.startTime);
+              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+            });
   }
+
 
   /** Used for constructing aligned timeseries compaction. */
   public NewFastCompactionPerformerSubTask(
@@ -126,13 +156,14 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   @Override
-  public Void call() throws IOException, PageException, WriteProcessException {
+  public Void call()
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (isAligned) {
       int chunkMetadataPriority = 0;
       // put aligned chunk metadatas into queue
       for (AlignedChunkMetadata alignedChunkMetadata : alignedSensorMetadatas) {
-        chunkMetadataQueue.add(
-            new ChunkMetadataElement(alignedChunkMetadata, chunkMetadataPriority++));
+        //        chunkMetadataQueue.add(
+        //            new ChunkMetadataElement(alignedChunkMetadata, chunkMetadataPriority++));
       }
 
       compactionWriter.startMeasurement(measurementSchemas, subTaskId);
@@ -140,30 +171,41 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       compactionWriter.endMeasurement(subTaskId);
     } else {
       for (Integer index : pathsIndex) {
-        if (allSensorMetadatas.get(index).isEmpty()) {
-          continue;
-        }
-        int chunkMetadataPriority = 0;
-        for (IChunkMetadata chunkMetadata : allSensorMetadatas.get(index)) {
-          chunkMetadataQueue.add(new ChunkMetadataElement(chunkMetadata, chunkMetadataPriority++));
-        }
+        newFastCompactionPerformer
+            .getSortedSourceFiles()
+            .forEach(x -> fileList.add(new FileElement(x)));
 
-        compactionWriter.startMeasurement(
-            Collections.singletonList(measurementSchemas.get(index)), subTaskId);
-        compactChunks();
-        compactionWriter.endMeasurement(subTaskId);
+        currentSensorIndex = index;
+        hasStartMeasurement = false;
+
+        compactFiles();
+        if (hasStartMeasurement) {
+          compactionWriter.endMeasurement(subTaskId);
+        }
       }
     }
     return null;
+
   }
 
-  private void compactFiles() throws PageException, IOException, WriteProcessException {
-    while (!sortedSourceFiles.isEmpty()) {
-      // =sortedSourceFiles.remove(0);
-      List<TsFileResource> overlappedFiles = findOverlapFiles(sortedSourceFiles.get(0));
+  private void compactFiles()
+      throws PageException, IOException, WriteProcessException, IllegalPathException {
+    while (!fileList.isEmpty()) {
+      List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
-      // read chunk metadatas and put them into chunk metadata queue
+      // read chunk metadatas from files and put them into chunk metadata queue
+      deserializeFileIntoQueue(overlappedFiles);
 
+      if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
+        ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
+        MeasurementSchema measurementSchema =
+            newFastCompactionPerformer
+                .getReaderFromCache(firstChunkMetadataElement.fileElement.resource)
+                .getMeasurementSchema(
+                    Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
+        compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
+        hasStartMeasurement = true;
+      }
       compactChunks();
     }
   }
@@ -174,9 +216,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    * @throws IOException
    * @throws PageException
    */
-  private void compactChunks() throws IOException, PageException, WriteProcessException {
+  private void compactChunks()
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!chunkMetadataQueue.isEmpty()) {
-      chunkMetadataQueue.peek().isFirstChunk = true;
       ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
       List<ChunkMetadataElement> overlappedChunkMetadatas =
           findOverlapChunkMetadatas(firstChunkMetadataElement);
@@ -195,7 +237,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   /** Deserialize chunks and start compacting pages. */
   private void compactWithOverlapChunks(List<ChunkMetadataElement> overlappedChunkMetadatas)
-      throws IOException, PageException, WriteProcessException {
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     for (ChunkMetadataElement overlappedChunkMetadata : overlappedChunkMetadatas) {
       deserializeChunkIntoQueue(overlappedChunkMetadata);
     }
@@ -207,7 +249,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    * then deserialize it.
    */
   private void compactWithNonOverlapChunks(ChunkMetadataElement chunkMetadataElement)
-      throws IOException, PageException, WriteProcessException {
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (compactionWriter.flushChunkToFileWriter(chunkMetadataElement.chunkMetadata, subTaskId)) {
       // flush chunk successfully
       removeChunk(chunkMetadataQueue.peek());
@@ -217,26 +259,49 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-  private void deserializeFileIntoQueue(List<TsFileResource> resources)
+  private void deserializeFileIntoQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
-    for (TsFileResource resource : resources) {
-      for (Map.Entry<String, List<ChunkMetadata>> entry :
-          fastCompactionPerformer
+    int chunkMetadataPriority = 0;
+    for (FileElement fileElement : fileElements) {
+      TsFileResource resource = fileElement.resource;
+      Pair<Long, Long> timeseriesMetadataOffset =
+          timeseriesMetadataOffsetMap.get(currentSensorIndex).get(resource);
+      if (!resource.mayContainsDevice(deviceId) || timeseriesMetadataOffset == null) {
+        // tsfile does not contain this timeseries
+        fileList.remove(fileElement);
+        continue;
+      }
+      List<IChunkMetadata> iChunkMetadataList =
+          newFastCompactionPerformer
               .getReaderFromCache(resource)
-              .readChunkMetadataInDevice(deviceId)
-              .entrySet()) {
-        String sensor = entry.getKey();
-        List<ChunkMetadata> chunkMetadataList = entry.getValue();
-        if (!chunkMetadataList.isEmpty()) {
-          // set file path
-          chunkMetadataList.forEach(x -> x.setFilePath(resource.getTsFilePath()));
+              .getChunkMetadataListByTimeseriesMetadataOffset(
+                  timeseriesMetadataOffset.left, timeseriesMetadataOffset.right);
 
-          // modify chunk metadatas
-          QueryUtils.modifyChunkMetaData(
-              chunkMetadataList,
-              fastCompactionPerformer.getModifications(
-                  resource, new PartialPath(deviceId, sensor)));
+      if (iChunkMetadataList.size() > 0) {
+        // modify chunk metadatas
+        QueryUtils.modifyChunkMetaData(
+            iChunkMetadataList,
+            newFastCompactionPerformer.getModifications(
+                resource,
+                new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
+        if (iChunkMetadataList.size() == 0) {
+          // all chunks has been deleted in this file, just remove it
+          fileList.remove(fileElement);
         }
+      }
+
+      for (int i = 0; i < iChunkMetadataList.size(); i++) {
+        IChunkMetadata chunkMetadata = iChunkMetadataList.get(i);
+        // set file path
+        chunkMetadata.setFilePath(resource.getTsFilePath());
+
+        // add into queue
+        chunkMetadataQueue.add(
+            new ChunkMetadataElement(
+                chunkMetadata,
+                (int) resource.getVersion(),
+                i == iChunkMetadataList.size() - 1,
+                fileElement));
       }
     }
   }
@@ -422,7 +487,8 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    * @throws IOException
    * @throws PageException
    */
-  private void compactPages() throws IOException, PageException, WriteProcessException {
+  private void compactPages()
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
       PageElement firstPageElement = pageQueue.peek();
       List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
@@ -453,7 +519,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   private void compactWithNonOverlapPage(PageElement pageElement)
-      throws PageException, IOException, WriteProcessException {
+      throws PageException, IOException, WriteProcessException, IllegalPathException {
     boolean success;
     if (pageElement.iChunkReader instanceof AlignedChunkReader) {
       success =
@@ -485,7 +551,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    * with page 4,and so on, there are 10 pages in total. This method will merge all 10 pages.
    */
   private void compactWithOverlapPages(List<PageElement> overlappedPages)
-      throws IOException, PageException, WriteProcessException {
+      throws IOException, PageException, WriteProcessException, IllegalPathException {
     pointPriorityReader.addNewPages(Collections.singletonList(overlappedPages.remove(0)));
     pointPriorityReader.setNewOverlappedPages(overlappedPages);
     while (pointPriorityReader.hasNext()) {
@@ -589,12 +655,15 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     return elements;
   }
 
-  private List<TsFileResource> findOverlapFiles(TsFileResource resource) {
-    List<TsFileResource> overlappedFiles = new ArrayList<>();
-    long endTime = resource.getEndTime(deviceId);
-    for (TsFileResource sourceFile : sortedSourceFiles) {
-      if (sourceFile.getStartTime(deviceId) <= endTime) {
-        overlappedFiles.add(sourceFile);
+  private List<FileElement> findOverlapFiles(FileElement file) {
+    List<FileElement> overlappedFiles = new ArrayList<>();
+    long endTime = file.resource.getEndTime(deviceId);
+    for (FileElement fileElement : fileList) {
+      if (fileElement.resource.getStartTime(deviceId) <= endTime) {
+        if (!fileElement.isOverlap) {
+          overlappedFiles.add(fileElement);
+          fileElement.isOverlap = true;
+        }
       } else {
         break;
       }
@@ -703,7 +772,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   private void removePage(PageElement pageElement, List<PageElement> newOverlappedPages)
-      throws IOException {
+      throws IOException, IllegalPathException {
     // check is first page or not
     boolean isFirstPage = pageQueue.peek().equals(pageElement);
     pageQueue.remove(pageElement);
@@ -716,26 +785,54 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       return;
     }
     if (pointPriorityReader.hasNext() && pageQueue.size() != 0) {
+      // pointPriorityReader.hasNext() indicates that the new first page in page queue has not been
+      // finished compacting yet, so there may be other pages overlap with it.
       // when deserializing new chunks into page queue or first page is removed from page queue, we
       // should find new overlapped pages and put them into list
       newOverlappedPages.addAll(findOverlapPages(pageQueue.peek()));
     }
   }
 
-  private void removeChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
-    // check is first chunk or not
-    boolean isFirstChunk = chunkMetadataQueue.peek().equals(chunkMetadataElement);
+  private void removeChunk(ChunkMetadataElement chunkMetadataElement)
+      throws IOException, IllegalPathException {
 
     chunkMetadataQueue.remove(chunkMetadataElement);
-    if (isFirstChunk && !chunkMetadataQueue.isEmpty()) {
-      chunkMetadataQueue.peek().isFirstChunk = true;
-      if (!pageQueue.isEmpty()) {
-        // find new overlapped chunks and deserialize them into page queue
-        for (ChunkMetadataElement newOverlappedChunkMetadata :
-            findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
-          deserializeChunkIntoQueue(newOverlappedChunkMetadata);
-        }
+    if (chunkMetadataElement.isLastChunk) {
+      // finish compacting the file, remove it from list
+      removeFile(chunkMetadataElement.fileElement);
+    }
+
+    if (pageQueue.size() != 0 && chunkMetadataQueue.size() != 0) {
+      // pageQueue.size > 0 indicates that the new first chunk in chunk metadata queue has not been
+      // finished compacting yet, so there may be other chunks overlap with it.
+      // when deserializing new files into chunk metadata queue or first chunk is removed from chunk
+      // metadata queue, we should find new overlapped chunks and deserialize them into page queue
+      for (ChunkMetadataElement newOverlappedChunkMetadata :
+          findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
+        deserializeChunkIntoQueue(newOverlappedChunkMetadata);
       }
+    }
+
+    //    // Todo?
+    //    // check is first chunk or not
+    //    boolean isFirstChunk = chunkMetadataQueue.peek().equals(chunkMetadataElement);
+    //    if (isFirstChunk && !chunkMetadataQueue.isEmpty()) {
+    //      if (!pageQueue.isEmpty()) {
+    //        // find new overlapped chunks and deserialize them into page queue
+    //        for (ChunkMetadataElement newOverlappedChunkMetadata :
+    //            findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
+    //          deserializeChunkIntoQueue(newOverlappedChunkMetadata);
+    //        }
+    //      }
+    //    }
+  }
+
+  private void removeFile(FileElement fileElement) throws IllegalPathException, IOException {
+    boolean isFirstFile = fileList.get(0).equals(fileElement);
+    fileList.remove(fileElement);
+    if (isFirstFile && !fileList.isEmpty()) {
+      // find new overlapped files and deserialize them into chunk metadata queue
+      deserializeFileIntoQueue(findOverlapFiles(fileList.get(0)));
     }
   }
 

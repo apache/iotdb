@@ -11,11 +11,16 @@ public class ChunkMetadataElement {
 
   public long startTime;
 
-  public boolean isFirstChunk = false;
+  public boolean isLastChunk;
 
-  public ChunkMetadataElement(IChunkMetadata chunkMetadata, int priority) {
+  public FileElement fileElement;
+
+  public ChunkMetadataElement(
+      IChunkMetadata chunkMetadata, int priority, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
     this.startTime = chunkMetadata.getStartTime();
+    this.isLastChunk = isLastChunk;
+    this.fileElement = fileElement;
   }
 }

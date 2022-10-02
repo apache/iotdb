@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -121,6 +122,18 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
     return timeseriesMetaData;
+  }
+
+  public static Pair<String, Pair<Integer, Integer>> deserializeAndGetChunkMetadataOffset(
+      ByteBuffer buffer) {
+    ReadWriteIOUtils.readByte(buffer); // read timeseriesType
+    String measurementID = ReadWriteIOUtils.readVarIntString(buffer);
+    TSDataType tsDataType = ReadWriteIOUtils.readDataType(buffer);
+    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    Statistics.deserialize(buffer, tsDataType); // read statistic
+    return new Pair<>(
+        measurementID,
+        new Pair<>(buffer.position(), buffer.position() + chunkMetaDataListDataSize));
   }
 
   /**

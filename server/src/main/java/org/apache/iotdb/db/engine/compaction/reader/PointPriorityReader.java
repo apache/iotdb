@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NewFastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointElement;
@@ -44,7 +45,7 @@ public class PointPriorityReader {
     return currentPoint;
   }
 
-  public void next() throws WriteProcessException, IOException {
+  public void next() throws WriteProcessException, IOException, IllegalPathException {
     // remove data points with the same timestamp as the last point
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
