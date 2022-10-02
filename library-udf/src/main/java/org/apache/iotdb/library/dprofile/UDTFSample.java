@@ -34,23 +34,25 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Random;
-import java.math.BigDecimal;
-
 import com.github.ggalmazor.ltdownsampling.LTThreeBuckets;
 import com.github.ggalmazor.ltdownsampling.Point;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 
 /** This function samples data by pool sampling. */
 public class UDTFSample implements UDTF {
 
   enum Method {
-    ISOMETRIC, RESERVOIR, TRIANGLE
+    ISOMETRIC,
+    RESERVOIR,
+    TRIANGLE
   }
+
   private int k; // sample numbers
   private Method method;
   // These variables occurs in pool sampling
@@ -82,18 +84,14 @@ public class UDTFSample implements UDTF {
     this.k = parameters.getIntOrDefault("k", 1);
     this.dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     String method = parameters.getStringOrDefault("method", "reservoir");
-    if ("triangle".equalsIgnoreCase(method))
-      this.method = Method.TRIANGLE;
-    else if ("isometric".equalsIgnoreCase(method))
-      this.method = Method.ISOMETRIC;
-    else
-      this.method = Method.RESERVOIR;
+    if ("triangle".equalsIgnoreCase(method)) this.method = Method.TRIANGLE;
+    else if ("isometric".equalsIgnoreCase(method)) this.method = Method.ISOMETRIC;
+    else this.method = Method.RESERVOIR;
     if (this.method == Method.ISOMETRIC || this.method == Method.TRIANGLE) {
       configurations
           .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
           .setOutputDataType(parameters.getDataType(0));
     } else {
-      this.method = Method.RESERVOIR;
       configurations
           .setAccessStrategy(new RowByRowAccessStrategy())
           .setOutputDataType(parameters.getDataType(0));
@@ -125,13 +123,12 @@ public class UDTFSample implements UDTF {
     int n = rowWindow.windowSize();
 
     if (this.k < n) {
-      if (this.method == Method.TRIANGLE)
-      {
+      if (this.method == Method.TRIANGLE) {
         List<Point> input = new LinkedList<>();
-        for (long i = 0; i < n; i++) {
-          Row row = rowWindow.getRow((int) i);
-          BigDecimal time = new BigDecimal(row.getTime());
-          BigDecimal data = new BigDecimal(Util.getValueAsDouble(row));
+        for (int i = 0; i < n; i++) {
+          Row row = rowWindow.getRow(i);
+          BigDecimal time = BigDecimal.valueOf(row.getTime());
+          BigDecimal data = BigDecimal.valueOf(Util.getValueAsDouble(row));
           input.add(new Point(time, data));
         }
         if (k > 2) {
@@ -155,16 +152,15 @@ public class UDTFSample implements UDTF {
                 throw new NoNumberException();
             }
           }
-        } else { //For corner case of k == 1 and k == 2
-          Row row = rowWindow.getRow((int) 0); // Put first element
+        } else { // For corner case of k == 1 and k == 2
+          Row row = rowWindow.getRow(0); // Put first element
           Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
           if (k == 2) {
-            row = rowWindow.getRow((int) n-1); // Put last element
+            row = rowWindow.getRow(n - 1); // Put last element
             Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
           }
         }
-      }
-      else { //Method.ISOMETRIC
+      } else { // Method.ISOMETRIC
         for (long i = 0; i < this.k; i++) {
           long j = Math.floorDiv(i * (long) n, (long) k); // avoid intermediate result overflows
           Row row = rowWindow.getRow((int) j);
