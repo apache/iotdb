@@ -611,11 +611,13 @@ public class TsFileIOWriter implements AutoCloseable {
     // This function should be called after all data of an aligned device has been written
     if (enableMemoryControl && currentChunkMetadataSize > maxMetadataSize) {
       try {
-        logger.info(
-            "Flushing chunk metadata, total size is {}, count is {}, avg size is {}",
-            currentChunkMetadataSize,
-            chunkMetadataCount,
-            currentChunkMetadataSize / chunkMetadataCount);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Flushing chunk metadata, total size is {}, count is {}, avg size is {}",
+              currentChunkMetadataSize,
+              chunkMetadataCount,
+              currentChunkMetadataSize / chunkMetadataCount);
+        }
         sortAndFlushChunkMetadata();
         chunkMetadataCount = 0;
         currentChunkMetadataSize = 0;
