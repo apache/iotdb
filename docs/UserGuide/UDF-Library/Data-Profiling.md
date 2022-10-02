@@ -1176,7 +1176,7 @@ For more detail, please read [paper](http://skemman.is/stream/get/1946/15343/372
 
 **Parameters:**
 
-+ `method`: The method of sampling, which is 'reservoir' or 'isometric'. By default, reservoir sampling is used.
++ `method`: The method of sampling, which is 'reservoir', 'isometric' or 'triangle'. By default, reservoir sampling is used.
 + `k`: The number of sampling, which is a positive integer. By default, it's 1.
 
 **Output Series:** Output a single series. The type is the same as the input. The length of the output series is `k`. Each data point in the output series comes from the input series.
