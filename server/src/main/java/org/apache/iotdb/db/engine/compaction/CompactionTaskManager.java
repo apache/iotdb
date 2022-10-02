@@ -78,6 +78,7 @@ public class CompactionTaskManager implements IService {
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private volatile boolean init = false;
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -98,6 +99,7 @@ public class CompactionTaskManager implements IService {
           x ->
               CompactionMetricsRecorder.recordTaskInfo(
                   x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
+      init = true;
     }
     logger.info("Compaction task manager started.");
   }
@@ -214,7 +216,9 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
       throws InterruptedException {
-    if (!candidateCompactionTaskQueue.contains(compactionTask) && !isTaskRunning(compactionTask)) {
+    if (init
+        && !candidateCompactionTaskQueue.contains(compactionTask)
+        && !isTaskRunning(compactionTask)) {
       compactionTask.setSourceFilesToCompactionCandidate();
       candidateCompactionTaskQueue.put(compactionTask);
 
