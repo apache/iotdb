@@ -140,41 +140,45 @@ public class IoTDBSessionInsertNulIT {
 
   @Test
   public void insertAlignedRecordNullTest() {
-    for (int i = 0; i < retry; i++) {
-      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        prepareData(session);
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      prepareData(session);
 
-        String deviceId = "root.sg1.clsu.aligned_d1";
-        session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
-        List<String> t = new ArrayList<>();
-        t.add(null);
-        session.insertAlignedRecord(deviceId, 200, Arrays.asList("s1"), t);
-        session.insertAlignedRecord(
-            deviceId,
-            300,
-            Arrays.asList("s1", "s2"),
-            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-            Arrays.asList(true, 30));
-        session.insertAlignedRecord(
-            deviceId,
-            400,
-            Arrays.asList("s1", "s2"),
-            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-            Arrays.asList(true, null));
-        session.insertAlignedRecord(
-            deviceId,
-            500,
-            Arrays.asList("s1", "s2"),
-            Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-            Arrays.asList(null, null));
-        long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
-        assertEquals(3, nums);
-      } catch (Exception e) {
-        if (i == retry - 1) {
-          e.printStackTrace();
-          fail(e.getMessage());
+      String deviceId = "root.sg1.clsu.aligned_d1";
+      session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
+      List<String> t = new ArrayList<>();
+      t.add(null);
+      session.insertAlignedRecord(deviceId, 200, Arrays.asList("s1"), t);
+      session.insertAlignedRecord(
+          deviceId,
+          300,
+          Arrays.asList("s1", "s2"),
+          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+          Arrays.asList(true, 30));
+      session.insertAlignedRecord(
+          deviceId,
+          400,
+          Arrays.asList("s1", "s2"),
+          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+          Arrays.asList(true, null));
+      session.insertAlignedRecord(
+          deviceId,
+          500,
+          Arrays.asList("s1", "s2"),
+          Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+          Arrays.asList(null, null));
+      for (int i = 0; i < retry; i++) {
+        try {
+          long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+          assertEquals(3, nums);
+          return;
+        } catch (Exception e) {
+          LOGGER.info("query records failed, retry: " + i);
+          Thread.sleep(1000);
         }
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -193,19 +197,16 @@ public class IoTDBSessionInsertNulIT {
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(true, 101), Arrays.asList(false, 201)));
-      LOGGER.info("insert records success 1");
       session.insertRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(200L, 200L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
           Arrays.asList(Arrays.asList("false", "101"), Arrays.asList("true", "201")));
-      LOGGER.info("insert records success 2");
       session.insertRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(400L, 400L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
           Arrays.asList(Arrays.asList(null, "102"), Arrays.asList("false", "202")));
-      LOGGER.info("insert records success 3");
       session.insertRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(500L, 500L),
@@ -214,13 +215,20 @@ public class IoTDBSessionInsertNulIT {
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(true, null), Arrays.asList(null, null)));
-      LOGGER.info("insert records success 4");
-      long nums = queryCountRecords(session, "select count(s1) from " + deviceId1);
-      LOGGER.info("insert records success 5");
-      assertEquals(3, nums);
-      nums = queryCountRecords(session, "select count(s2) from " + deviceId2);
-      LOGGER.info("insert records success 6");
-      assertEquals(3, nums);
+
+      for (int i = 0; i < retry; i++) {
+        try {
+          long nums = queryCountRecords(session, "select count(s1) from " + deviceId1);
+          assertEquals(3, nums);
+          nums = queryCountRecords(session, "select count(s2) from " + deviceId2);
+          assertEquals(3, nums);
+          return;
+        } catch (Exception e) {
+          LOGGER.info("query records failed, retry: " + i);
+          Thread.sleep(1000);
+        }
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
