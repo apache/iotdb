@@ -200,7 +200,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void timeFuncGroupByLevelTest() throws ClassNotFoundException {
+  public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
       "min_time(root.*.d1.s3)",
@@ -213,7 +213,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void valueFuncGroupByLevelTest() throws ClassNotFoundException {
+  public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
       "last_value(root.*.d1.s3)",
