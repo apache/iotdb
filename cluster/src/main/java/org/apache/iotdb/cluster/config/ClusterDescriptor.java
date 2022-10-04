@@ -386,15 +386,11 @@ public class ClusterDescriptor {
 
     config.setUseVGRaft(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "use_vg_raft",
-                String.valueOf(config.isUseVGRaft()))));
+            properties.getProperty("use_vg_raft", String.valueOf(config.isUseVGRaft()))));
 
     config.setUseCRaft(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "use_c_raft",
-                String.valueOf(config.isUseCRaft()))));
+            properties.getProperty("use_c_raft", String.valueOf(config.isUseCRaft()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

@@ -70,7 +70,8 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public AppendEntryResult appendEntry(AppendEntryRequest request, boolean isVerifier) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request, boolean isVerifier)
+      throws TException {
     try {
       return member.appendEntry(request, isVerifier);
     } catch (UnknownLogTypeException e) {

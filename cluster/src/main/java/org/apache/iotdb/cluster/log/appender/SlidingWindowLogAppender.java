@@ -136,8 +136,8 @@ public class SlidingWindowLogAppender implements LogAppender {
       // TODO: Consider memory footprint to execute a precise rejection
       if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
           <= ClusterDescriptor.getInstance()
-          .getConfig()
-          .getUnAppliedRaftLogNumForRejectThreshold()) {
+              .getConfig()
+              .getUnAppliedRaftLogNumForRejectThreshold()) {
         synchronized (logManager) {
           success =
               logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
@@ -155,7 +155,6 @@ public class SlidingWindowLogAppender implements LogAppender {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-
     }
     if (success != -1) {
       moveWindowRightward(flushPos);

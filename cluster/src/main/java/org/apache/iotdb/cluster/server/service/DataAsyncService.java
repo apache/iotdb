@@ -502,7 +502,5 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void ping(AsyncMethodCallback<Void> resultHandler) throws TException {
-
-  }
+  public void ping(AsyncMethodCallback<Void> resultHandler) throws TException {}
 }

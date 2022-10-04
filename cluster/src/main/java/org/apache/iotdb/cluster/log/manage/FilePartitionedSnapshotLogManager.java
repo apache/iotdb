@@ -35,7 +35,6 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -66,10 +65,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(
-      PartitionTable partitionTable,
-      Node header,
-      Node thisNode,
-      DataGroupMember dataGroupMember) {
+      PartitionTable partitionTable, Node header, Node thisNode, DataGroupMember dataGroupMember) {
     super(
         createLogApplier(dataGroupMember),
         partitionTable,
@@ -80,8 +76,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         dataGroupMember.getStateMachine());
   }
 
-  private static LogApplier createLogApplier(
-      DataGroupMember dataGroupMember) {
+  private static LogApplier createLogApplier(DataGroupMember dataGroupMember) {
     LogApplier applier = new DataLogApplier(dataGroupMember);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()
         && ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {

@@ -76,7 +76,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   @Override
   public void appendEntry(
       AppendEntryRequest request,
-      boolean isVerifier, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+      boolean isVerifier,
+      AsyncMethodCallback<AppendEntryResult> resultHandler) {
     try {
       resultHandler.onComplete(member.appendEntry(request, isVerifier));
     } catch (UnknownLogTypeException e) {

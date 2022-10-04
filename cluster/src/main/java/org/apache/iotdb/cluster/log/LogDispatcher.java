@@ -41,8 +41,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -103,8 +103,15 @@ public class LogDispatcher {
 
     for (int i = 0; i < bindingThreadNum; i++) {
       for (Pair<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesList) {
-        executorServices.computeIfAbsent(pair.left, n -> IoTDBThreadPoolFactory.newCachedThreadPool(
-                "LogDispatcher-" + member.getName() + "-" + ClusterUtils.nodeToString(pair.left)))
+        executorServices
+            .computeIfAbsent(
+                pair.left,
+                n ->
+                    IoTDBThreadPoolFactory.newCachedThreadPool(
+                        "LogDispatcher-"
+                            + member.getName()
+                            + "-"
+                            + ClusterUtils.nodeToString(pair.left)))
             .submit(newDispatcherThread(pair.left, pair.right));
       }
     }
@@ -123,7 +130,6 @@ public class LogDispatcher {
     SendLogRequest newRequest = new SendLogRequest(request);
     return newRequest;
   }
-
 
   private boolean addToQueue(BlockingQueue<SendLogRequest> nodeLogQueue, SendLogRequest request) {
     if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
@@ -146,6 +152,7 @@ public class LogDispatcher {
       return nodeLogQueue.add(request);
     }
   }
+
   public void offer(SendLogRequest request) {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
@@ -347,10 +354,13 @@ public class LogDispatcher {
             request.getVotingLog().getLog().getCreateTime());
         long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
         request.getAppendEntryRequest().entry = request.getVotingLog().getLog().serialize();
-        request.getVotingLog().getLog()
+        request
+            .getVotingLog()
+            .getLog()
             .setByteSize(request.getAppendEntryRequest().entry.capacity());
         if (clusterConfig.isUseVGRaft()) {
-          request.getAppendEntryRequest()
+          request
+              .getAppendEntryRequest()
               .setEntryHash(request.getAppendEntryRequest().entry.hashCode());
         }
         Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
@@ -474,9 +484,6 @@ public class LogDispatcher {
               logRequest.newLeaderTerm,
               logRequest.quorumSize);
       // TODO add async interface
-      if (getSyncClient() == null) {
-        setSyncClient(member.getSyncClient(receiver));
-      }
 
       int retries = 5;
       try {
@@ -484,8 +491,12 @@ public class LogDispatcher {
         for (int i = 0; i < retries; i++) {
           int concurrentSender = concurrentSenderNum.incrementAndGet();
           Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
-          AppendEntryResult result = getSyncClient().appendEntry(logRequest.appendEntryRequest,
-              logRequest.isVerifier);
+          Client client = getSyncClient();
+          if (client == null) {
+            continue;
+          }
+          AppendEntryResult result;
+          result = client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier);
           concurrentSenderNum.decrementAndGet();
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);

@@ -19,23 +19,23 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.nio.ByteBuffer;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class VotingLogList {
 
@@ -45,15 +45,35 @@ public class VotingLogList {
   private int quorumSize;
   private RaftMember member;
   private Map<Integer, Long> stronglyAcceptedIndices = new ConcurrentHashMap<>();
+  private ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
   public VotingLogList(int quorumSize, RaftMember member) {
     this.quorumSize = quorumSize;
     this.member = member;
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        service,
+        () -> {
+          long newCommitIndex = computeNewCommitIndex();
+          if (newCommitIndex > member.getLogManager().getCommitLogIndex()) {
+            synchronized (member.getLogManager()) {
+              try {
+                member.getLogManager().commitTo(newCommitIndex);
+              } catch (LogExecutionException e) {
+                logger.error("Fail to commit {}", newCommitIndex, e);
+              }
+            }
+          }
+        },
+        0,
+        1,
+        TimeUnit.MILLISECONDS);
   }
-
 
   private long computeNewCommitIndex() {
     List<Entry<Integer, Long>> nodeIndices = new ArrayList<>(stronglyAcceptedIndices.entrySet());
+    if (nodeIndices.size() < quorumSize) {
+      return -1;
+    }
     nodeIndices.sort(Entry.comparingByValue());
     return nodeIndices.get(quorumSize - 1).getValue();
   }
@@ -71,24 +91,15 @@ public class VotingLogList {
   public void onStronglyAccept(long index, long term, Node acceptingNode, ByteBuffer signature) {
     logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNode);
 
-    stronglyAcceptedIndices.compute(acceptingNode.nodeIdentifier, (nid, idx) -> {
-      if (idx == null) {
-        return index;
-      } else {
-        return Math.max(index, idx);
-      }
-    });
-
-    long newCommitIndex = computeNewCommitIndex();
-    if (newCommitIndex > member.getCommitIndex()) {
-      synchronized (member.getLogManager()) {
-        try {
-          member.getLogManager().commitTo(newCommitIndex);
-        } catch (LogExecutionException e) {
-          logger.error("Fail to commit {}", newCommitIndex, e);
-        }
-      }
-    }
+    stronglyAcceptedIndices.compute(
+        acceptingNode.nodeIdentifier,
+        (nid, idx) -> {
+          if (idx == null) {
+            return index;
+          } else {
+            return Math.max(index, idx);
+          }
+        });
   }
 
   public int totalAcceptedNodeNum(VotingLog log) {
@@ -96,7 +107,7 @@ public class VotingLogList {
     int num = log.getWeaklyAcceptedNodeIds().size();
     for (Entry<Integer, Long> entry : stronglyAcceptedIndices.entrySet()) {
       if (entry.getValue() >= index) {
-        num ++;
+        num++;
       }
     }
     return num;

@@ -100,8 +100,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   @Override
-  public void start() throws StartupException {
-  }
+  public void start() throws StartupException {}
 
   @Override
   public void stop() {
@@ -141,8 +140,8 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   public void waitPartitionTableReady() throws PartitionTableUnavailableException {
     long waitStart = System.currentTimeMillis();
     while (!metaGroupMember.isReady()
-        && (System.currentTimeMillis() - waitStart) < ClusterDescriptor.getInstance().getConfig()
-        .getConnectionTimeoutInMS()) {
+        && (System.currentTimeMillis() - waitStart)
+            < ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS()) {
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
@@ -194,10 +193,10 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   /**
-   * @param header        the header of the group which the local node is in
+   * @param header the header of the group which the local node is in
    * @param resultHandler can be set to null if the request is an internal request
-   * @param request       the toString() of this parameter should explain what the request is and it
-   *                      is only used in logs for tracing
+   * @param request the toString() of this parameter should explain what the request is and it is
+   *     only used in logs for tracing
    * @return
    */
   public <T> DataGroupMember getDataMember(
@@ -351,9 +350,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     }
   }
 
-  /**
-   * Make sure the group will not receive new raft logs.
-   */
+  /** Make sure the group will not receive new raft logs. */
   private void removeMember(
       RaftNode header, DataGroupMember dataGroupMember, boolean removedGroup) {
     dataGroupMember.setReadOnly();
@@ -362,14 +359,14 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     } else {
       if (dataGroupMember.getCharacter() != NodeCharacter.LEADER) {
         new Thread(
-            () -> {
-              try {
-                dataGroupMember.syncLeader(null);
-                dataGroupMember.stop();
-              } catch (CheckConsistencyException e) {
-                logger.warn("Failed to check consistency.", e);
-              }
-            })
+                () -> {
+                  try {
+                    dataGroupMember.syncLeader(null);
+                    dataGroupMember.stop();
+                  } catch (CheckConsistencyException e) {
+                    logger.warn("Failed to check consistency.", e);
+                  }
+                })
             .start();
       }
     }
@@ -488,9 +485,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     this.partitionTable = partitionTable;
   }
 
-  /**
-   * @return The reports of every DataGroupMember in this node.
-   */
+  /** @return The reports of every DataGroupMember in this node. */
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {
@@ -514,8 +509,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
   private static class InstanceHolder {
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
 
     private static final DataGroupEngine Instance = new DataGroupEngine();
   }

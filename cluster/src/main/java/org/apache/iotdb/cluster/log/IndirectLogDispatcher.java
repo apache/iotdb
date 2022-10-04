@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.util.concurrent.ArrayBlockingQueue;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -29,9 +28,9 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.WeightedList;
-
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -87,8 +87,15 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
     for (int i = 0; i < bindingThreadNum; i++) {
       for (Pair<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesList) {
-        executorServices.computeIfAbsent(pair.left, n -> IoTDBThreadPoolFactory.newCachedThreadPool(
-                "LogDispatcher-" + member.getName() + "-" + ClusterUtils.nodeToString(pair.left)))
+        executorServices
+            .computeIfAbsent(
+                pair.left,
+                n ->
+                    IoTDBThreadPoolFactory.newCachedThreadPool(
+                        "LogDispatcher-"
+                            + member.getName()
+                            + "-"
+                            + ClusterUtils.nodeToString(pair.left)))
             .submit(newDispatcherThread(pair.left, pair.right));
       }
     }

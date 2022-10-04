@@ -1,14 +1,18 @@
 package org.apache.iotdb.cluster.expr.vgraft;
 
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
-import java.security.Signature;
-import java.security.SignatureException;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,18 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TrustValueHolder {
 
@@ -38,7 +30,6 @@ public class TrustValueHolder {
   public static final long DEFAULT_TRUST_VALUE = 50;
   private final Map<Node, Long> trustValueMap = new ConcurrentHashMap<>();
   private final RaftMember member;
-
 
   public TrustValueHolder(RaftMember member) {
     this.member = member;
@@ -86,17 +77,19 @@ public class TrustValueHolder {
           TimeUnit.MILLISECONDS)) {
         return verifiers;
       } else {
-        return nodeTrustValueList.subList(0, M).stream().map(Entry::getKey)
+        return nodeTrustValueList.subList(0, M).stream()
+            .map(Entry::getKey)
             .collect(Collectors.toList());
       }
     } catch (InterruptedException e) {
-      return nodeTrustValueList.subList(0, M).stream().map(Entry::getKey)
+      return nodeTrustValueList.subList(0, M).stream()
+          .map(Entry::getKey)
           .collect(Collectors.toList());
     }
   }
 
-  private AsyncMethodCallback<Void> getPingCallback(Entry<Node, Long> entry, int M,
-      List<Node> verifiers, CountDownLatch countDownLatch) {
+  private AsyncMethodCallback<Void> getPingCallback(
+      Entry<Node, Long> entry, int M, List<Node> verifiers, CountDownLatch countDownLatch) {
     return new AsyncMethodCallback<Void>() {
       @Override
       public void onComplete(Void unused) {
@@ -115,28 +108,37 @@ public class TrustValueHolder {
     };
   }
 
-  private void pingVerifiersSync(List<Map.Entry<Node, Long>> nodeTrustValueList, int M,
-      List<Node> verifiers, CountDownLatch countDownLatch) {
+  private void pingVerifiersSync(
+      List<Map.Entry<Node, Long>> nodeTrustValueList,
+      int M,
+      List<Node> verifiers,
+      CountDownLatch countDownLatch) {
 
     for (Map.Entry<Node, Long> entry : nodeTrustValueList) {
       AsyncMethodCallback<Void> callback = getPingCallback(entry, M, verifiers, countDownLatch);
 
-      member.getSerialToParallelPool().submit(() -> {
-        Client syncClient = member.getSyncClient(entry.getKey());
-        try {
-          syncClient.ping();
-          callback.onComplete(null);
-        } catch (TException e) {
-          callback.onError(e);
-        } finally {
-          ClientUtils.putBackSyncClient(syncClient);
-        }
-      });
+      member
+          .getSerialToParallelPool()
+          .submit(
+              () -> {
+                Client syncClient = member.getSyncClient(entry.getKey());
+                try {
+                  syncClient.ping();
+                  callback.onComplete(null);
+                } catch (TException e) {
+                  callback.onError(e);
+                } finally {
+                  ClientUtils.putBackSyncClient(syncClient);
+                }
+              });
     }
   }
 
-  private void pingVerifiersAsync(List<Map.Entry<Node, Long>> nodeTrustValueList, int M,
-      List<Node> verifiers, CountDownLatch countDownLatch) {
+  private void pingVerifiersAsync(
+      List<Map.Entry<Node, Long>> nodeTrustValueList,
+      int M,
+      List<Node> verifiers,
+      CountDownLatch countDownLatch) {
 
     for (Map.Entry<Node, Long> entry : nodeTrustValueList) {
       AsyncMethodCallback<Void> callback = getPingCallback(entry, M, verifiers, countDownLatch);

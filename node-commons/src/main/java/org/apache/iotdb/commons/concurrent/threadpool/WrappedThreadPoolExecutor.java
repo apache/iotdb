@@ -23,6 +23,9 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -32,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     implements WrappedThreadPoolExecutorMBean {
   private final String mbeanName;
+  private static final Logger logger = LoggerFactory.getLogger(WrappedThreadPoolExecutor.class);
 
   public WrappedThreadPoolExecutor(
       int corePoolSize,
@@ -60,7 +64,11 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     this.mbeanName =
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
-    JMXService.registerMBean(this, this.mbeanName);
+    try {
+      JMXService.registerMBean(this, this.mbeanName);
+    } catch (Exception e) {
+      logger.warn("Cannot register pool {}", mbeanName, e);
+    }
   }
 
   @Override

@@ -77,8 +77,8 @@ public class BlockingLogAppender implements LogAppender {
       // TODO: Consider memory footprint to execute a precise rejection
       if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
           <= ClusterDescriptor.getInstance()
-          .getConfig()
-          .getUnAppliedRaftLogNumForRejectThreshold()) {
+              .getConfig()
+              .getUnAppliedRaftLogNumForRejectThreshold()) {
         synchronized (logManager) {
           success =
               logManager.maybeAppend(
@@ -97,7 +97,6 @@ public class BlockingLogAppender implements LogAppender {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-
     }
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (success != -1) {

@@ -96,7 +96,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void appendEntry(
-      AppendEntryRequest request, boolean isVerifier,
+      AppendEntryRequest request,
+      boolean isVerifier,
       AsyncMethodCallback<AppendEntryResult> resultHandler)
       throws TException {
     DataAsyncService service =
@@ -789,9 +790,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void ping() throws TException {
-
-  }
+  public void ping() throws TException {}
 
   @Override
   public void ping(AsyncMethodCallback<Void> resultHandler) throws TException {

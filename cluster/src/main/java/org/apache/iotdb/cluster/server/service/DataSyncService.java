@@ -457,7 +457,5 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public void ping() throws TException {
-
-  }
+  public void ping() throws TException {}
 }
