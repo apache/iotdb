@@ -21,12 +21,16 @@ package org.apache.iotdb.db.sync.sender.pipe;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
@@ -366,7 +370,8 @@ public class TsFilePipe implements Pipe {
 
   private String logFormat(String format, Object... arguments) {
     return String.format(
-        String.format("[%s-%s] ", pipeInfo.getPipeName(), pipeInfo.createTime) + format, arguments);
+        String.format("[%s-%s] ", pipeInfo.getPipeName(), pipeInfo.getCreateTime()) + format,
+        arguments);
   }
 
   @Override

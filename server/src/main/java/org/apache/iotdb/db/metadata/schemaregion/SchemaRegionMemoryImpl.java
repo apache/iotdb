@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -52,7 +54,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -817,6 +818,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+  }
+
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
    * is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -847,15 +854,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     int preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
-        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
         // Given pathPatterns may match one timeseries multi times, which may results in the
         // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
         // purpose is to check whether there's timeseries to be deleted.
         preDeletedNum++;
         measurementMNode.setPreDeleted(true);
         try {
-          writeToMLog(new PreDeleteTimeSeriesPlan(path));
+          writeToMLog(new PreDeleteTimeSeriesPlan(measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -872,11 +878,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
-        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
         measurementMNode.setPreDeleted(false);
         try {
-          writeToMLog(new RollbackPreDeleteTimeSeriesPlan(path));
+          writeToMLog(new RollbackPreDeleteTimeSeriesPlan(measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -885,19 +890,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
-    List<PartialPath> pathList = new ArrayList<>();
+    Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      pathList.addAll(mtree.getPreDeleteTimeseries(pathPattern));
+      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeseries(pathPattern)) {
+        deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
+      }
     }
-    return pathList;
+    return deviceBasedPathPatternSet;
   }
 
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getPreDeleteTimeseries(pathPattern)) {
+      for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(new DeleteTimeSeriesPlan(Collections.singletonList(path)));
@@ -1693,17 +1700,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (deviceMNode.isEntity()) {
       if (plan.isAligned()) {
         if (!deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are not aligned, " + "please use non-aligned interface",
+              devicePath.getFullPath());
         }
       } else {
         if (deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are aligned, " + "please use aligned interface",
+              devicePath.getFullPath());
         }
       }
     }

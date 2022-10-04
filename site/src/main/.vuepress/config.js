@@ -314,8 +314,7 @@ var config = {
 						children: [
 							['8-System Design/1-Hierarchy','Hierarchy'],
 							['8-System Design/2-Files','Files'],
-							['8-System Design/3-Writing Data on HDFS','Writing Data on HDFS'],
-							['8-System Design/4-Shared Nothing Cluster','Shared Nothing Cluster'],
+							['8-System Design/4-Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
 				],
@@ -407,7 +406,6 @@ var config = {
 						title: 'Architecture',
 						children: [
 							['Architecture/Files','Files'],
-							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
@@ -500,7 +498,6 @@ var config = {
 						title: 'Architecture',
 						children: [
 							['Architecture/Files','Files'],
-							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
@@ -617,8 +614,7 @@ var config = {
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Flink TsFile','Flink TsFile']
 						]
 					},
 					{
@@ -789,7 +785,6 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
@@ -937,8 +932,14 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
-							['Process-Data/Alerting','Alerting'],
+						]
+					},
+					{
+						title: 'Alert',
+						sidebarDepth: 1,
+						children: [
+							['Alert/Alerting','Alerting'],
+							['Alert/Triggers','Triggers'],
 						]
 					},
 					{
@@ -974,7 +975,6 @@ var config = {
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
 							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
 							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
-							['Ecosystem-Integration/Writing-Data-on-HDFS','Writing-Data-on-HDFS'],
 							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
@@ -1259,7 +1259,6 @@ var config = {
 						children: [
 							['8-System Design/1-Hierarchy','层次结构'],
 							['8-System Design/2-Files','文件'],
-							['8-System Design/3-Writing Data on HDFS','使用HDFS存储数据'],
 							['8-System Design/4-Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					},
@@ -1352,7 +1351,6 @@ var config = {
 						title: '系统设计',
 						children: [
 							['Architecture/Files','文件'],
-							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
 							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					}
@@ -1445,7 +1443,6 @@ var config = {
 						title: '系统设计',
 						children: [
 							['Architecture/Files','文件'],
-							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
 							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
 						]
 					}
@@ -1556,8 +1553,7 @@ var config = {
 							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB']
 						]
 					},
 					{
@@ -1722,8 +1718,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
-							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
 						]
 					},
 					{
@@ -1870,8 +1865,14 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
-							['Process-Data/Triggers','触发器'],
-							['Process-Data/Alerting','告警机制'],
+						]
+					},
+					{
+						title: '告警',
+						sidebarDepth: 1,
+						children: [
+							['Alert/Alerting','告警机制'],
+							['Alert/Triggers','触发器'],
 						]
 					},
 					{
@@ -1907,8 +1908,7 @@ var config = {
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
 							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
 							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
-							['Ecosystem-Integration/Writing-Data-on-HDFS','HDFS集成'],
-							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB']
 						]
 					},
 					{

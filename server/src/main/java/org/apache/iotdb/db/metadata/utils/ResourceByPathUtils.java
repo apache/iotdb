@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
@@ -35,8 +37,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
@@ -68,7 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.path.AlignedPath.VECTOR_PLACEHOLDER;
+import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
 
 /**
  * Obtain required resources through path, such as readers and writers and etc. AlignedPath and

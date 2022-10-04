@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.sync.sender.recovery;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;

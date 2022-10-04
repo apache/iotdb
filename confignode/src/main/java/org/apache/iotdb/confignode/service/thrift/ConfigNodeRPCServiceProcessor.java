@@ -48,6 +48,8 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
@@ -79,13 +81,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -475,20 +481,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
-    // todo : implementation
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.createTrigger(req);
   }
 
   @Override
   public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
-    // todo : implementation
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.dropTrigger(req);
   }
 
   public TGetTriggerTableResp getTriggerTable() throws TException {
-    // todo: implementation
-    return new TGetTriggerTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+    return configManager.getTriggerTable();
   }
 
   @Override
@@ -595,5 +597,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     return configManager.deleteTimeSeries(req);
+  }
+
+  @Override
+  public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
+    return configManager.createPipeSink(new CreatePipeSinkPlan(req));
+  }
+
+  @Override
+  public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
+    return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
+  }
+
+  @Override
+  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) throws TException {
+    return configManager.getPipeSink(req);
   }
 }

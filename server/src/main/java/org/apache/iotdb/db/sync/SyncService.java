@@ -23,14 +23,18 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
@@ -46,9 +50,6 @@ import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.SenderManager;
 import org.apache.iotdb.db.sync.transport.server.ReceiverManager;
@@ -213,7 +214,7 @@ public class SyncService implements IService {
   public synchronized void stopPipe(String pipeName) throws PipeException {
     logger.info("Execute STOP PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
-    if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
+    if (runningPipe.getStatus() == PipeStatus.RUNNING) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
         runningPipe.stop();
       } else { // for external PIPE
@@ -237,7 +238,7 @@ public class SyncService implements IService {
   public synchronized void startPipe(String pipeName) throws PipeException {
     logger.info("Execute START PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
-    if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
+    if (runningPipe.getStatus() == PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
         runningPipe.start();
       } else { // for external PIPE
@@ -272,7 +273,7 @@ public class SyncService implements IService {
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
-    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
+    if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
     }
     if (!runningPipe.getName().equals(pipeName)) {
@@ -284,7 +285,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void recordMessage(PipeMessage message) {
-    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
+    if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
       logger.info(String.format("No running pipe for message %s.", message));
       return;
     }
@@ -342,7 +343,7 @@ public class SyncService implements IService {
                 identityInfo.getPipeName(),
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
-                Pipe.PipeStatus.RUNNING.name(),
+                PipeStatus.RUNNING.name(),
                 // TODO: implement receiver message
                 PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);
@@ -401,7 +402,7 @@ public class SyncService implements IService {
       record.addField(Binary.valueOf(identityInfo.getPipeName()), TSDataType.TEXT);
       record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
       record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(Pipe.PipeStatus.RUNNING.name()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(PipeStatus.RUNNING.name()), TSDataType.TEXT);
       record.addField(Binary.valueOf(PipeMessage.PipeMessageType.NORMAL.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
@@ -483,7 +484,7 @@ public class SyncService implements IService {
 
   @Override
   public void stop() {
-    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+    if (runningPipe != null && !PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.close();
       } catch (PipeException e) {
@@ -496,7 +497,7 @@ public class SyncService implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
-    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+    if (runningPipe != null && !PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
         runningPipe.close();
@@ -517,7 +518,7 @@ public class SyncService implements IService {
 
   private void recover() throws IOException, PipeException, StartupException {
     PipeInfo runningPipeInfo = syncInfoFetcher.getRunningPipeInfo();
-    if (runningPipeInfo == null || Pipe.PipeStatus.DROP.equals(runningPipeInfo.getStatus())) {
+    if (runningPipeInfo == null || PipeStatus.DROP.equals(runningPipeInfo.getStatus())) {
       return;
     } else {
       this.runningPipe =
@@ -543,7 +544,7 @@ public class SyncService implements IService {
     if (runningPipe.getPipeSink().getType()
         == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
       // == start ExternalPipeProcessor for send data to external pipe plugin
-      startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
+      startExternalPipeManager(runningPipe.getStatus() == PipeStatus.RUNNING);
     }
   }
 

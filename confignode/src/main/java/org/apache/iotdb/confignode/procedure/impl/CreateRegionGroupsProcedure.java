@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
@@ -41,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CreateRegionGroupsProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateRegionGroupsState> {
@@ -139,6 +141,43 @@ public class CreateRegionGroupsProcedure
 
         env.persistAndBroadcastRegionGroup(persistPlan);
         env.getConfigManager().getConsensusManager().write(offerPlan);
+        setNextState(CreateRegionGroupsState.BUILD_REGION_GROUP_CACHE);
+        break;
+      case BUILD_REGION_GROUP_CACHE:
+        // Build RegionGroupCache immediately to make these successfully built RegionGroup available
+        createRegionGroupsPlan
+            .getRegionGroupMap()
+            .forEach(
+                (storageGroup, regionReplicaSets) ->
+                    regionReplicaSets.forEach(
+                        regionReplicaSet -> {
+                          Map<Integer, RegionStatus> statusMap = new ConcurrentHashMap<>();
+                          regionReplicaSet
+                              .getDataNodeLocations()
+                              .forEach(
+                                  dataNodeLocation ->
+                                      statusMap.put(
+                                          dataNodeLocation.getDataNodeId(), RegionStatus.Running));
+
+                          if (!failedRegionReplicaSets.containsKey(
+                              regionReplicaSet.getRegionId())) {
+                            env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
+                          } else {
+                            TRegionReplicaSet failedRegionReplicas =
+                                failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
+                            if (failedRegionReplicas.getDataNodeLocationsSize()
+                                <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                              failedRegionReplicas
+                                  .getDataNodeLocations()
+                                  .forEach(
+                                      dataNodeLocation ->
+                                          statusMap.replace(
+                                              dataNodeLocation.getDataNodeId(),
+                                              RegionStatus.Unknown));
+                              env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
+                            }
+                          }
+                        }));
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:

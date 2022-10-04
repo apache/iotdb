@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -50,7 +52,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -728,6 +729,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
    * is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -765,7 +772,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
@@ -1584,17 +1591,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       if (deviceMNode.isEntity()) {
         if (plan.isAligned()) {
           if (!deviceMNode.getAsEntityMNode().isAligned()) {
-            throw new MetadataException(
-                String.format(
-                    "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                    plan.getDevicePath()));
+            throw new AlignedTimeseriesException(
+                "timeseries under this device are not aligned, "
+                    + "please use non-aligned interface",
+                devicePath.getFullPath());
           }
         } else {
           if (deviceMNode.getAsEntityMNode().isAligned()) {
-            throw new MetadataException(
-                String.format(
-                    "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                    plan.getDevicePath()));
+            throw new AlignedTimeseriesException(
+                "timeseries under this device are aligned, " + "please use aligned interface",
+                devicePath.getFullPath());
           }
         }
       }

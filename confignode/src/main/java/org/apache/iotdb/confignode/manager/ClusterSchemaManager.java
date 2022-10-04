@@ -346,6 +346,23 @@ public class ClusterSchemaManager {
   }
 
   /**
+   * Only leader use this interface
+   *
+   * @param storageGroup StorageGroupName
+   * @param consensusGroupType SchemaRegion for SchemaReplicationFactor and DataRegion for
+   *     DataReplicationFactor
+   * @return SchemaReplicationFactor or DataReplicationFactor
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   */
+  public int getReplicationFactor(String storageGroup, TConsensusGroupType consensusGroupType)
+      throws StorageGroupNotExistsException {
+    TStorageGroupSchema storageGroupSchema = getStorageGroupSchemaByName(storageGroup);
+    return consensusGroupType == TConsensusGroupType.SchemaRegion
+        ? storageGroupSchema.getSchemaReplicationFactor()
+        : storageGroupSchema.getDataReplicationFactor();
+  }
+
+  /**
    * Only leader use this interface.
    *
    * @param rawPathList List<StorageGroupName>

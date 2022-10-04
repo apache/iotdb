@@ -104,9 +104,6 @@ public class FragmentInstanceExecution {
               failedInstances.update(1);
             }
 
-            driver.close();
-            // help for gc
-            driver = null;
             if (newState.isFailed()) {
               sinkHandle.abort();
             } else {
@@ -114,6 +111,11 @@ public class FragmentInstanceExecution {
             }
             // help for gc
             sinkHandle = null;
+            // close the driver after sinkHandle is aborted or closed because in driver.close() it
+            // will try to call ISinkHandle.setNoMoreTsBlocks()
+            driver.close();
+            // help for gc
+            driver = null;
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }

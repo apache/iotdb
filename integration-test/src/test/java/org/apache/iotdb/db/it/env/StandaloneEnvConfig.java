@@ -247,4 +247,28 @@ public class StandaloneEnvConfig implements BaseConfig {
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     return this;
   }
+
+  @Override
+  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setConcurrentCompactionThread(concurrentCompactionThread);
+    return this;
+  }
+
+  @Override
+  public int getConcurrentCompactionThread() {
+    return IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+  }
+
+  @Override
+  public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+    return this;
+  }
+
+  @Override
+  public int getMaxDegreeOfIndexNode() {
+    return TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
+  }
 }

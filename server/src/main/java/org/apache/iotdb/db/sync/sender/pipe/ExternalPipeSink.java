@@ -19,26 +19,35 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// TODO(Ext-pipe): move to nodes-common
 public class ExternalPipeSink implements PipeSink {
   private static final Logger logger = LoggerFactory.getLogger(ExternalPipeSink.class);
 
   private final PipeSinkType pipeSinkType = PipeSinkType.ExternalPipe;
 
-  private final String pipeSinkName;
-  private final String extPipeSinkTypeName;
+  private String pipeSinkName;
+  private String extPipeSinkTypeName;
 
   private Map<String, String> sinkParams;
+
+  public ExternalPipeSink() {}
 
   public ExternalPipeSink(String pipeSinkName, String extPipeSinkTypeName) {
     this.pipeSinkName = pipeSinkName;
@@ -101,6 +110,26 @@ public class ExternalPipeSink implements PipeSink {
         .filter(e -> !e.getKey().contains("access_key"))
         .collect(Collectors.toList())
         .toString();
+  }
+
+  @Override
+  public TPipeSinkInfo getTPipeSinkInfo() {
+    return new TPipeSinkInfo(this.pipeSinkName, this.pipeSinkType.name()).setAttributes(sinkParams);
+  }
+
+  @Override
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) pipeSinkType.ordinal(), outputStream);
+    ReadWriteIOUtils.write(pipeSinkName, outputStream);
+    ReadWriteIOUtils.write(extPipeSinkTypeName, outputStream);
+    ReadWriteIOUtils.write(sinkParams, outputStream);
+  }
+
+  @Override
+  public void deserialize(InputStream inputStream) throws IOException {
+    pipeSinkName = ReadWriteIOUtils.readString(inputStream);
+    extPipeSinkTypeName = ReadWriteIOUtils.readString(inputStream);
+    sinkParams = ReadWriteIOUtils.readMap(inputStream);
   }
 
   public Map<String, String> getSinkParams() {

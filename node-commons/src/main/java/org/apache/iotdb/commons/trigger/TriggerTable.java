@@ -22,20 +22,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
 @NotThreadSafe
 public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
-  // todo: Maintain a PatternTree: PathPattern -> List<String> triggerNames
-  // Given a PathPattern, return the triggerNames of triggers whose PathPatterns match the given
-  // one.
-
   public TriggerTable() {
-    triggerTable = new HashMap<>();
+    triggerTable = new ConcurrentHashMap<>();
   }
 
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
@@ -45,6 +44,19 @@ public class TriggerTable {
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public TriggerInformation removeTriggerInformation(String triggerName) {
+    return triggerTable.remove(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -54,16 +66,8 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
-  }
-
-  public TriggerInformation getTriggerInformation(String triggerName) {
-    return triggerTable.get(triggerName);
-  }
-
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
   // for showTrigger
@@ -73,11 +77,15 @@ public class TriggerTable {
     return allTriggerStates;
   }
   // for getTriggerTable
-  public Map<String, TriggerInformation> getTable() {
-    return triggerTable;
+  public List<TriggerInformation> getAllTriggerInformation() {
+    return new ArrayList<>(triggerTable.values());
   }
 
   public boolean isEmpty() {
     return triggerTable.isEmpty();
+  }
+
+  public Map<String, TriggerInformation> getTable() {
+    return triggerTable;
   }
 }

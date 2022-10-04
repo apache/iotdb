@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;

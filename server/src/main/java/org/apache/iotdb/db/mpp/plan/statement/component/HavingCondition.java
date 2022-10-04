@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 /** This class maintains information of {@code HAVING} clause. */
 public class HavingCondition extends StatementNode {
+
   private Expression predicate;
 
   public HavingCondition() {}
 
   public HavingCondition(Expression predicate) {
-    this.predicate = predicate;
+    // cast functionName to lowercase in havingExpression
+    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
   }
 
   public Expression getPredicate() {
@@ -37,6 +40,6 @@ public class HavingCondition extends StatementNode {
   }
 
   public void setPredicate(Expression predicate) {
-    this.predicate = predicate;
+    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
   }
 }

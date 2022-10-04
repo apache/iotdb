@@ -23,7 +23,7 @@
 
 ## 主要功能
 
-时间分区按照时间分割数据，一个时间分区用于保存某个时间范围内的所有数据。时间分区编号使用自然数表示，0 表示 1970 年 1 月 1 日，每隔 partition_interval 秒后加一。数据通过计算 timestamp / partition_interval 得到自己所在的时间分区编号，主要配置项如下所示：
+时间分区按照时间分割数据，一个时间分区用于保存某个时间范围内的所有数据。时间分区编号使用自然数表示，0 表示 1970 年 1 月 1 日，每隔 partition_interval 毫秒后加一。数据通过计算 timestamp / partition_interval 得到自己所在的时间分区编号，主要配置项如下所示：
 
 * enable\_partition
 
@@ -38,14 +38,14 @@
 
 |名字| time\_partition\_interval\_for\_storage |
 |:---:|:----------------------------------------|
-|描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒   |
+|描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：毫秒  |
 |类型| Int64                                   |
-|默认值| 86400                                   |
+|默认值| 86400000                                |
 |改后生效方式| 仅允许在第一次启动服务前修改                          |
 
 ## 配置示例
 
-开启时间分区功能，并设置 partition_interval 为 86400（一天），则数据的分布情况如下图所示：
+开启时间分区功能，并设置 partition_interval 为 86400000（一天），则数据的分布情况如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Time-Partition/time_partition_example.png?raw=true" alt="time partition example">
 
@@ -55,10 +55,8 @@
 
 ## 使用建议
 
-使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Reference/DataNode-Config-Manual.md)）。
+使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能，共 6 个相关配置参数（详情见 [timed_flush配置项](../Reference/DataNode-Config-Manual.md)）。
 
 * enable_timed_flush_unseq_memtable: 是否开启乱序 Memtable 的定时刷盘，默认打开。
 
 * enable_timed_flush_seq_memtable: 是否开启顺序 Memtable 的定时刷盘，默认关闭。应当在开启时间分区后打开，定时刷盘非活跃时间分区下的 Memtable，为定时关闭 TsFileProcessor 作准备。
-
-* enable_timed_close_tsfile: 是否开启 TsFileProcessor 的定时关闭，默认关闭。应当在开启时间分区后打开，定时关闭非活跃时间分区下的 TsFileProcessor，减少内存占用。

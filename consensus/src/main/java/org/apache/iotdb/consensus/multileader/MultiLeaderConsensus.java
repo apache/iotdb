@@ -309,12 +309,26 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    try {
+      impl.takeSnapshot();
+    } catch (ConsensusGroupAddPeerException e) {
+      return ConsensusGenericResponse.newBuilder()
+          .setSuccess(false)
+          .setException(new ConsensusException(e.getMessage()))
+          .build();
+    }
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override

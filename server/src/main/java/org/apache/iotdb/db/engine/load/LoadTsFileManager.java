@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -58,26 +59,19 @@ public class LoadTsFileManager {
 
   private final File loadDir;
 
-  private Map<String, TsFileWriterManager> uuid2WriterManager;
-  private Map<String, Integer> dataPartition2NextTsFileIndex;
+  private final Map<String, TsFileWriterManager> uuid2WriterManager;
+  private final Map<String, Integer> dataPartition2NextTsFileIndex;
 
   private final ReentrantLock lock;
 
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(config.getLoadTsFileDir());
-    this.uuid2WriterManager = new HashMap<>();
+    this.uuid2WriterManager = new ConcurrentHashMap<>();
     this.dataPartition2NextTsFileIndex = new HashMap<>();
     this.lock = new ReentrantLock();
 
-    clearDir(loadDir);
-  }
-
-  private void clearDir(File dir) {
-    if (dir.delete()) {
-      logger.info(String.format("Delete origin load TsFile dir %s.", dir.getPath()));
-    }
-    if (!dir.mkdirs()) {
-      logger.warn(String.format("load TsFile dir %s can not be created.", dir.getPath()));
+    if (loadDir.delete()) {
+      logger.info(String.format("Delete origin load TsFile dir %s.", loadDir.getPath()));
     }
   }
 
@@ -104,6 +98,7 @@ public class LoadTsFileManager {
     uuid2WriterManager.get(uuid).loadAll();
     uuid2WriterManager.get(uuid).close();
     uuid2WriterManager.remove(uuid);
+    clean();
     return true;
   }
 
@@ -113,6 +108,7 @@ public class LoadTsFileManager {
     }
     uuid2WriterManager.get(uuid).close();
     uuid2WriterManager.remove(uuid);
+    clean();
     return true;
   }
 
@@ -130,6 +126,12 @@ public class LoadTsFileManager {
     }
   }
 
+  private void clean() {
+    if (loadDir.delete()) { // this method will check if there sub-dir in this dir.
+      logger.info(String.format("Delete load dir %s.", loadDir.getPath()));
+    }
+  }
+
   private class TsFileWriterManager {
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
@@ -141,6 +143,15 @@ public class LoadTsFileManager {
       this.dataPartition2LastDevice = new HashMap<>();
 
       clearDir(taskDir);
+    }
+
+    private void clearDir(File dir) {
+      if (dir.delete()) {
+        logger.info(String.format("Delete origin load TsFile dir %s.", dir.getPath()));
+      }
+      if (!dir.mkdirs()) {
+        logger.warn(String.format("load TsFile dir %s can not be created.", dir.getPath()));
+      }
     }
 
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {

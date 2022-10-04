@@ -270,7 +270,7 @@ public class IoTDBConfig {
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -767,11 +767,11 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
-  /** Time partition interval for storage in seconds */
-  private long timePartitionIntervalForStorage = 86400;
+  /** Time partition interval for storage in milliseconds */
+  private long timePartitionIntervalForStorage = 86400000;
 
-  /** Time partition interval for routing in seconds */
-  private long timePartitionIntervalForRouting = 86400;
+  /** Time partition interval for routing in milliseconds */
+  private long timePartitionIntervalForRouting = 86400000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -1019,19 +1019,26 @@ public class IoTDBConfig {
   /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
   private long cacheWindowTimeInMs = 60 * 1000;
 
-  private long ratisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
-  private long ratisConsensusSnapshotTriggerThreshold = 400000L;
+  private long dataRatisConsensusSnapshotTriggerThreshold = 400000L;
+  private long schemaRatisConsensusSnapshotTriggerThreshold = 400000L;
 
-  private boolean ratisConsensusLogUnsafeFlushEnable = false;
+  private boolean dataRatisConsensusLogUnsafeFlushEnable = false;
+  private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
-  private long ratisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
-  private long ratisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+  private long dataRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+  private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
-  private long ratisConsensusLeaderElectionTimeoutMinMs = 2000L;
+  private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
+  private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
 
-  private long RatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+  private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+  private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   IoTDBConfig() {}
 
@@ -3273,13 +3280,13 @@ public class IoTDBConfig {
     this.cacheWindowTimeInMs = cacheWindowTimeInMs;
   }
 
-  public long getRatisConsensusLogAppenderBufferSizeMax() {
-    return ratisConsensusLogAppenderBufferSizeMax;
+  public long getDataRatisConsensusLogAppenderBufferSizeMax() {
+    return dataRatisConsensusLogAppenderBufferSizeMax;
   }
 
-  public void setRatisConsensusLogAppenderBufferSizeMax(
-      long ratisConsensusLogAppenderBufferSizeMax) {
-    this.ratisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
+  public void setDataRatisConsensusLogAppenderBufferSizeMax(
+      long dataRatisConsensusLogAppenderBufferSizeMax) {
+    this.dataRatisConsensusLogAppenderBufferSizeMax = dataRatisConsensusLogAppenderBufferSizeMax;
   }
 
   public String getConfigMessage() {
@@ -3315,54 +3322,124 @@ public class IoTDBConfig {
     return configMessage;
   }
 
-  public long getRatisConsensusSnapshotTriggerThreshold() {
-    return ratisConsensusSnapshotTriggerThreshold;
+  public long getDataRatisConsensusSnapshotTriggerThreshold() {
+    return dataRatisConsensusSnapshotTriggerThreshold;
   }
 
-  public void setRatisConsensusSnapshotTriggerThreshold(
-      long ratisConsensusSnapshotTriggerThreshold) {
-    this.ratisConsensusSnapshotTriggerThreshold = ratisConsensusSnapshotTriggerThreshold;
+  public void setDataRatisConsensusSnapshotTriggerThreshold(
+      long dataRatisConsensusSnapshotTriggerThreshold) {
+    this.dataRatisConsensusSnapshotTriggerThreshold = dataRatisConsensusSnapshotTriggerThreshold;
   }
 
-  public boolean isRatisConsensusLogUnsafeFlushEnable() {
-    return ratisConsensusLogUnsafeFlushEnable;
+  public boolean isDataRatisConsensusLogUnsafeFlushEnable() {
+    return dataRatisConsensusLogUnsafeFlushEnable;
   }
 
-  public void setRatisConsensusLogUnsafeFlushEnable(boolean ratisConsensusLogUnsafeFlushEnable) {
-    this.ratisConsensusLogUnsafeFlushEnable = ratisConsensusLogUnsafeFlushEnable;
+  public void setDataRatisConsensusLogUnsafeFlushEnable(
+      boolean dataRatisConsensusLogUnsafeFlushEnable) {
+    this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
   }
 
-  public long getRatisConsensusLogSegmentSizeMax() {
-    return ratisConsensusLogSegmentSizeMax;
+  public long getDataRatisConsensusLogSegmentSizeMax() {
+    return dataRatisConsensusLogSegmentSizeMax;
   }
 
-  public void setRatisConsensusLogSegmentSizeMax(long ratisConsensusLogSegmentSizeMax) {
-    this.ratisConsensusLogSegmentSizeMax = ratisConsensusLogSegmentSizeMax;
+  public void setDataRatisConsensusLogSegmentSizeMax(long dataRatisConsensusLogSegmentSizeMax) {
+    this.dataRatisConsensusLogSegmentSizeMax = dataRatisConsensusLogSegmentSizeMax;
   }
 
-  public long getRatisConsensusGrpcFlowControlWindow() {
-    return ratisConsensusGrpcFlowControlWindow;
+  public long getDataRatisConsensusGrpcFlowControlWindow() {
+    return dataRatisConsensusGrpcFlowControlWindow;
   }
 
-  public void setRatisConsensusGrpcFlowControlWindow(long ratisConsensusGrpcFlowControlWindow) {
-    this.ratisConsensusGrpcFlowControlWindow = ratisConsensusGrpcFlowControlWindow;
+  public void setDataRatisConsensusGrpcFlowControlWindow(
+      long dataRatisConsensusGrpcFlowControlWindow) {
+    this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
   }
 
-  public long getRatisConsensusLeaderElectionTimeoutMinMs() {
-    return ratisConsensusLeaderElectionTimeoutMinMs;
+  public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
+    return dataRatisConsensusLeaderElectionTimeoutMinMs;
   }
 
-  public void setRatisConsensusLeaderElectionTimeoutMinMs(
-      long ratisConsensusLeaderElectionTimeoutMinMs) {
-    this.ratisConsensusLeaderElectionTimeoutMinMs = ratisConsensusLeaderElectionTimeoutMinMs;
+  public void setDataRatisConsensusLeaderElectionTimeoutMinMs(
+      long dataRatisConsensusLeaderElectionTimeoutMinMs) {
+    this.dataRatisConsensusLeaderElectionTimeoutMinMs =
+        dataRatisConsensusLeaderElectionTimeoutMinMs;
   }
 
-  public long getRatisConsensusLeaderElectionTimeoutMaxMs() {
-    return RatisConsensusLeaderElectionTimeoutMaxMs;
+  public long getDataRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return dataRatisConsensusLeaderElectionTimeoutMaxMs;
   }
 
-  public void setRatisConsensusLeaderElectionTimeoutMaxMs(
-      long ratisConsensusLeaderElectionTimeoutMaxMs) {
-    RatisConsensusLeaderElectionTimeoutMaxMs = ratisConsensusLeaderElectionTimeoutMaxMs;
+  public void setDataRatisConsensusLeaderElectionTimeoutMaxMs(
+      long dataRatisConsensusLeaderElectionTimeoutMaxMs) {
+    this.dataRatisConsensusLeaderElectionTimeoutMaxMs =
+        dataRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getSchemaRatisConsensusLogAppenderBufferSizeMax() {
+    return schemaRatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public void setSchemaRatisConsensusLogAppenderBufferSizeMax(
+      long schemaRatisConsensusLogAppenderBufferSizeMax) {
+    this.schemaRatisConsensusLogAppenderBufferSizeMax =
+        schemaRatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public long getSchemaRatisConsensusSnapshotTriggerThreshold() {
+    return schemaRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public void setSchemaRatisConsensusSnapshotTriggerThreshold(
+      long schemaRatisConsensusSnapshotTriggerThreshold) {
+    this.schemaRatisConsensusSnapshotTriggerThreshold =
+        schemaRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public boolean isSchemaRatisConsensusLogUnsafeFlushEnable() {
+    return schemaRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public void setSchemaRatisConsensusLogUnsafeFlushEnable(
+      boolean schemaRatisConsensusLogUnsafeFlushEnable) {
+    this.schemaRatisConsensusLogUnsafeFlushEnable = schemaRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public long getSchemaRatisConsensusLogSegmentSizeMax() {
+    return schemaRatisConsensusLogSegmentSizeMax;
+  }
+
+  public void setSchemaRatisConsensusLogSegmentSizeMax(long schemaRatisConsensusLogSegmentSizeMax) {
+    this.schemaRatisConsensusLogSegmentSizeMax = schemaRatisConsensusLogSegmentSizeMax;
+  }
+
+  public long getSchemaRatisConsensusGrpcFlowControlWindow() {
+    return schemaRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public void setSchemaRatisConsensusGrpcFlowControlWindow(
+      long schemaRatisConsensusGrpcFlowControlWindow) {
+    this.schemaRatisConsensusGrpcFlowControlWindow = schemaRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getSchemaRatisConsensusLeaderElectionTimeoutMinMs() {
+    return schemaRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public void setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
+      long schemaRatisConsensusLeaderElectionTimeoutMinMs) {
+    this.schemaRatisConsensusLeaderElectionTimeoutMinMs =
+        schemaRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public long getSchemaRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
+      long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
+    this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
+        schemaRatisConsensusLeaderElectionTimeoutMaxMs;
   }
 }

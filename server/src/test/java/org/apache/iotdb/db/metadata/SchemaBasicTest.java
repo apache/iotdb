@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -2060,7 +2060,7 @@ public abstract class SchemaBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
+          "timeseries under this device are aligned, please use aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }
@@ -2167,7 +2167,7 @@ public abstract class SchemaBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
+          "timeseries under this device are not aligned, please use non-aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }

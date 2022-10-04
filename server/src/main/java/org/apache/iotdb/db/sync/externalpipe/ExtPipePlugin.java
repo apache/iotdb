@@ -21,9 +21,9 @@ package org.apache.iotdb.db.sync.externalpipe;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.sync.datasource.PipeOpManager;
 import org.apache.iotdb.db.sync.datasource.PipeStorageGroupInfo;
 import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;

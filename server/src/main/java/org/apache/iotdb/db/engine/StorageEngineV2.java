@@ -147,24 +147,7 @@ public class StorageEngineV2 implements IService {
 
   private static void initTimePartition() {
     timePartitionIntervalForStorage =
-        convertMilliWithPrecision(
-            IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage() * 1000L);
-  }
-
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
   public static long getTimePartitionIntervalForStorage() {

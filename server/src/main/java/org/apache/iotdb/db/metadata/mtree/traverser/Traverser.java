@@ -478,6 +478,10 @@ public abstract class Traverser {
     this.isPrefixMatch = isPrefixMatch;
   }
 
+  public void setShouldTraverseTemplate(boolean shouldTraverseTemplate) {
+    this.shouldTraverseTemplate = shouldTraverseTemplate;
+  }
+
   /**
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
