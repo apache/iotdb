@@ -2364,6 +2364,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             new File(parseFilePath(ctx.fileName.getText())),
             IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled(),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true,
             true);
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
@@ -2384,6 +2385,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    } else if (ctx.ONSUCCESS() != null) {
+      operator.setDeleteAfterLoad(ctx.DELETE() != null);
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());
