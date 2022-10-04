@@ -89,7 +89,7 @@ public class Utils {
   }
 
   // priority is used as ordinal of leader election
-  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(
+  public static RaftPeer fromNodeIdAndTEndPointAndPriorityToRaftPeer(
       int nodeId, TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
         .setId(fromNodeIdToRaftPeerId(nodeId))
@@ -98,13 +98,13 @@ public class Utils {
         .build();
   }
 
-  public static RaftPeer fromNodeIdAndTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
-    return fromTEndPointAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
+  public static RaftPeer fromPeerAndPriorityToRaftPeer(Peer peer, int priority) {
+    return fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
   }
 
   public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
     return peers.stream()
-        .map(peer -> Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer, priority))
+        .map(peer -> Utils.fromPeerAndPriorityToRaftPeer(peer, priority))
         .collect(Collectors.toList());
   }
 

@@ -120,7 +120,7 @@ class RatisConsensus implements IConsensus {
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
     myself =
-        Utils.fromTEndPointAndPriorityToRaftPeer(
+        Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNode(), DEFAULT_PRIORITY);
 
     System.setProperty(
@@ -384,7 +384,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
-    RaftPeer peerToAdd = Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
+    RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -420,7 +420,7 @@ class RatisConsensus implements IConsensus {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
     RaftPeer peerToRemove =
-        Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
+        Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -491,7 +491,7 @@ class RatisConsensus implements IConsensus {
     }
 
     RaftPeer newRaftLeader =
-        Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
+        Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
 
     ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
     for (RaftPeer raftPeer : raftGroup.getPeers()) {
@@ -501,7 +501,7 @@ class RatisConsensus implements IConsensus {
         // degrade every other peer to default priority
         String[] items = raftPeer.getAddress().split(":");
         newConfiguration.add(
-            Utils.fromTEndPointAndPriorityToRaftPeer(
+            Utils.fromNodeIdAndTEndPointAndPriorityToRaftPeer(
                 Utils.formRaftPeerIdToNodeId(raftPeer.getId()),
                 new TEndPoint(items[0], Integer.parseInt(items[1])),
                 DEFAULT_PRIORITY));
