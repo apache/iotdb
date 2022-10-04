@@ -250,6 +250,11 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = getUpperTemplate(node);
+    if (upperTemplate == null) {
+      // template == null means the template used by this node is not related to this query in new
+      // cluster.
+      return;
+    }
     isInTemplate = true;
     traverseContext.push(node);
     for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
@@ -339,7 +344,11 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = getUpperTemplate(node);
-
+    if (upperTemplate == null) {
+      // template == null means the template used by this node is not related to this query in new
+      // cluster.
+      return;
+    }
     isInTemplate = true;
     traverseContext.push(node);
     for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
@@ -423,6 +432,8 @@ public abstract class Traverser {
 
     Template upperTemplate = getUpperTemplate(node);
     if (upperTemplate == null) {
+      // template == null means the template used by this node is not related to this query in new
+      // cluster.
       return;
     }
     isInTemplate = true;
@@ -457,32 +468,22 @@ public abstract class Traverser {
           return ancestor.getSchemaTemplate();
         }
       }
-      throw new IllegalStateException(
-          "There should not be no template mounted on any ancestor of a node usingTemplate.");
     } else {
       // new cluster
-      Template template;
       if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-        template = templateMap.get(node.getSchemaTemplateId());
-        if (template != null) {
-          return template;
-        }
-        // template == null means the template used by this node is not related to this query.
+        return templateMap.get(node.getSchemaTemplateId());
       }
       while (iterator.hasNext()) {
         ancestor = iterator.next();
         if (ancestor.getSchemaTemplateId() != NON_TEMPLATE) {
-          template = templateMap.get(ancestor.getSchemaTemplateId());
-          if (template != null) {
-            return template;
-          }
-          // template == null means the template used by this node is not related to this query.
+          return templateMap.get(ancestor.getSchemaTemplateId());
         }
       }
     }
-    // if the node is usingTemplate, the upperTemplate won't be null except the template is not
-    // related to this query in new cluster
-    return null;
+    // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
+    // NON_TEMPLATE.
+    throw new IllegalStateException(
+        "There should not be no template mounted on any ancestor of a node usingTemplate.");
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
