@@ -199,11 +199,12 @@ public class ReadPointCompactionPerformer
     if (subTaskNums > 0) {
       // assign the measurements for each subtask
       List<String>[] measurementListArray = new List[subTaskNums];
-      for (int i = 0; i < allMeasurements.size(); ++i) {
-        if (measurementListArray[i % subTaskNums] == null) {
-          measurementListArray[i % subTaskNums] = new LinkedList<>();
+      for (int i = 0, size = allMeasurements.size(); i < size; ++i) {
+        int index = i % subTaskNums;
+        if (measurementListArray[index] == null) {
+          measurementListArray[index] = new LinkedList<>();
         }
-        measurementListArray[i % subTaskNums].add(allMeasurements.get(i));
+        measurementListArray[index].add(allMeasurements.get(i));
       }
 
       compactionWriter.startChunkGroup(device, false);

@@ -619,8 +619,6 @@ public class TsFileIOWriter implements AutoCloseable {
               currentChunkMetadataSize / chunkMetadataCount);
         }
         sortAndFlushChunkMetadata();
-        chunkMetadataCount = 0;
-        currentChunkMetadataSize = 0;
       } catch (IOException e) {
         logger.error("Meets exception when flushing metadata to temp file for {}", file, e);
         throw e;
@@ -660,6 +658,8 @@ public class TsFileIOWriter implements AutoCloseable {
     if (chunkMetadataList != null) {
       chunkMetadataList.clear();
     }
+    chunkMetadataCount = 0;
+    currentChunkMetadataSize = 0;
   }
 
   private void writeChunkMetadataToTempFile(
