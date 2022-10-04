@@ -422,6 +422,9 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = getUpperTemplate(node);
+    if (upperTemplate == null) {
+      return;
+    }
     isInTemplate = true;
     IMNode targetNode = upperTemplate.getDirectNode(targetName);
     if (targetNode != null) {
@@ -454,19 +457,31 @@ public abstract class Traverser {
           return ancestor.getSchemaTemplate();
         }
       }
+      throw new IllegalStateException(
+          "There should not be no template mounted on any ancestor of a node usingTemplate.");
     } else {
       // new cluster
+      Template template;
       if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-        return templateMap.get(node.getSchemaTemplateId());
+        template = templateMap.get(node.getSchemaTemplateId());
+        if (template != null) {
+          return template;
+        }
+        // template == null means the template used by this node is not related to this query.
       }
       while (iterator.hasNext()) {
         ancestor = iterator.next();
         if (ancestor.getSchemaTemplateId() != NON_TEMPLATE) {
-          return templateMap.get(ancestor.getSchemaTemplateId());
+          template = templateMap.get(ancestor.getSchemaTemplateId());
+          if (template != null) {
+            return template;
+          }
+          // template == null means the template used by this node is not related to this query.
         }
       }
     }
-    // if the node is usingTemplate, the upperTemplate won't be null
+    // if the node is usingTemplate, the upperTemplate won't be null except the template is not
+    // related to this query in new cluster
     return null;
   }
 
