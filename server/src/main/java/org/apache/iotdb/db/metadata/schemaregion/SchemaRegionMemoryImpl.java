@@ -31,10 +31,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
@@ -691,10 +691,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     try {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+    } catch (MeasurementAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+            "Ignore MeasurementAlreadyExistException when concurrent inserting"
                 + " a non-exist time series {}",
             path);
       }
@@ -708,9 +708,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       List<TSEncoding> encodings,
       List<CompressionType> compressors)
       throws MetadataException {
-    createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
+    try {
+      createAlignedTimeSeries(
+          new CreateAlignedTimeSeriesPlan(
+              prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
+    } catch (MeasurementAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore MeasurementAlreadyExistException when concurrent inserting"
+                + " a non-exist time series {}",
+            e.getMeasurementPath());
+      }
+    }
   }
 
   /**
