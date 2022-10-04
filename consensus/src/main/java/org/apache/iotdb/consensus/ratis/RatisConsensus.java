@@ -419,8 +419,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
-    RaftPeer peerToRemove =
-        Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
+    RaftPeer peerToRemove = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -490,8 +489,7 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    RaftPeer newRaftLeader =
-        Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
+    RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
 
     ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
     for (RaftPeer raftPeer : raftGroup.getPeers()) {

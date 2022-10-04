@@ -99,7 +99,8 @@ public class Utils {
   }
 
   public static RaftPeer fromPeerAndPriorityToRaftPeer(Peer peer, int priority) {
-    return fromNodeIdAndTEndPointAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
+    return fromNodeIdAndTEndPointAndPriorityToRaftPeer(
+        peer.getNodeId(), peer.getEndpoint(), priority);
   }
 
   public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
