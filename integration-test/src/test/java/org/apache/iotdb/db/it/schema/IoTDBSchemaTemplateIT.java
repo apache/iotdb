@@ -418,4 +418,50 @@ public class IoTDBSchemaTemplateIT {
     //      Assert.assertFalse(resultSet.next());
     //    }
   }
+
+  @Test
+  public void testSchemaQueryAndFetchWithUnrelatedTemplate() throws SQLException {
+    statement.execute("CREATE SCHEMA TEMPLATE t3 (s3 INT64, s4 DOUBLE)");
+
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d2");
+
+    // set using schema template
+    statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d2(time,s3) VALUES (1,1)");
+
+    Set<String> expectedResult = new HashSet<>(Collections.singletonList("1,1,"));
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+      while (resultSet.next()) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 1; i <= 2; i++) {
+          stringBuilder.append(resultSet.getString(i)).append(",");
+        }
+        String actualResult = stringBuilder.toString();
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,SNAPPY"));
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
+      while (resultSet.next()) {
+        String actualResult =
+            resultSet.getString("timeseries")
+                + ","
+                + resultSet.getString("dataType")
+                + ","
+                + resultSet.getString("encoding")
+                + ","
+                + resultSet.getString("compression");
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+  }
 }
