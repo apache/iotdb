@@ -617,6 +617,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createPipe(TPipeInfo req) throws TException {
-    return null;
+    return configManager.createPipe(req);
   }
 }

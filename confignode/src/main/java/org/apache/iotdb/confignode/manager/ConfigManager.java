@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -610,6 +611,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public SyncManager getSyncManager() {
+    return null;
+  }
+
+  @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1007,6 +1013,16 @@ public class ConfigManager implements IManager {
       return syncManager.getPipeSink(req.getPipeSinkName());
     } else {
       return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TSStatus createPipe(TPipeInfo pipeInfo) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.createPipe(pipeInfo);
+    } else {
+      return status;
     }
   }
 

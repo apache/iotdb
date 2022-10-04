@@ -19,11 +19,15 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
@@ -88,8 +92,17 @@ public class SyncManager {
   // endregion
 
   // ======================================================
-  // region Implement of PipeS
+  // region Implement of Pipe
   // ======================================================
+
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+    clusterSyncInfo.checkAddPipe(pipeInfo);
+  }
+
+  public TSStatus preCreatePipe(PipeInfo pipeInfo) {
+    pipeInfo.setStatus(PipeStatus.CREATING);
+    return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
+  }
 
   // TODO....
 

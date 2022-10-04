@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -130,6 +131,13 @@ public interface IManager {
    * @return TriggerManager instance
    */
   TriggerManager getTriggerManager();
+
+  /**
+   * Get SyncManager
+   *
+   * @return SyncManager instance
+   */
+  SyncManager getSyncManager();
 
   /**
    * Get ProcedureManager
@@ -406,4 +414,12 @@ public interface IManager {
    * @return TGetPipeSinkResp contains the PipeSink
    */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
+
+  /**
+   * Create Pipe
+   *
+   * @param pipeInfo Info about Pipe
+   * @return TSStatus
+   */
+  TSStatus createPipe(TPipeInfo pipeInfo);
 }

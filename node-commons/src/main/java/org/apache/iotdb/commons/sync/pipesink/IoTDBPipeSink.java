@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,6 +142,13 @@ public class IoTDBPipeSink implements PipeSink {
     name = ReadWriteIOUtils.readString(inputStream);
     ip = ReadWriteIOUtils.readString(inputStream);
     port = ReadWriteIOUtils.readInt(inputStream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    name = ReadWriteIOUtils.readString(buffer);
+    ip = ReadWriteIOUtils.readString(buffer);
+    port = ReadWriteIOUtils.readInt(buffer);
   }
 
   @Override

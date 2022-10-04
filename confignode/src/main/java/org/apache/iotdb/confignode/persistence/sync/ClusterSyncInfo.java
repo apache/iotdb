@@ -19,12 +19,15 @@
 package org.apache.iotdb.confignode.persistence.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -39,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
+// TODO(sync): there may need acquire and release lock to control concurrency
 public class ClusterSyncInfo implements SnapshotProcessor {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfo.class);
@@ -65,7 +69,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
     TSStatus status = new TSStatus();
     try {
-      syncMetadata.addPipeSink(SyncPipeUtil.parsePipeInfoAsPipe(plan.getPipeSinkInfo()));
+      syncMetadata.addPipeSink(SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(plan.getPipeSinkInfo()));
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (PipeSinkException e) {
       status.setCode(TSStatusCode.PIPESINK_ERROR.getStatusCode());
@@ -99,6 +103,27 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     }
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return resp;
+  }
+
+  // endregion
+
+  // ======================================================
+  // region Implement of Pipe
+  // ======================================================
+
+  /**
+   * Check Pipe before create operation
+   *
+   * @param pipeInfo pipe info
+   * @throws PipeException if there is Pipe with the same name exists or PipeSink does not exist
+   */
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+    syncMetadata.checkAddPipe(pipeInfo);
+  }
+
+  public TSStatus preCreatePipe(PreCreatePipePlan physicalPlan) {
+    syncMetadata.addPipe(physicalPlan.getPipeInfo());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   // endregion

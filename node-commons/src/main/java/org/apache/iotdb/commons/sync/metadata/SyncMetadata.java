@@ -145,14 +145,22 @@ public class SyncMetadata implements SnapshotProcessor {
   // region Implement of Pipe
   // ======================================================
 
-  public void addPipe(PipeInfo pipeInfo, PipeSink pipeSink) throws PipeException {
-    // common check
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+    // check PipeSink exists
+    if (!isPipeSinkExist(pipeInfo.getPipeSinkName())) {
+      throw new PipeException(
+          String.format("Can not find pipeSink %s.", pipeInfo.getPipeSinkName()));
+    }
+    // check Pipe does not exist
     if (runningPipe != null && runningPipe.getStatus() != PipeStatus.DROP) {
       throw new PipeException(
           String.format(
               "Pipe %s is %s, please retry after drop it.",
               runningPipe.getPipeName(), runningPipe.getStatus().name()));
     }
+  }
+
+  public void addPipe(PipeInfo pipeInfo) {
     runningPipe = pipeInfo;
     pipes
         .computeIfAbsent(runningPipe.getPipeName(), i -> new ConcurrentHashMap<>())

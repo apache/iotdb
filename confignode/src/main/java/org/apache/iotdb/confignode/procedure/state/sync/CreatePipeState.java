@@ -16,16 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.confignode.procedure.state.sync;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  DROP,
-  // internal status
-  CREATING,
-  STARTING,
-  STOPPING,
-  DROPPING
+public enum CreatePipeState {
+  CREATE_CHECK,
+  PRE_CREATE_PIPE_CONFIGNODE,
+  CREATE_PIPE_DATANODE,
+  CREATE_PIPE_CONFIGNODE
 }

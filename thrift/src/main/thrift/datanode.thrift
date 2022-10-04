@@ -280,6 +280,10 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+struct TCreatePipeReq{
+  1: required binary pipeInfo
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -519,6 +523,8 @@ service IDataNodeRPCService {
   * Delete matched timeseries and remove according schema black list in target schemRegion
   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  common.TSStatus createPipe(TCreatePipeReq req)
 }
 
 service MPPDataExchangeService {

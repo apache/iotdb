@@ -159,6 +159,7 @@ import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -2506,7 +2507,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
-      SyncService.getInstance().addPipe(plan);
+      SyncService.getInstance()
+          .addPipe(SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, System.currentTimeMillis()));
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }

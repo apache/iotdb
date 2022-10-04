@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +78,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_TRIGGER_PROCEDURE:
         procedure = new DropTriggerProcedure();
         break;
+      case CREATE_PIPE_PROCEDURE:
+        procedure = new CreatePipeProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -104,6 +108,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {
       return ProcedureType.DROP_TRIGGER_PROCEDURE;
+    } else if (procedure instanceof CreatePipeProcedure) {
+      return ProcedureType.CREATE_PIPE_PROCEDURE;
     }
     return null;
   }
@@ -117,7 +123,8 @@ public class ProcedureFactory implements IProcedureFactory {
     CREATE_REGION_GROUPS,
     DELETE_TIMESERIES_PROCEDURE,
     CREATE_TRIGGER_PROCEDURE,
-    DROP_TRIGGER_PROCEDURE
+    DROP_TRIGGER_PROCEDURE,
+    CREATE_PIPE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

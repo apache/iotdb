@@ -30,18 +30,20 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
@@ -75,19 +77,25 @@ import java.util.List;
 
 public class SyncService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SyncService.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private Pipe runningPipe;
 
   /* handle external Pipe */
   private ExtPipePluginManager extPipePluginManager;
 
-  private ISyncInfoFetcher syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
+  private ISyncInfoFetcher syncInfoFetcher;
 
   /* handle rpc in receiver-side*/
   private final ReceiverManager receiverManager;
 
   private SyncService() {
     receiverManager = new ReceiverManager();
+    if (config.isClusterMode()) {
+      syncInfoFetcher = ClusterSyncInfoFetcher.getInstance();
+    } else {
+      syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
+    }
   }
 
   private static class SyncServiceHolder {
@@ -159,51 +167,31 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Pipe
 
-  // TODO(sync): delete this in new-standalone version
-  public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
-    // check plan
+  public synchronized void addPipe(PipeInfo pipeInfo) throws PipeException {
+    logger.info("Execute CREATE PIPE {}", pipeInfo.getPipeName());
     long currentTime = DatetimeUtils.currentTime();
-    if (plan.getDataStartTimestamp() > currentTime) {
-      throw new PipeException(
-          String.format(
-              "Start time %s is later than current time %s, this is not supported yet.",
-              DatetimeUtils.convertLongToDate(plan.getDataStartTimestamp()),
-              DatetimeUtils.convertLongToDate(currentTime)));
+    if (pipeInfo instanceof TsFilePipeInfo) {
+      // TODO(sync): move check logic to PipeInfo#validate()
+      // check statement
+      if (((TsFilePipeInfo) pipeInfo).getDataStartTimestamp() > currentTime) {
+        throw new PipeException(
+            String.format(
+                "Start time %s is later than current time %s, this is not supported yet.",
+                DatetimeUtils.convertLongToDate(
+                    ((TsFilePipeInfo) pipeInfo).getDataStartTimestamp()),
+                DatetimeUtils.convertLongToDate(currentTime)));
+      }
     }
-    // add pipe
-    TSStatus status = syncInfoFetcher.addPipe(plan, currentTime);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(status.message);
-    }
-
-    PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
-    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
-    if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.ExternalPipe) {
-      // for external pipe
-      // == start ExternalPipeProcessor for send data to external pipe plugin
-      startExternalPipeManager(false);
-    }
-  }
-
-  public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
-    logger.info("Execute CREATE PIPE {}", statement.getPipeName());
-    // check statement
-    long currentTime = DatetimeUtils.currentTime();
-    if (statement.getStartTime() > currentTime) {
-      throw new PipeException(
-          String.format(
-              "Start time %s is later than current time %s, this is not supported yet.",
-              DatetimeUtils.convertLongToDate(statement.getStartTime()),
-              DatetimeUtils.convertLongToDate(currentTime)));
-    }
-    // add pipe
-    TSStatus status = syncInfoFetcher.addPipe(statement, currentTime);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(status.message);
+    if (!config.isClusterMode()) {
+      // add pipe
+      TSStatus status = syncInfoFetcher.addPipe(pipeInfo);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(status.message);
+      }
     }
 
-    PipeSink runningPipeSink = getPipeSink(statement.getPipeSinkName());
-    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(statement, runningPipeSink, currentTime);
+    PipeSink runningPipeSink = getPipeSink(pipeInfo.getPipeSinkName());
+    runningPipe = SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(pipeInfo, runningPipeSink);
     if (runningPipe.getPipeSink().getType()
         == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
       // == start ExternalPipeProcessor for send data to external pipe plugin
@@ -522,7 +510,7 @@ public class SyncService implements IService {
       return;
     } else {
       this.runningPipe =
-          SyncPipeUtil.parsePipeInfoAsPipe(
+          SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(
               runningPipeInfo, syncInfoFetcher.getPipeSink(runningPipeInfo.getPipeSinkName()));
       switch (runningPipeInfo.getStatus()) {
         case RUNNING:

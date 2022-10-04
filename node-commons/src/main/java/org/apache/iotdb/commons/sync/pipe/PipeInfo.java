@@ -18,13 +18,20 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public abstract class PipeInfo {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInfo.class);
 
   protected String pipeName;
   protected String pipeSinkName;
@@ -122,6 +129,25 @@ public abstract class PipeInfo {
     messageType = PipeMessage.PipeMessageType.values()[ReadWriteIOUtils.readByte(inputStream)];
   }
 
+  protected void deserialize(ByteBuffer byteBuffer) {
+    pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    pipeSinkName = ReadWriteIOUtils.readString(byteBuffer);
+    status = PipeStatus.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    createTime = ReadWriteIOUtils.readLong(byteBuffer);
+    messageType = PipeMessage.PipeMessageType.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+  }
+
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
+      serialize(dataOutputStream);
+      return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    } catch (IOException e) {
+      LOGGER.error("Unexpected error occurred when serializing PipeInfo.");
+      throw new SerializationRunTimeException(e);
+    }
+  }
+
   public static PipeInfo deserializePipeInfo(InputStream inputStream) throws IOException {
     PipeType pipeType = PipeType.values()[ReadWriteIOUtils.readByte(inputStream)];
     PipeInfo pipeInfo;
@@ -129,6 +155,22 @@ public abstract class PipeInfo {
       case TsFilePipe:
         pipeInfo = new TsFilePipeInfo();
         pipeInfo.deserialize(inputStream);
+        break;
+      case WALPipe:
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Can not recognize PipeType %s.", pipeType.name()));
+    }
+    return pipeInfo;
+  }
+
+  public static PipeInfo deserializePipeInfo(ByteBuffer byteBuffer) {
+    PipeType pipeType = PipeType.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    PipeInfo pipeInfo;
+    switch (pipeType) {
+      case TsFilePipe:
+        pipeInfo = new TsFilePipeInfo();
+        pipeInfo.deserialize(byteBuffer);
         break;
       case WALPipe:
       default:

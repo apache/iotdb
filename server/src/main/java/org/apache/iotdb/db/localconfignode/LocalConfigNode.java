@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1348,7 +1349,9 @@ public class LocalConfigNode {
 
   public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
     try {
-      syncService.addPipe(createPipeStatement);
+      syncService.addPipe(
+          SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
+              createPipeStatement, System.currentTimeMillis()));
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }

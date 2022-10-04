@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class TsFilePipeInfo extends PipeInfo {
@@ -88,6 +89,13 @@ public class TsFilePipeInfo extends PipeInfo {
     super.deserialize(inputStream);
     syncDelOp = ReadWriteIOUtils.readBool(inputStream);
     dataStartTimestamp = ReadWriteIOUtils.readLong(inputStream);
+  }
+
+  @Override
+  protected void deserialize(ByteBuffer buffer) {
+    super.deserialize(buffer);
+    syncDelOp = ReadWriteIOUtils.readBool(buffer);
+    dataStartTimestamp = ReadWriteIOUtils.readLong(buffer);
   }
 
   @Override
