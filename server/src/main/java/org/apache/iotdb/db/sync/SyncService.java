@@ -34,7 +34,7 @@ import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
@@ -317,14 +317,14 @@ public class SyncService implements IService {
     }
   }
 
-  public List<TPipeInfo> showPipe(String pipeName) {
+  public List<TShowPipeInfo> showPipe(String pipeName) {
     boolean showAll = StringUtils.isEmpty(pipeName);
-    List<TPipeInfo> list = new ArrayList<>();
+    List<TShowPipeInfo> list = new ArrayList<>();
     // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || pipeName.equals(pipe.getPipeName())) {
-        TPipeInfo tPipeInfo =
-            new TPipeInfo(
+        TShowPipeInfo tPipeInfo =
+            new TShowPipeInfo(
                 pipe.getCreateTime(),
                 pipe.getPipeName(),
                 SyncConstant.ROLE_SENDER,
@@ -337,8 +337,8 @@ public class SyncService implements IService {
     // show pipe in receiver
     for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
       if (showAll || pipeName.equals(identityInfo.getPipeName())) {
-        TPipeInfo tPipeInfo =
-            new TPipeInfo(
+        TShowPipeInfo tPipeInfo =
+            new TShowPipeInfo(
                 identityInfo.getCreateTime(),
                 identityInfo.getPipeName(),
                 SyncConstant.ROLE_RECEIVER,

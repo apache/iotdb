@@ -55,7 +55,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1383,7 +1383,7 @@ public class LocalConfigNode {
   }
 
   public TShowPipeResp showPipe(String pipeName) {
-    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    List<TShowPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
     return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }
