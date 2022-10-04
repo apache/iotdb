@@ -2384,11 +2384,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else {
-      throw new SQLParserException(
-          String.format(
-              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
-              ctx.getText()));
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());
