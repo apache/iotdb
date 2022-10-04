@@ -237,7 +237,7 @@ public class DeviceTimeIndex implements ITimeIndex {
         }
       }
 
-      p = StorageEngine.getTimePartition(endTimes[index]);
+      p = StorageEngineV2.getTimePartition(endTimes[index]);
       if (partitionId != p) {
         return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }

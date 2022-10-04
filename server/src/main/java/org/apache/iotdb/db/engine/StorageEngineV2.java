@@ -746,7 +746,7 @@ public class StorageEngineV2 implements IService {
       switch (loadCommand) {
         case EXECUTE:
           if (loadTsFileManager.loadAll(uuid)) {
-            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(String.format("No uuid %s recorded.", uuid));
@@ -754,7 +754,7 @@ public class StorageEngineV2 implements IService {
           break;
         case ROLLBACK:
           if (loadTsFileManager.deleteAll(uuid)) {
-            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(String.format("No uuid %s recorded.", uuid));
@@ -765,14 +765,16 @@ public class StorageEngineV2 implements IService {
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
     } catch (IOException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (LoadFileException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
 
-    return RpcUtils.SUCCESS_STATUS;
+    return status;
   }
 
   static class InstanceHolder {

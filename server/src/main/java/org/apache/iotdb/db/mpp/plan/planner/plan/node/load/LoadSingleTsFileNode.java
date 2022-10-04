@@ -71,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
@@ -205,8 +206,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     List<TsFileData> tsFileDataList = new ArrayList<>();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      TreeMap<Long, Deletion> offset2Deletion = new TreeMap<>();
-      getAllModification(offset2Deletion);
+      TreeMap<Long, List<Deletion>> offset2Deletions = new TreeMap<>();
+      getAllModification(offset2Deletions);
 
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
@@ -227,7 +228,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             long chunkOffset = reader.position();
-            handleModification(offset2Deletion, tsFileDataList, chunkOffset);
+            handleModification(offset2Deletions, tsFileDataList, chunkOffset);
 
             ChunkHeader header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
@@ -397,7 +398,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         }
       }
 
-      handleModification(offset2Deletion, tsFileDataList, Long.MAX_VALUE);
+      handleModification(offset2Deletions, tsFileDataList, Long.MAX_VALUE);
     }
 
     for (TsFileData tsFileData : tsFileDataList) {
@@ -415,11 +416,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     }
   }
 
-  private void getAllModification(Map<Long, Deletion> offset2Deletion) throws IOException {
+  private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
     try (ModificationFile modificationFile =
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
       for (Modification modification : modificationFile.getModifications()) {
-        offset2Deletion.put(modification.getFileOffset(), (Deletion) modification);
+        offset2Deletions
+            .computeIfAbsent(modification.getFileOffset(), o -> new ArrayList<>())
+            .add((Deletion) modification);
       }
     }
   }
@@ -458,9 +461,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   private void handleModification(
-      TreeMap<Long, Deletion> offset2Deletion, List<TsFileData> tsFileDataList, long chunkOffset) {
-    while (!offset2Deletion.isEmpty() && offset2Deletion.firstEntry().getKey() <= chunkOffset) {
-      tsFileDataList.add(new DeletionData(offset2Deletion.pollFirstEntry().getValue()));
+      TreeMap<Long, List<Deletion>> offset2Deletions,
+      List<TsFileData> tsFileDataList,
+      long chunkOffset) {
+    while (!offset2Deletions.isEmpty() && offset2Deletions.firstEntry().getKey() <= chunkOffset) {
+      tsFileDataList.addAll(
+          offset2Deletions.pollFirstEntry().getValue().stream()
+              .map(DeletionData::new)
+              .collect(Collectors.toList()));
     }
   }
 

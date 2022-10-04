@@ -78,6 +78,10 @@ public interface BaseConfig {
     return this;
   }
 
+  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
+    return this;
+  }
+
   default long getPartitionInterval() {
     return 604800;
   }
@@ -247,7 +251,7 @@ public interface BaseConfig {
     return 1;
   }
 
-  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
     return this;
   }
 

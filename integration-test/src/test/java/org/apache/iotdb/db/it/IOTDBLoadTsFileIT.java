@@ -54,7 +54,7 @@ import java.util.Map;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
-  private static final long PARTITION_INTERVAL = 10L;
+  private static final long PARTITION_INTERVAL = 10 * 1000L;
 
   private boolean originEnablePartition;
   private long originPartitionInterval;
@@ -69,8 +69,8 @@ public class IOTDBLoadTsFileIT {
     originPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     originConfigNodePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setEnablePartition(true);
-    ConfigFactory.getConfig().setPartitionInterval(PARTITION_INTERVAL);
-    ConfigFactory.getConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    ConfigFactory.getConfig().setTimePartitionIntervalForStorage(PARTITION_INTERVAL);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(PARTITION_INTERVAL);
     EnvFactory.getEnv().initBeforeTest();
   }
 
@@ -80,8 +80,8 @@ public class IOTDBLoadTsFileIT {
 
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setEnablePartition(originEnablePartition);
-    ConfigFactory.getConfig().setPartitionInterval(originPartitionInterval);
-    ConfigFactory.getConfig().setTimePartitionInterval(originConfigNodePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForStorage(originPartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originConfigNodePartitionInterval);
 
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");

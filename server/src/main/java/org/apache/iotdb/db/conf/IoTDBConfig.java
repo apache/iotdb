@@ -401,13 +401,13 @@ public class IoTDBConfig {
   private long maxChunkRawSizeThreshold = 1024 * 1024 * 20L;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private boolean enableCrossSpaceCompaction = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -759,7 +759,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
@@ -768,10 +768,10 @@ public class IoTDBConfig {
   private long partitionInterval = 86400;
 
   /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 86400000;
+  private long timePartitionIntervalForStorage = 10000;
 
   /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 86400000;
+  private long timePartitionIntervalForRouting = 10000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
