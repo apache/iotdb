@@ -170,11 +170,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
-            logger.error(sendPlanNodeResp.getStatus().message);
+            logger.error(sendPlanNodeResp.message);
             if (sendPlanNodeResp.getStatus() == null) {
               throw new FragmentInstanceDispatchException(
                   RpcUtils.getStatus(
-                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendPlanNodeResp.getMessage()));
+                      TSStatusCode.WRITE_PROCESS_ERROR, sendPlanNodeResp.getMessage()));
             } else {
               throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
             }
