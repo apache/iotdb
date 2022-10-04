@@ -60,7 +60,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -165,48 +165,51 @@ public class CompactionUtils {
       QueryContext queryContext,
       QueryDataSource queryDataSource)
       throws IOException, InterruptedException {
-    Map<String, MeasurementSchema> measurementSchemaMap =
-        deviceIterator.getAllSchemasOfCurrentDevice();
-    int subTaskNums = Math.min(measurementSchemaMap.size(), subTaskNum);
-
-    // assign all measurements to different sub tasks
-    Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
-    int idx = 0;
-    for (String measurement : measurementSchemaMap.keySet()) {
-      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
-      }
-      measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
-    }
-
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
+    allMeasurements.sort((String::compareTo));
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
     // construct sub tasks and start compacting measurements in parallel
-    List<Future<Void>> futures = new ArrayList<>();
-    compactionWriter.startChunkGroup(device, false);
-    for (int i = 0; i < subTaskNums; i++) {
-      futures.add(
-          CompactionTaskManager.getInstance()
-              .submitSubTask(
-                  new SubCompactionTask(
-                      device,
-                      measurementsForEachSubTask[i],
-                      queryContext,
-                      queryDataSource,
-                      compactionWriter,
-                      measurementSchemaMap,
-                      i)));
-    }
+    if (subTaskNums > 0) {
+      // assign the measurements for each subtask
+      List<String>[] measurementListArray = new List[subTaskNums];
+      for (int i = 0, size = allMeasurements.size(); i < size; ++i) {
+        int index = i % subTaskNums;
+        if (measurementListArray[index] == null) {
+          measurementListArray[index] = new LinkedList<>();
+        }
+        measurementListArray[index].add(allMeasurements.get(i));
+      }
 
-    // wait for all sub tasks finish
-    for (int i = 0; i < subTaskNums; i++) {
-      try {
-        futures.get(i).get();
-      } catch (InterruptedException | ExecutionException e) {
-        logger.error("SubCompactionTask meet errors ", e);
-        Thread.interrupted();
-        throw new InterruptedException();
+      // construct sub tasks and start compacting measurements in parallel
+      List<Future<Void>> futures = new ArrayList<>();
+      compactionWriter.startChunkGroup(device, false);
+      for (int i = 0; i < subTaskNums; i++) {
+        futures.add(
+            CompactionTaskManager.getInstance()
+                .submitSubTask(
+                    new SubCompactionTask(
+                        device,
+                        measurementListArray[i],
+                        queryContext,
+                        queryDataSource,
+                        compactionWriter,
+                        schemaMap,
+                        i)));
+      }
+
+      // wait for all sub tasks finish
+      for (int i = 0; i < subTaskNums; i++) {
+        try {
+          futures.get(i).get();
+        } catch (InterruptedException | ExecutionException e) {
+          logger.error("SubCompactionTask meet errors ", e);
+          Thread.interrupted();
+          throw new InterruptedException();
+        }
       }
     }
-
+    compactionWriter.checkAndMayFlushChunkMetadata();
     compactionWriter.endChunkGroup();
   }
 

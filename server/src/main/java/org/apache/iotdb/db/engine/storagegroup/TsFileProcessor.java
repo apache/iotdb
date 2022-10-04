@@ -172,7 +172,14 @@ public class TsFileProcessor {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.storageGroupInfo = storageGroupInfo;
-    this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.writer =
+        new RestorableTsFileIOWriter(
+            tsfile,
+            (long)
+                (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
+                    * IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getChunkMetadataSizeProportionInWrite()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());

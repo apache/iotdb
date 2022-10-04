@@ -341,6 +341,11 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    conf.setChunkMetadataSizeProportionInCompaction(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_size_proportion_in_compaction",
+                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
     conf.setEstimatedSeriesSize(
         Integer.parseInt(
             properties.getProperty(
@@ -928,6 +933,11 @@ public class IoTDBDescriptor {
         .setKerberosPrincipal(
             properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
+    conf.setChunkMetadataSizeProportionInWrite(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_size_proportion_in_write",
+                Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
 
     // timed flush memtable, timed close tsfile
     loadTimedService(properties);
