@@ -1017,44 +1017,42 @@ public class ConfigManager implements IManager {
   public TGetRoutingResp getRouting(TGetRoutingReq req) {
     TSStatus status = confirmLeader();
     TGetRoutingResp resp = new TGetRoutingResp();
+    resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setDataRegionIdList(
           partitionManager.getRouting(
               req.getStorageGroup(), req.getSeriesSlotId(), req.getTimeSlotId()));
-      return resp;
-    } else {
-      return resp.setStatus(status);
     }
+    return resp;
   }
 
   @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
     TSStatus status = confirmLeader();
     TGetTimeSlotListResp resp = new TGetTimeSlotListResp();
+    resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
       long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+      resp.setStatus(status);
       resp.setTimeSlotList(
           partitionManager.getTimeSlotList(
               req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime));
-      return resp;
-    } else {
-      return resp.setStatus(status);
     }
+    return resp;
   }
 
   @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     TSStatus status = confirmLeader();
     TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
+    resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       TConsensusGroupType type =
           req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
       resp.setSeriesSlotList(partitionManager.getSeriesSlotList(req.getStorageGroup(), type));
-      return resp;
-    } else {
-      return resp.setStatus(status);
     }
+    return resp;
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

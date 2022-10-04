@@ -191,8 +191,8 @@ struct TGetRoutingResp {
 struct TGetTimeSlotListReq {
     1: required string storageGroup
     2: required common.TSeriesPartitionSlot seriesSlotId
-    3: required i64 startTime
-    4: required i64 endTime
+    3: optional i64 startTime
+    4: optional i64 endTime
 }
 
 struct TGetTimeSlotListResp {

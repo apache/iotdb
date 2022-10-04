@@ -126,7 +126,7 @@ public class SeriesPartitionTable {
 
   List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {
     return seriesPartitionMap.keySet().stream()
-        .filter(e -> e.getStartTime() >= startTime && e.getStartTime() <= endTime)
+        .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
         .collect(Collectors.toList());
   }
 
