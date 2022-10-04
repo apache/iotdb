@@ -142,7 +142,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
@@ -159,6 +158,7 @@ public class IoTDB implements IoTDBMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
+    registerManager.register(CompactionTaskManager.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {

@@ -878,7 +878,7 @@ public class ConfigNodeClient
 
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
+    for (int i = 0; i < 5; i++) {
       try {
         TSStatus status = client.createTrigger(req);
         if (!updateConfigNodeLeader(status)) {

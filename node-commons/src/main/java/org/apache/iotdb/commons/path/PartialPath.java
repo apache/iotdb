@@ -33,8 +33,8 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -676,22 +676,21 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    PublicBAOS publicBAOS = new PublicBAOS();
+    serialize((OutputStream) publicBAOS);
+    return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+  }
+
+  @Override
+  public void serialize(OutputStream stream) throws IOException {
+    PathType.Partial.serialize(stream);
+    serializeWithoutType(stream);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Partial.serialize(byteBuffer);
     serializeWithoutType(byteBuffer);
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    PathType.Partial.serialize(stream);
-    serializeWithoutType(stream);
   }
 
   @Override
@@ -710,7 +709,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+  protected void serializeWithoutType(OutputStream stream) throws IOException {
     super.serializeWithoutType(stream);
     ReadWriteIOUtils.write(nodes.length, stream);
     for (String node : nodes) {
