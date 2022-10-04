@@ -63,7 +63,6 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
       statement.execute("DELETE STORAGE GROUP root.ln.wf01.wt01");
-      ;
       String[] expected =
           new String[] {"root.ln.wf01.wt02", "root.ln.wf01.wt03", "root.ln.wf01.wt04"};
       List<String> expectedList = new ArrayList<>();

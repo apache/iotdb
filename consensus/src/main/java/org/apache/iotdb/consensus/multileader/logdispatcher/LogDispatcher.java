@@ -33,7 +33,6 @@ import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
-import org.apache.iotdb.consensus.ratis.Utils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -69,7 +68,7 @@ public class LogDispatcher {
       MultiLeaderServerImpl impl,
       IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager) {
     this.impl = impl;
-    this.selfPeerId = impl.getThisNode().getEndpoint().toString();
+    this.selfPeerId = Integer.toString(impl.getThisNode().getNodeId());
     this.clientManager = clientManager;
     this.threads =
         impl.getConfiguration().stream()
@@ -195,7 +194,7 @@ public class LogDispatcher {
       this.controller =
           new IndexController(
               impl.getStorageDir(),
-              Utils.fromTEndPointToString(peer.getEndpoint()),
+              Integer.toString(peer.getNodeId()),
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);

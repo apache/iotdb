@@ -84,6 +84,7 @@ public class ConsensusManager {
         ConsensusFactory.getConsensusImpl(
                 CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(CONF.getConfigNodeId())
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                     .setRatisConfig(
                         RatisConfig.newBuilder()

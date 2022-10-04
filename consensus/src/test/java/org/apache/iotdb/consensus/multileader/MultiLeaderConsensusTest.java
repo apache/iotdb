@@ -90,6 +90,7 @@ public class MultiLeaderConsensusTest {
               ConsensusFactory.getConsensusImpl(
                       ConsensusFactory.MultiLeaderConsensus,
                       ConsensusConfig.newBuilder()
+                          .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
                           .setStorageDir(peersStorage.get(i).getAbsolutePath())
                           .build(),
