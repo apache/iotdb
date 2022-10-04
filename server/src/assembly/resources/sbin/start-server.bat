@@ -102,7 +102,11 @@ rem echo CLASSPATH: %CLASSPATH%
 
 @REM ----------------------------------------------------------------------------
 @REM SET PARA
-set foreground=0
+
+@REM Before v0.14, iotdb-server runs in foreground by default
+@REM set foreground=0
+set foreground=yes
+
 :checkPara
 set COMMANSLINE=%*
 @REM setlocal ENABLEDELAYEDEXPANSION
@@ -113,6 +117,7 @@ for /f "tokens=1* delims==" %%1 in ("%%a") do (
 @REM echo 1=%%1 "|||" 2=%%2  
 if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%IOTDB_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
 if "%%1"=="-f" ( set foreground=yes)
+if "%%1"=="-b" ( set foreground=0)
 )
 set COMMANSLINE=%%b
 goto STR_VISTOR

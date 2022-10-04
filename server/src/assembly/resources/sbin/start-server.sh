@@ -55,8 +55,11 @@ if [ -z "${configurationFile}" ]; then
   IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
 fi
 
+# before, iotdb server runs on foreground by default
+foreground="yes"
+
 # Parse any command line options.
-args=`getopt gvRfhp:c:bD::H:E: "$@"`
+args=`getopt gvRfbhp:c:bD::H:E: "$@"`
 eval set -- "$args"
 
 while true; do
@@ -71,6 +74,10 @@ while true; do
         ;;
         -f)
             foreground="yes"
+            shift
+        ;;
+        -b)
+            foreground=""
             shift
         ;;
         -g)
@@ -90,7 +97,7 @@ while true; do
             shift 2
         ;;
         -h)
-            echo "Usage: $0 [-v] [-f] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
+            echo "Usage: $0 [-v] [-f] [-b] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
             exit 0
         ;;
         -v)
@@ -173,7 +180,7 @@ launch_service()
   fi
 
   # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
-  if [ "x$foreground" != "x" ]; then
+  if [ "x$foreground" == "x" ]; then
       iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
       if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
           exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
