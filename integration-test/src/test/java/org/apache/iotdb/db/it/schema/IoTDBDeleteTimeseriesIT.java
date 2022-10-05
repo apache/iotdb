@@ -426,4 +426,34 @@ public class IoTDBDeleteTimeseriesIT {
       Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
     }
   }
+
+  @Test
+  public void dropTimeseriesTest() throws Exception {
+    String[] retArray = new String[] {"1,1,", "2,1.1,"};
+    int cnt = 0;
+
+    statement.execute(
+        "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute(
+        "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        Assert.assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+    }
+    statement.execute("DROP timeseries root.turbine1.d1.s1");
+    statement.execute("FLUSH");
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine1.d1")) {
+      Assert.assertFalse(resultSet.next());
+    }
+  }
 }
