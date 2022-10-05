@@ -165,8 +165,14 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
-      constructResultForMemorySource();
-      stateMachine.transitionToRunning();
+      if (analysis.getStatement().isQuery()) {
+        constructResultForMemorySource();
+        stateMachine.transitionToRunning();
+      } else {
+        stateMachine.transitionToFailed(
+            new RuntimeException(
+                "Failed to auto create storage group because enable_auto_create_schema is FALSE."));
+      }
       return;
     }
     long remainTime = context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
@@ -473,11 +479,20 @@ public class QueryExecution implements IQueryExecution {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
-    TSStatusCode statusCode =
-        // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
-        state == QueryState.FINISHED || state == QueryState.RUNNING
-            ? TSStatusCode.SUCCESS_STATUS
-            : TSStatusCode.QUERY_PROCESS_ERROR;
+    TSStatusCode statusCode;
+    if (analysis.getStatement().isQuery()) {
+      // For READ, the state could be FINISHED and RUNNING
+      statusCode =
+          state == QueryState.FINISHED || state == QueryState.RUNNING
+              ? TSStatusCode.SUCCESS_STATUS
+              : TSStatusCode.QUERY_PROCESS_ERROR;
+    } else {
+      // For WRITE, the state should be FINISHED
+      statusCode =
+          state == QueryState.FINISHED
+              ? TSStatusCode.SUCCESS_STATUS
+              : TSStatusCode.WRITE_PROCESS_ERROR;
+    }
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
@@ -488,7 +503,8 @@ public class QueryExecution implements IQueryExecution {
     }
 
     // collect redirect info to client for writing
-    if (analysis.getStatement() instanceof InsertBaseStatement) {
+    if (analysis.getStatement() instanceof InsertBaseStatement
+        && !analysis.isFinishQueryAfterAnalyze()) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
       List<TEndPoint> redirectNodeList;
       if (config.isClusterMode()) {
