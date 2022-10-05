@@ -235,7 +235,7 @@ public class TsFileIOWriterMemoryControlTest {
               writer.chunkMetadataTempFile, new ArrayList<>(), writer.endPosInCMTForDevice);
       for (int i = 0; i < originChunkMetadataList.size(); ++i) {
         Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
-        Assert.assertEquals(seriesIds.get(i), timeseriesMetadataPair.left);
+        Assert.assertEquals(seriesIds.get(i), timeseriesMetadataPair.left.getFullPath());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getDataType(),
             timeseriesMetadataPair.right.getTSDataType());
