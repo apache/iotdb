@@ -99,11 +99,21 @@ public class Utils {
         .collect(Collectors.toList());
   }
 
+  // TODO: RaftPeerProto的Id是否是nodeId
+  public static int formRaftPeerProtoToNodeId(RaftPeerProto proto) {
+    return Integer.parseInt(proto.getId().toStringUtf8());
+  }
+
   public static List<Peer> fromRaftProtoListAndRaftGroupIdToPeers(
       List<RaftPeerProto> raftProtoList, RaftGroupId id) {
     ConsensusGroupId consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
     return raftProtoList.stream()
-        .map(peer -> new Peer(consensusGroupId, Utils.formRaftPeerProtoToTEndPoint(peer)))
+        .map(
+            peer ->
+                new Peer(
+                    consensusGroupId,
+                    Utils.formRaftPeerProtoToNodeId(peer),
+                    Utils.formRaftPeerProtoToTEndPoint(peer)))
         .collect(Collectors.toList());
   }
 

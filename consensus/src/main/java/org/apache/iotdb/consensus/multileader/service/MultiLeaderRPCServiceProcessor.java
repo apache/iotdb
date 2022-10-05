@@ -193,7 +193,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     }
     TSStatus responseStatus;
     try {
-      impl.buildSyncLogChannel(new Peer(groupId, req.endPoint));
+      impl.buildSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupAddPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -220,7 +220,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     }
     TSStatus responseStatus;
     try {
-      impl.removeSyncLogChannel(new Peer(groupId, req.endPoint));
+      impl.removeSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupAddPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

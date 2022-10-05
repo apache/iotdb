@@ -60,6 +60,7 @@ public class DataRegionConsensusImpl {
           ConsensusFactory.getConsensusImpl(
                   conf.getDataRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(conf.getDataNodeId())
                       .setThisNode(
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getDataRegionConsensusPort()))

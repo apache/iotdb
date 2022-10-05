@@ -36,6 +36,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
@@ -79,6 +80,18 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TEndPoint failed: ", e);
     }
     return endPoint;
+  }
+
+  public static void serializeInt(int nodeId, DataOutputStream stream) {
+    try {
+      stream.writeInt(nodeId);
+    } catch (IOException e) {
+      throw new ThriftSerDeException("Write Int failed: ", e);
+    }
+  }
+
+  public static int deserializeInt(ByteBuffer buffer) {
+    return buffer.getInt();
   }
 
   public static void serializeTDataNodeLocation(

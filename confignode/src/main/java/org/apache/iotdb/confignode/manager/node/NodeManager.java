@@ -447,7 +447,9 @@ public class NodeManager {
     ConsensusGenericResponse resp =
         getConsensusManager()
             .getConsensusImpl()
-            .transferLeader(groupId, new Peer(groupId, newLeader.getConsensusEndPoint()));
+            .transferLeader(
+                groupId,
+                new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");

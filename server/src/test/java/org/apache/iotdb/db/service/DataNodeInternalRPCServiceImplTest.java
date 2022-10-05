@@ -341,6 +341,7 @@ public class DataNodeInternalRPCServiceImplTest {
       peerList.add(
           new Peer(
               new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
+              node.getDataNodeId(),
               node.getSchemaRegionConsensusEndPoint()));
     }
     return peerList;

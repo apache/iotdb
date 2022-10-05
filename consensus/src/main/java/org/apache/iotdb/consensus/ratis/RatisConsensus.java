@@ -604,7 +604,7 @@ class RatisConsensus implements IConsensus {
       return null;
     }
     TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
-    return new Peer(groupId, leaderEndpoint);
+    return new Peer(groupId, -1, leaderEndpoint);
   }
 
   @Override

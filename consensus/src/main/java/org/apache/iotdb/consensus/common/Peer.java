@@ -32,9 +32,11 @@ public class Peer {
 
   private final ConsensusGroupId groupId;
   private final TEndPoint endpoint;
+  private final int nodeId;
 
-  public Peer(ConsensusGroupId groupId, TEndPoint endpoint) {
+  public Peer(ConsensusGroupId groupId, int nodeId, TEndPoint endpoint) {
     this.groupId = groupId;
+    this.nodeId = nodeId;
     this.endpoint = endpoint;
   }
 
@@ -46,9 +48,14 @@ public class Peer {
     return endpoint;
   }
 
+  public int getNodeId() {
+    return nodeId;
+  }
+
   public void serialize(DataOutputStream stream) {
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
         groupId.convertToTConsensusGroupId(), stream);
+    ThriftCommonsSerDeUtils.serializeInt(nodeId, stream);
     ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
   }
 
@@ -56,6 +63,7 @@ public class Peer {
     return new Peer(
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
             ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer)),
+        ThriftCommonsSerDeUtils.deserializeInt(buffer),
         ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer));
   }
 

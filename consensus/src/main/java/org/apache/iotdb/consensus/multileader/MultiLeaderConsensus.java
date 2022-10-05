@@ -70,6 +70,7 @@ public class MultiLeaderConsensus implements IConsensus {
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderConsensus.class);
 
   private final TEndPoint thisNode;
+  private final int thisNodeId;
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, MultiLeaderServerImpl> stateMachineMap =
@@ -82,6 +83,7 @@ public class MultiLeaderConsensus implements IConsensus {
 
   public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNode();
+    this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.config = config.getMultiLeaderConfig();
     this.registry = registry;
@@ -122,7 +124,7 @@ public class MultiLeaderConsensus implements IConsensus {
           MultiLeaderServerImpl consensus =
               new MultiLeaderServerImpl(
                   path.toString(),
-                  new Peer(consensusGroupId, thisNode),
+                  new Peer(consensusGroupId, thisNodeId, thisNode),
                   new ArrayList<>(),
                   registry.apply(consensusGroupId),
                   clientManager,
@@ -184,7 +186,7 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new IllegalPeerNumException(consensusGroupSize))
           .build();
     }
-    if (!peers.contains(new Peer(groupId, thisNode))) {
+    if (!peers.contains(new Peer(groupId, thisNodeId, thisNode))) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
@@ -202,7 +204,7 @@ public class MultiLeaderConsensus implements IConsensus {
           MultiLeaderServerImpl impl =
               new MultiLeaderServerImpl(
                   path,
-                  new Peer(groupId, thisNode),
+                  new Peer(groupId, thisNodeId, thisNode),
                   peers,
                   registry.apply(groupId),
                   clientManager,
@@ -341,7 +343,7 @@ public class MultiLeaderConsensus implements IConsensus {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;
     }
-    return new Peer(groupId, thisNode);
+    return new Peer(groupId, thisNodeId, thisNode);
   }
 
   @Override
