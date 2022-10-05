@@ -84,6 +84,7 @@ public class ConsensusManager {
         ConsensusFactory.getConsensusImpl(
                 CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(CONF.getConfigNodeId())
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                     .setRatisConfig(
                         RatisConfig.newBuilder()
@@ -244,7 +245,7 @@ public class ConsensusManager {
             getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
             registeredConfigNodes.stream()
-                .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
+                .filter(leader -> leader.getConfigNodeId() == leaderPeer.getNodeId())
                 .findFirst()
                 .orElse(null);
         if (leaderLocation != null) {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -132,9 +131,9 @@ public interface IStateMachine {
      * can possibly be this server.
      *
      * @param groupId The id of this consensus group.
-     * @param newLeader The id of the new leader.
+     * @param newLeader The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeader) {}
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a

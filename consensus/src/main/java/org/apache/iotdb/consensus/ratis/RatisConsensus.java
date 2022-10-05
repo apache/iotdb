@@ -119,7 +119,9 @@ class RatisConsensus implements IConsensus {
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
-    myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
+    myself =
+        Utils.fromTEndPointAndPriorityToRaftPeer(
+            config.getThisNodeId(), config.getThisNode(), DEFAULT_PRIORITY);
 
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
@@ -267,7 +269,7 @@ class RatisConsensus implements IConsensus {
     }
 
     if (suggestedLeader != null) {
-      TEndPoint leaderEndPoint = Utils.formRaftPeerIdToTEndPoint(suggestedLeader.getId());
+      TEndPoint leaderEndPoint = Utils.formRaftPeerAddressToTEndPoint(suggestedLeader.getAddress());
       writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
 
@@ -497,7 +499,9 @@ class RatisConsensus implements IConsensus {
         // degrade every other peer to default priority
         newConfiguration.add(
             Utils.fromTEndPointAndPriorityToRaftPeer(
-                Utils.formRaftPeerIdToTEndPoint(raftPeer.getId()), DEFAULT_PRIORITY));
+                Utils.formRaftPeerIdToNodeId(raftPeer.getId()),
+                Utils.formRaftPeerAddressToTEndPoint(raftPeer.getAddress()),
+                DEFAULT_PRIORITY));
       }
     }
 
@@ -603,8 +607,8 @@ class RatisConsensus implements IConsensus {
     if (leaderId == null) {
       return null;
     }
-    TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
-    return new Peer(groupId, -1, leaderEndpoint);
+    int nodeId = Utils.formRaftPeerIdToNodeId(leaderId);
+    return new Peer(groupId, nodeId, null);
   }
 
   @Override

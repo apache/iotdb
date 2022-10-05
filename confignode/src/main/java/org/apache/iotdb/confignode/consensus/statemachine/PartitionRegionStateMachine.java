@@ -47,10 +47,12 @@ public class PartitionRegionStateMachine
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private final TEndPoint currentNode;
+  private final int currentNodeId;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
+    this.currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     this.currentNode =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
@@ -145,8 +147,8 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
-    if (currentNode.equals(newLeader)) {
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeader) {
+    if (currentNodeId == newLeader) {
       LOGGER.info("Current node {} becomes Leader", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
@@ -154,7 +156,9 @@ public class PartitionRegionStateMachine
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
+          "Current node {} is not longer the leader, the new leader is {}",
+          currentNodeId,
+          newLeader);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
