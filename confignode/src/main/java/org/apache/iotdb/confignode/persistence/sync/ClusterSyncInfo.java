@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.OperatePipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
@@ -132,10 +132,10 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TSStatus operatePipe(OperatePipePlan physicalPlan) {
+  public TSStatus operatePipe(SetPipeStatusPlan physicalPlan) {
     TSStatus status = new TSStatus();
     try {
-      syncMetadata.operatePipe(physicalPlan.getPipeName(), physicalPlan.getOperation());
+      syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (PipeException e) {
       LOGGER.error("failed to execute OperatePipePlan {} on ClusterSyncInfo", physicalPlan, e);

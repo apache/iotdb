@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -27,19 +27,18 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** Pipe operation includes CREATE, PRE_START, START, PRE_STOP, STOP, PRE_DROP and DROP. */
-public class OperatePipePlan extends ConfigPhysicalPlan {
+public class SetPipeStatusPlan extends ConfigPhysicalPlan {
   private String pipeName;
-  private SyncOperation operation;
+  private PipeStatus pipeStatus;
 
-  public OperatePipePlan() {
-    super(ConfigPhysicalPlanType.OperatePipe);
+  public SetPipeStatusPlan() {
+    super(ConfigPhysicalPlanType.SetPipeStatus);
   }
 
-  public OperatePipePlan(String pipeName, SyncOperation operation) {
+  public SetPipeStatusPlan(String pipeName, PipeStatus pipeStatus) {
     this();
     this.pipeName = pipeName;
-    this.operation = operation;
+    this.pipeStatus = pipeStatus;
   }
 
   public String getPipeName() {
@@ -50,24 +49,24 @@ public class OperatePipePlan extends ConfigPhysicalPlan {
     this.pipeName = pipeName;
   }
 
-  public SyncOperation getOperation() {
-    return operation;
+  public PipeStatus getPipeStatus() {
+    return pipeStatus;
   }
 
-  public void setOperation(SyncOperation operation) {
-    this.operation = operation;
+  public void setPipeStatus(PipeStatus pipeStatus) {
+    this.pipeStatus = pipeStatus;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.OperatePipe.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.SetPipeStatus.ordinal());
     ReadWriteIOUtils.write(pipeName, stream);
-    ReadWriteIOUtils.write((byte) operation.ordinal(), stream);
+    ReadWriteIOUtils.write((byte) pipeStatus.ordinal(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = ReadWriteIOUtils.readString(buffer);
-    operation = SyncOperation.values()[ReadWriteIOUtils.readByte(buffer)];
+    pipeStatus = PipeStatus.values()[ReadWriteIOUtils.readByte(buffer)];
   }
 }

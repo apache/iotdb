@@ -24,9 +24,7 @@ public enum SyncOperation {
   DROP_PIPESINK,
   // PIPE
   CREATE_PIPE,
-  PRE_START_PIPE,
   START_PIPE,
-  PRE_STOP_PIPE,
   STOP_PIPE,
   DROP_PIPE
 }

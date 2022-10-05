@@ -167,30 +167,9 @@ public class SyncMetadata implements SnapshotProcessor {
         .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
   }
 
-  public void operatePipe(String pipeName, SyncOperation syncOperation) throws PipeException {
+  public void setPipeStatus(String pipeName, PipeStatus status) throws PipeException {
     checkIfPipeExistAndRunning(pipeName);
-    switch (syncOperation) {
-      case CREATE_PIPE:
-        runningPipe.setStatus(PipeStatus.STOP);
-        break;
-      case PRE_START_PIPE:
-        runningPipe.setStatus(PipeStatus.PREPARE_START);
-        break;
-      case START_PIPE:
-        runningPipe.setStatus(PipeStatus.RUNNING);
-        break;
-      case PRE_STOP_PIPE:
-        runningPipe.setStatus(PipeStatus.PREPARE_STOP);
-        break;
-      case STOP_PIPE:
-        runningPipe.setStatus(PipeStatus.STOP);
-        break;
-      case DROP_PIPE:
-        runningPipe.setStatus(PipeStatus.DROP);
-        break;
-      default:
-        throw new PipeException("Unknown operatorType " + syncOperation);
-    }
+    runningPipe.setStatus(status);
   }
 
   public PipeInfo getPipeInfo(String pipeName, long createTime) {

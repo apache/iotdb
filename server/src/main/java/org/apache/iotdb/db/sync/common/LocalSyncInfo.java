@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
 import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
@@ -112,7 +113,19 @@ public class LocalSyncInfo {
 
   public void operatePipe(String pipeName, SyncOperation syncOperation)
       throws PipeException, IOException {
-    syncMetadata.operatePipe(pipeName, syncOperation);
+    switch (syncOperation) {
+      case START_PIPE:
+        syncMetadata.setPipeStatus(pipeName, PipeStatus.RUNNING);
+        break;
+      case STOP_PIPE:
+        syncMetadata.setPipeStatus(pipeName, PipeStatus.STOP);
+        break;
+      case DROP_PIPE:
+        syncMetadata.setPipeStatus(pipeName, PipeStatus.DROP);
+        break;
+      default:
+        throw new PipeException("Unknown operatorType " + syncOperation);
+    }
     syncLogWriter.operatePipe(pipeName, syncOperation);
   }
 

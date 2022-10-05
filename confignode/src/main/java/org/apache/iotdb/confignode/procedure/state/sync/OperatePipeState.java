@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.procedure.state.sync;
 
-public enum CreatePipeState {
-  CREATE_CHECK,
-  PRE_CREATE_PIPE_CONFIGNODE,
-  CREATE_PIPE_DATANODE,
-  CREATE_PIPE_CONFIGNODE
+public enum OperatePipeState {
+  OPERATE_CHECK,
+  PRE_OPERATE_PIPE_CONFIGNODE,
+  OPERATE_PIPE_DATANODE,
+  OPERATE_PIPE_CONFIGNODE
 }
