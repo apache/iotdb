@@ -56,7 +56,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
   private Map<Node, List<Node>> directToIndirectFollowerMap = new ConcurrentHashMap<>();
   private long dispatchedEntryNum;
-  private int recalculateMapInterval = 1;
+  private int recalculateMapInterval = -1;
   private Random random = new Random();
 
   public IndirectLogDispatcher(RaftMember member) {
@@ -105,7 +105,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
   public void offer(SendLogRequest request) {
     super.offer(request);
     dispatchedEntryNum++;
-    if (dispatchedEntryNum % recalculateMapInterval == 0) {
+    if (recalculateMapInterval > 0 && dispatchedEntryNum % recalculateMapInterval == 0) {
       recalculateDirectFollowerMap();
     }
   }
