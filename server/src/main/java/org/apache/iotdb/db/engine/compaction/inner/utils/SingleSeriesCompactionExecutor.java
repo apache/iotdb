@@ -138,7 +138,6 @@ public class SingleSeriesCompactionExecutor {
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
-    fileWriter.checkMetadataSizeAndMayFlush();
   }
 
   private void constructChunkWriterFromReadChunk(Chunk chunk) {

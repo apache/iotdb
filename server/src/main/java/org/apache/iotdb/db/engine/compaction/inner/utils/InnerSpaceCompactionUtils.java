@@ -129,6 +129,7 @@ public class InnerSpaceCompactionUtils {
           new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+    writer.checkMetadataSizeAndMayFlush();
   }
 
   private static void compactAlignedSeries(

@@ -156,6 +156,7 @@ public class CompactionUtils {
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
     }
+    compactionWriter.checkAndMayFlushChunkMetadata();
   }
 
   private static void compactNonAlignedSeries(
@@ -209,8 +210,8 @@ public class CompactionUtils {
         }
       }
     }
-    compactionWriter.checkAndMayFlushChunkMetadata();
     compactionWriter.endChunkGroup();
+    compactionWriter.checkAndMayFlushChunkMetadata();
   }
 
   public static void writeWithReader(

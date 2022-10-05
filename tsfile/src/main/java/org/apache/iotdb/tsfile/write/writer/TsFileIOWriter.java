@@ -119,7 +119,6 @@ public class TsFileIOWriter implements AutoCloseable {
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
   private volatile int chunkMetadataCount = 0;
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".meta";
-
   /** empty construct function. */
   protected TsFileIOWriter() {}
 
@@ -342,25 +341,16 @@ public class TsFileIOWriter implements AutoCloseable {
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
-      Pair<String, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
+      Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
-      currentSeries = timeseriesMetadataPair.left;
+      Path currentPath = timeseriesMetadataPair.left;
+      currentSeries = currentPath.getFullPath();
 
       indexCount++;
       // build bloom filter
       filter.add(currentSeries);
       // construct the index tree node for the series
-      Path currentPath = null;
-      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        // this series is the time column of the aligned device
-        // the full series path will be like "root.sg.d."
-        // we remove the last . in the series id here
-        currentPath = new Path(currentSeries);
-        currentDevice = currentSeries.substring(0, currentSeries.length() - 1);
-      } else {
-        currentPath = new Path(currentSeries, true);
-        currentDevice = currentPath.getDevice();
-      }
+      currentDevice = currentPath.getDevice();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -648,6 +638,8 @@ public class TsFileIOWriter implements AutoCloseable {
     chunkMetadataCount = 0;
     currentChunkMetadataSize = 0;
   }
+
+  private void writeDeviceInfo(String device) {}
 
   private void writeChunkMetadataToTempFile(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, boolean isNewPath)
