@@ -16,15 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.confignode.consensus.response;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  DROP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.consensus.common.DataSet;
+
+import java.util.List;
+
+public class PipeResp implements DataSet {
+
+  TSStatus status;
+  List<PipeInfo> pipeInfoList;
+
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
+
+  public List<PipeInfo> getPipeInfoList() {
+    return pipeInfoList;
+  }
+
+  public void setPipeInfoList(List<PipeInfo> pipeInfoList) {
+    this.pipeInfoList = pipeInfoList;
+  }
 }

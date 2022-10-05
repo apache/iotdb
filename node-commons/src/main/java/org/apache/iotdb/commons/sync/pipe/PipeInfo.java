@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -92,18 +93,6 @@ public abstract class PipeInfo {
     this.messageType = messageType;
   }
 
-  public void start() {
-    this.status = PipeStatus.RUNNING;
-  }
-
-  public void stop() {
-    this.status = PipeStatus.STOP;
-  }
-
-  public void drop() {
-    this.status = PipeStatus.DROP;
-  }
-
   public long getCreateTime() {
     return createTime;
   }
@@ -111,6 +100,8 @@ public abstract class PipeInfo {
   public void setCreateTime(long createTime) {
     this.createTime = createTime;
   }
+
+  public abstract TShowPipeInfo getTShowPipeInfo();
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write((byte) getType().ordinal(), outputStream);

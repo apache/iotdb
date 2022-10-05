@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedure.class);
@@ -65,12 +66,12 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
     try {
       switch (state) {
         case CREATE_CHECK:
-          LOGGER.info("Start to create pipe [{}]", pipeInfo.getPipeName());
+          LOGGER.info("Start to create PIPE [{}]", pipeInfo.getPipeName());
           env.getConfigManager().getSyncManager().checkAddPipe(pipeInfo);
           setNextState(CreatePipeState.PRE_CREATE_PIPE_CONFIGNODE);
           break;
         case PRE_CREATE_PIPE_CONFIGNODE:
-          LOGGER.info("Start to pre-create pipe [{}] on Config Nodes", pipeInfo.getPipeName());
+          LOGGER.info("Start to pre-create PIPE [{}] on Config Nodes", pipeInfo.getPipeName());
           TSStatus status = env.getConfigManager().getSyncManager().preCreatePipe(pipeInfo);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new PipeException(status.getMessage());
@@ -78,20 +79,24 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
           setNextState(CreatePipeState.CREATE_PIPE_DATANODE);
           break;
         case CREATE_PIPE_DATANODE:
-          LOGGER.info("Start to broadcast create pipe [{}] on Data Nodes", pipeInfo.getPipeName());
+          LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", pipeInfo.getPipeName());
           if (RpcUtils.squashResponseStatusList(env.preCreatePipeOnDataNodes(pipeInfo)).getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             setNextState(CreatePipeState.CREATE_PIPE_CONFIGNODE);
           } else {
             throw new PipeException(
-                String.format("Fail to create pipe [%s] on Data Nodes", pipeInfo.getPipeName()));
+                String.format("Fail to create PIPE [%s] on Data Nodes", pipeInfo.getPipeName()));
           }
           break;
         case CREATE_PIPE_CONFIGNODE:
-          LOGGER.info("Start to create pipe [{}] on Config Nodes", pipeInfo.getPipeName());
-          env.getConfigManager()
-              .getSyncManager()
-              .operatePipe(pipeInfo.getPipeName(), SyncOperation.CREATE_PIPE);
+          LOGGER.info("Start to create PIPE [{}] on Config Nodes", pipeInfo.getPipeName());
+          status =
+              env.getConfigManager()
+                  .getSyncManager()
+                  .operatePipe(pipeInfo.getPipeName(), SyncOperation.CREATE_PIPE);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new PipeException(status.getMessage());
+          }
           return Flow.NO_MORE_STATE;
       }
     } catch (PipeException e) {
@@ -100,7 +105,7 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error(
-            "Retrievable error trying to create pipe [{}], state [{}]",
+            "Retrievable error trying to create PIPE [{}], state [{}]",
             pipeInfo.getPipeName(),
             state,
             e);
@@ -108,7 +113,8 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
           setFailure(
               new ProcedureException(
                   String.format(
-                      "Fail to create pipe [%s] at STATE [%s]", pipeInfo.getPipeName(), state)));
+                      "Fail to create PIPE %s because %s",
+                      pipeInfo.getPipeName(), e.getMessage())));
         }
       }
     }
@@ -117,15 +123,20 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
 
   @Override
   protected boolean isRollbackSupported(CreatePipeState state) {
-    LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
-    // TODO(sync): roll back logic
-    return super.isRollbackSupported(state);
+    switch (state) {
+      case CREATE_CHECK:
+      case CREATE_PIPE_DATANODE:
+        return true;
+    }
+    return false;
   }
 
   @Override
-  protected void rollbackState(
-      ConfigNodeProcedureEnv configNodeProcedureEnv, CreatePipeState createPipeState)
-      throws IOException, InterruptedException, ProcedureException {}
+  protected void rollbackState(ConfigNodeProcedureEnv configNodeProcedureEnv, CreatePipeState state)
+      throws IOException, InterruptedException, ProcedureException {
+    LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
+    // TODO(sync): roll back logic;
+  }
 
   @Override
   protected CreatePipeState getState(int stateId) {
@@ -153,5 +164,18 @@ public class CreatePipeProcedure extends AbstractNodeProcedure<CreatePipeState> 
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CreatePipeProcedure that = (CreatePipeProcedure) o;
+    return Objects.equals(pipeInfo, that.pipeInfo);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeInfo);
   }
 }

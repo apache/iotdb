@@ -438,6 +438,10 @@ struct TGetPipeSinkResp {
   2: required list<TPipeSinkInfo> pipeSinkInfoList
 }
 
+struct TShowPipeReq {
+  1: optional string pipeName
+}
+
 struct TShowPipeResp {
   1: required common.TSStatus status
   2: optional list<TShowPipeInfo> pipeInfoList
@@ -801,6 +805,10 @@ service IConfigNodeRPCService {
   /** Get PipeSink by name, if name is empty, get all PipeSink */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 
+  /** Create Pipe */
   common.TSStatus createPipe(TPipeInfo req)
+
+  /** Show Pipe by name, if name is empty, show all Pipe */
+  TShowPipeResp showPipe(TShowPipeReq req)
 }
 

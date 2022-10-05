@@ -65,6 +65,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -422,4 +424,12 @@ public interface IManager {
    * @return TSStatus
    */
   TSStatus createPipe(TPipeInfo pipeInfo);
+
+  /**
+   * Get Pipe by name. If pipeName is empty, get all Pipe.
+   *
+   * @param req specify the pipeName
+   * @return TShowPipeResp contains the TShowPipeInfo
+   */
+  TShowPipeResp showPipe(TShowPipeReq req);
 }

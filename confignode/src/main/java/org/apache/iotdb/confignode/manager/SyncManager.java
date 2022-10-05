@@ -30,9 +30,12 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.OperatePipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -102,12 +105,26 @@ public class SyncManager {
   }
 
   public TSStatus preCreatePipe(PipeInfo pipeInfo) {
-    pipeInfo.setStatus(PipeStatus.CREATING);
+    pipeInfo.setStatus(PipeStatus.PREPARE_CREATE);
     return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
   }
 
   public TSStatus operatePipe(String pipeName, SyncOperation operation) {
     return getConsensusManager().write(new OperatePipePlan(pipeName, operation)).getStatus();
+  }
+
+  public TShowPipeResp showPipe(String pipeName) {
+    ShowPipePlan showPipePlan = new ShowPipePlan(pipeName);
+    PipeResp pipeResp = (PipeResp) getConsensusManager().read(showPipePlan).getDataset();
+    TShowPipeResp resp = new TShowPipeResp();
+    resp.setStatus(pipeResp.getStatus());
+    if (pipeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setPipeInfoList(
+          pipeResp.getPipeInfoList().stream()
+              .map(PipeInfo::getTShowPipeInfo)
+              .collect(Collectors.toList()));
+    }
+    return resp;
   }
 
   // TODO....

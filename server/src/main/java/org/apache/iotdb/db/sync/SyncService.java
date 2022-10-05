@@ -193,8 +193,8 @@ public class SyncService implements IService {
     try {
       runningPipeSink = getPipeSink(pipeInfo.getPipeSinkName());
     } catch (PipeSinkException e) {
-      logger.error("failed to add Pipe because {}", e.getMessage(), e);
-      throw new PipeException(String.format("failed to add Pipe because %s", e.getMessage()));
+      logger.error("failed to add PIPE because {}", e.getMessage(), e);
+      throw new PipeException(String.format("failed to add PIPE because %s", e.getMessage()));
     }
 
     runningPipe = SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(pipeInfo, runningPipeSink);
@@ -206,7 +206,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void stopPipe(String pipeName) throws PipeException {
-    logger.info("Execute STOP PIPE {}", pipeName);
+    logger.info("Execute stop PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == PipeStatus.RUNNING) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -230,7 +230,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void startPipe(String pipeName) throws PipeException {
-    logger.info("Execute START PIPE {}", pipeName);
+    logger.info("Execute start PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -244,7 +244,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
-    logger.info("Execute DROP PIPE {}", pipeName);
+    logger.info("Execute drop PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       runningPipe.drop();
@@ -268,19 +268,19 @@ public class SyncService implements IService {
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
-      throw new PipeException("There is no existing pipe.");
+      throw new PipeException("There is no existing PIPE.");
     }
     if (!runningPipe.getName().equals(pipeName)) {
       throw new PipeException(
           String.format(
-              "Pipe %s is %s, please retry after drop it.",
+              "PIPE %s is %s, please retry after drop it.",
               runningPipe.getName(), runningPipe.getStatus()));
     }
   }
 
   public synchronized void recordMessage(PipeMessage message) {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
-      logger.info(String.format("No running pipe for message %s.", message));
+      logger.info(String.format("No running PIPE for message %s.", message));
       return;
     }
     TSStatus status = null;
@@ -294,7 +294,7 @@ public class SyncService implements IService {
         } catch (PipeException e) {
           logger.error(
               String.format(
-                  "Stop pipe %s when meeting error in sender service.", runningPipe.getName()),
+                  "Stop PIPE %s when meeting error in sender service.", runningPipe.getName()),
               e);
         }
         break;
@@ -488,7 +488,7 @@ public class SyncService implements IService {
         runningPipe.close();
       } catch (PipeException e) {
         logger.warn(
-            String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),
+            String.format("Stop PIPE %s error when stop Sender Service.", runningPipe.getName()),
             e);
       }
     }

@@ -42,6 +42,22 @@ public class OperatePipePlan extends ConfigPhysicalPlan {
     this.operation = operation;
   }
 
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
+  }
+
+  public SyncOperation getOperation() {
+    return operation;
+  }
+
+  public void setOperation(SyncOperation operation) {
+    this.operation = operation;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.OperatePipe.ordinal());

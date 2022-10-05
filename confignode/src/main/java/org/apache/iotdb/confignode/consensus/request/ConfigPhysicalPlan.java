@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.OperatePipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -278,6 +279,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case OperatePipe:
           req = new OperatePipePlan();
+          break;
+        case ShowPipe:
+          req = new ShowPipePlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

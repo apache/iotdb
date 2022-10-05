@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -75,6 +76,12 @@ public class TsFilePipeInfo extends PipeInfo {
   @Override
   PipeType getType() {
     return PipeType.TsFilePipe;
+  }
+
+  @Override
+  public TShowPipeInfo getTShowPipeInfo() {
+    return new TShowPipeInfo(
+        createTime, pipeName, "sender", pipeSinkName, status.name(), messageType.name());
   }
 
   @Override

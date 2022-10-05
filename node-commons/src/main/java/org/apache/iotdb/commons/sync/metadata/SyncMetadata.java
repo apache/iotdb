@@ -149,13 +149,13 @@ public class SyncMetadata implements SnapshotProcessor {
     // check PipeSink exists
     if (!isPipeSinkExist(pipeInfo.getPipeSinkName())) {
       throw new PipeException(
-          String.format("Can not find pipeSink %s.", pipeInfo.getPipeSinkName()));
+          String.format("can not find PIPESINK %s.", pipeInfo.getPipeSinkName()));
     }
     // check Pipe does not exist
     if (runningPipe != null && runningPipe.getStatus() != PipeStatus.DROP) {
       throw new PipeException(
           String.format(
-              "Pipe %s is %s, please retry after drop it.",
+              "PIPE %s is %s, please retry after drop it.",
               runningPipe.getPipeName(), runningPipe.getStatus().name()));
     }
   }
@@ -170,14 +170,23 @@ public class SyncMetadata implements SnapshotProcessor {
   public void operatePipe(String pipeName, SyncOperation syncOperation) throws PipeException {
     checkIfPipeExistAndRunning(pipeName);
     switch (syncOperation) {
+      case CREATE_PIPE:
+        runningPipe.setStatus(PipeStatus.STOP);
+        break;
+      case PRE_START_PIPE:
+        runningPipe.setStatus(PipeStatus.PREPARE_START);
+        break;
       case START_PIPE:
-        runningPipe.start();
+        runningPipe.setStatus(PipeStatus.RUNNING);
+        break;
+      case PRE_STOP_PIPE:
+        runningPipe.setStatus(PipeStatus.PREPARE_STOP);
         break;
       case STOP_PIPE:
-        runningPipe.stop();
+        runningPipe.setStatus(PipeStatus.STOP);
         break;
       case DROP_PIPE:
-        runningPipe.drop();
+        runningPipe.setStatus(PipeStatus.DROP);
         break;
       default:
         throw new PipeException("Unknown operatorType " + syncOperation);
@@ -203,12 +212,12 @@ public class SyncMetadata implements SnapshotProcessor {
 
   private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
-      throw new PipeException("There is no existing pipe.");
+      throw new PipeException("There is no existing PIPE.");
     }
     if (!runningPipe.getPipeName().equals(pipeName)) {
       throw new PipeException(
           String.format(
-              "Pipe %s is %s, please retry after drop it.",
+              "PIPE %s is %s, please retry after drop it.",
               runningPipe.getPipeName(), runningPipe.getStatus()));
     }
   }
