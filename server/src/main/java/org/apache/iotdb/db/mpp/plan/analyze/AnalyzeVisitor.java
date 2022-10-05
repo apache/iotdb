@@ -1388,11 +1388,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(statement);
 
-    DataPartition dataPartition;
-    if (config.isAutoCreateSchemaEnabled()) {
-      dataPartition = partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
-    } else {
-      dataPartition = partitionFetcher.getDataPartition(dataPartitionQueryParams);
+    DataPartition dataPartition =
+        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+    if (!config.isAutoCreateSchemaEnabled()) {
       // check whether we get all partitions
       Set<String> targetDevices =
           dataPartitionQueryParams.stream()

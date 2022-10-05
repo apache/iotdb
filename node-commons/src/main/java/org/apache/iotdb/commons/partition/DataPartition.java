@@ -89,10 +89,6 @@ public class DataPartition extends Partition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    if (!dataPartitionMap.containsKey(storageGroup)
-        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
-      return Collections.singletonList(NOT_ASSIGNED);
-    }
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()

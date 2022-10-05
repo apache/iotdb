@@ -30,11 +30,38 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  /** get schema partition according to pattern tree */
+  /** get schema partition without automatically create storage group, used in query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
-  /** get or create schema partition according to pattern tree */
+  /**
+   * get or create schema partition, used in write scenarios. if storage group not exists, then
+   * automatically create.
+   */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * get data partition without automatically create storage group, used in query scenarios.
+   *
+   * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  /**
+   * get or create data partition, used in write scenarios. if storage group not exists, then
+   * automatically create.
+   *
+   * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  /**
+   * get or create data partition, used in write scenarios. if storage group not exists, then
+   * automatically create.
+   *
+   * @param dataPartitionQueryParams the list of DataPartitionQueryParams
+   */
+  DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
   /** get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
@@ -45,25 +72,6 @@ public interface IPartitionFetcher {
   /** get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level);
-
-  /**
-   * get data partition according to map which is already split by storage group, used in query
-   * scenario.
-   */
-  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
-
-  /** get data partition according to map, used in write scenario. */
-  DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
-
-  /**
-   * get or create data partition according to map which is already split by storage group, used in
-   * query scenario.
-   */
-  DataPartition getOrCreateDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
-
-  /** get or create data partition according to map, used in write scenario. */
-  DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
   /** update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
