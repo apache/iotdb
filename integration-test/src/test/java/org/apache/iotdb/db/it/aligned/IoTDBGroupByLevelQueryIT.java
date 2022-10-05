@@ -37,7 +37,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByLevelQueryIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -98,6 +97,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void countFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{39, 20}};
@@ -134,6 +134,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void sumFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{131111, 510}};
@@ -167,6 +168,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void avgFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
@@ -200,6 +202,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
@@ -213,6 +216,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
@@ -228,6 +232,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void nestedQueryTest1() {
     // level = 1
     double[][] retArray1 = new double[][] {{40.0, 21.0}};
@@ -249,6 +254,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void nestedQueryTest2() {
     // level = 1
     double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
