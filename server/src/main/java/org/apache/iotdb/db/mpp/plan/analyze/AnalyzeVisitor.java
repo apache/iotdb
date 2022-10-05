@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -150,6 +151,7 @@ import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
   private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -1233,8 +1235,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletStatement.getTimePartitionSlots());
 
     DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(
-            Collections.singletonList(dataPartitionQueryParam));
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertTabletStatement);
@@ -1252,8 +1253,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
 
     DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(
-            Collections.singletonList(dataPartitionQueryParam));
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertRowStatement);
@@ -1283,8 +1283,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+    DataPartition dataPartition = getDataPartition(dataPartitionQueryParams);
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertRowsStatement);
@@ -1315,8 +1314,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+    DataPartition dataPartition = getDataPartition(dataPartitionQueryParams);
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertMultiTabletsStatement);
@@ -1337,8 +1335,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertRowsOfOneDeviceStatement.getTimePartitionSlots());
 
     DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(
-            Collections.singletonList(dataPartitionQueryParam));
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertRowsOfOneDeviceStatement);
@@ -1413,13 +1410,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       params.add(dataPartitionQueryParam);
     }
 
-    DataPartition dataPartition = partitionFetcher.getOrCreateDataPartition(params);
+    DataPartition dataPartition = getDataPartition(params);
 
     Analysis analysis = new Analysis();
     analysis.setStatement(loadTsFileStatement);
     analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;
+  }
+
+  /** get data partition of data partition query param */
+  private DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
+    DataPartition dataPartition;
+    if (config.isAutoCreateSchemaEnabled()) {
+      dataPartition = partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+    } else {
+      dataPartition = partitionFetcher.getDataPartition(dataPartitionQueryParams);
+    }
+    return dataPartition;
   }
 
   private TsFileResource analyzeTsFile(

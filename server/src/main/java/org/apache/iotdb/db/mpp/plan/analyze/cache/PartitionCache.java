@@ -327,7 +327,7 @@ public class PartitionCache {
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate && config.isAutoCreateSchemaEnabled()) {
+        if (!result.isSuccess() && isAutoCreate) {
           // try to auto create storage group of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit storage group in fast-fail way

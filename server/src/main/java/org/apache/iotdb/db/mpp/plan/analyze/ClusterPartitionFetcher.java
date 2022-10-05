@@ -170,7 +170,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when query */
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {

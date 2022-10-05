@@ -30,28 +30,44 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
+  /** get schema partition according to pattern tree */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
+  /** get or create schema partition according to pattern tree */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
+  /** get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
       PathPatternTree patternTree) {
     return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
   }
 
+  /** get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level);
 
+  /**
+   * get data partition according to map which is already split by storage group, used in query
+   * scenario.
+   */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
+  /** get data partition according to map, used in write scenario. */
   DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
+  /**
+   * get or create data partition according to map which is already split by storage group, used in
+   * query scenario.
+   */
   DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
+  /** get or create data partition according to map, used in write scenario. */
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
+  /** update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
 
+  /** invalid all partition cache */
   void invalidAllCache();
 }
