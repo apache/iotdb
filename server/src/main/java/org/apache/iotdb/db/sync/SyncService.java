@@ -132,7 +132,7 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of PipeSink
 
-  public PipeSink getPipeSink(String name) {
+  public PipeSink getPipeSink(String name) throws PipeSinkException {
     return syncInfoFetcher.getPipeSink(name);
   }
 
@@ -189,8 +189,14 @@ public class SyncService implements IService {
         throw new PipeException(status.message);
       }
     }
+    PipeSink runningPipeSink;
+    try {
+      runningPipeSink = getPipeSink(pipeInfo.getPipeSinkName());
+    } catch (PipeSinkException e) {
+      logger.error("failed to add Pipe because {}", e.getMessage(), e);
+      throw new PipeException(String.format("failed to add Pipe because %s", e.getMessage()));
+    }
 
-    PipeSink runningPipeSink = getPipeSink(pipeInfo.getPipeSinkName());
     runningPipe = SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(pipeInfo, runningPipeSink);
     if (runningPipe.getPipeSink().getType()
         == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
@@ -346,37 +352,42 @@ public class SyncService implements IService {
     // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || plan.getPipeName().equals(pipe.getPipeName())) {
-        RowRecord record = new RowRecord(0);
-        record.addField(
-            Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
-        if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
-          ExtPipePluginManager extPipePluginManager =
-              SyncService.getInstance().getExternalPipeManager();
+        try {
+          RowRecord record = new RowRecord(0);
+          record.addField(
+              Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())),
+              TSDataType.TEXT);
+          record.addField(Binary.valueOf(pipe.getPipeName()), TSDataType.TEXT);
+          record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
+          record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
+          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+          PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
+          if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
+            ExtPipePluginManager extPipePluginManager =
+                SyncService.getInstance().getExternalPipeManager();
 
-          if (extPipePluginManager != null) {
-            String extPipeType = ((ExternalPipeSink) pipeSink).getExtPipeSinkTypeName();
-            ExternalPipeStatus externalPipeStatus =
-                extPipePluginManager.getExternalPipeStatus(extPipeType);
+            if (extPipePluginManager != null) {
+              String extPipeType = ((ExternalPipeSink) pipeSink).getExtPipeSinkTypeName();
+              ExternalPipeStatus externalPipeStatus =
+                  extPipePluginManager.getExternalPipeStatus(extPipeType);
 
-            // TODO(ext-pipe): Adapting to the new syntax of SHOW PIPE
-            if (externalPipeStatus != null) {
-              record.addField(
-                  Binary.valueOf(
-                      externalPipeStatus.getWriterInvocationFailures().toString()
-                          + ";"
-                          + externalPipeStatus.getWriterStatuses().toString()),
-                  TSDataType.TEXT);
+              // TODO(ext-pipe): Adapting to the new syntax of SHOW PIPE
+              if (externalPipeStatus != null) {
+                record.addField(
+                    Binary.valueOf(
+                        externalPipeStatus.getWriterInvocationFailures().toString()
+                            + ";"
+                            + externalPipeStatus.getWriterStatuses().toString()),
+                    TSDataType.TEXT);
+              }
             }
+          } else {
+            record.addField(Binary.valueOf(pipe.getMessageType().name()), TSDataType.TEXT);
           }
-        } else {
-          record.addField(Binary.valueOf(pipe.getMessageType().name()), TSDataType.TEXT);
+          listDataSet.putRecord(record);
+        } catch (Exception e) {
+          logger.error("failed to show pipe [{}] because {}", pipe.getPipeName(), e.getMessage());
         }
-        listDataSet.putRecord(record);
       }
     }
     // show pipe in receiver
@@ -504,7 +515,7 @@ public class SyncService implements IService {
     return ServiceType.SYNC_SERVICE;
   }
 
-  private void recover() throws IOException, PipeException, StartupException {
+  private void recover() throws IOException, PipeException, PipeSinkException {
     PipeInfo runningPipeInfo = syncInfoFetcher.getRunningPipeInfo();
     if (runningPipeInfo == null || PipeStatus.DROP.equals(runningPipeInfo.getStatus())) {
       return;

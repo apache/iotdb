@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
 import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SyncPipeHandler;
 import org.apache.iotdb.confignode.client.async.handlers.TriggerManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
@@ -54,6 +55,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
@@ -225,6 +227,15 @@ public class AsyncDataNodeClientPool {
             handler =
                 new DeleteTimeSeriesHandler(countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
+          case PRE_CREATE_PIPE:
+            handler =
+                new SyncPipeHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           default:
             return;
         }
@@ -356,6 +367,9 @@ public class AsyncDataNodeClientPool {
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (DeleteTimeSeriesHandler) handler);
+          break;
+        case PRE_CREATE_PIPE:
+          client.createPipe((TCreatePipeReq) req, (SyncPipeHandler) handler);
           break;
         default:
           LOGGER.error(

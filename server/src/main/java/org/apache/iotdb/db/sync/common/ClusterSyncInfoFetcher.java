@@ -19,39 +19,77 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfoFetcher.class);
+
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+      CONFIG_NODE_CLIENT_MANAGER =
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+
+  // region Interfaces of PipeSink
+
   @Override
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus dropPipeSink(String name) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public PipeSink getPipeSink(String name) {
-    return null;
+  public PipeSink getPipeSink(String name) throws PipeSinkException {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq().setPipeSinkName(name);
+      TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
+      if (resp.getPipeSinkInfoList().isEmpty()) {
+        throw new PipeSinkException(
+            String.format("Failed to getPipeSink [%s] because it does not exist.", name));
+      }
+      return SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(resp.getPipeSinkInfoList().get(0));
+    } catch (Exception e) {
+      LOGGER.error("Get PipeSink [{}] error because {}", name, e.getMessage(), e);
+      throw new PipeSinkException(e.getMessage());
+    }
   }
 
   @Override
   public List<PipeSink> getAllPipeSinks() {
     return null;
   }
+
+  // endregion
+
+  // region Interfaces of Pipe
 
   @Override
   public TSStatus addPipe(PipeInfo pipeInfo) {
@@ -87,6 +125,8 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
   public TSStatus recordMsg(String pipeName, long createTime, PipeMessage message) {
     return null;
   }
+
+  // endregion
 
   // region singleton
   private static class ClusterSyncInfoFetcherHolder {

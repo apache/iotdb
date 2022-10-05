@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.OperatePipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
@@ -102,6 +104,10 @@ public class SyncManager {
   public TSStatus preCreatePipe(PipeInfo pipeInfo) {
     pipeInfo.setStatus(PipeStatus.CREATING);
     return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
+  }
+
+  public TSStatus operatePipe(String pipeName, SyncOperation operation) {
+    return getConsensusManager().write(new OperatePipePlan(pipeName, operation)).getStatus();
   }
 
   // TODO....

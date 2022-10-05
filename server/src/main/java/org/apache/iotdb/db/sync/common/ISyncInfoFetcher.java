@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -37,7 +38,7 @@ public interface ISyncInfoFetcher {
 
   TSStatus dropPipeSink(String name);
 
-  PipeSink getPipeSink(String name);
+  PipeSink getPipeSink(String name) throws PipeSinkException;
 
   List<PipeSink> getAllPipeSinks();
   // endregion

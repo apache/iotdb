@@ -144,7 +144,8 @@ public abstract class PipeInfo {
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurred when serializing PipeInfo.");
-      throw new SerializationRunTimeException(e);
+      //      throw new SerializationRunTimeException(e);
+      return null;
     }
   }
 

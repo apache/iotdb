@@ -51,7 +51,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
@@ -60,13 +59,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -454,21 +451,13 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    final TCreatePipeReq request = new TCreatePipeReq();
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
-      pipeInfo.serialize(dataOutputStream);
-      request.setPipeInfo(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
-    } catch (IOException e) {
-      LOG.error("Unexpected error occurred when serializing PipeInfo.");
-      throw new SerializationRunTimeException(e);
-    }
+    final TCreatePipeReq request = new TCreatePipeReq(pipeInfo.serializeToByteBuffer());
 
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             request,
             dataNodeLocationMap,
-            DataNodeRequestType.INACTIVE_TRIGGER_INSTANCE,
+            DataNodeRequestType.PRE_CREATE_PIPE,
             dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }

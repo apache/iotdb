@@ -60,6 +60,9 @@ public enum DataNodeRequestType {
   ACTIVE_TRIGGER_INSTANCE,
   INACTIVE_TRIGGER_INSTANCE,
 
+  /** Sync */
+  PRE_CREATE_PIPE,
+
   /** TEMPLATE */
   UPDATE_TEMPLATE,
 

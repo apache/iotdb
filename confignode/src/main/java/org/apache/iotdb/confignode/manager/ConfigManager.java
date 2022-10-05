@@ -612,7 +612,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public SyncManager getSyncManager() {
-    return null;
+    return syncManager;
   }
 
   @Override

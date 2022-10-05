@@ -1338,7 +1338,7 @@ public class LocalConfigNode {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public List<PipeSink> showPipeSink(String pipeSinkName) {
+  public List<PipeSink> showPipeSink(String pipeSinkName) throws PipeSinkException {
     boolean showAll = StringUtils.isEmpty(pipeSinkName);
     if (showAll) {
       return syncService.getAllPipeSink();
