@@ -1376,23 +1376,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // auto create and verify schema
-    if (loadTsFileStatement.isAutoCreateSchema()) {
-      try {
-        if (loadTsFileStatement.isVerifySchema()) {
-          verifyLoadingMeasurements(device2Schemas);
-        }
-        autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
-        ISchemaTree schemaTree = autoCreateSchema(device2Schemas, device2IsAligned);
-        if (loadTsFileStatement.isVerifySchema()) {
-          verifySchema(schemaTree, device2Schemas, device2IsAligned);
-        }
-      } catch (Exception e) {
-        logger.error("Auto create or verify schema error.", e);
-        throw new SemanticException(
-            String.format(
-                "Auto create or verify schema error when executing statement %s.",
-                loadTsFileStatement));
+    try {
+      if (loadTsFileStatement.isVerifySchema()) {
+        verifyLoadingMeasurements(device2Schemas);
       }
+      if (loadTsFileStatement.isAutoCreateSchema()) {
+        autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
+      }
+      ISchemaTree schemaTree =
+          autoCreateSchema(
+              device2Schemas,
+              device2IsAligned); // schema fetcher will not auto create if config set
+      // isAutoCreateSchemaEnabled is false.
+      if (loadTsFileStatement.isVerifySchema()) {
+        verifySchema(schemaTree, device2Schemas, device2IsAligned);
+      }
+    } catch (Exception e) {
+      logger.error("Auto create or verify schema error.", e);
+      throw new SemanticException(
+          String.format(
+              "Auto create or verify schema error when executing statement %s.",
+              loadTsFileStatement));
     }
 
     // construct partition info
