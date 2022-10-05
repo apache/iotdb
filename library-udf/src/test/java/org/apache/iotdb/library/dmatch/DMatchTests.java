@@ -388,6 +388,26 @@ public class DMatchTests {
           String.format(
               "insert into root.vehicle.d4(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d))",
               500, 5, 5, 5, 5, 10, 10, 10, 10));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 1, 2, 1));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 2, 0, 1));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 3, 1, 2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 4, 1, 4));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 5, 2, 2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 6, 4, 1));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 7, 2, 2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1,s2) values(%d,%d))", 8, 1, 0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1) values(%d))", 9, 2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d5(timestamp,s1) values(%d))", 10, 0));
       statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -530,6 +550,21 @@ public class DMatchTests {
       resultSet.next();
       double result1 = resultSet.getDouble(1);
       Assert.assertEquals(8.0, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testDtw5() {
+    String sqlStr = "select dtw(d5.s1,d5.s2) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(1);
+      Assert.assertEquals(2.0, result1, 0.01);
       Assert.assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
