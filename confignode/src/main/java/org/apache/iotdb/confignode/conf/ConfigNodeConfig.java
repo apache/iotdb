@@ -36,7 +36,7 @@ public class ConfigNodeConfig {
   private int internalPort = 22277;
 
   /** used for communication between config node and config node */
-  private int consensusPort = 22278;
+  private int consensusPort = 22266;
 
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
