@@ -117,7 +117,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
-  private volatile int chunkMetadataCount = 0;
+  private int chunkMetadataCount = 0;
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".meta";
   /** empty construct function. */
   protected TsFileIOWriter() {}

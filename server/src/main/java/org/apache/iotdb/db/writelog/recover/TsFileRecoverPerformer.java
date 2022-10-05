@@ -112,7 +112,7 @@ public class TsFileRecoverPerformer {
     }
 
     // remove corrupted part of the TsFile
-    RestorableTsFileIOWriter restorableTsFileIOWriter;
+    RestorableTsFileIOWriter restorableTsFileIOWriter = null;
     try {
       restorableTsFileIOWriter =
           new RestorableTsFileIOWriter(

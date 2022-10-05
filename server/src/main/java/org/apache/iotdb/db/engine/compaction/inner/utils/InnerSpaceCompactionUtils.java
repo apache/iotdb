@@ -68,8 +68,9 @@ public class InnerSpaceCompactionUtils {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+            ((double)
+                    (SystemInfo.getInstance().getMemorySizeForCompaction()
+                        / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
                 * IoTDBDescriptor.getInstance()
                     .getConfig()
                     .getChunkMetadataSizeProportionInCompaction());
