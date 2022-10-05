@@ -30,7 +30,7 @@ import java.util.Objects;
 
 public class MetricConfig {
   /** Is metric service enabled */
-  private Boolean enableMetric = true;
+  private Boolean enableMetric = false;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
