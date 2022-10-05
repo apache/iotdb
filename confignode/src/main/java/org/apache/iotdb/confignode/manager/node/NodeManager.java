@@ -384,9 +384,7 @@ public class NodeManager {
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
     // Generate new ConfigNode's index
-    int configNodeId = nodeInfo.generateNextNodeId();
-    configNodeLocation.setConfigNodeId(configNodeId);
-    CONF.setConfigNodeId(configNodeId);
+    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
   }
