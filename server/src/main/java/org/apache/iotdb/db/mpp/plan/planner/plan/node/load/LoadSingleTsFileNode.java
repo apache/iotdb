@@ -59,6 +59,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,14 +78,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TsFileResource resource;
   private TRegionReplicaSet localRegionReplicaSet;
 
+  private boolean deleteAfterLoad;
+
   public LoadSingleTsFileNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource) {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
   public void checkIfNeedDecodeTsFile(DataPartition dataPartition) throws IOException {
@@ -126,6 +130,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean needDecodeTsFile() {
     return needDecodeTsFile;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return deleteAfterLoad;
   }
 
   /**
@@ -492,5 +500,15 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       pieceNodes.add(new LoadTsFilePieceNode(getPlanNodeId(), tsFile));
     }
     return pieceNodes.get(pieceNodes.size() - 1);
+  }
+
+  public void clean() {
+    try {
+      if (deleteAfterLoad) {
+        Files.deleteIfExists(tsFile.toPath());
+      }
+    } catch (IOException e) {
+      logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
+    }
   }
 }

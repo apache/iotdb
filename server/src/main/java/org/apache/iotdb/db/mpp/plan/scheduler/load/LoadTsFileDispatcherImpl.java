@@ -162,7 +162,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       try {
         StorageEngineV2.getInstance()
             .getDataRegion((DataRegionId) groupId)
-            .loadNewTsFile(((LoadSingleTsFileNode) planNode).getTsFileResource(), false);
+            .loadNewTsFile(
+                ((LoadSingleTsFileNode) planNode).getTsFileResource(),
+                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad());
       } catch (LoadFileException e) {
         logger.error(String.format("Load TsFile Node %s error.", planNode), e);
         TSStatus resultStatus = new TSStatus();
