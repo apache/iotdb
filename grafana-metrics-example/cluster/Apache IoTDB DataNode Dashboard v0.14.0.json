@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1661505081134,
+  "iteration": 1664935169027,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -402,7 +402,7 @@
           "exemplar": true,
           "expr": "rate(entry_seconds_count{instance=~\"$instance\"}[1m])",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -482,9 +482,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
+          "expr": "avg(rate(entry_seconds_sum{instance=~\"$instance\"}[1m])/rate(entry_seconds_count{instance=~\"$instance\"}[1m])) by (name,instance)",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -660,7 +660,7 @@
           "exemplar": true,
           "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[10m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[10m])",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -853,7 +853,7 @@
           "exemplar": true,
           "expr": "file_size{instance=~\"$instance\"}",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         },
         {
@@ -1533,7 +1533,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sys_cpu_load{instance=\"$instance\",name=\"system\"}",
+          "expr": "sys_cpu_load{instance=~\"$instance\",name=\"system\"}",
           "interval": "",
           "legendFormat": "System CPU Load",
           "range": true,
@@ -1617,7 +1617,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}-sys_free_physical_memory_size{instance=\"$instance\", name=\"system\"}",
+          "expr": "sys_total_physical_memory_size{instance=~\"$instance\", name=\"system\"}-sys_free_physical_memory_size{instance=~\"$instance\", name=\"system\"}",
           "interval": "",
           "legendFormat": "Used physical memory",
           "range": true,
@@ -1630,7 +1630,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}",
+          "expr": "sys_total_physical_memory_size{instance=~\"$instance\", name=\"system\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Total physical memory",
@@ -1716,7 +1716,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}-sys_disk_free_space{instance=\"$instance\", name=\"system\"}",
+          "expr": "sys_disk_total_space{instance=~\"$instance\", name=\"system\"}-sys_disk_free_space{instance=\"$instance\", name=\"system\"}",
           "interval": "",
           "legendFormat": "Used disk space",
           "range": true,
@@ -1729,7 +1729,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}",
+          "expr": "sys_disk_total_space{instance=~\"$instance\", name=\"system\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Total disk space",
