@@ -317,9 +317,9 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // pre-conditions: myself in this new group
-        if (!group.getPeers().contains(myself)) {
-          return failed(new ConsensusGroupNotExistException(groupId));
-        }
+    if (!group.getPeers().contains(myself)) {
+      return failed(new ConsensusGroupNotExistException(groupId));
+    }
 
     // add RaftPeer myself to this RaftGroup
     RaftClientReply reply;

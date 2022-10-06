@@ -64,7 +64,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -337,7 +336,8 @@ public class DataNodeInternalRPCServiceImplTest {
 
     // construct fragmentInstance
     return new TRegionReplicaSet(
-        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, conf.getDataNodeId()), dataNodeList);
+        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, conf.getDataNodeId()),
+        dataNodeList);
   }
 
   private List<Peer> genSchemaRegionPeerList(TRegionReplicaSet regionReplicaSet) {
