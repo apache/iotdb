@@ -2669,22 +2669,13 @@ public class DataRegion {
     }
   }
 
-  private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
-      throws IllegalPathException {
-    for (String device : newTsFileResource.getDevices()) {
-      tryToDeleteLastCacheByDevice(new PartialPath(device));
-    }
-  }
-
-  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) {
+  private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    //    try { TODO: support last cache
-    //      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
-    //    } catch (MetadataException e) {
-    //      // the path doesn't cache in cluster mode now, ignore
-    //    }
+
+    // TODO: implement more precise process
+    DataNodeSchemaCache.getInstance().cleanUp();
   }
 
   /**
@@ -2736,10 +2727,9 @@ public class DataRegion {
           newFilePartitionId,
           insertPos,
           deleteOriginFile);
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
-      // update latest time map
-      updateLatestTimeMap(newTsFileResource);
+      resetLastCacheWhenLoadingTsFile(); // update last cache
+      updateLastFlushTime(newTsFileResource); // update last flush time
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
       logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
@@ -3005,10 +2995,10 @@ public class DataRegion {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  private void updateLatestTimeMap(TsFileResource newTsFileResource) {
+  private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
-      long timePartitionId = StorageEngine.getTimePartition(endTime);
+      long timePartitionId = StorageEngineV2.getTimePartition(endTime);
       lastFlushTimeManager.updateLastTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateGlobalFlushedTime(device, endTime);
