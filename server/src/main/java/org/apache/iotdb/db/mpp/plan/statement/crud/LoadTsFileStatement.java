@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -51,6 +52,7 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.statementType = StatementType.LOAD_TSFILE;
 
     if (file.isFile()) {
       tsFiles.add(file);

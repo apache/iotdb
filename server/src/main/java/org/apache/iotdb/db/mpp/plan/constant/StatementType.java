@@ -64,6 +64,7 @@ public enum StatementType {
   BATCH_INSERT_ROWS,
   BATCH_INSERT_ONE_DEVICE,
   MULTI_BATCH_INSERT,
+  LOAD_TSFILE,
 
   DELETE,
 

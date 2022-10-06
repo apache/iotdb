@@ -59,6 +59,15 @@ public abstract class Statement extends StatementNode {
     return statementType == StatementType.QUERY;
   }
 
+  public boolean isDataWrite() {
+    return statementType == StatementType.INSERT
+        || statementType == StatementType.BATCH_INSERT
+        || statementType == StatementType.BATCH_INSERT_ROWS
+        || statementType == StatementType.BATCH_INSERT_ONE_DEVICE
+        || statementType == StatementType.MULTI_BATCH_INSERT
+        || statementType == StatementType.LOAD_TSFILE;
+  }
+
   public boolean isAuthenticationRequired() {
     return true;
   }

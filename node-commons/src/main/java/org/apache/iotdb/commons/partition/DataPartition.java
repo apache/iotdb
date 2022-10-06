@@ -112,8 +112,7 @@ public class DataPartition extends Partition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    if (!dataPartitionMap.containsKey(storageGroup)
-        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+    if (!dataPartitionMap.containsKey(storageGroup)) {
       throw new RuntimeException(
           "Failed to auto create storage group because enable_auto_create_schema is FALSE.");
     }

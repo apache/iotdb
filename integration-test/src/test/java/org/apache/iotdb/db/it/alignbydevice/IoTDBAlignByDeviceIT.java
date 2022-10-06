@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.alignbydevice;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -30,6 +31,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -611,6 +613,9 @@ public class IoTDBAlignByDeviceIT {
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeTest() {
+    LoggerFactory.getLogger(IoTDBAlignByDeviceIT.class)
+        .error("auto: " + IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
+
     String[] retArray =
         new String[] {
           "2,root.vehicle.d0,1,1,3,0,0,",

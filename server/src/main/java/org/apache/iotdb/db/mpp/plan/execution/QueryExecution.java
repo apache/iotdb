@@ -165,13 +165,13 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
-      if (analysis.getStatement().isQuery()) {
-        constructResultForMemorySource();
-        stateMachine.transitionToRunning();
-      } else {
+      if (analysis.getStatement().isDataWrite()) {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 "Failed to auto create storage group because enable_auto_create_schema is FALSE."));
+      } else {
+        constructResultForMemorySource();
+        stateMachine.transitionToRunning();
       }
       return;
     }

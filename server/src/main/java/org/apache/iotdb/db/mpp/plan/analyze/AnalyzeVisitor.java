@@ -1235,7 +1235,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletStatement.getTimePartitionSlots());
 
-    return getAnalysis(insertTabletStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(
+        insertTabletStatement, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
@@ -1246,7 +1247,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
 
-    return getAnalysis(insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(
+        insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
@@ -1270,7 +1272,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysis(insertRowsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(insertRowsStatement, dataPartitionQueryParams);
   }
 
   @Override
@@ -1295,7 +1297,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysis(insertMultiTabletsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(insertMultiTabletsStatement, dataPartitionQueryParams);
   }
 
   @Override
@@ -1309,7 +1311,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setTimePartitionSlotList(
         insertRowsOfOneDeviceStatement.getTimePartitionSlots());
 
-    return getAnalysis(
+    return getAnalysisForWriting(
         insertRowsOfOneDeviceStatement, Collections.singletonList(dataPartitionQueryParam));
   }
 
@@ -1379,11 +1381,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       params.add(dataPartitionQueryParam);
     }
 
-    return getAnalysis(loadTsFileStatement, params);
+    return getAnalysisForWriting(loadTsFileStatement, params);
   }
 
   /** get analysis according to statement and params */
-  private Analysis getAnalysis(
+  private Analysis getAnalysisForWriting(
       Statement statement, List<DataPartitionQueryParam> dataPartitionQueryParams) {
     Analysis analysis = new Analysis();
     analysis.setStatement(statement);
