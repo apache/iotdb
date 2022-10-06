@@ -672,7 +672,7 @@ public class IoTDBClusterPartitionIT {
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-      Assert.assertEquals(5, getTimeSlotListResp.getTimeSlotListSize());
+      Assert.assertEquals(timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
 
       getTimeSlotListReq.setEndTime(6 * testTimePartitionInterval);
 
