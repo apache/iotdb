@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -266,9 +267,9 @@ public interface IManager {
   /**
    * Register ConfigNode when it is first startup
    *
-   * @return TSStatus
+   * @return TConfigNodeRegisterResp
    */
-  TSStatus registerConfigNode(TConfigNodeRegisterReq req);
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
    * Create peer in new node to build consensus group.

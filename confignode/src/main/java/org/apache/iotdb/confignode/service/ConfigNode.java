@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -91,6 +92,7 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
         SystemPropertiesUtils.storeSystemParameters();
+        SystemPropertiesUtils.storeConfigNodeId(0);
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
@@ -208,12 +210,15 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     for (int retry = 0; retry < 3; retry++) {
-      TSStatus status =
-          (TSStatus)
+      TConfigNodeRegisterResp resp =
+          (TConfigNodeRegisterResp)
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+      TSStatus status = resp.getStatus();
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
+        CONF.setConfigNodeId(resp.getConfigNodeId());
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();

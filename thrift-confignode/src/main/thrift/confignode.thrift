@@ -241,6 +241,11 @@ struct TConfigNodeRegisterReq {
   13: required double diskSpaceWarningThreshold
 }
 
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required i32 configNodeId
+}
+
 struct TAddConsensusGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeList
 }
@@ -630,7 +635,7 @@ service IConfigNodeRPCService {
    *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
    *                             are inconsist with the ConfigNode-leader
    */
-  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   /** The ConfigNode-leader will guide the Non-Seed-ConfigNode to join the ConsensusGroup when first startup */
   common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)

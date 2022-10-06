@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -657,21 +658,23 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) {
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       TSStatus errorStatus = checkConfigNodeGlobalConfig(req);
       if (errorStatus != null) {
-        return errorStatus;
+        return new TConfigNodeRegisterResp().setStatus(errorStatus).setConfigNodeId(-1);
       }
 
       procedureManager.addConfigNode(req);
-      return StatusUtils.OK;
+      return new TConfigNodeRegisterResp()
+          .setStatus(StatusUtils.OK)
+          .setConfigNodeId(nodeManager.generateNodeId());
     }
 
-    return status;
+    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(-1);
   }
 
   private TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {

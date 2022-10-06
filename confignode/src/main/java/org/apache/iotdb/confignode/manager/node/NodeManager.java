@@ -384,7 +384,7 @@ public class NodeManager {
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
     // Generate new ConfigNode's index
-    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
+    configNodeLocation.setConfigNodeId(nodeInfo.getNextNodeId());
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
   }
@@ -766,5 +766,9 @@ public class NodeManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  public int generateNodeId() {
+    return nodeInfo.generateNextNodeId();
   }
 }
