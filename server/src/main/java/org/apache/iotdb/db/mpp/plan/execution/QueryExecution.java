@@ -165,7 +165,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
-      if (analysis.getStatement().isDataWrite()) {
+      if (context.getQueryType() == QueryType.WRITE) {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 "Failed to auto create storage group because enable_auto_create_schema is FALSE."));
@@ -480,7 +480,7 @@ public class QueryExecution implements IQueryExecution {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode;
-    if (analysis.getStatement().isDataWrite()) {
+    if (context.getQueryType() == QueryType.WRITE) {
       // For WRITE, the state should be FINISHED
       statusCode =
           state == QueryState.FINISHED
