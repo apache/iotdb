@@ -668,10 +668,11 @@ public class ConfigManager implements IManager {
         return new TConfigNodeRegisterResp().setStatus(errorStatus).setConfigNodeId(-1);
       }
 
+      int nodeId = nodeManager.generateNodeId();
+      req.getConfigNodeLocation().setConfigNodeId(nodeId);
+
       procedureManager.addConfigNode(req);
-      return new TConfigNodeRegisterResp()
-          .setStatus(StatusUtils.OK)
-          .setConfigNodeId(nodeManager.generateNodeId());
+      return new TConfigNodeRegisterResp().setStatus(StatusUtils.OK).setConfigNodeId(nodeId);
     }
 
     return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(-1);

@@ -383,8 +383,9 @@ public class NodeManager {
    * @param configNodeLocation The new ConfigNode
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    // Generate new ConfigNode's index
-    configNodeLocation.setConfigNodeId(nodeInfo.getNextNodeId());
+    if (configNodeLocation.getConfigNodeId() != 0) {
+      configNodeLocation.setConfigNodeId(nodeInfo.getNextNodeId());
+    }
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
   }
