@@ -290,10 +290,11 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public long calculateRamSize() {
-    return CHUNK_METADATA_FIXED_RAM_SIZE
-        + RamUsageEstimator.sizeOf(tsFilePrefixPath)
-        + RamUsageEstimator.sizeOf(measurementUid)
-        + statistics.calculateRamSize();
+    long memSize = CHUNK_METADATA_FIXED_RAM_SIZE;
+    memSize += RamUsageEstimator.sizeOf(tsFilePrefixPath);
+    memSize += RamUsageEstimator.sizeOf(measurementUid);
+    memSize += statistics.calculateRamSize();
+    return memSize;
   }
 
   public static long calculateRamSize(String measurementId, TSDataType dataType) {
