@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
@@ -165,7 +166,8 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
-      if (context.getQueryType() == QueryType.WRITE) {
+      if (context.getQueryType() == QueryType.WRITE
+          && !(rawStatement instanceof DeleteDataStatement)) {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 "Failed to auto create storage group because enable_auto_create_schema is FALSE."));
@@ -480,7 +482,8 @@ public class QueryExecution implements IQueryExecution {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode;
-    if (context.getQueryType() == QueryType.WRITE) {
+    if (context.getQueryType() == QueryType.WRITE
+        && !(rawStatement instanceof DeleteDataStatement)) {
       // For WRITE, the state should be FINISHED
       statusCode =
           state == QueryState.FINISHED

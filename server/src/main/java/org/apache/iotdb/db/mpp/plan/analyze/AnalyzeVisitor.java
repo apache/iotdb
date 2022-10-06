@@ -1391,11 +1391,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
-    if (!config.isAutoCreateSchemaEnabled()) {
-      if (dataPartition.getDataPartitionMap().keySet().size() == 0) {
-        analysis.setFinishQueryAfterAnalyze(true);
-      }
-      // TODO need to check whether DataPartition has all devices.
+    if (!config.isAutoCreateSchemaEnabled() && dataPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
