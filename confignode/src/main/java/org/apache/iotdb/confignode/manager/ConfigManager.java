@@ -1076,7 +1076,7 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Get all related dataRegion which may contains the data of specific timeSeries matched by given
+   * Get all related dataRegion which may contains the data of specific timeseries matched by given
    * patternTree
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
