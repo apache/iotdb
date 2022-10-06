@@ -62,6 +62,7 @@ public enum DataNodeRequestType {
 
   /** Sync */
   PRE_CREATE_PIPE,
+  OPERATE_PIPE,
 
   /** TEMPLATE */
   UPDATE_TEMPLATE,

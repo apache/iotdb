@@ -168,7 +168,6 @@ public class SyncMetadata implements SnapshotProcessor {
   }
 
   public void setPipeStatus(String pipeName, PipeStatus status) throws PipeException {
-    checkIfPipeExistAndRunning(pipeName);
     runningPipe.setStatus(status);
   }
 
@@ -189,7 +188,7 @@ public class SyncMetadata implements SnapshotProcessor {
     return runningPipe;
   }
 
-  private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
+  public void checkIfPipeExist(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
       throw new PipeException("There is no existing PIPE.");
     }

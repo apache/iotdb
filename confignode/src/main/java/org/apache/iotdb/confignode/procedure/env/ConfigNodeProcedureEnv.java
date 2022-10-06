@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -52,11 +53,12 @@ import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -451,7 +453,8 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    final TCreatePipeReq request = new TCreatePipeReq(pipeInfo.serializeToByteBuffer());
+    final TCreatePipeOnDataNodeReq request =
+        new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
 
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
@@ -459,6 +462,21 @@ public class ConfigNodeProcedureEnv {
             dataNodeLocationMap,
             DataNodeRequestType.PRE_CREATE_PIPE,
             dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> operatePipeOnDataNodes(String pipeName, SyncOperation operation) {
+    NodeManager nodeManager = configManager.getNodeManager();
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    final TOperatePipeOnDataNodeReq request =
+        new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
+
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            request, dataNodeLocationMap, DataNodeRequestType.OPERATE_PIPE, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 

@@ -126,6 +126,10 @@ public class SyncManager {
     return resp;
   }
 
+  public void checkIfPipeExist(String pipeName) throws PipeException {
+    clusterSyncInfo.checkIfPipeExist(pipeName);
+  }
+
   // TODO....
 
   // endregion

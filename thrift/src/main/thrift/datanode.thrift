@@ -280,8 +280,14 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
-struct TCreatePipeReq{
+struct TCreatePipeOnDataNodeReq{
   1: required binary pipeInfo
+}
+
+struct TOperatePipeOnDataNodeReq {
+    1: required string pipeName
+    // ordinal of {@linkplain SyncOperation}
+    2: required i8 operation
 }
 
 service IDataNodeRPCService {
@@ -524,7 +530,15 @@ service IDataNodeRPCService {
   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
-  common.TSStatus createPipe(TCreatePipeReq req)
+ /**
+  * Create PIPE on DataNode
+  */
+  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode
+  */
+  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
 }
 
 service MPPDataExchangeService {

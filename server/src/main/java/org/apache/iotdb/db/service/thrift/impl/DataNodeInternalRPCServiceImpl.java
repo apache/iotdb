@@ -100,7 +100,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
@@ -122,6 +122,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -510,7 +511,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createPipe(TCreatePipeReq req) throws TException {
+  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) throws TException {
     try {
       PipeInfo pipeInfo = PipeInfo.deserializePipeInfo(req.pipeInfo);
       SyncService.getInstance().addPipe(pipeInfo);
@@ -518,6 +519,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (PipeException e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) throws TException {
+    return null;
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

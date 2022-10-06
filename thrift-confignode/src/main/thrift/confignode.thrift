@@ -808,6 +808,15 @@ service IConfigNodeRPCService {
   /** Create Pipe */
   common.TSStatus createPipe(TPipeInfo req)
 
+  /** Start Pipe */
+  common.TSStatus startPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipe(string pipeName)
+
+  /** Drop Pipe */
+  common.TSStatus dropPipe(string pipeName)
+
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 }

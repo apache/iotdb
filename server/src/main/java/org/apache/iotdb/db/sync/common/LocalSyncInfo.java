@@ -113,6 +113,7 @@ public class LocalSyncInfo {
 
   public void operatePipe(String pipeName, SyncOperation syncOperation)
       throws PipeException, IOException {
+    syncMetadata.checkIfPipeExist(pipeName);
     switch (syncOperation) {
       case START_PIPE:
         syncMetadata.setPipeStatus(pipeName, PipeStatus.RUNNING);

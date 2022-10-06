@@ -18,27 +18,78 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class StartPipeProcedure extends OperatePipeProcedure {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedure.class);
+
+  private String pipeName;
+
+  public StartPipeProcedure() {
+    super();
+  }
+
+  public StartPipeProcedure(String pipeName) throws PipeException {
+    super();
+    this.pipeName = pipeName;
+  }
 
   @Override
-  void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {}
+  void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("Start to start PIPE [{}]", pipeName);
+    env.getConfigManager().getSyncManager().checkIfPipeExist(pipeName);
+  }
 
   @Override
-  void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {}
+  void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("Start to pre-start PIPE [{}] on Config Nodes", pipeName);
+    TSStatus status =
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_START);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.getMessage());
+    }
+  }
 
   @Override
-  void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {}
+  void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("Start to broadcast start PIPE [{}] on Data Nodes", pipeName);
+    TSStatus status =
+        RpcUtils.squashResponseStatusList(
+            env.operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE));
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Fail to start PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
+    }
+  }
 
   @Override
-  void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {}
+  void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("Start to start PIPE [{}] on Config Nodes", pipeName);
+    TSStatus status =
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.getMessage());
+    }
+  }
 
   @Override
   SyncOperation getOperation() {
@@ -48,4 +99,30 @@ public class StartPipeProcedure extends OperatePipeProcedure {
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {}
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_PIPE_PROCEDURE.ordinal());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(pipeName, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    pipeName = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    StartPipeProcedure that = (StartPipeProcedure) o;
+    return Objects.equals(pipeName, that.pipeName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeName);
+  }
 }

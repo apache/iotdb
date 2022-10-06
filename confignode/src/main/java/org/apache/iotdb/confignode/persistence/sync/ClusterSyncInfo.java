@@ -164,6 +164,16 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return resp;
   }
 
+  /**
+   * Check Pipe before start, stop and drop operation
+   *
+   * @param pipeName pipe name
+   * @throws PipeException if there is Pipe does not exist
+   */
+  public void checkIfPipeExist(String pipeName) throws PipeException {
+    syncMetadata.checkIfPipeExist(pipeName);
+  }
+
   // endregion
 
   // ======================================================
