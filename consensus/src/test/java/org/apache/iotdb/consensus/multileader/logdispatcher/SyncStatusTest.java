@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -63,7 +64,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -90,7 +93,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -123,7 +128,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -167,7 +174,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -184,11 +193,9 @@ public class SyncStatusTest {
     CompletableFuture<Boolean> future =
         CompletableFuture.supplyAsync(
             () -> {
-              PendingBatch batch =
-                  new PendingBatch(
-                      config.getReplication().getMaxPendingBatch(),
-                      config.getReplication().getMaxPendingBatch(),
-                      Collections.emptyList());
+              TLogBatch logBatch = new TLogBatch();
+              logBatch.setSearchIndex(config.getReplication().getMaxPendingBatch());
+              PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
               batchList.add(batch);
               try {
                 status.addNextBatch(batch);
