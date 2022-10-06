@@ -781,7 +781,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public List<TTimePartitionSlot> getTimeSlotList(
       String storageGroup, TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
-    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+    if (!isStorageGroupExisted(storageGroup)) {
       return new ArrayList<>();
     }
     StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
