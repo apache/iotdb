@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -504,12 +505,22 @@ public class TsFileResource {
     modFile = null;
   }
 
-  /** Remove the data file, its resource file, and its modification file physically. */
+  /**
+   * Remove the data file, its resource file, its meta file, and its modification file physically.
+   */
   public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
+    }
+    File metaFile =
+        new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    try {
+      fsFactory.deleteIfExists(metaFile);
+    } catch (IOException e) {
+      LOGGER.error("Metadata file {} cannot be deleted: {}", metaFile, e.getMessage());
       return false;
     }
     if (!removeResourceFile()) {

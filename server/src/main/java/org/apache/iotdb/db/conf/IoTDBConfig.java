@@ -400,7 +400,7 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  private double chunkMetadataSizeProportionInCompaction = 0.05;
+  private double chunkMetadataMemorySizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -2778,20 +2778,11 @@ public class IoTDBConfig {
     this.customizedProperties = customizedProperties;
   }
 
-  public double getChunkMetadataSizeProportionInWrite() {
-    return chunkMetadataSizeProportionInWrite;
+  public double getChunkMetadataMemorySizeProportion() {
+    return chunkMetadataMemorySizeProportion;
   }
 
-  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
-    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
-  }
-
-  public double getChunkMetadataSizeProportionInCompaction() {
-    return chunkMetadataSizeProportionInCompaction;
-  }
-
-  public void setChunkMetadataSizeProportionInCompaction(
-      double chunkMetadataSizeProportionInCompaction) {
-    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
+  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
+    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
   }
 }

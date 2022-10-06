@@ -179,7 +179,7 @@ public class TsFileProcessor {
                 (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
                     * IoTDBDescriptor.getInstance()
                         .getConfig()
-                        .getChunkMetadataSizeProportionInWrite()));
+                        .getChunkMetadataMemorySizeProportion()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());

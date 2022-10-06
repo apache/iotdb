@@ -68,12 +68,10 @@ public class InnerSpaceCompactionUtils {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
-            ((double)
-                    (SystemInfo.getInstance().getMemorySizeForCompaction()
-                        / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
-                * IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getChunkMetadataSizeProportionInCompaction());
+            (((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                    / (double)
+                        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataMemorySizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
         TsFileIOWriter writer =
             new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {

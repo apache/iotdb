@@ -121,7 +121,7 @@ public class TsFileRecoverPerformer {
                   (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
                       * IoTDBDescriptor.getInstance()
                           .getConfig()
-                          .getChunkMetadataSizeProportionInWrite()));
+                          .getChunkMetadataMemorySizeProportion()));
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);

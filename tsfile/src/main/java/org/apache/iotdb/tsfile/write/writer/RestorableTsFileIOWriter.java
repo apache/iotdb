@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     this.maxMetadataSize = maxMetadataSize;
     this.enableMemoryControl = true;
     this.chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    if (chunkMetadataTempFile.exists()) {
+      FileUtils.delete(chunkMetadataTempFile);
+    }
     this.checkMetadataSizeAndMayFlush();
   }
 
