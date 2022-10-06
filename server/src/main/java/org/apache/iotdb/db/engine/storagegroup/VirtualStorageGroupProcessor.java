@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
@@ -1543,6 +1544,80 @@ public class VirtualStorageGroupProcessor {
               logicalStorageGroupName,
               virtualStorageGroupId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** iterate over TsFiles and move to targetDir if out of ttl */
+  public void checkArchivingTask(ArchivingTask task) {
+    if (task.getTTL() == Long.MAX_VALUE) {
+      logger.debug(
+          "{}: Archiving ttl not set, ignore the check",
+          logicalStorageGroupName + "-" + virtualStorageGroupId);
+      return;
+    }
+    long ttlLowerBound = System.currentTimeMillis() - task.getTTL();
+    logger.debug(
+        "{}: Archiving files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
+
+    // copy to avoid concurrent modification of deletion
+    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
+    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
+
+    for (TsFileResource tsFileResource : seqFiles) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running (eg. the task is paused), return
+        return;
+      }
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+    }
+
+    for (TsFileResource tsFileResource : unseqFiles) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running, return
+        return;
+      }
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+    }
+  }
+
+  /** archive the file to targetDir */
+  public void checkArchivingTaskFile(
+      ArchivingTask task,
+      TsFileResource resource,
+      File targetDir,
+      long ttlLowerBound,
+      boolean isSeq) {
+    writeLock("checkArchivingLock");
+    try {
+      if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+        return;
+      }
+
+      resource.setStatus(TsFileResourceStatus.ARCHIVED);
+
+      // ensure that the file is not used by any queries
+      if (resource.tryWriteLock()) {
+        try {
+          // try to archive physical data file
+          tsFileManager.remove(resource, isSeq);
+
+          // start archiving file
+          if (task.startFile(resource.getTsFile())) {
+            File archivedFile = resource.archive(targetDir);
+          } else {
+            // archive file couldn't start
+            logger.error("{} archiving logger error", resource.getTsFilePath());
+          }
+        } catch (IOException e) {
+          logger.error("{} archiving error", resource.getTsFilePath());
+        } finally {
+          resource.writeUnlock();
         }
       }
     } finally {

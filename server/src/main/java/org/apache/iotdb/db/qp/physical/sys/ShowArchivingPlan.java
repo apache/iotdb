@@ -16,13 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public enum TsFileResourceStatus {
-  UNCLOSED,
-  CLOSED,
-  COMPACTION_CANDIDATE,
-  COMPACTING,
-  DELETED,
-  ARCHIVED
+import org.apache.iotdb.db.metadata.path.PartialPath;
+
+import java.util.List;
+
+public class ShowArchivingPlan extends ShowPlan {
+  private List<PartialPath> storageGroups;
+
+  public ShowArchivingPlan(List<PartialPath> storageGroups) {
+    super(ShowContentType.SHOW_ARCHIVING);
+    this.storageGroups = storageGroups;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return null;
+  }
+
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
+  }
 }

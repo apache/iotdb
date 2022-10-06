@@ -481,6 +481,15 @@ public class IoTDBDescriptor {
       conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setArchivingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "archiving_thread_num", Integer.toString(conf.getArchivingThreadNum()))));
+
+    if (conf.getArchivingThreadNum() <= 0) {
+      conf.setArchivingThreadNum(2);
+    }
+
     conf.setRawQueryBlockingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(

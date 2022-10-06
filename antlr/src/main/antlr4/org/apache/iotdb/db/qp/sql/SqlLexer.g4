@@ -73,6 +73,10 @@ APPEND
     : A P P E N D
     ;
 
+ARCHIVING
+    : A R C H I V I N G
+    ;
+
 AS
     : A S
     ;
@@ -107,6 +111,10 @@ BY
 
 CACHE
     : C A C H E
+    ;
+
+CANCEL
+    : C A N C E L
     ;
 
 CHILD
@@ -350,6 +358,10 @@ ORDER
     : O R D E R
     ;
 
+PAUSE
+    : P A U S E
+    ;
+
 PARTITION
     : P A R T I T I O N
     ;
@@ -418,6 +430,10 @@ RESOURCE
     : R E S O U R C E
     ;
 
+RESUME
+    : R E S U M E
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -466,8 +482,16 @@ SOFFSET
     : S O F F S E T
     ;
 
+START_TIME
+    : S T A R T '_' T I M E
+    ;
+
 STORAGE
     : S T O R A G E
+    ;
+
+STORAGE_GROUP
+    : S T O R A G E '_' G R O U P
     ;
 
 START
@@ -484,6 +508,10 @@ SYSTEM
 
 TAGS
     : T A G S
+    ;
+
+TARGET_DIR
+    : T A R G E T '_' D I R
     ;
 
 TASK
