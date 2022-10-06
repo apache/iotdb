@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -1393,29 +1392,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
     if (!config.isAutoCreateSchemaEnabled()) {
-      // check whether we get all partitions
-      Set<String> targetDevices =
-          dataPartitionQueryParams.stream()
-              .map(DataPartitionQueryParam::getDevicePath)
-              .collect(Collectors.toSet());
-      Set<String> storageGroups = dataPartition.getDataPartitionMap().keySet();
-      if (storageGroups.size() == 0) {
+      if (dataPartition.getDataPartitionMap().keySet().size() == 0) {
         analysis.setFinishQueryAfterAnalyze(true);
-      } else {
-        for (String targetDevice : targetDevices) {
-          boolean matched = false;
-          for (String storageGroup : storageGroups) {
-            if (PathUtils.isStartWith(targetDevice, storageGroup)) {
-              matched = true;
-              break;
-            }
-          }
-          if (!matched) {
-            analysis.setFinishQueryAfterAnalyze(true);
-            break;
-          }
-        }
       }
+      // TODO need to check whether DataPartition has all devices.
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
