@@ -33,12 +33,12 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -466,8 +466,7 @@ public class NodeManager {
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            null, dataNodeLocationMap, DataNodeRequestType.MERGE, dataNodeResponseStatus);
+        .sendAsyncRequestToDataNodeWithRetry(null, dataNodeLocationMap, DataNodeRequestType.MERGE);
     return dataNodeResponseStatus;
   }
 
@@ -477,8 +476,7 @@ public class NodeManager {
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
+        .sendAsyncRequestToDataNodeWithRetry(req, dataNodeLocationMap, DataNodeRequestType.FLUSH);
     return dataNodeResponseStatus;
   }
 
@@ -489,7 +487,7 @@ public class NodeManager {
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
+            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE);
     return dataNodeResponseStatus;
   }
 
@@ -500,10 +498,7 @@ public class NodeManager {
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            null,
-            dataNodeLocationMap,
-            DataNodeRequestType.LOAD_CONFIGURATION,
-            dataNodeResponseStatus);
+            null, dataNodeLocationMap, DataNodeRequestType.LOAD_CONFIGURATION);
     return dataNodeResponseStatus;
   }
 
@@ -514,10 +509,7 @@ public class NodeManager {
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            status,
-            dataNodeLocationMap,
-            DataNodeRequestType.SET_SYSTEM_STATUS,
-            dataNodeResponseStatus);
+            status, dataNodeLocationMap, DataNodeRequestType.SET_SYSTEM_STATUS);
     return dataNodeResponseStatus;
   }
 

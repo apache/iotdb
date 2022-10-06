@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.async.datanode;
+package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -24,31 +24,20 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackLsitHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
-import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
-import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
-import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
-import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
-import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
-import org.apache.iotdb.confignode.client.async.handlers.TriggerManagementHandler;
-import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
-import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
-import org.apache.iotdb.confignode.client.async.task.AbstractDataNodeTask;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
@@ -61,6 +50,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -93,244 +83,143 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Send asynchronize requests to the specific DataNodes, and reconnect the DataNode that failed to
+   * Send asynchronous requests to the specific DataNodes, and reconnect the DataNode that failed to
    * receive the requests
-   *
-   * @param req request
-   * @param dataNodeLocationMap Map<DataNodeId, TDataNodeLocation>
-   * @param requestType DataNodeRequestType
-   * @param dataNodeResponseStatus response list.Used by CREATE_FUNCTION,DROP_FUNCTION and FLUSH
    */
-  public void sendAsyncRequestToDataNodeWithRetry(
-      Object req,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      DataNodeRequestType requestType,
-      List<TSStatus> dataNodeResponseStatus) {
-    if (dataNodeLocationMap.isEmpty()) {
+  public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
+    if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
+
+    DataNodeRequestType requestType = clientHandler.getRequestType();
     for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
-      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
-      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
-        AbstractRetryHandler handler;
-        switch (requestType) {
-          case SET_TTL:
-            handler =
-                new SetTTLHandler(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-            break;
-          case CREATE_FUNCTION:
-          case DROP_FUNCTION:
-            handler =
-                new FunctionManagementHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case CREATE_TRIGGER_INSTANCE:
-          case DROP_TRIGGER_INSTANCE:
-          case ACTIVE_TRIGGER_INSTANCE:
-          case INACTIVE_TRIGGER_INSTANCE:
-            handler =
-                new TriggerManagementHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case FULL_MERGE:
-          case MERGE:
-            handler =
-                new MergeHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case FLUSH:
-            handler =
-                new FlushHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case CLEAR_CACHE:
-            handler =
-                new ClearCacheHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case LOAD_CONFIGURATION:
-            handler =
-                new LoadConfigurationHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case SET_SYSTEM_STATUS:
-            handler =
-                new SetSystemStatusHandler(
-                    countDownLatch,
-                    requestType,
-                    targetDataNode,
-                    dataNodeLocationMap,
-                    dataNodeResponseStatus);
-            break;
-          case UPDATE_REGION_ROUTE_MAP:
-            handler =
-                new UpdateRegionRouteMapHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-            break;
-          case BROADCAST_LATEST_CONFIG_NODE_GROUP:
-            handler =
-                new UpdateConfigNodeGroupHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-            break;
-          case CONSTRUCT_SCHEMA_BLACK_LIST:
-            handler =
-                new ConstructSchemaBlackListHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          case ROLLBACK_SCHEMA_BLACK_LIST:
-            handler =
-                new RollbackSchemaBlackListHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          case FETCH_SCHEMA_BLACK_LIST:
-            handler =
-                new FetchSchemaBlackLsitHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          case INVALIDATE_MATCHED_SCHEMA_CACHE:
-            handler =
-                new InvalidateMatchedSchemaCacheHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          case DELETE_DATA_FOR_DELETE_TIMESERIES:
-            handler =
-                new DeleteDataForDeleteTimeSeriesHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          case DELETE_TIMESERIES:
-            handler =
-                new DeleteTimeSeriesHandler(countDownLatch, targetDataNode, dataNodeLocationMap);
-            break;
-          default:
-            return;
-        }
-        sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
+      // Always Reset CountDownLatch first
+      clientHandler.resetCountDownLatch();
+
+      // Send requests to all targetDataNodes
+      for (int requestId : clientHandler.getRequestIndices()) {
+        TDataNodeLocation targetDataNode = clientHandler.getDataNodeLocation(requestId);
+        sendAsyncRequestToDataNode(clientHandler, requestId, targetDataNode, retry);
       }
+
+      // Wait for this batch of asynchronous RPC requests finish
       try {
-        countDownLatch.await();
+        clientHandler.getCountDownLatch().await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
       }
-      // Check if there is a node that fails to send the request, and retry if there is one
-      if (dataNodeLocationMap.isEmpty()) {
-        break;
+
+      // Check if there is a DataNode that fails to execute the request, and retry if there exists
+      if (clientHandler.getRequestIndices().isEmpty()) {
+        return;
       }
     }
   }
 
-  public void sendAsyncRequestToDataNodeWithRetry(
-      Object req, AbstractDataNodeTask<?> dataNodeTask) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = dataNodeTask.getDataNodeLocationMap();
-    if (dataNodeLocationMap.isEmpty()) {
-      return;
-    }
-    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
-      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
-      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
-        AbstractRetryHandler handler = dataNodeTask.getSingleRequestHandler();
-        handler.setCountDownLatch(countDownLatch);
-        handler.setTargetDataNode(targetDataNode);
-        sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
-      }
-
-      try {
-        countDownLatch.await();
-      } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", dataNodeTask.getDataNodeRequestType());
-      }
-      // Check if there is a node that fails to send the request, and retry if there is one
-      if (dataNodeLocationMap.isEmpty()) {
-        break;
-      }
-    }
-  }
-
-  public void sendAsyncRequestToDataNode(
-      TDataNodeLocation dataNodeLocation,
-      Object req,
-      AbstractRetryHandler handler,
+  private void sendAsyncRequestToDataNode(
+      AsyncClientHandler<?, ?> clientHandler,
+      int requestId,
+      TDataNodeLocation targetDataNode,
       int retryCount) {
-    AsyncDataNodeInternalServiceClient client;
+
     try {
-      client = clientManager.borrowClient(dataNodeLocation.getInternalEndPoint());
-      switch (handler.getDataNodeRequestType()) {
+      AsyncDataNodeInternalServiceClient client;
+      client = clientManager.borrowClient(targetDataNode.getInternalEndPoint());
+
+      switch (clientHandler.getRequestType()) {
         case SET_TTL:
-          client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
+          client.setTTL(
+              (TSetTTLReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CREATE_DATA_REGION:
-          client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
+          client.createDataRegion(
+              (TCreateDataRegionReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CREATE_SCHEMA_REGION:
-          client.createSchemaRegion((TCreateSchemaRegionReq) req, (CreateRegionHandler) handler);
+          client.createSchemaRegion(
+              (TCreateSchemaRegionReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CREATE_FUNCTION:
-          client.createFunction((TCreateFunctionRequest) req, (FunctionManagementHandler) handler);
+          client.createFunction(
+              (TCreateFunctionRequest) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DROP_FUNCTION:
-          client.dropFunction((TDropFunctionRequest) req, (FunctionManagementHandler) handler);
+          client.dropFunction(
+              (TDropFunctionRequest) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CREATE_TRIGGER_INSTANCE:
           client.createTriggerInstance(
-              (TCreateTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+              (TCreateTriggerInstanceReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DROP_TRIGGER_INSTANCE:
           client.dropTriggerInstance(
-              (TDropTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+              (TDropTriggerInstanceReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ACTIVE_TRIGGER_INSTANCE:
           client.activeTriggerInstance(
-              (TActiveTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+              (TActiveTriggerInstanceReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case INACTIVE_TRIGGER_INSTANCE:
           client.inactiveTriggerInstance(
-              (TInactiveTriggerInstanceReq) req, (TriggerManagementHandler) handler);
+              (TInactiveTriggerInstanceReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case MERGE:
         case FULL_MERGE:
-          client.merge((MergeHandler) handler);
+          client.merge(
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case FLUSH:
-          client.flush((TFlushReq) req, (FlushHandler) handler);
+          client.flush(
+              (TFlushReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CLEAR_CACHE:
-          client.clearCache((ClearCacheHandler) handler);
+          client.clearCache(
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case LOAD_CONFIGURATION:
-          client.loadConfiguration((LoadConfigurationHandler) handler);
+          client.loadConfiguration(
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case SET_SYSTEM_STATUS:
-          client.setSystemStatus((String) req, (SetSystemStatusHandler) handler);
+          client.setSystemStatus(
+              (String) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case UPDATE_REGION_ROUTE_MAP:
-          client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
+          client.updateRegionCache(
+              (TRegionRouteReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
-              (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+              (TUpdateConfigNodeGroupReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
@@ -338,11 +227,20 @@ public class AsyncDataNodeClientPool {
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
-              (TRollbackSchemaBlackListReq) req, (RollbackSchemaBlackListHandler) handler);
+              (TRollbackSchemaBlackListReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case FETCH_SCHEMA_BLACK_LIST:
+          FetchSchemaBlackListHandler fetchSchemaBlackListHandler =
+              new FetchSchemaBlackListHandler(
+                  requestType,
+                  targetDataNode,
+                  dataNodeLocationMap,
+                  (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
+                  countDownLatch);
           client.fetchSchemaBlackList(
-              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackLsitHandler) handler);
+              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListHandler) handler);
           break;
         case INVALIDATE_MATCHED_SCHEMA_CACHE:
           client.invalidateMatchedSchemaCache(
@@ -359,14 +257,13 @@ public class AsyncDataNodeClientPool {
           break;
         default:
           LOGGER.error(
-              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
-              handler.getDataNodeRequestType());
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode", requestType);
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "{} failed on ConfigNode {}, because {}, retrying {}...",
-          handler.getDataNodeRequestType(),
-          dataNodeLocation.getInternalEndPoint(),
+          "{} failed on DataNode {}, because {}, retrying {}...",
+          clientHandler.getRequestType(),
+          targetDataNode.getInternalEndPoint(),
           e.getMessage(),
           retryCount);
     }
@@ -406,7 +303,7 @@ public class AsyncDataNodeClientPool {
           // Enumerate each Region
           for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
             if (dataNodeLocationMap.containsKey(index)) {
-              AbstractRetryHandler handler;
+              AbstractAsyncRPCHandler handler;
               switch (regionReplicaSet.getRegionId().getType()) {
                 case SchemaRegion:
                   handler =
@@ -514,8 +411,7 @@ public class AsyncDataNodeClientPool {
       sendAsyncRequestToDataNodeWithRetry(
           updateConfigNodeGroupReq,
           registeredDataNodeLocationMap,
-          DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
-          null);
+          DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP);
       LOGGER.info("Broadcast the latest configNodeGroup finished.");
     }
   }

@@ -25,44 +25,29 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class ConstructSchemaBlackListHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConstructSchemaBlackListHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
-
   public ConstructSchemaBlackListHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
-    super(DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST, dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
-  }
-
-  public ConstructSchemaBlackListHandler(
-      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(
-        countDownLatch,
-        DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
-        targetDataNode,
-        dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    dataNodeResponseStatusMap.put(targetDataNode.getDataNodeId(), tsStatus);
+    responseMap.put(targetDataNode.getDataNodeId(), tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully construct schema black list on DataNode: {}", targetDataNode);
@@ -79,17 +64,19 @@ public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
+    String errorMsg =
+        "Construct schema black list error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatusMap.put(
+    responseMap.put(
         targetDataNode.dataNodeId,
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Construct schema black list error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + e.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

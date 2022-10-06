@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +32,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** Only use CreateRegionHandler when the LoadManager wants to create Regions */
-public class CreateRegionHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class CreateRegionHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
@@ -46,15 +44,12 @@ public class CreateRegionHandler extends AbstractRetryHandler
   private final TConsensusGroupId consensusGroupId;
 
   public CreateRegionHandler(
-      CountDownLatch latch,
       DataNodeRequestType requestType,
-      TConsensusGroupId consensusGroupId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      int index) {
-    super(latch, requestType, targetDataNode, dataNodeLocationMap);
-    this.consensusGroupId = consensusGroupId;
-    this.index = index;
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override

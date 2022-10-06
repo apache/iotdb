@@ -24,39 +24,32 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class LoadConfigurationHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class LoadConfigurationHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadConfigurationHandler.class);
 
-  private final List<TSStatus> dataNodeResponseStatus;
-
   public LoadConfigurationHandler(
-      CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      List<TSStatus> dataNodeResponseStatus) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus response) {
+    responseMap.put(targetDataNode.getDataNodeId(), response);
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeResponseStatus.add(response);
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully Load Configuration on DataNode: {}", targetDataNode);
     } else {
-      dataNodeResponseStatus.add(response);
       LOGGER.error(
           "Failed to Load Configuration on DataNode {}, {}",
           dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
@@ -67,16 +60,19 @@ public class LoadConfigurationHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception exception) {
+    String errorMsg =
+        "Load Configuration error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + exception.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatus.add(
+    responseMap.put(
+        targetDataNode.getDataNodeId(),
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Load Configuration error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + exception.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

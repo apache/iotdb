@@ -21,30 +21,31 @@ package org.apache.iotdb.confignode.client.async.handlers;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class UpdateRegionRouteMapHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdateRegionRouteMapHandler.class);
 
   public UpdateRegionRouteMapHandler(
-      CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus status) {
+    responseMap.put(targetDataNode.getDataNodeId(), status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info(
@@ -57,7 +58,20 @@ public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
-    LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode.getDataNodeId());
+    String errorMsg =
+        requestType
+            + " error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
+    responseMap.put(
+        targetDataNode.getDataNodeId(),
+        new TSStatus(
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

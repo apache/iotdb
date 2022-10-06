@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -252,8 +252,7 @@ public class LoadManager {
         .sendAsyncRequestToDataNodeWithRetry(
             new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
             dataNodeLocationMap,
-            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            null);
+            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP);
     LOGGER.info("[latestRegionRouteMap] Broadcast the latest RegionRouteMap finished.");
   }
 

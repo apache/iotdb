@@ -25,40 +25,35 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class MergeHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
+public class MergeHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MergeHandler.class);
 
-  private final List<TSStatus> dataNodeResponseStatus;
-
   public MergeHandler(
-      CountDownLatch countDownLatch,
-      DataNodeRequestType dataNodeRequestType,
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      List<TSStatus> dataNodeResponseStatus) {
-    super(countDownLatch, dataNodeRequestType, targetDataNode, dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus response) {
+    responseMap.put(targetDataNode.getDataNodeId(), response);
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeResponseStatus.add(response);
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+      LOGGER.info("Successfully {} on DataNode: {}", requestType, targetDataNode);
     } else {
       LOGGER.error(
           "Failed to {} on DataNode {}, {}",
-          dataNodeRequestType,
+          requestType,
           dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
           response);
     }
@@ -67,17 +62,20 @@ public class MergeHandler extends AbstractRetryHandler implements AsyncMethodCal
 
   @Override
   public void onError(Exception exception) {
+    String errorMsg =
+        requestType
+            + " error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + exception.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatus.add(
+    responseMap.put(
+        targetDataNode.getDataNodeId(),
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                dataNodeRequestType
-                    + " error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + exception.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

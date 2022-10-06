@@ -25,44 +25,28 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class DeleteTimeSeriesHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class DeleteTimeSeriesHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
-
   public DeleteTimeSeriesHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
-    super(DataNodeRequestType.DELETE_TIMESERIES, dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
-  }
-
-  public DeleteTimeSeriesHandler(
-      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(
-        countDownLatch, DataNodeRequestType.DELETE_TIMESERIES, targetDataNode, dataNodeLocationMap);
-    dataNodeResponseStatusMap = new ConcurrentHashMap<>();
-  }
-
-  public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
-    return dataNodeResponseStatusMap;
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    dataNodeResponseStatusMap.put(targetDataNode.getDataNodeId(), tsStatus);
+    responseMap.put(targetDataNode.getDataNodeId(), tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully delete timeseries on DataNode: {}", targetDataNode);
@@ -77,17 +61,19 @@ public class DeleteTimeSeriesHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
+    String errorMsg =
+        "Delete timeseries error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatusMap.put(
+    responseMap.put(
         targetDataNode.dataNodeId,
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Delete timeseries error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + e.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

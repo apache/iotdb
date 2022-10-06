@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -87,10 +87,7 @@ public class UDFManager {
         new TCreateFunctionRequest(functionName, className, uris);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.CREATE_FUNCTION,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.CREATE_FUNCTION);
     return dataNodeResponseStatus;
   }
 
@@ -118,10 +115,7 @@ public class UDFManager {
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.DROP_FUNCTION,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.DROP_FUNCTION);
     return dataNodeResponseStatus;
   }
 }

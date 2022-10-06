@@ -25,48 +25,29 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class InvalidateMatchedSchemaCacheHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(InvalidateMatchedSchemaCacheHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
-
   public InvalidateMatchedSchemaCacheHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
-    super(DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE, dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
-  }
-
-  public InvalidateMatchedSchemaCacheHandler(
-      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(
-        countDownLatch,
-        DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-        targetDataNode,
-        dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
-  }
-
-  public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
-    return dataNodeResponseStatusMap;
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    dataNodeResponseStatusMap.put(targetDataNode.getDataNodeId(), tsStatus);
+    responseMap.put(targetDataNode.getDataNodeId(), tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully invalidate matched schema cache on DataNode: {}", targetDataNode);
@@ -79,17 +60,19 @@ public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
+    String errorMsg =
+        "Invalidate matched schema cache error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatusMap.put(
+    responseMap.put(
         targetDataNode.getDataNodeId(),
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Invalidate matched schema cache error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + e.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

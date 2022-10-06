@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -237,6 +238,7 @@ public class ClusterSchemaManager {
       }
     }
 
+    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler = new AsyncClientHandler<>();
     for (Map.Entry<Integer, List<String>> entry : dnlToSgMap.entrySet()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
       dataNodeLocationMap.put(entry.getKey(), dataNodeLocationMaps.get(entry.getKey()));
@@ -244,9 +246,11 @@ public class ClusterSchemaManager {
           .sendAsyncRequestToDataNodeWithRetry(
               new TSetTTLReq(entry.getValue(), setTTLPlan.getTTL()),
               dataNodeLocationMap,
-              DataNodeRequestType.SET_TTL,
-              null);
+              DataNodeRequestType.SET_TTL);
     }
+    // TODO: Check response
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 

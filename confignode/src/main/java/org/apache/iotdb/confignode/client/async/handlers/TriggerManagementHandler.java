@@ -22,51 +22,56 @@ package org.apache.iotdb.confignode.client.async.handlers;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TriggerManagementHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class TriggerManagementHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementHandler.class);
 
-  private final List<TSStatus> dataNodeResponseStatus;
-
   public TriggerManagementHandler(
-      CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      List<TSStatus> dataNodeResponseStatus) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus response) {
-    dataNodeResponseStatus.add(response);
+    responseMap.put(targetDataNode.getDataNodeId(), response);
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+      LOGGER.info("Successfully {} on DataNode: {}", requestType, targetDataNode);
     } else {
-      LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+      LOGGER.info("Failed to {} on DataNode: {}", requestType, targetDataNode);
     }
     countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception exception) {
-    dataNodeResponseStatus.add(
-        new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(targetDataNode + exception.getMessage()));
-    LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+    String errorMsg =
+        requestType
+            + " error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + exception.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
+    responseMap.put(
+        targetDataNode.getDataNodeId(),
+        new TSStatus(
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

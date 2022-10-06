@@ -24,35 +24,29 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class ClearCacheHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class ClearCacheHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClearCacheHandler.class);
 
-  private final List<TSStatus> dataNodeResponseStatus;
-
   public ClearCacheHandler(
-      CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      List<TSStatus> dataNodeResponseStatus) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeResponseStatus.add(response);
+      responseMap.put(targetDataNode.getDataNodeId(), response);
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully Clear Cache on DataNode: {}", targetDataNode);
     } else {
@@ -66,8 +60,18 @@ public class ClearCacheHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception exception) {
+    String errorMsg =
+        "Clear Cache error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + exception.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatus.add(
+    responseMap.put(
+        targetDataNode.getDataNodeId(),
         new TSStatus(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),

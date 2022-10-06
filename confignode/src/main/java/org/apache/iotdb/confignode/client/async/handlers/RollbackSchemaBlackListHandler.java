@@ -25,48 +25,29 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class RollbackSchemaBlackListHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RollbackSchemaBlackListHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
-
   public RollbackSchemaBlackListHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
-    super(DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST, dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
-  }
-
-  public RollbackSchemaBlackListHandler(
-      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(
-        countDownLatch,
-        DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
-        targetDataNode,
-        dataNodeLocationMap);
-    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
-  }
-
-  public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
-    return dataNodeResponseStatusMap;
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    dataNodeResponseStatusMap.put(targetDataNode.getDataNodeId(), tsStatus);
+    responseMap.put(targetDataNode.getDataNodeId(), tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully rollback schema black list on DataNode: {}", targetDataNode);
@@ -83,17 +64,19 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
+    String errorMsg =
+        "Rollback schema black list error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
-    dataNodeResponseStatusMap.put(
+    responseMap.put(
         targetDataNode.getDataNodeId(),
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Rollback schema black list error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + e.getMessage())));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }
 }

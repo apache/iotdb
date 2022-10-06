@@ -29,9 +29,9 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
@@ -385,10 +385,7 @@ public class ConfigNodeProcedureEnv {
     // JarFile
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.CREATE_TRIGGER_INSTANCE,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.CREATE_TRIGGER_INSTANCE);
     return dataNodeResponseStatus;
   }
 
@@ -402,10 +399,7 @@ public class ConfigNodeProcedureEnv {
         new TDropTriggerInstanceReq(triggerName, needToDeleteJarFile);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.DROP_TRIGGER_INSTANCE,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.DROP_TRIGGER_INSTANCE);
     return dataNodeResponseStatus;
   }
 
@@ -419,10 +413,7 @@ public class ConfigNodeProcedureEnv {
 
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.ACTIVE_TRIGGER_INSTANCE,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.ACTIVE_TRIGGER_INSTANCE);
     return dataNodeResponseStatus;
   }
 
@@ -436,10 +427,7 @@ public class ConfigNodeProcedureEnv {
 
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.INACTIVE_TRIGGER_INSTANCE,
-            dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.INACTIVE_TRIGGER_INSTANCE);
     return dataNodeResponseStatus;
   }
 

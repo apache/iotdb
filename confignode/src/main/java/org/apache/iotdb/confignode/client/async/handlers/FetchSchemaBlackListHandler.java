@@ -26,48 +26,30 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TFetchSchemaBlackListResp> {
+public class FetchSchemaBlackListHandler
+    extends AbstractAsyncRPCHandler<TFetchSchemaBlackListResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FetchSchemaBlackLsitHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FetchSchemaBlackListHandler.class);
 
-  private Map<Integer, TFetchSchemaBlackListResp> dataNodeResponseMap;
-
-  public FetchSchemaBlackLsitHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TFetchSchemaBlackListResp> dataNodeResponseMap) {
-    super(DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST, dataNodeLocationMap);
-    this.dataNodeResponseMap = dataNodeResponseMap;
-  }
-
-  public FetchSchemaBlackLsitHandler(
-      CountDownLatch countDownLatch,
+  public FetchSchemaBlackListHandler(
+      DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    super(
-        countDownLatch,
-        DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST,
-        targetDataNode,
-        dataNodeLocationMap);
-    this.dataNodeResponseMap = new ConcurrentHashMap<>();
-  }
-
-  public Map<Integer, TFetchSchemaBlackListResp> getDataNodeResponseMap() {
-    return dataNodeResponseMap;
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TFetchSchemaBlackListResp> responseMap,
+      CountDownLatch countDownLatch) {
+    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TFetchSchemaBlackListResp tFetchSchemaBlackListResp) {
     TSStatus tsStatus = tFetchSchemaBlackListResp.getStatus();
-    dataNodeResponseMap.put(targetDataNode.getDataNodeId(), tFetchSchemaBlackListResp);
+    responseMap.put(targetDataNode.getDataNodeId(), tFetchSchemaBlackListResp);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully fetch schema black list on DataNode: {}", targetDataNode);
@@ -84,18 +66,20 @@ public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
 
   @Override
   public void onError(Exception e) {
+    String errorMsg =
+        "Fetch schema black list error on DataNode: {id="
+            + targetDataNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetDataNode.getInternalEndPoint()
+            + "}"
+            + e.getMessage();
+    LOGGER.error(errorMsg);
+
     countDownLatch.countDown();
     TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
     resp.setStatus(
         new TSStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-                "Fetch schema black list error on DataNode: {id="
-                    + targetDataNode.getDataNodeId()
-                    + ", internalEndPoint="
-                    + targetDataNode.getInternalEndPoint()
-                    + "}"
-                    + e.getMessage())));
-    dataNodeResponseMap.put(targetDataNode.getDataNodeId(), resp);
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    responseMap.put(targetDataNode.getDataNodeId(), resp);
   }
 }
