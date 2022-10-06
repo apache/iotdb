@@ -110,7 +110,7 @@ public class IoTDBSnapshotTest {
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         int cnt = 0;
         while (analyzer.hasNext()) {
-          analyzer.getNextPairs();
+          analyzer.getTotalFileCount();
           cnt++;
         }
         analyzer.close();

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.FolderManager;
+import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -33,14 +33,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Queue;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
@@ -48,11 +46,13 @@ public class SnapshotLoader {
   private String snapshotPath;
   private String dataRegionId;
   private SnapshotLogAnalyzer logAnalyzer;
+  private FolderManager folderManager;
 
   public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
+    this.folderManager = null;
   }
 
   private DataRegion loadSnapshot() {
@@ -125,10 +125,18 @@ public class SnapshotLoader {
   }
 
   private DataRegion loadSnapshotWithLog(File logFile) {
+    boolean snapshotComplete = false;
     try {
       logAnalyzer = new SnapshotLogAnalyzer(logFile);
+      snapshotComplete = logAnalyzer.isSnapshotComplete();
     } catch (Exception e) {
       LOGGER.error("Exception occurs when reading snapshot file", e);
+      return null;
+    }
+
+    if (!snapshotComplete) {
+      // Do not load this snapshot because it's not complete.
+      LOGGER.error("This snapshot is not complete, cannot load it");
       return null;
     }
 
@@ -136,12 +144,12 @@ public class SnapshotLoader {
       try {
         deleteAllFilesInDataDirs();
         LOGGER.info("Remove all data files in original data dir");
+        createLinksFromSnapshotDirToDataDirWithLog();
+        return loadSnapshot();
       } catch (IOException e) {
+        LOGGER.error("IOException occurs when creating links from snapshot dir to data dir", e);
         return null;
       }
-
-      createLinksFromSnapshotDirToDataDirWithLog();
-      return loadSnapshot();
     } finally {
       logAnalyzer.close();
     }
@@ -203,134 +211,195 @@ public class SnapshotLoader {
 
   private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
       throws IOException, DiskSpaceInsufficientException {
-    File seqFileDir = new File(sourceDir, "sequence" + File.separator + storageGroupName);
-    File unseqFileDir = new File(sourceDir, "unsequence" + File.separator + storageGroupName);
+    File seqFileDir =
+        new File(
+            sourceDir,
+            IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId);
+    File unseqFileDir =
+        new File(
+            sourceDir,
+            IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId);
     if (!seqFileDir.exists() && !unseqFileDir.exists()) {
       throw new IOException(
           String.format(
               "Cannot find %s or %s",
               seqFileDir.getAbsolutePath(), unseqFileDir.getAbsolutePath()));
     }
-
-    File[] seqRegionDirs = seqFileDir.listFiles();
-    if (seqRegionDirs != null && seqRegionDirs.length > 0) {
-      for (File seqRegionDir : seqRegionDirs) {
-        if (!seqRegionDir.isDirectory()) {
-          LOGGER.info("Skip {}, because it is not a directory", seqRegionDir);
+    folderManager =
+        new FolderManager(
+            Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()),
+            DirectoryStrategyType.SEQUENCE_STRATEGY);
+    File[] timePartitionFolders = seqFileDir.listFiles();
+    if (timePartitionFolders != null) {
+      for (File timePartitionFolder : timePartitionFolders) {
+        File[] files = timePartitionFolder.listFiles();
+        if (files == null || files.length == 0) {
           continue;
         }
-        File[] seqPartitionDirs = seqRegionDir.listFiles();
-        if (seqPartitionDirs != null && seqPartitionDirs.length > 0) {
-          for (File seqPartitionDir : seqPartitionDirs) {
-            String[] splitPath =
-                seqPartitionDir
-                    .getAbsolutePath()
-                    .split(File.separator.equals("\\") ? "\\\\" : File.separator);
-            long timePartition = Long.parseLong(splitPath[splitPath.length - 1]);
-            File[] files = seqPartitionDir.listFiles();
-            if (files != null && files.length > 0) {
-              Arrays.sort(files, Comparator.comparing(File::getName));
-              String currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
-              for (File file : files) {
-                if (file.getName().endsWith(".tsfile")) {
-                  currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
-                }
-                File targetFile =
-                    new File(
-                        currDir,
-                        storageGroupName
-                            + File.separator
-                            + dataRegionId
-                            + File.separator
-                            + timePartition
-                            + File.separator
-                            + file.getName());
-                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-                  throw new IOException(
-                      String.format("Failed to create dir %s", targetFile.getParent()));
-                }
-                try {
-                  Files.createLink(targetFile.toPath(), file.toPath());
-                } catch (FileSystemException e) {
-                  // cannot create link between two directories in different fs
-                  // copy it
-                  Files.copy(file.toPath(), targetFile.toPath());
-                }
-              }
-            }
-          }
-        }
+        String targetSuffix =
+            IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId
+                + File.separator
+                + timePartitionFolder.getName();
+        createLinksFromSnapshotToSourceDir(targetSuffix, files);
       }
     }
 
-    File[] unseqRegionDirs = unseqFileDir.listFiles();
-    if (unseqRegionDirs != null && unseqRegionDirs.length > 0) {
-      for (File unseqRegionDir : unseqRegionDirs) {
-        if (!unseqRegionDir.isDirectory()) {
-          LOGGER.info("Skip {}, because it is not a directory", unseqRegionDir);
+    timePartitionFolders = unseqFileDir.listFiles();
+    if (timePartitionFolders != null) {
+      for (File timePartitionFolder : timePartitionFolders) {
+        File[] files = timePartitionFolder.listFiles();
+        if (files == null || files.length == 0) {
           continue;
         }
-        File[] unseqPartitionDirs = unseqRegionDir.listFiles();
-        if (unseqPartitionDirs != null && unseqPartitionDirs.length > 0) {
-          for (File unseqPartitionDir : unseqPartitionDirs) {
-            String[] splitPath =
-                unseqPartitionDir
-                    .getAbsolutePath()
-                    .split(File.separator.equals("\\") ? "\\\\" : File.separator);
-            long timePartition = Long.parseLong(splitPath[splitPath.length - 1]);
-            File[] files = unseqPartitionDir.listFiles();
-            if (files != null && files.length > 0) {
-              Arrays.sort(files, Comparator.comparing(File::getName));
-              String currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
-              for (File file : files) {
-                if (file.getName().endsWith(".tsfile")) {
-                  currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
-                }
-                File targetFile =
-                    new File(
-                        currDir,
-                        storageGroupName
-                            + File.separator
-                            + dataRegionId
-                            + File.separator
-                            + timePartition
-                            + File.separator
-                            + file.getName());
-                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-                  throw new IOException(
-                      String.format("Failed to create dir %s", targetFile.getParent()));
-                }
-                try {
-                  Files.createLink(targetFile.toPath(), file.toPath());
-                } catch (FileSystemException e) {
-                  Files.copy(file.toPath(), targetFile.toPath());
-                }
-              }
-            }
-          }
-        }
+        String targetSuffix =
+            IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId
+                + File.separator
+                + timePartitionFolder.getName();
+        createLinksFromSnapshotToSourceDir(targetSuffix, files);
       }
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDirWithLog() {
-    while (logAnalyzer.hasNext()) {
-      Pair<String, String> filesPath = logAnalyzer.getNextPairs();
-      File sourceFile = new File(filesPath.left);
-      File linkedFile = new File(filesPath.right);
-      if (!linkedFile.exists()) {
-        LOGGER.warn("Snapshot file {} does not exist, skip it", linkedFile);
-        continue;
-      }
-      if (!sourceFile.getParentFile().exists() && !sourceFile.getParentFile().mkdirs()) {
-        LOGGER.error("Failed to create folder {}", sourceFile.getParentFile());
-        continue;
+  private void createLinksFromSnapshotToSourceDir(String targetSuffix, File[] files)
+      throws DiskSpaceInsufficientException, IOException {
+    for (File file : files) {
+      String dataDir = folderManager.getNextFolder();
+      File targetFile =
+          new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
+      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+        throw new IOException(
+            String.format(
+                "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
       }
       try {
-        Files.createLink(sourceFile.toPath(), linkedFile.toPath());
+        Files.createLink(targetFile.toPath(), file.toPath());
+        continue;
       } catch (IOException e) {
-        LOGGER.error("Failed to create link from {} to {}", linkedFile, sourceFile, e);
+        LOGGER.info("Cannot create link from {} to {}, try to copy it", file, targetFile);
       }
+
+      Files.copy(file.toPath(), targetFile.toPath());
+    }
+  }
+
+  private void createLinksFromSnapshotDirToDataDirWithLog() throws IOException {
+    String snapshotId = logAnalyzer.getSnapshotId();
+    int fileNum = logAnalyzer.getTotalFileCountInSnapshot();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    int fileCnt = 0;
+    for (String dataDir : dataDirs) {
+      String snapshotDir =
+          dataDir
+              + File.separator
+              + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+              + File.separator
+              + snapshotId;
+      fileCnt += takeHardLinksFromSnapshotToDataDir(dataDir, new File(snapshotDir));
+    }
+    if (fileCnt != fileNum) {
+      throw new IOException(
+          String.format(
+              "The file num in log is %d, while file num in disk is %d", fileNum, fileCnt));
+    }
+  }
+
+  private int takeHardLinksFromSnapshotToDataDir(String dataDir, File snapshotFolder)
+      throws IOException {
+    int cnt = 0;
+    File sequenceTimePartitionFolders =
+        new File(
+            snapshotFolder.getAbsolutePath()
+                + File.separator
+                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId);
+    File[] timePartitionFolders = sequenceTimePartitionFolders.listFiles();
+    if (timePartitionFolders != null) {
+      for (File timePartitionFolder : timePartitionFolders) {
+        String timePartition = timePartitionFolder.getName();
+        File[] sourceFiles = timePartitionFolder.listFiles();
+        if (sourceFiles == null) {
+          continue;
+        }
+        File targetDir =
+            new File(
+                dataDir
+                    + File.separator
+                    + IoTDBConstant.SEQUENCE_FLODER_NAME
+                    + File.separator
+                    + storageGroupName
+                    + File.separator
+                    + dataRegionId
+                    + File.separator
+                    + timePartition);
+        createLinksFromSourceToTarget(targetDir, sourceFiles);
+        cnt += sourceFiles.length;
+      }
+    }
+
+    File unsequenceTimePartitionFolders =
+        new File(
+            snapshotFolder.getAbsolutePath()
+                + File.separator
+                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + dataRegionId);
+    timePartitionFolders = unsequenceTimePartitionFolders.listFiles();
+    if (timePartitionFolders != null) {
+      for (File timePartitionFolder : timePartitionFolders) {
+        String timePartition = timePartitionFolder.getName();
+        File[] sourceFiles = timePartitionFolder.listFiles();
+        if (sourceFiles == null) {
+          continue;
+        }
+        File targetDir =
+            new File(
+                dataDir
+                    + File.separator
+                    + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                    + File.separator
+                    + storageGroupName
+                    + File.separator
+                    + dataRegionId
+                    + File.separator
+                    + timePartition);
+        createLinksFromSourceToTarget(targetDir, sourceFiles);
+        cnt += sourceFiles.length;
+      }
+    }
+
+    return cnt;
+  }
+
+  private void createLinksFromSourceToTarget(File targetDir, File[] files) throws IOException {
+    for (File file : files) {
+      File targetFile = new File(targetDir, file.getName());
+      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+        throw new IOException(
+            String.format(
+                "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
+      }
+      Files.createLink(targetFile.toPath(), file.toPath());
     }
   }
 
@@ -338,7 +407,7 @@ public class SnapshotLoader {
     File snapshotLogFile = getSnapshotLogFile();
 
     if (snapshotLogFile == null) {
-      return getSnapshotFileWithoutLog();
+      return searchDataFilesRecursively(snapshotPath);
     } else {
       return getSnapshotFileWithLog(snapshotLogFile);
     }
@@ -347,24 +416,44 @@ public class SnapshotLoader {
   private List<File> getSnapshotFileWithLog(File logFile) throws IOException {
     SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(logFile);
     try {
-
+      String snapshotId = analyzer.getSnapshotId();
+      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
       List<File> fileList = new LinkedList<>();
-
-      while (analyzer.hasNext()) {
-        fileList.add(new File(analyzer.getNextPairs().right));
+      for (String dataDir : dataDirs) {
+        String snapshotDir =
+            dataDir
+                + File.separator
+                + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+                + File.separator
+                + snapshotId;
+        fileList.addAll(searchDataFilesRecursively(snapshotDir));
       }
-
       return fileList;
     } finally {
       analyzer.close();
     }
   }
 
-  private List<File> getSnapshotFileWithoutLog() {
-    return new LinkedList<>(
-        Arrays.asList(
-            Objects.requireNonNull(
-                new File(snapshotPath)
-                    .listFiles((dir, name) -> SnapshotFileSet.isDataFile(new File(dir, name))))));
+  /**
+   * Search all data files in one directory recursively.
+   *
+   * @return
+   */
+  private List<File> searchDataFilesRecursively(String dir) {
+    LinkedList<File> fileList = new LinkedList<>();
+    Queue<File> queueToSearch = new LinkedList<>();
+    queueToSearch.add(new File(dir));
+    while (!queueToSearch.isEmpty()) {
+      File f = queueToSearch.poll();
+      if (f.isDirectory()) {
+        File[] files = f.listFiles();
+        if (files != null && files.length != 0) {
+          queueToSearch.addAll(Arrays.asList(files));
+        }
+      } else if (SnapshotFileSet.isDataFile(f)) {
+        fileList.add(f);
+      }
+    }
+    return fileList;
   }
 }

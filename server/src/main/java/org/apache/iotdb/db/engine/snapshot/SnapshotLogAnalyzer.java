@@ -25,18 +25,25 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class SnapshotLogAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLogAnalyzer.class);
   private File snapshotLogFile;
   private BufferedReader reader;
+  private FileReader fileReader;
+  private FileInputStream fileInputStream;
+  String snapshotId;
 
-  public SnapshotLogAnalyzer(File snapshotLogFile) throws FileNotFoundException {
+  public SnapshotLogAnalyzer(File snapshotLogFile) throws IOException {
     this.snapshotLogFile = snapshotLogFile;
-    this.reader = new BufferedReader(new FileReader(snapshotLogFile));
+    this.fileReader = new FileReader(snapshotLogFile);
+    this.fileInputStream = new FileInputStream(snapshotLogFile);
+    this.reader = new BufferedReader(fileReader);
+    this.snapshotId = reader.readLine();
   }
 
   public void close() {
@@ -59,7 +66,7 @@ public class SnapshotLogAnalyzer {
    * @return The next pair of files recorded in the log. The left one is the path of source file,
    *     the right one is the path of target file
    */
-  public Pair<String, String> getNextPairs() {
+  public Pair<String, String> getTotalFileCount() {
     if (reader == null) {
       return null;
     }
@@ -75,5 +82,43 @@ public class SnapshotLogAnalyzer {
       LOGGER.error("Exception occurs when analyzing snapshot log", e);
       return null;
     }
+  }
+
+  public String getSnapshotId() {
+    return snapshotId;
+  }
+
+  /**
+   * Return the total num of file in this snapshot.
+   *
+   * @return
+   */
+  public int getTotalFileCountInSnapshot() throws IOException {
+    reader.reset();
+    String currLine;
+    int cnt = 0;
+    while ((currLine = reader.readLine()) != null) {
+      cnt++;
+    }
+    return cnt;
+  }
+
+  /**
+   * Read the tail of the log file to see if the snapshot is complete.
+   *
+   * @return
+   */
+  public boolean isSnapshotComplete() throws IOException {
+    char[] endFlagInChar = new char[SnapshotLogger.END_FLAG.length()];
+    long fileLength = snapshotLogFile.length();
+    int endFlagLength = SnapshotLogger.END_FLAG.getBytes(StandardCharsets.UTF_8).length;
+    if (fileLength < endFlagLength) {
+      // this snapshot cannot be complete
+      return false;
+    }
+    reader.mark((int) fileLength);
+    reader.read(endFlagInChar, (int) (fileLength - endFlagLength), endFlagLength);
+    String fileEndStr = new String(endFlagInChar);
+    return fileEndStr.equals(SnapshotLogger.END_FLAG);
   }
 }
