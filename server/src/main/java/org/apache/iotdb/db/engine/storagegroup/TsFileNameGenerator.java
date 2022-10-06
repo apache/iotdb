@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -262,7 +264,7 @@ public class TsFileNameGenerator {
                     + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
   }
 
-  public static class TsFileName {
+  public static class TsFileName implements Comparable<TsFileName> {
     private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
@@ -308,6 +310,17 @@ public class TsFileNameGenerator {
 
     public void setCrossCompactionCnt(int crossCompactionCnt) {
       this.crossCompactionCnt = crossCompactionCnt;
+    }
+
+    @Override
+    public int compareTo(@NotNull TsFileName o) {
+      if (time != o.getTime()) {
+        return time < o.getTime() ? -1 : 1;
+      }
+      if (version != o.getVersion()) {
+        return version < o.getVersion() ? -1 : 1;
+      }
+      return 0;
     }
   }
 }
