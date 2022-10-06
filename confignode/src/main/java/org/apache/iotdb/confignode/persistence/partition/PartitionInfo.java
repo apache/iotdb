@@ -790,7 +790,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public List<TSeriesPartitionSlot> getSeriesSlotList(
       String storageGroup, TConsensusGroupType type) {
-    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+    if (!isStorageGroupExisted(storageGroup)) {
       return new ArrayList<>();
     }
     StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
