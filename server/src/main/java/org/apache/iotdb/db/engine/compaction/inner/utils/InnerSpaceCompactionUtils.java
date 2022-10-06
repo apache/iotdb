@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -64,8 +65,16 @@ public class InnerSpaceCompactionUtils {
   public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
       throws IOException, MetadataException, InterruptedException {
 
+    // size for file writer is 5% of per compaction task memory budget
+    long sizeForFileWriter =
+        (long)
+            (((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                    / (double)
+                        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataMemorySizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
-        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
+        TsFileIOWriter writer =
+            new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
@@ -119,6 +128,7 @@ public class InnerSpaceCompactionUtils {
           new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+    writer.checkMetadataSizeAndMayFlush();
   }
 
   private static void compactAlignedSeries(

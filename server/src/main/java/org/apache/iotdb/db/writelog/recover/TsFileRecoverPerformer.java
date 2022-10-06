@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -111,9 +112,16 @@ public class TsFileRecoverPerformer {
     }
 
     // remove corrupted part of the TsFile
-    RestorableTsFileIOWriter restorableTsFileIOWriter;
+    RestorableTsFileIOWriter restorableTsFileIOWriter = null;
     try {
-      restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+      restorableTsFileIOWriter =
+          new RestorableTsFileIOWriter(
+              file,
+              (long)
+                  (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
+                      * IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getChunkMetadataMemorySizeProportion()));
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
@@ -180,7 +188,7 @@ public class TsFileRecoverPerformer {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath(), true)) {
       for (Entry<String, List<TimeseriesMetadata>> entry :
-          reader.getAllTimeseriesMetadata().entrySet()) {
+          reader.getAllTimeseriesMetadata(false).entrySet()) {
         for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
           tsFileResource.updateStartTime(
               entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());

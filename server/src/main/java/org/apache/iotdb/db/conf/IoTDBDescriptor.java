@@ -341,6 +341,11 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    conf.setChunkMetadataMemorySizeProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_memory_size_proportion",
+                Double.toString(conf.getChunkMetadataMemorySizeProportion()))));
     conf.setEstimatedSeriesSize(
         Integer.parseInt(
             properties.getProperty(
