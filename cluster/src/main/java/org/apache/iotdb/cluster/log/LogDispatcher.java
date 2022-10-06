@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,8 @@ public class LogDispatcher {
   List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
   Map<Node, Boolean> nodesEnabled;
   Map<Node, ExecutorService> executorServices = new HashMap<>();
+  protected boolean queueOrdered =
+      !(clusterConfig.isUseFollowerSlidingWindow() && clusterConfig.isEnableWeakAcceptance());
 
   public static int bindingThreadNum = clusterConfig.getDispatcherBindingThreadNum();
   public static int maxBatchSize = 10;
@@ -335,6 +338,10 @@ public class LogDispatcher {
           }
           Statistic.LOG_DISPATCHER_LOG_BATCH_SIZE.add(currBatch.size());
           serializeEntries();
+          if (!queueOrdered) {
+            currBatch.sort(
+                Comparator.comparingLong(s -> s.getVotingLog().getLog().getCurrLogIndex()));
+          }
           sendBatchLogs(currBatch);
           currBatch.clear();
         }
@@ -461,7 +468,7 @@ public class LogDispatcher {
 
     private void sendBatchLogs(List<SendLogRequest> currBatch) throws TException {
       if (currBatch.size() > 1) {
-        if (useBatchInLogCatchUp) {
+        if (useBatchInLogCatchUp && queueOrdered) {
           sendLogs(currBatch);
         } else {
           for (SendLogRequest batch : currBatch) {

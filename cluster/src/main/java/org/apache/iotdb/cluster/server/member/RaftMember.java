@@ -1920,8 +1920,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     return request;
   }
 
-  protected AppendEntryRequest buildAppendEntryRequestExtended(AppendEntryRequest request, Log log,
-      boolean serializeNow) {
+  protected AppendEntryRequest buildAppendEntryRequestExtended(
+      AppendEntryRequest request, Log log, boolean serializeNow) {
     request.setIsFromLeader(true);
     if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft()) {
       request.setLeaderSignature(KeyManager.INSTANCE.getNodeSignature());
