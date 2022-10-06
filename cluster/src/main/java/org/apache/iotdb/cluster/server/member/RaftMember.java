@@ -1887,6 +1887,12 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
+    AppendEntryRequest request = buildAppendEntryRequestBasic(log, serializeNow);
+    request = buildAppendEntryRequestExtended(request, log, serializeNow);
+    return request;
+  }
+
+  protected AppendEntryRequest buildAppendEntryRequestBasic(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
@@ -1895,24 +1901,33 @@ public abstract class RaftMember implements RaftMemberMBean {
       log.setByteSize(byteBuffer.array().length);
       request.entry = byteBuffer;
       Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
-      request.setEntryHash(byteBuffer.hashCode());
+    }
+    try {
+      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
     // logManager, the follower can handle the larger commitIndex with no effect
     request.setLeaderCommit(logManager.getCommitLogIndex());
     request.setPrevLogIndex(log.getCurrLogIndex() - 1);
-    request.setIsFromLeader(true);
-    request.setLeaderSignature(KeyManager.INSTANCE.getNodeSignature());
-
-    try {
-      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
-    }
     if (getHeader() != null) {
       // data groups use header to find a particular DataGroupMember
       request.setHeader(getHeader());
+    }
+
+    return request;
+  }
+
+  protected AppendEntryRequest buildAppendEntryRequestExtended(AppendEntryRequest request, Log log,
+      boolean serializeNow) {
+    request.setIsFromLeader(true);
+    if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft()) {
+      request.setLeaderSignature(KeyManager.INSTANCE.getNodeSignature());
+      if (serializeNow) {
+        request.setEntryHash(request.entry.hashCode());
+      }
     }
     return request;
   }

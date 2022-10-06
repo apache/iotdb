@@ -51,9 +51,19 @@ public class SynchronousSequencer implements LogSequencer {
     this.logManager = logManager;
   }
 
+  private SendLogRequest enqueueEntry(SendLogRequest sendLogRequest) {
+    long startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+
+    if (member.getAllNodes().size() > 1) {
+      member.getLogDispatcher().offer(sendLogRequest);
+    }
+    Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+    return sendLogRequest;
+  }
+
   @Override
   public SendLogRequest sequence(Log log) {
-    SendLogRequest sendLogRequest;
+    SendLogRequest sendLogRequest = null;
 
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
@@ -87,15 +97,13 @@ public class SynchronousSequencer implements LogSequencer {
 
           startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
           sendLogRequest = buildSendLogRequest(log);
+          log.setCreateTime(System.nanoTime());
           Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
 
-          startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
-          log.setCreateTime(System.nanoTime());
-          if (member.getAllNodes().size() > 1) {
-            member.getLogDispatcher().offer(sendLogRequest);
+          if (!(ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()
+              && ClusterDescriptor.getInstance().getConfig().isEnableWeakAcceptance())) {
+            sendLogRequest = enqueueEntry(sendLogRequest);
           }
-          Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
-
           break;
         }
         try {
@@ -109,6 +117,11 @@ public class SynchronousSequencer implements LogSequencer {
           Thread.currentThread().interrupt();
         }
       }
+    }
+
+    if (ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()
+        && ClusterDescriptor.getInstance().getConfig().isEnableWeakAcceptance()) {
+      sendLogRequest = enqueueEntry(sendLogRequest);
     }
 
     return sendLogRequest;
