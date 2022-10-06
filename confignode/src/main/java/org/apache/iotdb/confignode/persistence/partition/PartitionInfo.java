@@ -772,7 +772,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public List<TConsensusGroupId> getRouting(
       String storageGroup, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
-    if (!storageGroupPartitionTables.containsKey(storageGroup)) {
+    if (!isStorageGroupExisted(storageGroup)) {
       return new ArrayList<>();
     }
     StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
