@@ -963,6 +963,20 @@ public class TsFileResource {
     }
   }
 
+  public static int compareFileName(String fileName1, String fileName2) throws IOException {
+    TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
+    TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
+    long timeDiff = tsFileName1.getTime() - tsFileName2.getTime();
+    if (timeDiff != 0) {
+      return timeDiff < 0 ? -1 : 1;
+    }
+    long versionDiff = tsFileName1.getVersion() - tsFileName2.getVersion();
+    if (versionDiff != 0) {
+      return versionDiff < 0 ? -1 : 1;
+    }
+    return 0;
+  }
+
   public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
     try {
       TsFileNameGenerator.TsFileName n1 =

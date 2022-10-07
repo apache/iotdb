@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -81,11 +80,7 @@ public class LoadTsFileStatement extends Statement {
           String file1Name = o1.getName();
           String file2Name = o2.getName();
           try {
-            TsFileNameGenerator.TsFileName tsFileName1 =
-                TsFileNameGenerator.getTsFileName(file1Name);
-            TsFileNameGenerator.TsFileName tsFileName2 =
-                TsFileNameGenerator.getTsFileName(file2Name);
-            return tsFileName1.compareTo(tsFileName2);
+            return TsFileResource.compareFileName(file1Name, file2Name);
           } catch (IOException e) {
             return file1Name.compareTo(file2Name);
           }
