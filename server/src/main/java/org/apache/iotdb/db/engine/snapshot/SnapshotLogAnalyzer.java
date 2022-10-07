@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.engine.snapshot;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,28 +57,6 @@ public class SnapshotLogAnalyzer {
       return reader != null && reader.ready();
     } catch (Exception e) {
       return false;
-    }
-  }
-
-  /**
-   * @return The next pair of files recorded in the log. The left one is the path of source file,
-   *     the right one is the path of target file
-   */
-  public Pair<String, String> getTotalFileCount() {
-    if (reader == null) {
-      return null;
-    }
-    try {
-      String fileInfo = reader.readLine();
-      String[] filesPath = fileInfo.split(SnapshotLogger.SPLIT_CHAR);
-      if (filesPath.length != 2) {
-        LOGGER.warn("Illegal file info: {} in snapshot log", fileInfo);
-        return null;
-      }
-      return new Pair<>(filesPath[0], filesPath[1]);
-    } catch (IOException e) {
-      LOGGER.error("Exception occurs when analyzing snapshot log", e);
-      return null;
     }
   }
 
