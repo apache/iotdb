@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 
@@ -89,6 +90,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case STOP_PIPE_PROCEDURE:
         procedure = new StopPipeProcedure();
         break;
+      case DROP_PIPE_PROCEDURE:
+        procedure = new DropPipeProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -122,6 +126,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.START_PIPE_PROCEDURE;
     } else if (procedure instanceof StopPipeProcedure) {
       return ProcedureType.STOP_PIPE_PROCEDURE;
+    } else if (procedure instanceof DropPipeProcedure) {
+      return ProcedureType.DROP_PIPE_PROCEDURE;
     }
     return null;
   }
@@ -138,7 +144,8 @@ public class ProcedureFactory implements IProcedureFactory {
     DROP_TRIGGER_PROCEDURE,
     CREATE_PIPE_PROCEDURE,
     START_PIPE_PROCEDURE,
-    STOP_PIPE_PROCEDURE
+    STOP_PIPE_PROCEDURE,
+    DROP_PIPE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

@@ -38,7 +38,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class StartPipeProcedure extends OperatePipeProcedure {
+public class StartPipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedure.class);
 
   private String pipeName;

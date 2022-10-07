@@ -79,6 +79,9 @@ public class ConfigNodeProcedureEnv {
   /** add or remove node lock */
   private final LockQueue nodeLock = new LockQueue();
 
+  /** pipe operation lock */
+  private final LockQueue pipeLock = new LockQueue();
+
   private final ReentrantLock schedulerLock = new ReentrantLock();
 
   private final ConfigManager configManager;
@@ -445,6 +448,10 @@ public class ConfigNodeProcedureEnv {
 
   public LockQueue getNodeLock() {
     return nodeLock;
+  }
+
+  public LockQueue getPipeLock() {
+    return pipeLock;
   }
 
   public ProcedureScheduler getScheduler() {

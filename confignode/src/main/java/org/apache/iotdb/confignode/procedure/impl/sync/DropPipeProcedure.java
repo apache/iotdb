@@ -20,17 +20,15 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
-import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,30 +38,32 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedure.class);
+// TODO(sync): drop logic need to be updated
+public class DropPipeProcedure extends AbstractOperatePipeProcedure {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedure.class);
 
-  private PipeInfo pipeInfo;
+  private String pipeName;
 
-  public CreatePipeProcedure() {
+  public DropPipeProcedure() {
     super();
   }
 
-  public CreatePipeProcedure(TPipeInfo pipeInfo) throws PipeException {
+  public DropPipeProcedure(String pipeName) throws PipeException {
     super();
-    this.pipeInfo = SyncPipeUtil.parseTPipeInfoAsPipeInfo(pipeInfo, System.currentTimeMillis());
+    this.pipeName = pipeName;
   }
 
   @Override
   void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to create PIPE [{}]", pipeInfo.getPipeName());
-    env.getConfigManager().getSyncManager().checkAddPipe(pipeInfo);
+    LOGGER.info("Start to drop PIPE [{}]", pipeName);
+    env.getConfigManager().getSyncManager().checkIfPipeExist(pipeName);
   }
 
   @Override
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to pre-create PIPE [{}] on Config Nodes", pipeInfo.getPipeName());
-    TSStatus status = env.getConfigManager().getSyncManager().preCreatePipe(pipeInfo);
+    LOGGER.info("Start to pre-drop PIPE [{}] on Config Nodes", pipeName);
+    TSStatus status =
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_DROP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -71,25 +71,24 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
 
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", pipeInfo.getPipeName());
+    LOGGER.info("Start to broadcast drop PIPE [{}] on Data Nodes", pipeName);
     TSStatus status =
         RpcUtils.squashResponseStatusList(
-            env.getConfigManager().getSyncManager().preCreatePipeOnDataNodes(pipeInfo));
+            env.getConfigManager()
+                .getSyncManager()
+                .operatePipeOnDataNodes(pipeName, SyncOperation.DROP_PIPE));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to create PIPE [%s] on Data Nodes because %s",
-              pipeInfo.getPipeName(), status.getMessage()));
+              "Fail to drop PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
     }
   }
 
   @Override
   void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to create PIPE [{}] on Config Nodes", pipeInfo.getPipeName());
+    LOGGER.info("Start to drop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager()
-            .getSyncManager()
-            .setPipeStatus(pipeInfo.getPipeName(), PipeStatus.STOP);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.DROP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -97,49 +96,36 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
 
   @Override
   SyncOperation getOperation() {
-    return SyncOperation.CREATE_PIPE;
-  }
-
-  @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    switch (state) {
-      case OPERATE_CHECK:
-      case OPERATE_PIPE_DATANODE:
-        return true;
-    }
-    return false;
+    return SyncOperation.DROP_PIPE;
   }
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {
-    LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
-    // TODO(sync): roll back logic;
-  }
+      throws IOException, InterruptedException, ProcedureException {}
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_PIPE_PROCEDURE.ordinal());
+    stream.writeInt(ProcedureFactory.ProcedureType.DROP_PIPE_PROCEDURE.ordinal());
     super.serialize(stream);
-    pipeInfo.serialize(stream);
+    ReadWriteIOUtils.write(pipeName, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+    pipeName = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreatePipeProcedure that = (CreatePipeProcedure) o;
-    return Objects.equals(pipeInfo, that.pipeInfo);
+    DropPipeProcedure that = (DropPipeProcedure) o;
+    return Objects.equals(pipeName, that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeInfo);
+    return Objects.hash(pipeName);
   }
 }

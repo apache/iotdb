@@ -27,4 +27,5 @@ public enum PipeStatus {
   PREPARE_CREATE,
   PREPARE_START,
   PREPARE_STOP,
+  PREPARE_DROP
 }

@@ -42,7 +42,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -140,20 +139,6 @@ public class SyncManager {
 
   public void checkIfPipeExist(String pipeName) throws PipeException {
     clusterSyncInfo.checkIfPipeExist(pipeName);
-  }
-
-  public TSStatus dropPipe(String pipeName) {
-    TSStatus status =
-        RpcUtils.squashResponseStatusList(
-            operatePipeOnDataNodes(pipeName, SyncOperation.DROP_PIPE));
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // drop pipe in ConfigNode
-      // TODO(sync): drop logic need to be updated
-      return getConsensusManager()
-          .write(new SetPipeStatusPlan(pipeName, PipeStatus.DROP))
-          .getStatus();
-    }
-    return status;
   }
 
   /**

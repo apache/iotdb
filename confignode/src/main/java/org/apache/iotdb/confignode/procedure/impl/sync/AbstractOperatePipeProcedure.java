@@ -20,20 +20,22 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** This procedure manage three kinds of PIPE operations: CREATE, START and STOP */
-abstract class OperatePipeProcedure extends AbstractNodeProcedure<OperatePipeState> {
+abstract class AbstractOperatePipeProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, OperatePipeState> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperatePipeProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOperatePipeProcedure.class);
 
   private static final int retryThreshold = 3;
 
@@ -82,6 +84,35 @@ abstract class OperatePipeProcedure extends AbstractNodeProcedure<OperatePipeSta
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv env) {
+    env.getSchedulerLock().lock();
+    try {
+      if (env.getPipeLock().tryLock(this)) {
+        LOGGER.info("procedureId {} acquire lock.", getProcId());
+        return ProcedureLockState.LOCK_ACQUIRED;
+      }
+      env.getPipeLock().waitProcedure(this);
+      LOGGER.info("procedureId {} wait for lock.", getProcId());
+      return ProcedureLockState.LOCK_EVENT_WAIT;
+    } finally {
+      env.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv env) {
+    env.getSchedulerLock().lock();
+    try {
+      LOGGER.info("procedureId {} release lock.", getProcId());
+      if (env.getPipeLock().releaseLock(this)) {
+        env.getPipeLock().wakeWaitingProcedures(env.getScheduler());
+      }
+    } finally {
+      env.getSchedulerLock().unlock();
+    }
   }
 
   @Override
