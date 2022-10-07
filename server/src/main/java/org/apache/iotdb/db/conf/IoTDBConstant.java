@@ -96,6 +96,13 @@ public class IoTDBConstant {
   public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
+  public static final String COLUMN_TASK_ID = "task id";
+  public static final String COLUMN_SUBMIT_TIME = "submit time";
+  public static final String COLUMN_ARCHIVING_START_TIME = "start time";
+  public static final String COLUMN_ARCHIVING_STATUS = "status";
+  public static final String COLUMN_ARCHIVING_TARGET_DIRECTORY = "target directory";
+  public static final String COLUMN_EXPIRE_TIME = "expire time(ms)";
+
   public static final String COLUMN_TASK_NAME = "task name";
   public static final String COLUMN_CREATED_TIME = "created time";
   public static final String COLUMN_PROGRESS = "progress";
@@ -158,6 +165,8 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String ARCHIVING_FOLDER_NAME = "archiving";
+  public static final String ARCHIVING_LOG_FOLDER_NAME = "archiving_task";
 
   // Operation Sync folder name
   public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";
@@ -194,10 +203,6 @@ public class IoTDBConstant {
 
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
-
-  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
-
-  public static final String EXT_LIMITER = "limiter";
 
   // client version number
   public enum ClientVersion {

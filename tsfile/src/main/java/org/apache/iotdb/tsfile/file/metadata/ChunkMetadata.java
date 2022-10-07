@@ -186,6 +186,14 @@ public class ChunkMetadata implements IChunkMetadata {
     return chunkMetaData;
   }
 
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
+    ChunkMetadata chunkMetadata = new ChunkMetadata();
+    chunkMetadata.tsDataType = dataType;
+    chunkMetadata.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
+    chunkMetadata.statistics = Statistics.deserialize(buffer, dataType);
+    return chunkMetadata;
+  }
+
   @Override
   public long getVersion() {
     return version;

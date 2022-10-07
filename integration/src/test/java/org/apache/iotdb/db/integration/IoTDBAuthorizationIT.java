@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -1027,9 +1030,17 @@ public class IoTDBAuthorizationIT {
         } catch (BatchUpdateException e) {
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator(),
               e.getMessage());
         }
@@ -1061,9 +1072,15 @@ public class IoTDBAuthorizationIT {
           System.out.println(e.getMessage());
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
                   + System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
                   + System.lineSeparator(),
               e.getMessage());
         }
@@ -1106,6 +1123,33 @@ public class IoTDBAuthorizationIT {
             userStatement.executeQuery(
                 "SELECT s1, s1, s1 - s3, s2 * sin(s1), s1 + 1 / 2 * sin(s1), sin(s1), sin(s1) FROM root.test")) {
       assertTrue(resultSet.next());
+    }
+  }
+
+  /** IOTDB-2769 */
+  @Test
+  public void testGrantUserRole() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER user01 'pass1234'");
+      adminStatement.execute("CREATE USER user02 'pass1234'");
+      adminStatement.execute("CREATE ROLE manager");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_USER_ROLE on root");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES REVOKE_USER_ROLE on root");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "user01", "pass1234");
+        Statement userStatement = userConnection.createStatement(); ) {
+      try {
+        userStatement.execute("grant manager to user02");
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      }
     }
   }
 }

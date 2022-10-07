@@ -356,8 +356,8 @@ public abstract class PhysicalPlan {
         case CREATE_USER:
           plan = new AuthorPlan(OperatorType.CREATE_USER);
           break;
-        case REVOKE_ROLE_TO_USER:
-          plan = new AuthorPlan(OperatorType.REVOKE_ROLE_TO_USER);
+        case REVOKE_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.REVOKE_USER_ROLE);
           break;
         case REVOKE_ROLE_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.REVOKE_ROLE_PRIVILEGE);
@@ -371,8 +371,8 @@ public abstract class PhysicalPlan {
         case GRANT_USER_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.GRANT_USER_PRIVILEGE);
           break;
-        case GRANT_ROLE_TO_USER:
-          plan = new AuthorPlan(OperatorType.GRANT_ROLE_TO_USER);
+        case GRANT_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.GRANT_USER_ROLE);
           break;
         case MODIFY_PASSWORD:
           plan = new AuthorPlan(OperatorType.MODIFY_PASSWORD);
@@ -512,12 +512,12 @@ public abstract class PhysicalPlan {
     CREATE_ROLE,
     DELETE_ROLE,
     CREATE_USER,
-    REVOKE_ROLE_TO_USER,
+    REVOKE_USER_ROLE,
     REVOKE_ROLE_PRIVILEGE,
     REVOKE_USER_PRIVILEGE,
     GRANT_ROLE_PRIVILEGE,
     GRANT_USER_PRIVILEGE,
-    GRANT_ROLE_TO_USER,
+    GRANT_USER_ROLE,
     MODIFY_PASSWORD,
     DELETE_USER,
     DELETE_STORAGE_GROUP,
@@ -562,7 +562,8 @@ public abstract class PhysicalPlan {
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE,
     DROP_TEMPLATE,
-    DEACTIVATE_TEMPLATE
+    DEACTIVATE_TEMPLATE,
+    ARCHIVING
   }
 
   public long getIndex() {

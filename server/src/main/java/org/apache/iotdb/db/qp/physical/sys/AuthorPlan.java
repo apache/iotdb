@@ -104,11 +104,11 @@ public class AuthorPlan extends PhysicalPlan {
       case UPDATE_USER:
         this.setOperatorType(Operator.OperatorType.MODIFY_PASSWORD);
         break;
-      case GRANT_ROLE_TO_USER:
-        this.setOperatorType(Operator.OperatorType.GRANT_ROLE_TO_USER);
+      case GRANT_USER_ROLE:
+        this.setOperatorType(Operator.OperatorType.GRANT_USER_ROLE);
         break;
-      case REVOKE_ROLE_FROM_USER:
-        this.setOperatorType(Operator.OperatorType.REVOKE_ROLE_TO_USER);
+      case REVOKE_USER_ROLE:
+        this.setOperatorType(Operator.OperatorType.REVOKE_USER_ROLE);
         break;
       case LIST_USER_PRIVILEGE:
         this.setQuery(true);
@@ -156,8 +156,8 @@ public class AuthorPlan extends PhysicalPlan {
       case CREATE_USER:
         type = AuthorType.CREATE_USER;
         break;
-      case REVOKE_ROLE_TO_USER:
-        type = AuthorType.REVOKE_ROLE_FROM_USER;
+      case REVOKE_USER_ROLE:
+        type = AuthorType.REVOKE_USER_ROLE;
         break;
       case REVOKE_ROLE_PRIVILEGE:
         type = AuthorType.REVOKE_ROLE;
@@ -171,8 +171,8 @@ public class AuthorPlan extends PhysicalPlan {
       case GRANT_USER_PRIVILEGE:
         type = AuthorType.GRANT_USER;
         break;
-      case GRANT_ROLE_TO_USER:
-        type = AuthorType.GRANT_ROLE_TO_USER;
+      case GRANT_USER_ROLE:
+        type = AuthorType.GRANT_USER_ROLE;
         break;
       case MODIFY_PASSWORD:
         type = AuthorType.UPDATE_USER;
@@ -390,8 +390,8 @@ public class AuthorPlan extends PhysicalPlan {
       case CREATE_USER:
         type = PhysicalPlanType.CREATE_USER.ordinal();
         break;
-      case REVOKE_ROLE_TO_USER:
-        type = PhysicalPlanType.REVOKE_ROLE_TO_USER.ordinal();
+      case REVOKE_USER_ROLE:
+        type = PhysicalPlanType.REVOKE_USER_ROLE.ordinal();
         break;
       case REVOKE_ROLE_PRIVILEGE:
         type = PhysicalPlanType.REVOKE_ROLE_PRIVILEGE.ordinal();
@@ -405,8 +405,8 @@ public class AuthorPlan extends PhysicalPlan {
       case GRANT_USER_PRIVILEGE:
         type = PhysicalPlanType.GRANT_USER_PRIVILEGE.ordinal();
         break;
-      case GRANT_ROLE_TO_USER:
-        type = PhysicalPlanType.GRANT_ROLE_TO_USER.ordinal();
+      case GRANT_USER_ROLE:
+        type = PhysicalPlanType.GRANT_USER_ROLE.ordinal();
         break;
       case MODIFY_PASSWORD:
         type = PhysicalPlanType.MODIFY_PASSWORD.ordinal();

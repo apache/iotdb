@@ -19,6 +19,36 @@
 
 -->
 
+# Apache IoTDB 0.13.2
+
+## Improvements
+
+[IOTDB-2669] Improve C++ client insertTablet performance
+[IOTDB-3087] enlarge default value of avg_series_point_number_threshold
+[IOTDB-3861] Enable insert null values in Session
+[IOTDB-3996] REST API nonQuery support Continuous Query
+[IOTDB-4120] Optimize memory allocation of Expression
+[IOTDB-4190] update documents about nifi-iotdb-bundle
+REST support "select into" in nonQuery API
+Import-CSV supports specify data type and no need quotation for text value
+
+## Bug Fixes
+
+[IOTDB-2736] DELETE_STORAGE_GROUP can not be granted to user (reporting 401)
+[IOTDB-2760] Ordinary users do not grant any permissions, but can still show operations
+[IOTDB-2769] Fix auth mapping of GRANT_ROLE_PRIVILEGE and GRANT_USER_ROLE
+[IOTDB-3302] Without any authorization, ordinary users still have the right to query other user information
+[IOTDB-4023] The C++ interface query result returns records error
+[IOTDB-4047] Query NPE after change device alignment
+[IOTDB-4096] Fix the names of metric pushed to Prometheus are inconsistency in micrometer and dropwizard
+[IOTDB-4194] IOException happened in Compaction
+[IOTDB-4215] Fix incorrect aggregate query results due to wrong unseq file traversal order
+[IOTDB-4216] Fix execute create aligned timeseries but a non-aligned timeseries created
+[IOTDB-4222] DeadLock when concurrently deleting and creating storage groups
+[ISSUE-6774] Connection error when using DataGrip with JDBC driver
+[ISSUE-6937] After restart, the aligned series turns to non-aligned
+[ISSUE-6987] Fix select error when selecting a single quotation mark
+
 # Apache IoTDB 0.13.1
 
 ## New Features

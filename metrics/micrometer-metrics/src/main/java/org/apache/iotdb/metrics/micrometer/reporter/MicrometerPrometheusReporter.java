@@ -30,13 +30,14 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
-import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,6 +51,9 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   @Override
   public boolean start() {
+    if (httpServer != null) {
+      return false;
+    }
     Set<MeterRegistry> meterRegistrySet =
         Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
@@ -64,8 +68,8 @@ public class MicrometerPrometheusReporter implements Reporter {
     }
     httpServer =
         HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+            .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
             .port(metricConfig.getPrometheusExporterPort())
             .route(
                 routes ->

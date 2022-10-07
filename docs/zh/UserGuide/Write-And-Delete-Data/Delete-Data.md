@@ -19,13 +19,13 @@
 
 -->
 
-# 删除数据
+## 删除数据
 
 用户使用 [DELETE 语句](../Reference/SQL-Reference.md) 可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带、*路径对某一个时间区间内的数据进行删除。
 
 在 JAVA 编程环境中，您可以使用 JDBC API 单条或批量执行 DELETE 语句。
 
-## 单传感器时间序列值删除
+### 单传感器时间序列值删除
 
 以测控 ln 集团为例，存在这样的使用场景：
 
@@ -63,7 +63,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 delete from root.ln.wf02.status
 ```
 
-## 多传感器时间序列值删除    
+### 多传感器时间序列值删除    
 
 当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
 
@@ -79,7 +79,7 @@ IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: The statement is executed successfully.
 ```
 
-## 删除时间分区 （实验性功能）
+### 删除时间分区 （实验性功能）
 您可以通过如下语句来删除某一个存储组下的指定时间分区：
 
 ```sql

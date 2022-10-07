@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
@@ -86,14 +87,10 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.external.api.ISeriesNumerLimiter;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -122,7 +119,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -208,22 +205,8 @@ public class MManager {
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
-  private ISeriesNumerLimiter seriesNumerLimiter =
-      new ISeriesNumerLimiter() {
-        @Override
-        public void init(Properties properties) {}
-
-        @Override
-        public boolean addTimeSeries(int number) {
-          // always return true, don't limit the number of series
-          return true;
-        }
-
-        @Override
-        public void deleteTimeSeries(int number) {
-          // do nothing
-        }
-      };
+  // seriesNumerMonitor may be null, so we must check it before use it.
+  private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   // region MManager Singleton
   private static class MManagerHolder {
@@ -235,8 +218,8 @@ public class MManager {
     private static final MManager INSTANCE = new MManager();
   }
 
-  public void setSeriesNumerLimiter(ISeriesNumerLimiter seriesNumerLimiter) {
-    this.seriesNumerLimiter = seriesNumerLimiter;
+  public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
+    this.seriesNumerMonitor = seriesNumerMonitor;
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
@@ -247,6 +230,19 @@ public class MManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   protected MManager() {
+    // init ISeriesNumerMonitor if there is.
+    // each mmanager instance will generate an ISeriesNumerMonitor instance
+    // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
+    ServiceLoader<ISeriesNumerMonitor> monitorServiceLoader =
+        ServiceLoader.load(ISeriesNumerMonitor.class);
+    for (ISeriesNumerMonitor loader : monitorServiceLoader) {
+      if (this.seriesNumerMonitor != null) {
+        // it means there is more than one ISeriesNumerMonitor implementation.
+        logger.warn("There are more than one ISeriesNumerMonitor implementation. pls check.");
+      }
+      logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
+      this.seriesNumerMonitor = loader;
+    }
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
@@ -324,78 +320,37 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      startStatisticCounts();
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              mtree,
-              RamUsageEstimator::sizeOf,
-              Tag.NAME.toString(),
-              "mtree");
-    }
+    MetricService.getInstance().addMetricSet(new MManagerMetrics(this));
   }
 
-  private void startStatisticCounts() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalNormalSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries",
-            Tag.TYPE.toString(),
-            "normal");
+  public long getNormalSeriesNumber() {
+    return totalNormalSeriesNumber.get();
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalTemplateSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries",
-            Tag.TYPE.toString(),
-            "template");
+  public long getTemplateSeriesNumber() {
+    return totalTemplateSeriesNumber.get();
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
-              try {
-                return tree.getDevicesNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get deviceNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "device",
-            Tag.TYPE.toString(),
-            "total");
+  public long getDeviceNumber() {
+    try {
+      return mtree.getDevicesNum(new PartialPath("root.**"));
+    } catch (MetadataException e) {
+      logger.error("get deviceNum error", e);
+    }
+    return 0;
+  }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            mtree,
-            tree -> {
-              try {
-                return tree.getStorageGroupNum(new PartialPath("root.**"));
-              } catch (MetadataException e) {
-                logger.error("get storageGroupNum error", e);
-              }
-              return 0;
-            },
-            Tag.NAME.toString(),
-            "storageGroup",
-            Tag.TYPE.toString(),
-            "total");
+  public long getStorageGroupNumber() {
+    try {
+      return mtree.getStorageGroupNum(new PartialPath("root.**"));
+    } catch (MetadataException e) {
+      logger.error("get storageGroupNum error", e);
+    }
+    return 0;
+  }
+
+  public long getMtreeSize() {
+    return RamUsageEstimator.sizeOf(mtree);
   }
 
   private void forceMlog() {
@@ -605,7 +560,7 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
 
-    if (!seriesNumerLimiter.addTimeSeries(1)) {
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
       throw new SeriesNumberOverflowException();
     }
     try {
@@ -643,7 +598,9 @@ public class MManager {
         }
       } catch (Throwable t) {
         // roll back
-        seriesNumerLimiter.deleteTimeSeries(1);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(1);
+        }
         throw t;
       }
 
@@ -730,7 +687,7 @@ public class MManager {
     }
     int seriesCount = plan.getMeasurements().size();
 
-    if (!seriesNumerLimiter.addTimeSeries(seriesCount)) {
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
       throw new SeriesNumberOverflowException();
     }
 
@@ -759,7 +716,9 @@ public class MManager {
         mNodeCache.invalidate(prefixPath);
       } catch (Throwable t) {
         // roll back
-        seriesNumerLimiter.deleteTimeSeries(seriesCount);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(seriesCount);
+        }
         throw t;
       }
 
@@ -892,7 +851,9 @@ public class MManager {
       node = node.getParent();
     }
     totalNormalSeriesNumber.addAndGet(-1);
-    seriesNumerLimiter.deleteTimeSeries(1);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(1);
+    }
     if (!allowToCreateNewSeries
         && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalNormalSeriesNumber);
@@ -936,7 +897,9 @@ public class MManager {
             mtree.getAllTimeseriesCount(
                 storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false);
         totalNormalSeriesNumber.addAndGet(-timeSeriesCount);
-        seriesNumerLimiter.deleteTimeSeries(timeSeriesCount);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(timeSeriesCount);
+        }
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -2069,17 +2032,15 @@ public class MManager {
     if (deviceMNode.isEntity()) {
       if (plan.isAligned()) {
         if (!deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are not aligned, " + "please use non-aligned interface",
+              devicePath.getFullPath());
         }
       } else {
         if (deviceMNode.getAsEntityMNode().isAligned()) {
-          throw new MetadataException(
-              String.format(
-                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
-                  plan.getDevicePath()));
+          throw new AlignedTimeseriesException(
+              "timeseries under this device are aligned, " + "please use aligned interface",
+              devicePath.getFullPath());
         }
       }
     }
@@ -2529,7 +2490,9 @@ public class MManager {
       node.setUseTemplate(false);
       int seriesCount = node.getUpperTemplate().getMeasurementsCount();
       totalTemplateSeriesNumber.addAndGet(-seriesCount);
-      seriesNumerLimiter.deleteTimeSeries(seriesCount);
+      if (seriesNumerMonitor != null) {
+        seriesNumerMonitor.deleteTimeSeries(seriesCount);
+      }
 
       // clear caches within MManger
       mNodeCache.invalidate(node);
@@ -2555,7 +2518,8 @@ public class MManager {
           String.format("Path [%s] has not been set any template.", node.getFullPath()));
     }
 
-    if (!seriesNumerLimiter.addTimeSeries(template.getMeasurementsCount())) {
+    if (seriesNumerMonitor != null
+        && !seriesNumerMonitor.addTimeSeries(template.getMeasurementsCount())) {
       throw new SeriesNumberOverflowException();
     }
 
@@ -2581,7 +2545,9 @@ public class MManager {
       mountedMNode.setUseTemplate(true);
     } catch (Throwable t) {
       // roll back
-      seriesNumerLimiter.deleteTimeSeries(template.getMeasurementsCount());
+      if (seriesNumerMonitor != null) {
+        seriesNumerMonitor.deleteTimeSeries(template.getMeasurementsCount());
+      }
       throw t;
     }
 

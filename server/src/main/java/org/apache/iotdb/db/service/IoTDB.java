@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -54,8 +55,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
-
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
@@ -81,8 +80,6 @@ public class IoTDB implements IoTDBMBean {
       System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
-
-    loadExternLib(config);
 
     daemon.active();
   }
@@ -151,10 +148,10 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
+    initArchivingManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -195,9 +192,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-
-    // start reporter
-    MetricService.getInstance().startAllReporter();
+    registerManager.register(MetricService.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
@@ -241,6 +236,11 @@ public class IoTDB implements IoTDBMBean {
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+  }
+
+  private void initArchivingManager() {
+    // recover ArchivingTasks, finish archiving unfinished tsfiles, start check threads
+    ArchivingManager.getInstance().init();
   }
 
   @Override

@@ -18,14 +18,14 @@
     under the License.
 
 -->
-
-# 用户定义函数 (UDF)
+# 数据处理
+## 用户定义函数 (UDF)
 
 UDF（User Defined Function）即用户自定义函数。IoTDB 提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
 根据此文档，您将会很快学会 UDF 的编写、注册、使用等操作。
 
-## UDF 类型
+### UDF 类型
 
 IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
@@ -34,7 +34,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 | UDTF（User Defined Timeseries Generating Function） | 自定义时间序列生成函数。该类函数允许接收多条时间序列，最终会输出一条时间序列，生成的时间序列可以有任意多数量的数据点。 |
 | UDAF（User Defined Aggregation Function）           | 正在开发，敬请期待。                                         |
 
-## UDF 依赖
+### UDF 依赖
 
 如果您使用 [Maven](http://search.maven.org/)，可以从 [Maven 库](http://search.maven.org/) 中搜索下面示例中的依赖。请注意选择和目标 IoTDB 服务器版本相同的依赖版本。
 
@@ -47,7 +47,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 </dependency>
 ```
 
-## UDTF（User Defined Timeseries Generating Function）
+### UDTF（User Defined Timeseries Generating Function）
 
 编写一个 UDTF 需要继承`org.apache.iotdb.db.query.udf.api.UDTF`类，并至少实现`beforeStart`方法和一种`transform`方法。
 
@@ -339,11 +339,11 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 此方法由框架调用。对于一个 UDF 类实例而言，生命周期中会且只会被调用一次，即在处理完最后一条记录之后被调用。
 
-## 完整 Maven 项目示例
+### 完整 Maven 项目示例
 
 如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目** udf-example**。您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/udf) 找到它。
 
-## UDF 注册
+#### UDF 注册
 
 注册一个 UDF 可以按如下流程进行：
 
@@ -375,7 +375,7 @@ CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
 
 注意：不同的 JAR 包中最好不要有全类名相同但实现功能逻辑不一样的类。例如 UDF(UDAF/UDTF)：`udf1`、`udf2`分别对应资源`udf1.jar`、`udf2.jar`。如果两个 JAR 包里都包含一个`org.apache.iotdb.udf.UDTFExample`类，当同一个 SQL 中同时使用到这两个 UDF 时，系统会随机加载其中一个类，导致 UDF 执行行为不一致。
 
-## UDF 卸载
+#### UDF 卸载
 
 卸载 UDF 的 SQL 语法如下：
 
@@ -389,11 +389,11 @@ DROP FUNCTION <UDF-NAME>
 DROP FUNCTION example
 ```
 
-## UDF 查询
+#### UDF 查询
 
 UDF 的使用方法与普通内建函数的类似。
 
-### 支持的基础 SQL 语法
+##### 支持的基础 SQL 语法
 
 * `SLIMIT` / `SOFFSET`
 * `LIMIT` / `OFFSET`
@@ -401,11 +401,11 @@ UDF 的使用方法与普通内建函数的类似。
 * 支持值过滤
 * 支持时间过滤
 
-### 对齐时间序列查询
+##### 对齐时间序列查询
 
 UDF 查询目前不支持对对齐时间序列(Aligned Timeseries)进行查询，当您在`SELECT`子句中选择的序列中包含对齐时间序列时，会提示错误。
 
-### 带 * 查询
+##### 带 * 查询
 
 假定现在有时间序列 `root.sg.d1.s1`和 `root.sg.d1.s2`。
 
@@ -421,7 +421,7 @@ UDF 查询目前不支持对对齐时间序列(Aligned Timeseries)进行查询�
 
 那么结果集中将包括`example(root.sg.d1.s1, root.sg.d1.s1)`，`example(root.sg.d1.s2, root.sg.d1.s1)`，`example(root.sg.d1.s1, root.sg.d1.s2)` 和 `example(root.sg.d1.s2, root.sg.d1.s2)`的结果。
 
-### 带自定义输入参数的查询
+##### 带自定义输入参数的查询
 
 您可以在进行 UDF 查询的时候，向 UDF 传入任意数量的键值对参数。键值对中的键和值都需要被单引号或者双引号引起来。注意，键值对参数只能在所有时间序列后传入。下面是一组例子：
 
@@ -430,7 +430,7 @@ SELECT example(s1, 'key1'='value1', 'key2'='value2'), example(*, 'key3'='value3'
 SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
 ```
 
-### 与其他查询的嵌套查询
+##### 与其他查询的嵌套查询
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
@@ -439,13 +439,13 @@ SELECT s1 * example(* / s1 + s2) FROM root.sg.d1;
 SELECT s1, s2, s1 + example(s1, s2), s1 - example(s1 + example(s1, s2) / s2) FROM root.sg.d1;
 ```
 
-## 查看所有注册的 UDF
+#### 查看所有注册的 UDF
 
 ``` sql
 SHOW FUNCTIONS
 ```
 
-## 用户权限管理
+#### 用户权限管理
 
 用户在使用 UDF 时会涉及到 3 种权限：
 
@@ -455,17 +455,17 @@ SHOW FUNCTIONS
 
 更多用户权限相关的内容，请参考 [权限管理语句](../Administration-Management/Administration.md)。
 
-## 配置项
+#### 配置项
 
 在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
-## 贡献 UDF
+### 贡献 UDF
 
 <!-- The template is copied and modified from the Apache Doris community-->
 
 该部分主要讲述了外部用户如何将自己编写的 UDF 贡献给 IoTDB 社区。
 
-### 前提条件
+#### 前提条件
 
 1. UDF 具有通用性。
 
@@ -475,40 +475,40 @@ SHOW FUNCTIONS
 
 2. UDF 已经完成测试，且能够正常运行在用户的生产环境中。
 
-### 贡献清单
+#### 贡献清单
 
 1. UDF 的源代码
 2. UDF 的测试用例
 3. UDF 的使用说明
 
-#### 源代码
+##### 源代码
 
 1. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin`或者它的子文件夹中创建 UDF 主类和相关的辅助类。
 2. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`中注册您编写的 UDF。
 
-#### 测试用例
+##### 测试用例
 
 您至少需要为您贡献的 UDF 编写集成测试。
 
 您可以在`server/src/test/java/org/apache/iotdb/db/integration`中为您贡献的 UDF 新增一个测试类进行测试。
 
-#### 使用说明
+##### 使用说明
 
 使用说明需要包含：UDF 的名称、UDF 的作用、执行函数必须的属性参数、函数的适用的场景以及使用示例等。
 
 使用说明需包含中英文两个版本。应分别在 `docs/zh/UserGuide/Operation Manual/DML Data Manipulation Language.md` 和 `docs/UserGuide/Operation Manual/DML Data Manipulation Language.md` 中新增使用说明。
 
-### 提交 PR
+#### 提交 PR
 
 当您准备好源代码、测试用例和使用说明后，就可以将 UDF 贡献到 IoTDB 社区了。在 [Github](https://github.com/apache/iotdb) 上面提交 Pull Request (PR) 即可。具体提交方式见：[Pull Request Guide](https://iotdb.apache.org/Development/HowToCommit.html)。
 
 当 PR 评审通过并被合并后，您的 UDF 就已经贡献给 IoTDB 社区了！
 
-## 已知的 UDF 库实现
+### 已知的 UDF 库实现
 
 + [IoTDB-Quality](https://iotdb.apache.org/zh/UserGuide/Master/UDF-Library/Quick-Start.html )，一个关于数据质量的 UDF 库实现，包括数据画像、数据质量评估与修复等一系列函数。
 
-## Q&A
+### Q&A
 
 Q1: 如何修改已经注册的 UDF？
 

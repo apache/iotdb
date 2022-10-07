@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -119,6 +120,21 @@ public class StorageGroupManager {
     }
   }
 
+  /** push check archiving to all virtual storage group processors */
+  public void checkArchivingTask(ArchivingTask task) {
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
+        this.virtualStorageGroupProcessor) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running (eg. the task is paused), return
+        return;
+      }
+
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.checkArchivingTask(task);
+      }
+    }
+  }
+
   /** push check sequence memtable flush interval down to all sg */
   public void timedFlushSeqMemTable() {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
@@ -179,6 +195,9 @@ public class StorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
+        logger.warn(
+            "the sg {} may not ready now, please wait and retry later",
+            storageGroupMNode.getFullPath());
         throw new StorageGroupNotReadyException(
             storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
@@ -215,6 +234,9 @@ public class StorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
+        logger.warn(
+            "the sg {} may not ready now, please wait and retry later",
+            storageGroupMNode.getFullPath());
         throw new StorageGroupNotReadyException(
             storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }

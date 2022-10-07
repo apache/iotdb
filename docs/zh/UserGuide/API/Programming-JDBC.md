@@ -36,7 +36,7 @@
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-#### 在 MAVEN 中使用 IoTDB JDBC
+### 在 MAVEN 中使用 IoTDB JDBC
 
 ```xml
 <dependencies>
@@ -48,7 +48,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-#### 示例代码
+### 示例代码
 
 本章提供了如何建立数据库连接、执行 SQL 和显示查询结果的示例。
 

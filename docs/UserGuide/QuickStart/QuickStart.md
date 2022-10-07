@@ -64,12 +64,11 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh -f
-or
-> nohup sbin/start-server.sh 
-
-# Windows
-> sbin\start-server.bat 
+> nohup sbin/start-server.sh -b
+```
+or 
+```shell
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
 ```
 
 parameters:
@@ -86,6 +85,11 @@ parameters:
 - "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
 - "-E <\filePath\> save error file of JVM to \<filePath\>"
 - "-X \<command\> equal to -XX:\<command\>"
+
+```
+# Windows
+> sbin\start-server.bat -c <conf_path>
+```
 
 Notice that Windows OS only support -v, -c, -f and -b.
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
@@ -69,16 +70,12 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -403,16 +400,7 @@ public class VirtualStorageGroupProcessor {
     // recover tsfiles
     recover();
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              storageGroupInfo,
-              StorageGroupInfo::getMemCost,
-              Tag.NAME.toString(),
-              "storageGroup_" + getLogicalStorageGroupName());
-    }
+    MetricService.getInstance().addMetricSet(new VirtualStorageGroupProcessorMetrics(this));
 
     // start trim task at last
     walTrimScheduleTask =
@@ -427,6 +415,10 @@ public class VirtualStorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
+  }
+
+  public long getStorageGroupMemCost() {
+    return storageGroupInfo.getMemCost();
   }
 
   public String getLogicalStorageGroupName() {
@@ -549,8 +541,18 @@ public class VirtualStorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
-    for (TsFileResource resource : seqTsFileResources) {
+    // recover and start timed compaction thread
+    initCompaction();
+
+    logger.info(
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
+  }
+
+  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
+    //  only update flush time when it is a seq file
+    if (isSeq) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
@@ -561,14 +563,6 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
-
-    // recover and start timed compaction thread
-    initCompaction();
-
-    logger.info(
-        "The virtual storage group {}[{}] is recovered successfully",
-        logicalStorageGroupName,
-        virtualStorageGroupId);
   }
 
   private void initCompaction() {
@@ -777,6 +771,7 @@ public class VirtualStorageGroupProcessor {
           } else {
             tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
+            updateLastFlushTime(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
@@ -788,6 +783,8 @@ public class VirtualStorageGroupProcessor {
         if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } else if (writer.canWrite()) {
           // the last file is not closed, continue writing to in
@@ -842,12 +839,12 @@ public class VirtualStorageGroupProcessor {
             }
             tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
           }
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
         }
-        tsFileManager.add(tsFileResource, isSeq);
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
-        continue;
       } finally {
         if (writer != null) {
           writer.close();
@@ -1547,6 +1544,80 @@ public class VirtualStorageGroupProcessor {
               logicalStorageGroupName,
               virtualStorageGroupId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** iterate over TsFiles and move to targetDir if out of ttl */
+  public void checkArchivingTask(ArchivingTask task) {
+    if (task.getTTL() == Long.MAX_VALUE) {
+      logger.debug(
+          "{}: Archiving ttl not set, ignore the check",
+          logicalStorageGroupName + "-" + virtualStorageGroupId);
+      return;
+    }
+    long ttlLowerBound = System.currentTimeMillis() - task.getTTL();
+    logger.debug(
+        "{}: Archiving files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
+
+    // copy to avoid concurrent modification of deletion
+    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
+    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
+
+    for (TsFileResource tsFileResource : seqFiles) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running (eg. the task is paused), return
+        return;
+      }
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+    }
+
+    for (TsFileResource tsFileResource : unseqFiles) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running, return
+        return;
+      }
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+    }
+  }
+
+  /** archive the file to targetDir */
+  public void checkArchivingTaskFile(
+      ArchivingTask task,
+      TsFileResource resource,
+      File targetDir,
+      long ttlLowerBound,
+      boolean isSeq) {
+    writeLock("checkArchivingLock");
+    try {
+      if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+        return;
+      }
+
+      resource.setStatus(TsFileResourceStatus.ARCHIVED);
+
+      // ensure that the file is not used by any queries
+      if (resource.tryWriteLock()) {
+        try {
+          // try to archive physical data file
+          tsFileManager.remove(resource, isSeq);
+
+          // start archiving file
+          if (task.startFile(resource.getTsFile())) {
+            File archivedFile = resource.archive(targetDir);
+          } else {
+            // archive file couldn't start
+            logger.error("{} archiving logger error", resource.getTsFilePath());
+          }
+        } catch (IOException e) {
+          logger.error("{} archiving error", resource.getTsFilePath());
+        } finally {
+          resource.writeUnlock();
         }
       }
     } finally {

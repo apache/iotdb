@@ -32,6 +32,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -107,12 +109,15 @@ import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.PauseArchivingPlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetArchivingPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowArchivingPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -128,6 +133,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -179,6 +185,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -193,6 +200,9 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_START_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_STATUS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_TARGET_DIRECTORY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
@@ -204,6 +214,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_QUE
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_TARGET_PATH;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_EXPIRE_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
@@ -213,6 +224,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_SCHEMA_TEMPLATE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_SUBMIT_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
@@ -295,12 +308,12 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
-      case REVOKE_ROLE_TO_USER:
+      case REVOKE_USER_ROLE:
       case REVOKE_ROLE_PRIVILEGE:
       case REVOKE_USER_PRIVILEGE:
       case GRANT_ROLE_PRIVILEGE:
       case GRANT_USER_PRIVILEGE:
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
       case MODIFY_PASSWORD:
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
@@ -408,6 +421,12 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case SHOW_QUERY_RESOURCE:
         return processShowQueryResource();
+      case SET_ARCHIVING:
+        operateSetArchiving((SetArchivingPlan) plan);
+        return true;
+      case PAUSE_ARCHIVING:
+        operatePauseArchiving((PauseArchivingPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
@@ -760,6 +779,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPathsSetSchemaTemplate((ShowPathsSetTemplatePlan) showPlan);
       case PATHS_USING_SCHEMA_TEMPLATE:
         return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
+      case SHOW_ARCHIVING:
+        return processShowArchiving((ShowArchivingPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -1261,6 +1282,83 @@ public class PlanExecutor implements IPlanExecutor {
     return TriggerRegistrationService.getInstance().show();
   }
 
+  private QueryDataSet processShowArchiving(ShowArchivingPlan showArchivingPlan) {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_TASK_ID, false),
+                new PartialPath(COLUMN_SUBMIT_TIME, false),
+                new PartialPath(COLUMN_STORAGE_GROUP, false),
+                new PartialPath(COLUMN_ARCHIVING_STATUS, false),
+                new PartialPath(COLUMN_ARCHIVING_START_TIME, false),
+                new PartialPath(COLUMN_EXPIRE_TIME, false),
+                new PartialPath(COLUMN_ARCHIVING_TARGET_DIRECTORY, false)),
+            Arrays.asList(
+                TSDataType.INT64,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.INT64,
+                TSDataType.TEXT));
+    Set<PartialPath> selectedSgs = new HashSet<>(showArchivingPlan.getStorageGroups());
+
+    List<ArchivingTask> archivingTaskList =
+        StorageEngine.getInstance().getArchivingManager().getArchivingTasks();
+    int timestamp = 0;
+    for (ArchivingTask task : archivingTaskList) {
+      PartialPath sgName = task.getStorageGroup();
+      if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
+        continue;
+      }
+      RowRecord rowRecord = new RowRecord(timestamp++);
+      Field taskId = new Field(TSDataType.INT64);
+      Field submitTime = new Field(TSDataType.TEXT);
+      Field sg = new Field(TSDataType.TEXT);
+      Field status = new Field(TSDataType.TEXT);
+      Field startTime;
+      Field ttl;
+      Field targetDir = new Field(TSDataType.TEXT);
+
+      // set values for Fields based on tasks
+      taskId.setLongV(task.getTaskId());
+      sg.setBinaryV(new Binary(sgName.getFullPath()));
+      status.setBinaryV(new Binary(task.getStatus().name()));
+      targetDir.setBinaryV(new Binary(task.getTargetDir().getPath()));
+      if (task.getTTL() != Long.MAX_VALUE) {
+        ttl = new Field(TSDataType.INT64);
+        ttl.setLongV(task.getTTL());
+      } else {
+        ttl = null;
+      }
+      ZonedDateTime submitDateTime =
+          DatetimeUtils.convertMillsecondToZonedDateTime(task.getSubmitTime());
+      String submitTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(submitDateTime);
+      submitTime.setBinaryV(new Binary(submitTimeStr));
+      if (task.getStartTime() != Long.MAX_VALUE) {
+        ZonedDateTime startDate =
+            DatetimeUtils.convertMillsecondToZonedDateTime(task.getStartTime());
+        String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
+        startTime = new Field(TSDataType.TEXT);
+        startTime.setBinaryV(new Binary(startTimeStr));
+      } else {
+        startTime = null;
+      }
+
+      // add to rowRecord
+      rowRecord.addField(taskId);
+      rowRecord.addField(submitTime);
+      rowRecord.addField(sg);
+      rowRecord.addField(status);
+      rowRecord.addField(startTime);
+      rowRecord.addField(ttl);
+      rowRecord.addField(targetDir);
+      listDataSet.putRecord(rowRecord);
+    }
+
+    return listDataSet;
+  }
+
   private void addRowRecordForShowQuery(
       ListDataSet listDataSet, int timestamp, String item, String value) {
     RowRecord rowRecord = new RowRecord(timestamp);
@@ -1423,7 +1521,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void loadNewTsFileVerifyMetadata(TsFileSequenceReader tsFileSequenceReader)
       throws MetadataException, QueryProcessException, IOException {
     Map<String, List<TimeseriesMetadata>> metadataSet =
-        tsFileSequenceReader.getAllTimeseriesMetadata();
+        tsFileSequenceReader.getAllTimeseriesMetadata(false);
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
       String deviceId = entry.getKey();
       PartialPath devicePath = new PartialPath(deviceId);
@@ -1595,6 +1693,44 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
+    }
+  }
+
+  private void operateSetArchiving(SetArchivingPlan plan) throws QueryProcessException {
+    if (plan.getTargetDir() == null) {
+      // is cancel plan
+      StorageEngine.getInstance()
+          .operateArchiving(
+              ArchivingOperate.ArchivingOperateType.CANCEL,
+              plan.getTaskId(),
+              plan.getStorageGroup());
+    } else {
+      try {
+        List<PartialPath> storageGroupPaths =
+            IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup(), plan.isPrefixMatch());
+        for (PartialPath storagePath : storageGroupPaths) {
+          StorageEngine.getInstance()
+              .setArchiving(storagePath, plan.getTargetDir(), plan.getTTL(), plan.getStartTime());
+        }
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+    }
+  }
+
+  private void operatePauseArchiving(PauseArchivingPlan plan) {
+    if (plan.isPause()) {
+      StorageEngine.getInstance()
+          .operateArchiving(
+              ArchivingOperate.ArchivingOperateType.PAUSE,
+              plan.getTaskId(),
+              plan.getStorageGroup());
+    } else {
+      StorageEngine.getInstance()
+          .operateArchiving(
+              ArchivingOperate.ArchivingOperateType.RESUME,
+              plan.getTaskId(),
+              plan.getStorageGroup());
     }
   }
 
@@ -1895,7 +2031,7 @@ public class PlanExecutor implements IPlanExecutor {
             authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           authorizer.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
@@ -1908,7 +2044,7 @@ public class PlanExecutor implements IPlanExecutor {
             authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:

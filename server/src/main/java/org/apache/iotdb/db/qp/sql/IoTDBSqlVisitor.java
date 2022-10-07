@@ -106,6 +106,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -783,6 +785,126 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
+  }
+
+  // Set Archiving
+  @Override
+  public Operator visitSetArchiving(IoTDBSqlParser.SetArchivingContext ctx) {
+    SetArchivingOperator operator = new SetArchivingOperator(SQLConstant.TOK_SET);
+
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    }
+    if (ctx.ttl != null) {
+      operator.setTTL(Long.parseLong(ctx.ttl.getText()));
+    }
+    if (ctx.startTime != null) {
+      operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
+    }
+    if (ctx.targetDir != null) {
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+      File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
+      if (!targetDir.exists()) {
+        throw new SQLParserException("unknown directory");
+      } else if (!targetDir.isDirectory()) {
+        throw new SQLParserException("not a directory");
+      }
+      operator.setTargetDir(targetDir);
+    }
+
+    // parse the setArchivingClause
+    for (IoTDBSqlParser.SetArchivingClauseContext setArchivingClauseContext :
+        ctx.setArchivingClause()) {
+      parseSetArchivingClause(operator, setArchivingClauseContext);
+    }
+
+    return operator;
+  }
+
+  private void parseSetArchivingClause(
+      SetArchivingOperator operator, IoTDBSqlParser.SetArchivingClauseContext ctx) {
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    }
+    if (ctx.ttl != null) {
+      operator.setTTL(Long.parseLong(ctx.ttl.getText()));
+    }
+    if (ctx.startTime != null) {
+      operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
+    }
+    if (ctx.targetDir != null) {
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+      File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
+      if (!targetDir.exists()) {
+        throw new SQLParserException("unknown directory");
+      } else if (!targetDir.isDirectory()) {
+        throw new SQLParserException("not a directory");
+      }
+      operator.setTargetDir(targetDir);
+    }
+  }
+
+  // Cancel Archiving
+  @Override
+  public Operator visitCancelArchiving(IoTDBSqlParser.CancelArchivingContext ctx) {
+    CancelArchivingOperator operator = new CancelArchivingOperator(SQLConstant.TOK_UNSET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("cancel archiving unknown case");
+    }
+    return operator;
+  }
+
+  // Pause Archiving
+  @Override
+  public Operator visitPauseArchiving(IoTDBSqlParser.PauseArchivingContext ctx) {
+    PauseArchivingOperator operator = new PauseArchivingOperator(SQLConstant.TOK_SET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("pause archiving unknown case");
+    }
+    return operator;
+  }
+
+  // Resume Archiving
+  @Override
+  public Operator visitResumeArchiving(IoTDBSqlParser.ResumeArchivingContext ctx) {
+    ResumeArchivingOperator operator = new ResumeArchivingOperator(SQLConstant.TOK_UNSET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("resume archiving unknown case");
+    }
+    return operator;
+  }
+
+  // Show Archiving
+  @Override
+  public Operator visitShowArchiving(IoTDBSqlParser.ShowArchivingContext ctx) {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
+    for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
+      storageGroups.add(parsePrefixPath(prefixPath));
+    }
+    return new ShowArchivingOperator(storageGroups);
+  }
+
+  // Show All Archiving
+  @Override
+  public Operator visitShowAllArchiving(IoTDBSqlParser.ShowAllArchivingContext ctx) {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    return new ShowArchivingOperator(storageGroups);
   }
 
   // Start Trigger
@@ -1797,8 +1919,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(
-            SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER_ROLE);
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     return authorOperator;
@@ -1833,7 +1954,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER_ROLE);
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     return authorOperator;
@@ -2316,7 +2437,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
-      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      try {
+        return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SQLParserException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_LITERAL().getText()));
+      }
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {

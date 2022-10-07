@@ -30,6 +30,8 @@ import org.apache.iotdb.db.doublelive.OperationSyncLogService;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
 import org.apache.iotdb.db.doublelive.OperationSyncProducer;
 import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -168,6 +170,8 @@ public class StorageEngine implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
   ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
       arrayListBlockQueue;
+
+  private ArchivingManager archivingManager = ArchivingManager.getInstance();
 
   private StorageEngine() {
     if (isEnableOperationSync) {
@@ -587,6 +591,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
+    archivingManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -865,17 +870,8 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
-    try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
-    } catch (StorageEngineException e) {
-      throw new StorageEngineException(
-          String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getDevicePath()),
-          e);
-    }
-
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+        getProcessor(insertTabletPlan.getDevicePath());
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
@@ -1329,6 +1325,31 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  /** push the archiving info to archivingManager */
+  public void setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    boolean result = archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
+    if (result) {
+      logger.info("set archiving task successfully.");
+    } else {
+      logger.info("set archiving task failed.");
+    }
+  }
+
+  public void operateArchiving(
+      ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
+    if (taskId >= 0) {
+      archivingManager.operate(operateType, taskId);
+    } else if (storageGroup != null) {
+      archivingManager.operate(operateType, storageGroup);
+    } else {
+      logger.error("{} archiving cannot recognize taskId or storagegroup", operateType.name());
+    }
+  }
+
+  public ArchivingManager getArchivingManager() {
+    return archivingManager;
   }
 
   static class InstanceHolder {

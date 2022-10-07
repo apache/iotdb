@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,7 +50,6 @@ public class IoTDBConfig {
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   static final String CONFIG_NAME = "iotdb-engine.properties";
-  public static final String EXTERNAL_CONFIG_NAME = "iotdb-engine-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -106,7 +106,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -124,6 +124,14 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for timeIndex */
   private double timeIndexMemoryProportion = 0.2;
+
+  /** The proportion of write memory for write process */
+  private double writeProportion = 0.8;
+
+  private double chunkMetadataSizeProportionInWrite = 0.1;
+
+  /** The proportion of write memory for compaction */
+  private double compactionProportion = 0.2;
 
   /** Flush proportion for system */
   private double flushProportion = 0.4;
@@ -245,16 +253,6 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
-
-  /** External lib directory for properties loader, stores user-uploaded JAR files */
-  private String externalPropertiesLoaderDir =
-      IoTDBConstant.EXT_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
-
-  /** External lib directory for limiter, stores user uploaded JAR files */
-  private String externalLimiterDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -402,6 +400,8 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  private double chunkMetadataMemorySizeProportion = 0.1;
+
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
@@ -434,6 +434,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -865,6 +868,12 @@ public class IoTDBConfig {
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
 
+  /** number of threads given to archiving tasks */
+  private int archivingThreadNum = 2;
+
+  // customizedProperties, this should be empty by default.
+  private Properties customizedProperties = new Properties();
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -989,6 +998,7 @@ public class IoTDBConfig {
 
   /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
   private void formulateFolders() {
+
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     syncDir = addDataHomeDir(syncDir);
@@ -999,8 +1009,6 @@ public class IoTDBConfig {
     udfDir = addDataHomeDir(udfDir);
     triggerDir = addDataHomeDir(triggerDir);
     operationSyncLogDir = addDataHomeDir(operationSyncLogDir);
-    externalPropertiesLoaderDir = addDataHomeDir(externalPropertiesLoaderDir);
-    externalLimiterDir = addDataHomeDir(externalLimiterDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1236,22 +1244,6 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
-  }
-
-  public String getExternalPropertiesLoaderDir() {
-    return externalPropertiesLoaderDir;
-  }
-
-  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
-    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
-  }
-
-  public String getExternalLimiterDir() {
-    return externalLimiterDir;
-  }
-
-  public void setExternalLimiterDir(String externalLimiterDir) {
-    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -1544,14 +1536,6 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getCrossCompactionMemoryBudget() {
-    return crossCompactionMemoryBudget;
-  }
-
-  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
-    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1600,12 +1584,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForWrite() {
-    return allocateMemoryForWrite;
+  public long getAllocateMemoryForStorageEngine() {
+    return allocateMemoryForStorageEngine;
   }
 
-  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
-    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
+    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -2611,6 +2595,14 @@ public class IoTDBConfig {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
   public long getCompactionSubmissionIntervalInMs() {
     return compactionSubmissionIntervalInMs;
   }
@@ -2777,5 +2769,45 @@ public class IoTDBConfig {
 
   public void setSchemaQueryFetchSize(int schemaQueryFetchSize) {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
+  }
+
+  public int getArchivingThreadNum() {
+    return archivingThreadNum;
+  }
+
+  public void setArchivingThreadNum(int archivingThreadNum) {
+    this.archivingThreadNum = archivingThreadNum;
+  }
+
+  public double getWriteProportion() {
+    return writeProportion;
+  }
+
+  public void setWriteProportion(double writeProportion) {
+    this.writeProportion = writeProportion;
+  }
+
+  public double getCompactionProportion() {
+    return compactionProportion;
+  }
+
+  public void setCompactionProportion(double compactionProportion) {
+    this.compactionProportion = compactionProportion;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
+  }
+
+  public double getChunkMetadataMemorySizeProportion() {
+    return chunkMetadataMemorySizeProportion;
+  }
+
+  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
+    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
   }
 }

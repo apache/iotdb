@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -45,12 +46,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 public class IoTDBDescriptor {
 
@@ -60,6 +59,22 @@ public class IoTDBDescriptor {
 
   protected IoTDBDescriptor() {
     loadProps();
+    ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
+        ServiceLoader.load(IPropertiesLoader.class);
+    for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
+      logger.info("Will reload properties from {} ", loader.getClass().getName());
+      try {
+        Properties properties = loader.loadProperties();
+        loadProperties(properties);
+        conf.setCustomizedProperties(loader.getCustomizedProperties());
+        TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
+        TSFileDescriptor.getInstance()
+            .getConfig()
+            .setCustomizedProperties(loader.getCustomizedProperties());
+      } catch (UnknownHostException e) {
+        logger.warn("load property from {} failed.", loader.getClass().getName(), e);
+      }
+    }
   }
 
   public static IoTDBDescriptor getInstance() {
@@ -115,52 +130,6 @@ public class IoTDBDescriptor {
     } catch (MalformedURLException e) {
       return null;
     }
-  }
-
-  /**
-   * get external props url location
-   *
-   * @return url object if location exit, otherwise null.
-   */
-  public Path getExternalPropsPath() {
-    // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (urlString != null) {
-        urlString =
-            urlString
-                + File.separatorChar
-                + "conf"
-                + File.separatorChar
-                + IoTDBConfig.EXTERNAL_CONFIG_NAME;
-      } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        if (uri != null) {
-          try {
-            return Paths.get(uri.toURI());
-          } catch (URISyntaxException e) {
-            return null;
-          }
-        }
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_EXTERNAL_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        // update all data seriesPath
-        conf.updatePath();
-        return null;
-      }
-    }
-    // If a config location was provided, but it doesn't end with a properties file,
-    // append the default location.
-    else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-    }
-
-    return Paths.get(urlString);
   }
 
   /** load an property file and set TsfileDBConfig variables. */
@@ -372,6 +341,11 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    conf.setChunkMetadataMemorySizeProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_memory_size_proportion",
+                Double.toString(conf.getChunkMetadataMemorySizeProportion()))));
     conf.setEstimatedSeriesSize(
         Integer.parseInt(
             properties.getProperty(
@@ -512,6 +486,15 @@ public class IoTDBDescriptor {
       conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setArchivingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "archiving_thread_num", Integer.toString(conf.getArchivingThreadNum()))));
+
+    if (conf.getArchivingThreadNum() <= 0) {
+      conf.setArchivingThreadNum(2);
+    }
+
     conf.setRawQueryBlockingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(
@@ -552,11 +535,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-    conf.setCrossCompactionMemoryBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_memory_budget",
-                Long.toString(conf.getCrossCompactionMemoryBudget()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -602,6 +580,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_cross_compaction_candidate_file_num",
                 Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
+
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -976,19 +960,6 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
-
-    // external lib props
-    loadExternalLibProps(properties);
-  }
-
-  private void loadExternalLibProps(Properties properties) {
-
-    conf.setExternalPropertiesLoaderDir(
-        properties.getProperty(
-            "external_properties_loader_dir", conf.getExternalPropertiesLoaderDir()));
-
-    conf.setExternalLimiterDir(
-        properties.getProperty("external_limiter_dir", conf.getExternalLimiterDir()));
   }
 
   // to keep consistent with the cluster module.
@@ -1407,7 +1378,7 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForWrite(
+        conf.setAllocateMemoryForStorageEngine(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
@@ -1417,7 +1388,7 @@ public class IoTDBDescriptor {
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     conf.setMaxQueryDeduplicatedPathNum(
@@ -1457,6 +1428,7 @@ public class IoTDBDescriptor {
         }
       }
     }
+    initStorageEngineAllocate(properties);
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1546,6 +1518,19 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
+  }
+
+  private void initStorageEngineAllocate(Properties properties) {
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
+    String[] proportions = allocationRatio.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    conf.setWriteProportion(
+        ((double) (proportionForMemTable)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+    conf.setCompactionProportion(
+        ((double) (proportionForCompaction)
+            / (double) (proportionForCompaction + proportionForMemTable)));
   }
 
   /** Get default encode algorithm by data type */
