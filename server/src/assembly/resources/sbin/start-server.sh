@@ -51,9 +51,9 @@ if [ -z "${IOTDB_LOG_DIR}" ]; then
   export IOTDB_LOG_DIR=${IOTDB_HOME}/logs
 fi
 
-if [ -z "${configurationFile}" ]; then
-  IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
-fi
+
+IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
+
 
 # before, iotdb server runs on foreground by default
 foreground="yes"
