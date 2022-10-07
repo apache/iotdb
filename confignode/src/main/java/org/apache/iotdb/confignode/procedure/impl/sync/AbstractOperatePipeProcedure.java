@@ -39,12 +39,20 @@ abstract class AbstractOperatePipeProcedure
 
   private static final int retryThreshold = 3;
 
-  abstract void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException;
+  /**
+   * Execute at state OPERATE_CHECK
+   *
+   * @return true if procedure can finish directly
+   */
+  abstract boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException;
 
+  /** Execute at state PRE_OPERATE_PIPE_CONFIGNODE */
   abstract void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException;
 
+  /** Execute at state OPERATE_PIPE_DATANODE */
   abstract void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException;
 
+  /** Execute at state OPERATE_PIPE_CONFIGNODE */
   abstract void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException;
 
   abstract SyncOperation getOperation();
@@ -55,7 +63,9 @@ abstract class AbstractOperatePipeProcedure
     try {
       switch (state) {
         case OPERATE_CHECK:
-          executeOperateCheck(env);
+          if (executeCheckCanSkip(env)) {
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperatePipeState.PRE_OPERATE_PIPE_CONFIGNODE);
           break;
         case PRE_OPERATE_PIPE_CONFIGNODE:

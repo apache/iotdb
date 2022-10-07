@@ -55,9 +55,10 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
-  void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {
+  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to create PIPE [{}]", pipeInfo.getPipeName());
     env.getConfigManager().getSyncManager().checkAddPipe(pipeInfo);
+    return false;
   }
 
   @Override

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -53,9 +54,10 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
-  void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {
+  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to start PIPE [{}]", pipeName);
-    env.getConfigManager().getSyncManager().checkIfPipeExist(pipeName);
+    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+    return pipeInfo.getStatus().equals(PipeStatus.RUNNING);
   }
 
   @Override

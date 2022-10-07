@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync.metadata;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
@@ -190,7 +191,7 @@ public class SyncMetadata implements SnapshotProcessor {
 
   public void checkIfPipeExist(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
-      throw new PipeException("There is no existing PIPE.");
+      throw new PipeNotExistException(pipeName);
     }
     if (!runningPipe.getPipeName().equals(pipeName)) {
       throw new PipeException(

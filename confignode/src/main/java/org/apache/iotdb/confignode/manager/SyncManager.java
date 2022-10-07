@@ -137,8 +137,8 @@ public class SyncManager {
     return resp;
   }
 
-  public void checkIfPipeExist(String pipeName) throws PipeException {
-    clusterSyncInfo.checkIfPipeExist(pipeName);
+  public PipeInfo getPipeInfo(String pipeName) throws PipeException {
+    return clusterSyncInfo.getPipeInfo(pipeName);
   }
 
   /**

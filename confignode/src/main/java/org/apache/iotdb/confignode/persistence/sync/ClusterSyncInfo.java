@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
@@ -165,13 +166,17 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   }
 
   /**
-   * Check Pipe before start, stop and drop operation
+   * Get PipeInfo by pipeName. Check before start, stop and drop operation
    *
    * @param pipeName pipe name
-   * @throws PipeException if there is Pipe does not exist
+   * @throws PipeNotExistException if there is Pipe does not exist
    */
-  public void checkIfPipeExist(String pipeName) throws PipeException {
-    syncMetadata.checkIfPipeExist(pipeName);
+  public PipeInfo getPipeInfo(String pipeName) throws PipeNotExistException {
+    PipeInfo pipeInfo = syncMetadata.getRunningPipeInfo();
+    if (pipeInfo == null || !pipeInfo.getPipeName().equals(pipeName)) {
+      throw new PipeNotExistException(pipeName);
+    }
+    return pipeInfo;
   }
 
   // endregion
