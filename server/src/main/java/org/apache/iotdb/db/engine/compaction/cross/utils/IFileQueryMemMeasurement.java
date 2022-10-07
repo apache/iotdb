@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.io.IOException;
 
 @FunctionalInterface
-public
 /**
  * Estimate how much memory a file may occupy when being queried during merge.
  *

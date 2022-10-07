@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.estimator.AbstractCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;

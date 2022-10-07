@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,17 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.cross;
 
-package org.apache.iotdb.db.engine.compaction.estimator.readchunk;
-
-import org.apache.iotdb.db.engine.compaction.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.io.IOException;
 import java.util.List;
 
-public class ReadChunkCompactionEstimator extends AbstractInnerSpaceEstimator {
-  @Override
+/**
+ * Estimate the memory cost of one cross space compaction task with specific source files based on
+ * its corresponding implementation.
+ */
+public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEstimator {
+  public abstract long estimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException;
+
   public long estimateInnerCompactionMemory(List<TsFileResource> resources) {
-    return 0;
+    throw new RuntimeException(
+        "This kind of estimator cannot be used to estimate inner space compaction task");
   }
 }
