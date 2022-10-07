@@ -72,7 +72,10 @@ or
 - "-g": 打印GC日志
 - "-c \<config folder\>": 设置IOTDB_CONF变量的值，从而修改配置文件所在文件夹
 - "-D <a=b>": 设置Java的系统环境变量或其他参数
-
+- "-H \<filePath\> 当OOM异常时存储堆快照到\<filePath\> (仅 Linux/Mac生效, 且要求iotdb内存小于16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\> (仅 Linux/Mac生效)"
+- "-X \<command\> 等价于JVM中 -XX:\<command\>"
+- 
 Windows 系统启动命令如下：
 
 ```

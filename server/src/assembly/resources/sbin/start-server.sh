@@ -58,9 +58,11 @@ fi
 # before, iotdb server runs on foreground by default
 foreground="yes"
 
+IOTDB_HEAP_DUMP_COMMAND=""
+
 # Parse any command line options.
-args=`getopt gvRfbhp:c:bD::H:E: "$@"`
-eval set -- "$args"
+#args=`getopt gvRfbhp:c:bD::H:E: "$@"`
+#eval set -- "$args"
 
 while true; do
     case "$1" in
@@ -85,7 +87,7 @@ while true; do
             shift
         ;;
         -H)
-            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:HeapDumpPath=$2"
+            IOTDB_HEAP_DUMP_COMMAND="$IOTDB_HEAP_DUMP_COMMAND -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$2"
             shift 2
         ;;
         -E)
@@ -94,6 +96,10 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
+            shift 2
+        ;;
+        -X)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:$2"
             shift 2
         ;;
         -h)
@@ -105,6 +111,13 @@ while true; do
             break
         ;;
         --)
+            shift
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+        "")
+        #if we do not use getopt, we then have to process the case that there is no argument.
             shift
             #all others are args to the program
             PARAMS=$*
@@ -161,6 +174,11 @@ if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
     fi
 else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
+fi
+
+# check whether we can enable heap dump when oom
+if [ "x$IOTDB_ALLOW_HEAP_DUMP" == "xtrue" ]; then
+  IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS $IOTDB_HEAP_DUMP_COMMAND"
 fi
 
 launch_service()
