@@ -434,6 +434,14 @@ public interface IManager {
   TSStatus startPipe(String pipeName);
 
   /**
+   * Stop Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus stopPipe(String pipeName);
+
+  /**
    * Get Pipe by name. If pipeName is empty, get all Pipe.
    *
    * @param req specify the pipeName

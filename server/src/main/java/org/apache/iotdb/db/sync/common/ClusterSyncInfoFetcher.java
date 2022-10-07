@@ -33,12 +33,14 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+/** Only fetch read request. For write request, return SUCCESS directly. */
 public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfoFetcher.class);
@@ -52,17 +54,17 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus dropPipeSink(String name) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
@@ -93,22 +95,22 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public TSStatus addPipe(PipeInfo pipeInfo) {
-    return null;
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) {
-    return null;
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus startPipe(String pipeName) {
-    return null;
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus dropPipe(String pipeName) {
-    return null;
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override

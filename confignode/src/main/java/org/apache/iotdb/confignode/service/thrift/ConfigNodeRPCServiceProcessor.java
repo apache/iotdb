@@ -629,7 +629,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus stopPipe(String pipeName) throws TException {
-    return null;
+    return configManager.stopPipe(pipeName);
   }
 
   @Override

@@ -38,31 +38,31 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class StartPipeProcedure extends OperatePipeProcedure {
-  private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedure.class);
+public class StopPipeProcedure extends OperatePipeProcedure {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StopPipeProcedure.class);
 
   private String pipeName;
 
-  public StartPipeProcedure() {
+  public StopPipeProcedure() {
     super();
   }
 
-  public StartPipeProcedure(String pipeName) throws PipeException {
+  public StopPipeProcedure(String pipeName) throws PipeException {
     super();
     this.pipeName = pipeName;
   }
 
   @Override
   void executeOperateCheck(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to start PIPE [{}]", pipeName);
+    LOGGER.info("Start to stop PIPE [{}]", pipeName);
     env.getConfigManager().getSyncManager().checkIfPipeExist(pipeName);
   }
 
   @Override
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to pre-start PIPE [{}] on Config Nodes", pipeName);
+    LOGGER.info("Start to pre-stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_START);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_STOP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -70,22 +70,22 @@ public class StartPipeProcedure extends OperatePipeProcedure {
 
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to broadcast start PIPE [{}] on Data Nodes", pipeName);
+    LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
     TSStatus status =
         RpcUtils.squashResponseStatusList(
-            env.operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE));
+            env.operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to start PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
+              "Fail to stop PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
     }
   }
 
   @Override
   void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to start PIPE [{}] on Config Nodes", pipeName);
+    LOGGER.info("Start to stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.STOP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -93,7 +93,7 @@ public class StartPipeProcedure extends OperatePipeProcedure {
 
   @Override
   SyncOperation getOperation() {
-    return SyncOperation.START_PIPE;
+    return SyncOperation.STOP_PIPE;
   }
 
   @Override
@@ -102,7 +102,7 @@ public class StartPipeProcedure extends OperatePipeProcedure {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.START_PIPE_PROCEDURE.ordinal());
+    stream.writeInt(ProcedureFactory.ProcedureType.STOP_PIPE_PROCEDURE.ordinal());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
   }
@@ -117,7 +117,7 @@ public class StartPipeProcedure extends OperatePipeProcedure {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    StartPipeProcedure that = (StartPipeProcedure) o;
+    StopPipeProcedure that = (StopPipeProcedure) o;
     return Objects.equals(pipeName, that.pipeName);
   }
 

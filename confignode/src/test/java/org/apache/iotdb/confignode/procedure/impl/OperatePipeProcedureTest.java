@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -34,10 +35,10 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class CreatePipeProcedureTest {
+public class OperatePipeProcedureTest {
 
   @Test
-  public void serializeDeserializeTest() throws PipeException {
+  public void serializeDeserializeCreatePipeProcedureTest() throws PipeException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     Map<String, String> attributes = new HashMap<>();
@@ -57,6 +58,26 @@ public class CreatePipeProcedureTest {
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
       CreatePipeProcedure p2 = (CreatePipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeStartPipeProcedureTest() throws PipeException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    ;
+
+    StartPipeProcedure p1 = new StartPipeProcedure("pipeName");
+
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      StartPipeProcedure p2 = (StartPipeProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
     } catch (Exception e) {
       fail();

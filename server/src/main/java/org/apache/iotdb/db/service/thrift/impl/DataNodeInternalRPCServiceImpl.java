@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -523,7 +524,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) throws TException {
-    return null;
+    try {
+      switch (SyncOperation.values()[req.getOperation()]) {
+        case START_PIPE:
+          SyncService.getInstance().startPipe(req.getPipeName());
+          break;
+        case STOP_PIPE:
+          SyncService.getInstance().stopPipe(req.getPipeName());
+          break;
+      }
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (PipeException e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

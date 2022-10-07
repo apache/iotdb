@@ -182,12 +182,10 @@ public class SyncService implements IService {
                 DatetimeUtils.convertLongToDate(currentTime)));
       }
     }
-    if (!config.isClusterMode()) {
-      // add pipe
-      TSStatus status = syncInfoFetcher.addPipe(pipeInfo);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(status.message);
-      }
+    // add pipe
+    TSStatus status = syncInfoFetcher.addPipe(pipeInfo);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
     }
     PipeSink runningPipeSink;
     try {
@@ -226,7 +224,10 @@ public class SyncService implements IService {
         runningPipe.stop();
       }
     }
-    syncInfoFetcher.stopPipe(pipeName);
+    TSStatus status = syncInfoFetcher.stopPipe(pipeName);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
+    }
   }
 
   public synchronized void startPipe(String pipeName) throws PipeException {
@@ -240,7 +241,10 @@ public class SyncService implements IService {
         startExternalPipeManager(true);
       }
     }
-    syncInfoFetcher.startPipe(pipeName);
+    TSStatus status = syncInfoFetcher.startPipe(pipeName);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
+    }
   }
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
@@ -259,7 +263,10 @@ public class SyncService implements IService {
       runningPipe.drop();
     }
 
-    syncInfoFetcher.dropPipe(pipeName);
+    TSStatus status = syncInfoFetcher.dropPipe(pipeName);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
+    }
   }
 
   public List<PipeInfo> getAllPipeInfos() {
