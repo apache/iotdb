@@ -83,9 +83,11 @@ parameters:
 - "-g": print the GC log
 - "-c \<config folder\>": set IOTDB_CONF parameter
 - "-D <a=b>": set system variables to IoTDB program.
-- "-H \<filePath\> save heap dump file to \<filePath\> (only works on Linux/Mac, and iotdb memory <16GB)"
-- "-E <\filePath\> save error file of JVM to \<filePath\> (only works on Linux/Mac)"
+- "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\>"
 - "-X \<command\> equal to -XX:\<command\>"
+
+Notice that Windows OS only support -v, -c, -f and -b.
 
 if you want to use JMX to connect IOTDB, you may need to add/modify 
 

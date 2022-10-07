@@ -79,12 +79,11 @@ or
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-server.bat 
 ```
-- "-c" and "-rpc_port" 都是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
-- 选项 "-rpc_port" 指定了启动的 rpc port。
-- 如果两个选项同时指定，那么* rpc_port *将会覆盖* conf_path *下面的配置。
+
+Windows 系统支持 -c, -v, -f, -b 四个参数。
+
 
 ### 使用 Cli 工具
 
