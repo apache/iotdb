@@ -324,6 +324,7 @@ public class IOTDBLoadTsFileIT {
     long writtenPoint2 = 0;
     // device 2, device 3, device4, sg 1
     try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      generator.resetRandom(1000);
       generator.registerTimeseries(
           SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(

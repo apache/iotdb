@@ -44,6 +44,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -54,6 +57,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedChunkData implements ChunkData {
+  private static final Logger logger = LoggerFactory.getLogger(AlignedChunkData.class);
   private static final int DEFAULT_INT32 = 0;
   private static final long DEFAULT_INT64 = 0L;
   private static final float DEFAULT_FLOAT = 0;
@@ -144,10 +148,17 @@ public class AlignedChunkData implements ChunkData {
   @Override
   public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
     if (chunkList != null) {
+      logger.info(
+          String.format(
+              "Aligned Chunk Data write Chunk List(size:%d) to writer %s",
+              chunkList.size(), writer.getFile().getPath()));
       for (Chunk chunk : chunkList) {
         writer.writeChunk(chunk);
       }
     } else {
+      logger.info(
+          String.format(
+              "Aligned Chunk Data write Chunk writer to writer %s", writer.getFile().getPath()));
       chunkWriter.writeToFileWriter(writer);
     }
   }
@@ -404,7 +415,7 @@ public class AlignedChunkData implements ChunkData {
           if (isTimeChunk) {
             long time = ReadWriteIOUtils.readLong(stream);
             timePageBatch[i] = time;
-            chunkWriter.write(time);
+            chunkWriter.writeTime(time);
           } else {
             boolean isNull = ReadWriteIOUtils.readBool(stream);
             switch (chunkHeader.getDataType()) {
@@ -442,6 +453,16 @@ public class AlignedChunkData implements ChunkData {
           timeBatch.add(timePageBatch);
         }
         decodePageIndex += 1;
+
+        if (isTimeChunk) {
+          chunkWriter.sealCurrentTimePage();
+        } else {
+          chunkWriter.sealCurrentValuePage(valueChunkIndex);
+        }
+        logger.info(
+            String.format(
+                "Aligned Chunk Data, time partition: %s, write page point: %d",
+                timePartitionSlot, length));
       } else {
         PageHeader pageHeader = PageHeader.deserializeFrom(stream, chunkHeader.getDataType(), true);
         if (isTimeChunk) {
@@ -454,6 +475,10 @@ public class AlignedChunkData implements ChunkData {
               pageHeader,
               valueChunkIndex);
         }
+        logger.info(
+            String.format(
+                "Aligned Chunk Data, time partition: %s, write page point: %d",
+                timePartitionSlot, pageHeader.getNumOfValues()));
       }
     }
   }
