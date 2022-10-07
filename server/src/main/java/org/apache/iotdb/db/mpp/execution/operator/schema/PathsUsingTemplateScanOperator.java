@@ -50,17 +50,17 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected TsBlock createTsBlock() {
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+  protected List<TsBlock> createTsBlockList() {
     try {
-      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-          .getSchemaRegion()
-          .getPathsUsingTemplate(templateId)
-          .forEach(path -> setColumns(path, builder));
+      List<String> schemaRegionResult =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getPathsUsingTemplate(templateId);
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    return builder.build();
   }
 
   private void setColumns(String path, TsBlockBuilder builder) {
