@@ -114,7 +114,20 @@ public class SnapshotLoader {
 
   private DataRegion loadSnapshotWithoutLog() {
     try {
+      try {
+        deleteAllFilesInDataDirs();
+        LOGGER.info("Remove all data files in original data dir");
+      } catch (IOException e) {
+        LOGGER.error("Failed to remove origin data files", e);
+        return null;
+      }
       LOGGER.info("Moving snapshot file to data dirs");
+      try {
+        deleteAllFilesInDataDirs();
+        LOGGER.info("Remove all data files in original data dir");
+      } catch (IOException e) {
+        return null;
+      }
       createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -147,7 +160,7 @@ public class SnapshotLoader {
         createLinksFromSnapshotDirToDataDirWithLog();
         return loadSnapshot();
       } catch (IOException e) {
-        LOGGER.error("IOException occurs when creating links from snapshot dir to data dir", e);
+        LOGGER.error("Failed to remove origin data files", e);
         return null;
       }
     } finally {

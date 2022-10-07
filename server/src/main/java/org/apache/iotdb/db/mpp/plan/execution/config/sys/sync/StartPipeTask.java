@@ -28,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class StartPipeTask implements IConfigTask {
 
-  private StartPipeStatement startPipeStatement;
+  private final StartPipeStatement startPipeStatement;
 
   public StartPipeTask(StartPipeStatement startPipeStatement) {
     this.startPipeStatement = startPipeStatement;
@@ -37,6 +37,6 @@ public class StartPipeTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.startPipe();
+    return configTaskExecutor.startPipe(startPipeStatement);
   }
 }

@@ -39,7 +39,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
@@ -100,12 +100,16 @@ public class ConfigNodeConfig {
   private String udfLibDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
+  /** External lib directory for Trigger, stores user-uploaded JAR files */
+  private String triggerLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
   /** External temporary lib directory for storing downloaded JAR files */
   private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
-  /** Time partition interval in seconds */
-  private long timePartitionInterval = 86400;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 86400000;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
@@ -131,6 +135,51 @@ public class ConfigNodeConfig {
 
   private String readConsistencyLevel = "strong";
 
+  /** RatisConsensus protocol, Max size for a single log append request from leader */
+  private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+
+  private long partitionRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+
+  /**
+   * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
+   * written
+   */
+  private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
+
+  private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
+  private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
+
+  /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
+  private boolean dataRegionRatisLogUnsafeFlushEnable = false;
+
+  private boolean partitionRegionRatisLogUnsafeFlushEnable = false;
+  private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
+
+  /** RatisConsensus protocol, max capacity of a single Raft Log segment */
+  private long dataRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  /** RatisConsensus protocol, flow control window for ratis grpc log appender */
+  private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private long partitionRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+  private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  /** RatisConsensus protocol, min election timeout for leader election */
+  private long dataRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
+
+  private long partitionRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
+  private long schemaRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
+
+  /** RatisConsensus protocol, max election timeout for leader election */
+  private long dataRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
+  private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+  private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -145,6 +194,7 @@ public class ConfigNodeConfig {
     extLibDir = addHomeDir(extLibDir);
     udfLibDir = addHomeDir(udfLibDir);
     temporaryLibDir = addHomeDir(temporaryLibDir);
+    triggerLibDir = addHomeDir(triggerLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -340,6 +390,22 @@ public class ConfigNodeConfig {
     this.udfLibDir = udfLibDir;
   }
 
+  public String getExtLibDir() {
+    return extLibDir;
+  }
+
+  public void setExtLibDir(String extLibDir) {
+    this.extLibDir = extLibDir;
+  }
+
+  public String getTriggerLibDir() {
+    return triggerLibDir;
+  }
+
+  public void setTriggerLibDir(String triggerLibDir) {
+    this.triggerLibDir = triggerLibDir;
+  }
+
   public String getTemporaryLibDir() {
     return temporaryLibDir;
   }
@@ -410,5 +476,199 @@ public class ConfigNodeConfig {
 
   public void setReadConsistencyLevel(String readConsistencyLevel) {
     this.readConsistencyLevel = readConsistencyLevel;
+  }
+
+  public long getDataRegionRatisConsensusLogAppenderBufferSize() {
+    return dataRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public void setDataRegionRatisConsensusLogAppenderBufferSize(
+      long dataRegionRatisConsensusLogAppenderBufferSize) {
+    this.dataRegionRatisConsensusLogAppenderBufferSize =
+        dataRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getDataRegionRatisSnapshotTriggerThreshold() {
+    return dataRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public void setDataRegionRatisSnapshotTriggerThreshold(
+      long dataRegionRatisSnapshotTriggerThreshold) {
+    this.dataRegionRatisSnapshotTriggerThreshold = dataRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public boolean isDataRegionRatisLogUnsafeFlushEnable() {
+    return dataRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public void setDataRegionRatisLogUnsafeFlushEnable(boolean dataRegionRatisLogUnsafeFlushEnable) {
+    this.dataRegionRatisLogUnsafeFlushEnable = dataRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public long getDataRegionRatisLogSegmentSizeMax() {
+    return dataRegionRatisLogSegmentSizeMax;
+  }
+
+  public void setDataRegionRatisLogSegmentSizeMax(long dataRegionRatisLogSegmentSizeMax) {
+    this.dataRegionRatisLogSegmentSizeMax = dataRegionRatisLogSegmentSizeMax;
+  }
+
+  public long getDataRegionRatisGrpcFlowControlWindow() {
+    return dataRegionRatisGrpcFlowControlWindow;
+  }
+
+  public void setDataRegionRatisGrpcFlowControlWindow(long dataRegionRatisGrpcFlowControlWindow) {
+    this.dataRegionRatisGrpcFlowControlWindow = dataRegionRatisGrpcFlowControlWindow;
+  }
+
+  public long getDataRegionRatisRpcLeaderElectionTimeoutMinMs() {
+    return dataRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public void setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+      long dataRegionRatisRpcLeaderElectionTimeoutMinMs) {
+    this.dataRegionRatisRpcLeaderElectionTimeoutMinMs =
+        dataRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public long getDataRegionRatisRpcLeaderElectionTimeoutMaxMs() {
+    return dataRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
+      long dataRegionRatisRpcLeaderElectionTimeoutMaxMs) {
+    this.dataRegionRatisRpcLeaderElectionTimeoutMaxMs =
+        dataRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getPartitionRegionRatisConsensusLogAppenderBufferSize() {
+    return partitionRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public void setPartitionRegionRatisConsensusLogAppenderBufferSize(
+      long partitionRegionRatisConsensusLogAppenderBufferSize) {
+    this.partitionRegionRatisConsensusLogAppenderBufferSize =
+        partitionRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getPartitionRegionRatisSnapshotTriggerThreshold() {
+    return partitionRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public void setPartitionRegionRatisSnapshotTriggerThreshold(
+      long partitionRegionRatisSnapshotTriggerThreshold) {
+    this.partitionRegionRatisSnapshotTriggerThreshold =
+        partitionRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
+    return partitionRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public void setPartitionRegionRatisLogUnsafeFlushEnable(
+      boolean partitionRegionRatisLogUnsafeFlushEnable) {
+    this.partitionRegionRatisLogUnsafeFlushEnable = partitionRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public long getPartitionRegionRatisLogSegmentSizeMax() {
+    return partitionRegionRatisLogSegmentSizeMax;
+  }
+
+  public void setPartitionRegionRatisLogSegmentSizeMax(long partitionRegionRatisLogSegmentSizeMax) {
+    this.partitionRegionRatisLogSegmentSizeMax = partitionRegionRatisLogSegmentSizeMax;
+  }
+
+  public long getPartitionRegionRatisGrpcFlowControlWindow() {
+    return partitionRegionRatisGrpcFlowControlWindow;
+  }
+
+  public void setPartitionRegionRatisGrpcFlowControlWindow(
+      long partitionRegionRatisGrpcFlowControlWindow) {
+    this.partitionRegionRatisGrpcFlowControlWindow = partitionRegionRatisGrpcFlowControlWindow;
+  }
+
+  public long getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs() {
+    return partitionRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public void setPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(
+      long partitionRegionRatisRpcLeaderElectionTimeoutMinMs) {
+    this.partitionRegionRatisRpcLeaderElectionTimeoutMinMs =
+        partitionRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public long getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs() {
+    return partitionRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(
+      long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs) {
+    this.partitionRegionRatisRpcLeaderElectionTimeoutMaxMs =
+        partitionRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getSchemaRegionRatisConsensusLogAppenderBufferSize() {
+    return schemaRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public void setSchemaRegionRatisConsensusLogAppenderBufferSize(
+      long schemaRegionRatisConsensusLogAppenderBufferSize) {
+    this.schemaRegionRatisConsensusLogAppenderBufferSize =
+        schemaRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getSchemaRegionRatisSnapshotTriggerThreshold() {
+    return schemaRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public void setSchemaRegionRatisSnapshotTriggerThreshold(
+      long schemaRegionRatisSnapshotTriggerThreshold) {
+    this.schemaRegionRatisSnapshotTriggerThreshold = schemaRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public boolean isSchemaRegionRatisLogUnsafeFlushEnable() {
+    return schemaRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public void setSchemaRegionRatisLogUnsafeFlushEnable(
+      boolean schemaRegionRatisLogUnsafeFlushEnable) {
+    this.schemaRegionRatisLogUnsafeFlushEnable = schemaRegionRatisLogUnsafeFlushEnable;
+  }
+
+  public long getSchemaRegionRatisLogSegmentSizeMax() {
+    return schemaRegionRatisLogSegmentSizeMax;
+  }
+
+  public void setSchemaRegionRatisLogSegmentSizeMax(long schemaRegionRatisLogSegmentSizeMax) {
+    this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
+  }
+
+  public long getSchemaRegionRatisGrpcFlowControlWindow() {
+    return schemaRegionRatisGrpcFlowControlWindow;
+  }
+
+  public void setSchemaRegionRatisGrpcFlowControlWindow(
+      long schemaRegionRatisGrpcFlowControlWindow) {
+    this.schemaRegionRatisGrpcFlowControlWindow = schemaRegionRatisGrpcFlowControlWindow;
+  }
+
+  public long getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs() {
+    return schemaRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public void setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
+      long schemaRegionRatisRpcLeaderElectionTimeoutMinMs) {
+    this.schemaRegionRatisRpcLeaderElectionTimeoutMinMs =
+        schemaRegionRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public long getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs() {
+    return schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
+      long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
+    this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
+        schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
   }
 }

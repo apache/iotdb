@@ -32,10 +32,10 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +134,7 @@ public class LocalExecutionPlanner {
         freeMemoryForOperators -= estimatedMemorySize;
         LOGGER.info(
             String.format(
-                "consume memory: %d, current remaining memory: %d",
+                "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
       }
     }
@@ -148,7 +148,7 @@ public class LocalExecutionPlanner {
                 this.freeMemoryForOperators += estimatedMemorySize;
                 LOGGER.info(
                     String.format(
-                        "release memory: %d, current remaining memory: %d",
+                        "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));
               }
             }

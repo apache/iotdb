@@ -76,5 +76,14 @@ public enum ConfigPhysicalPlanType {
   CheckTemplateSettable,
   SetSchemaTemplate,
   GetPathsSetTemplate,
-  GetAllTemplateSetInfo;
+  GetAllTemplateSetInfo,
+  OfferRegionMaintainTasks,
+  PollRegionMaintainTask,
+  CreatePipeSink,
+  DropPipeSink,
+  GetPipeSink,
+  AddTriggerInTable,
+  DeleteTriggerInTable,
+  GetTriggerTable,
+  UpdateTriggerStateInTable
 }

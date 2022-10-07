@@ -118,6 +118,33 @@ public class MeasurementGroup {
     attributesList.add(attributes);
   }
 
+  public void removeMeasurement(int index) {
+    measurements.remove(index);
+    dataTypes.remove(index);
+    encodings.remove(index);
+    compressors.remove(index);
+
+    if (aliasList != null) {
+      aliasList.remove(index);
+    }
+
+    if (propsList != null) {
+      propsList.remove(index);
+    }
+
+    if (tagsList != null) {
+      tagsList.remove(index);
+    }
+
+    if (attributesList != null) {
+      attributesList.remove(index);
+    }
+  }
+
+  public boolean isEmpty() {
+    return measurements.isEmpty();
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     // measurements
     ReadWriteIOUtils.write(measurements.size(), byteBuffer);

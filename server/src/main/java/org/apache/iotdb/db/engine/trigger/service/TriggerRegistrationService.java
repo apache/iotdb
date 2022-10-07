@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -484,7 +485,7 @@ public class TriggerRegistrationService implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
+    return ServiceType.TRIGGER_REGISTRATION_SERVICE_OLD;
   }
 
   public int executorSize() {

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -50,7 +50,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.utils.SyncConstant.DATA_CHUNK_SIZE;
 
 public class IoTDBSyncClient implements ISyncClient {
 
@@ -69,21 +69,26 @@ public class IoTDBSyncClient implements ISyncClient {
   private final int port;
   /* local IP address*/
   private final String localIP;
+  /* storage group name that client belongs to*/
+  private final String storageGroupName;
 
   private final Pipe pipe;
 
   /**
    * @param pipe sync task
-   * @param ipAddress remote ip address
+   * @param remoteAddress remote ip address
    * @param port remote port
-   * @param localIP local ip address
+   * @param localAddress local ip address
+   * @param storageGroupName storage group name that client belongs to
    */
-  public IoTDBSyncClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSyncClient(
+      Pipe pipe, String remoteAddress, int port, String localAddress, String storageGroupName) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
-    this.ipAddress = ipAddress;
+    this.ipAddress = remoteAddress;
     this.port = port;
-    this.localIP = localIP;
+    this.localIP = localAddress;
+    this.storageGroupName = storageGroupName;
   }
 
   /**
@@ -122,7 +127,11 @@ public class IoTDBSyncClient implements ISyncClient {
 
       TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
-              localIP, pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion());
+              localIP,
+              pipe.getName(),
+              pipe.getCreateTime(),
+              config.getIoTDBMajorVersion(),
+              storageGroupName);
       TSStatus status = serviceClient.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("The receiver rejected the synchronization task because {}", status.message);

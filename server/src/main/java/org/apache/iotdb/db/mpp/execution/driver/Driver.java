@@ -190,7 +190,6 @@ public abstract class Driver implements IDriver {
       }
       return NOT_BLOCKED;
     } catch (Throwable t) {
-      LOGGER.error("Failed to execute fragment instance {}", driverContext.getId(), t);
       List<StackTraceElement> interrupterStack = exclusiveLock.getInterrupterStack();
       if (interrupterStack == null) {
         driverContext.failed(t);

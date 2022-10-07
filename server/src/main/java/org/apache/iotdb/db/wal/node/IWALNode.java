@@ -22,6 +22,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -45,6 +46,9 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
 
   /** Log DeletePlan */
   WALFlushListener log(long memTableId, DeletePlan deletePlan);
+
+  /** Log DeleteDataNode */
+  WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode);
 
   /** Callback when memTable created */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);

@@ -21,13 +21,15 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -78,13 +80,16 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import com.google.common.base.Function;
 import org.apache.commons.lang.Validate;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -94,6 +99,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
 
 public class LogicalPlanBuilder {
 
@@ -101,7 +107,10 @@ public class LogicalPlanBuilder {
 
   private final MPPQueryContext context;
 
-  public LogicalPlanBuilder(MPPQueryContext context) {
+  private final Function<Expression, TSDataType> getPreAnalyzedType;
+
+  public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
+    this.getPreAnalyzedType = analysis::getType;
     this.context = context;
   }
 
@@ -112,6 +121,17 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder withNewRoot(PlanNode newRoot) {
     this.root = newRoot;
     return this;
+  }
+
+  private void updateTypeProvider(Collection<Expression> expressions) {
+    expressions.forEach(
+        expression -> {
+          if (!expression.getExpressionString().equals(COLUMN_DEVICE)) {
+            context
+                .getTypeProvider()
+                .setType(expression.toString(), getPreAnalyzedType.apply(expression));
+          }
+        });
   }
 
   public LogicalPlanBuilder planRawDataSource(
@@ -140,6 +160,8 @@ public class LogicalPlanBuilder {
       }
     }
 
+    updateTypeProvider(sourceExpressions);
+
     this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
     return this;
   }
@@ -160,6 +182,7 @@ public class LogicalPlanBuilder {
         sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
       }
     }
+    updateTypeProvider(sourceExpressions);
 
     this.root =
         new LastQueryNode(
@@ -167,29 +190,32 @@ public class LogicalPlanBuilder {
             sourceNodeList,
             globalTimeFilter,
             mergeOrderParameter);
+    ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+
     return this;
   }
 
   public LogicalPlanBuilder planAggregationSource(
-      Set<Expression> sourceExpressions,
       AggregationStep curStep,
       Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
-      Map<Expression, Set<Expression>> groupByLevelExpressions,
-      TypeProvider typeProvider) {
-
+      Set<Expression> sourceTransformExpressions,
+      Map<Expression, Set<Expression>> groupByLevelExpressions) {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-    for (Expression sourceExpression : sourceExpressions) {
+    for (Expression aggregationExpression : aggregationExpressions) {
       createAggregationDescriptor(
-          (FunctionExpression) sourceExpression,
+          (FunctionExpression) aggregationExpression,
           curStep,
           scanOrder,
           needCheckAscending,
-          typeProvider,
           ascendingAggregations,
           descendingAggregations);
     }
@@ -201,6 +227,8 @@ public class LogicalPlanBuilder {
             scanOrder,
             timeFilter,
             groupByTimeParameter);
+    updateTypeProvider(aggregationExpressions);
+    updateTypeProvider(sourceTransformExpressions);
 
     return convergeAggregationSource(
         sourceNodeList,
@@ -212,36 +240,34 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
-      Set<Expression> sourceExpressions,
       AggregationStep curStep,
       Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
-      List<Integer> measurementIndexes,
+      Set<Expression> sourceTransformExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
-      TypeProvider typeProvider) {
+      List<Integer> deviceViewInputIndexes) {
     checkArgument(
-        sourceExpressions.size() == measurementIndexes.size(),
+        aggregationExpressions.size() == deviceViewInputIndexes.size(),
         "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-    Map<AggregationDescriptor, Integer> aggregationToMeasurementIndexMap = new HashMap<>();
+    Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
 
     int index = 0;
-    for (Expression sourceExpression : sourceExpressions) {
+    for (Expression aggregationExpression : aggregationExpressions) {
       AggregationDescriptor aggregationDescriptor =
           createAggregationDescriptor(
-              (FunctionExpression) sourceExpression,
+              (FunctionExpression) aggregationExpression,
               curStep,
               scanOrder,
               needCheckAscending,
-              typeProvider,
               ascendingAggregations,
               descendingAggregations);
-      aggregationToMeasurementIndexMap.put(aggregationDescriptor, measurementIndexes.get(index));
+      aggregationToIndexMap.put(aggregationDescriptor, deviceViewInputIndexes.get(index));
       index++;
     }
 
@@ -252,17 +278,19 @@ public class LogicalPlanBuilder {
             scanOrder,
             timeFilter,
             groupByTimeParameter);
+    updateTypeProvider(aggregationExpressions);
+    updateTypeProvider(sourceTransformExpressions);
 
     if (!curStep.isOutputPartial()) {
       // update measurementIndexes
-      measurementIndexes.clear();
-      measurementIndexes.addAll(
+      deviceViewInputIndexes.clear();
+      deviceViewInputIndexes.addAll(
           sourceNodeList.stream()
               .map(
                   planNode ->
                       ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
               .flatMap(List::stream)
-              .map(aggregationToMeasurementIndexMap::get)
+              .map(aggregationToIndexMap::get)
               .collect(Collectors.toList()));
     }
 
@@ -280,14 +308,13 @@ public class LogicalPlanBuilder {
       AggregationStep curStep,
       Ordering scanOrder,
       boolean needCheckAscending,
-      TypeProvider typeProvider,
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
     AggregationDescriptor aggregationDescriptor =
         new AggregationDescriptor(
             sourceExpression.getFunctionName(), curStep, sourceExpression.getExpressions());
     if (curStep.isOutputPartial()) {
-      updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
+      updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
     }
     PartialPath selectPath =
         ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
@@ -404,6 +431,19 @@ public class LogicalPlanBuilder {
     }
   }
 
+  public static void updateTypeProviderByPartialAggregation(
+      GroupByLevelDescriptor aggregationDescriptor, TypeProvider typeProvider) {
+    List<AggregationType> splitAggregations =
+        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+    PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
+    for (AggregationType aggregationType : splitAggregations) {
+      String functionName = aggregationType.toString().toLowerCase();
+      typeProvider.setType(
+          String.format("%s(%s)", functionName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, functionName));
+    }
+  }
+
   private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
@@ -416,9 +456,14 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planDeviceView(
       Map<String, PlanNode> deviceNameToSourceNodesMap,
-      List<String> outputColumnNames,
+      Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Ordering mergeOrder) {
+    List<String> outputColumnNames =
+        deviceViewOutputExpressions.stream()
+            .map(Expression::getExpressionString)
+            .collect(Collectors.toList());
+
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
@@ -428,11 +473,15 @@ public class LogicalPlanBuilder {
                     new SortItem(SortKey.TIME, mergeOrder))),
             outputColumnNames,
             deviceToMeasurementIndexesMap);
+
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();
       deviceViewNode.addChildDeviceNode(deviceName, subPlan);
     }
+
+    context.getTypeProvider().setType(COLUMN_DEVICE, TSDataType.TEXT);
+    updateTypeProvider(deviceViewOutputExpressions);
 
     this.root = deviceViewNode;
     return this;
@@ -440,7 +489,6 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planGroupByLevel(
       Map<Expression, Set<Expression>> groupByLevelExpressions,
-      AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     if (groupByLevelExpressions == null) {
@@ -451,7 +499,7 @@ public class LogicalPlanBuilder {
         createGroupByTLevelNode(
             Collections.singletonList(this.getRoot()),
             groupByLevelExpressions,
-            curStep,
+            AggregationStep.FINAL,
             groupByTimeParameter,
             scanOrder);
     return this;
@@ -461,7 +509,6 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
-      TypeProvider typeProvider,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
       return this;
@@ -469,10 +516,12 @@ public class LogicalPlanBuilder {
 
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
+    updateTypeProvider(aggregationExpressions);
     if (curStep.isOutputPartial()) {
       aggregationDescriptorList.forEach(
           aggregationDescriptor ->
-              updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider));
+              updateTypeProviderByPartialAggregation(
+                  aggregationDescriptor, context.getTypeProvider()));
     }
     this.root =
         new AggregationNode(
@@ -533,6 +582,11 @@ public class LogicalPlanBuilder {
                   .collect(Collectors.toList()),
               groupedExpression.getExpressions().get(0)));
     }
+    updateTypeProvider(groupByLevelExpressions.keySet());
+    updateTypeProvider(
+        groupByLevelDescriptors.stream()
+            .map(GroupByLevelDescriptor::getOutputExpression)
+            .collect(Collectors.toList()));
     return new GroupByLevelNode(
         context.getQueryId().genPlanNodeId(),
         children,
@@ -587,12 +641,12 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planFilterAndTransform(
-      Expression queryFilter,
+      Expression filterExpression,
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
       ZoneId zoneId,
       Ordering scanOrder) {
-    if (queryFilter == null) {
+    if (filterExpression == null || selectExpressions.isEmpty()) {
       return this;
     }
 
@@ -601,20 +655,18 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             selectExpressions.toArray(new Expression[0]),
-            queryFilter,
+            filterExpression,
             isGroupByTime,
             zoneId,
             scanOrder);
+    updateTypeProvider(selectExpressions);
     return this;
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> transformExpressions,
-      boolean isGroupByTime,
-      ZoneId zoneId,
-      Ordering scanOrder) {
+      Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
     boolean needTransform = false;
-    for (Expression expression : transformExpressions) {
+    for (Expression expression : selectExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
         needTransform = true;
         break;
@@ -628,10 +680,11 @@ public class LogicalPlanBuilder {
         new TransformNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            transformExpressions.toArray(new Expression[0]),
+            selectExpressions.toArray(new Expression[0]),
             isGroupByTime,
             zoneId,
             scanOrder);
+    updateTypeProvider(selectExpressions);
     return this;
   }
 
@@ -662,6 +715,34 @@ public class LogicalPlanBuilder {
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
     return this;
+  }
+
+  public LogicalPlanBuilder planHaving(
+      Expression havingExpression,
+      Set<Expression> selectExpressions,
+      boolean isGroupByTime,
+      ZoneId zoneId,
+      Ordering scanOrder) {
+    if (havingExpression != null) {
+      return planFilterAndTransform(
+          havingExpression, selectExpressions, isGroupByTime, zoneId, scanOrder);
+    } else {
+      return planTransform(selectExpressions, isGroupByTime, zoneId, scanOrder);
+    }
+  }
+
+  public LogicalPlanBuilder planWhereAndSourceTransform(
+      Expression whereExpression,
+      Set<Expression> sourceTransformExpressions,
+      boolean isGroupByTime,
+      ZoneId zoneId,
+      Ordering scanOrder) {
+    if (whereExpression != null) {
+      return planFilterAndTransform(
+          whereExpression, sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
+    } else {
+      return planTransform(sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
+    }
   }
 
   /** Meta Query* */
@@ -720,6 +801,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planSchemaFetchSource(
       List<String> storageGroupList,
       PathPatternTree patternTree,
@@ -732,7 +814,8 @@ public class LogicalPlanBuilder {
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
                 storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          overlappedPatternTree.appendPathPattern(pathPattern);
+          // pathPattern has been deduplicated, no need to deduplicate again
+          overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SchemaFetchScanNode(

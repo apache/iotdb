@@ -126,11 +126,19 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
+    ;
+
+triggerType
+    : STATELESS | STATEFUL
     ;
 
 triggerEventClause
-    : (BEFORE | AFTER) INSERT
+    : (BEFORE | AFTER) (INSERT | DELETE)
+    ;
+
+jarLocation
+    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause
@@ -189,7 +197,7 @@ deleteStorageGroup
 
 // Delete Timeseries
 deleteTimeseries
-    : DELETE TIMESERIES prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Partition
@@ -641,7 +649,7 @@ explain
 
 // Set System To readonly/running/error
 setSystemStatus
-    : SET SYSTEM TO (READONLY|RUNNING|ERROR) (ON (LOCAL | CLUSTER))?
+    : SET SYSTEM TO (READONLY|RUNNING) (ON (LOCAL | CLUSTER))?
     ;
 
 // Show Version
@@ -701,9 +709,9 @@ loadFile
     ;
 
 loadFilesClause
-    : AUTOREGISTER operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
-    | SGLEVEL operator_eq INTEGER_LITERAL (COMMA loadFilesClause)?
-    | VERIFY operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
+    : SGLEVEL operator_eq INTEGER_LITERAL (loadFilesClause)?
+    | VERIFY operator_eq BOOLEAN_LITERAL (loadFilesClause)?
+    | ONSUCCESS operator_eq (DELETE|NONE) (loadFilesClause)?
     ;
 
 // Remove TsFile

@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -72,15 +73,19 @@ public class MetaUtilsTest {
   public void testGroupAlignedPath() throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
 
-    MeasurementPath path1 = new MeasurementPath(new PartialPath("root.sg.device1.s1"), null);
+    MeasurementPath path1 =
+        new MeasurementPath(new PartialPath("root.sg.device1.s1"), TSDataType.INT32);
     pathList.add(path1);
-    MeasurementPath path2 = new MeasurementPath(new PartialPath("root.sg.device1.s2"), null);
+    MeasurementPath path2 =
+        new MeasurementPath(new PartialPath("root.sg.device1.s2"), TSDataType.INT32);
     pathList.add(path2);
 
-    MeasurementPath path3 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"), null);
+    MeasurementPath path3 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"), TSDataType.INT32);
     path3.setUnderAlignedEntity(true);
     pathList.add(path3);
-    MeasurementPath path4 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s2"), null);
+    MeasurementPath path4 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device.s2"), TSDataType.INT32);
     path4.setUnderAlignedEntity(true);
     pathList.add(path4);
 

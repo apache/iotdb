@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
@@ -25,7 +26,6 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,6 +46,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
   /** measurement's Schema for one timeseries represented by current leaf node */
   private IMeasurementSchema schema;
+  /** whether this measurement is pre deleted and considered in black list */
+  private boolean preDeleted = false;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
 
@@ -147,6 +149,16 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
+  }
+
+  @Override
+  public boolean isPreDeleted() {
+    return preDeleted;
+  }
+
+  @Override
+  public void setPreDeleted(boolean preDeleted) {
+    this.preDeleted = preDeleted;
   }
 
   @Override

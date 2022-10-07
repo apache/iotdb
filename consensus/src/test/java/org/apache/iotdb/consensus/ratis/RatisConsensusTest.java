@@ -165,6 +165,27 @@ public class RatisConsensusTest {
   }
 
   @Test
+  public void oneMemberGroupChange1() throws Exception {
+    oneMemberGroupChangeImpl(false);
+  }
+
+  @Test
+  public void oneMemberGroupChange2() throws Exception {
+    oneMemberGroupChangeImpl(true);
+  }
+
+  private void oneMemberGroupChangeImpl(boolean previousRemove) throws Exception {
+    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    servers.get(1).createPeer(group.getGroupId(), peers.subList(0, 2));
+    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+    servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
+    servers.get(previousRemove ? 0 : 1).removePeer(group.getGroupId(), peers.get(0));
+    servers.get(0).deletePeer(group.getGroupId());
+  }
+
+  @Test
   public void crashAndStart() throws Exception {
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());

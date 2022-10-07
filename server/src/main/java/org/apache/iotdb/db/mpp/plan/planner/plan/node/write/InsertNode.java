@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -240,29 +242,40 @@ public abstract class InsertNode extends WritePlanNode {
     return dataRegionReplicaSet;
   }
 
-  public abstract boolean validateAndSetSchema(ISchemaTree schemaTree);
+  public abstract void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException;
 
   /** Check whether data types are matched with measurement schemas */
-  protected boolean selfCheckDataTypes() {
+  protected void selfCheckDataTypes() throws DataTypeMismatchException {
     for (int i = 0; i < measurementSchemas.length; i++) {
       if (dataTypes[i] != measurementSchemas[i].getType()) {
+        if (checkAndCastDataType(i, measurementSchemas[i].getType())) {
+          continue;
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
+          throw new DataTypeMismatchException(
+              devicePath.getFullPath(),
+              measurements[i],
+              dataTypes[i],
+              measurementSchemas[i].getType(),
+              getMinTime(),
+              getFirstValueOfIndex(i));
         } else {
           markFailedMeasurement(
               i,
               new DataTypeMismatchException(
                   devicePath.getFullPath(),
                   measurements[i],
-                  measurementSchemas[i].getType(),
                   dataTypes[i],
+                  measurementSchemas[i].getType(),
                   getMinTime(),
                   getFirstValueOfIndex(i)));
         }
       }
     }
-    return true;
   }
+
+  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
 
   public abstract long getMinTime();
 

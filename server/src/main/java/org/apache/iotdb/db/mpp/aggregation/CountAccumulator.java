@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -34,30 +33,30 @@ public class CountAccumulator implements Accumulator {
 
   public CountAccumulator() {}
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
-    TimeColumn timeColumn = (TimeColumn) column[0];
-    Column valueColumn = column[1];
-    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
-    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
-    if (!valueColumn.mayHaveNull() && timeRange.contains(minTime, maxTime)) {
-      countValue += timeColumn.getPositionCount();
+  public int addInput(Column[] column, IWindow curWindow) {
+    int curPositionCount = column[0].getPositionCount();
+
+    if (!column[2].mayHaveNull() && curWindow.contains(column[1])) {
+      countValue += curPositionCount;
     } else {
-      int curPositionCount = timeColumn.getPositionCount();
-      long curMinTime = timeRange.getMin();
-      long curMaxTime = timeRange.getMax();
       for (int i = 0; i < curPositionCount; i++) {
-        long curTime = timeColumn.getLong(i);
-        if (curTime > curMaxTime || curTime < curMinTime) {
+        // skip null value in control column
+        if (column[0].isNull(i)) {
+          continue;
+        }
+        if (!curWindow.satisfy(column[0], i)) {
           return i;
         }
-        if (!valueColumn.isNull(i)) {
+        curWindow.mergeOnePoint();
+        if (!column[2].isNull(i)) {
           countValue++;
         }
       }
     }
-    return timeColumn.getPositionCount();
+
+    return curPositionCount;
   }
 
   // partialResult should be like: | partialCountValue1 |

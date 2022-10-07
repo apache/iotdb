@@ -19,9 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
@@ -35,46 +32,29 @@ public class TsFileProcessorInfo {
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
     this.memCost = 0L;
+    if (null != storageGroupInfo.getDataRegion()) {
+      MetricService.getInstance()
+          .addMetricSet(
+              new TsFileProcessorInfoMetrics(
+                  storageGroupInfo.getDataRegion().getStorageGroupName(), memCost));
+    }
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
-    if (null != storageGroupInfo.getDataRegion()) {
-      MetricService.getInstance()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
-          .incr(cost);
-    }
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
-        .decr(cost);
   }
 
   /** called when closing TSP */
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
-        .decr(memCost);
     memCost = 0L;
   }
 }

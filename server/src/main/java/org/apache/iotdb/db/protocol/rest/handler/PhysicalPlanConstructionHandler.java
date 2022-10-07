@@ -58,10 +58,17 @@ public class PhysicalPlanConstructionHandler {
         case BOOLEAN:
           boolean[] booleanValues = new boolean[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object data = rawData.get(columnIndex).get(rowIndex);
+            if (data == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              booleanValues[rowIndex] = (Boolean) rawData.get(columnIndex).get(rowIndex);
+              if ("1".equals(data.toString())) {
+                booleanValues[rowIndex] = true;
+              } else if ("0".equals(data.toString())) {
+                booleanValues[rowIndex] = false;
+              } else {
+                booleanValues[rowIndex] = (Boolean) data;
+              }
             }
           }
           columns[columnIndex] = booleanValues;
@@ -101,11 +108,11 @@ public class PhysicalPlanConstructionHandler {
         case FLOAT:
           float[] floatValues = new float[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object data = rawData.get(columnIndex).get(rowIndex);
+            if (data == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              floatValues[rowIndex] =
-                  ((Double) rawData.get(columnIndex).get(rowIndex)).floatValue();
+              floatValues[rowIndex] = Float.valueOf(String.valueOf(data));
             }
           }
           columns[columnIndex] = floatValues;

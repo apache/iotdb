@@ -164,7 +164,7 @@ public class Cli extends AbstractCli {
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
-      displayLogo(properties.getVersion());
+      displayLogo(properties.getVersion(), properties.getBuildInfo());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
         try {

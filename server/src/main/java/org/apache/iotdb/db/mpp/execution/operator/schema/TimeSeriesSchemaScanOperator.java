@@ -89,18 +89,18 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected TsBlock createTsBlock() {
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+  protected List<TsBlock> createTsBlockList() {
     try {
-      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-          .getSchemaRegion()
-          .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
-          .left
-          .forEach(series -> setColumns(series, builder));
+      List<ShowTimeSeriesResult> schemaRegionResult =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
+              .left;
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    return builder.build();
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online

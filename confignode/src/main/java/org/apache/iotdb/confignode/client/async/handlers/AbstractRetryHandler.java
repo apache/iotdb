@@ -50,7 +50,26 @@ public abstract class AbstractRetryHandler {
     this.targetDataNode = targetDataNode;
   }
 
+  public AbstractRetryHandler(
+      DataNodeRequestType dataNodeRequestType,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    this.dataNodeLocationMap = dataNodeLocationMap;
+    this.dataNodeRequestType = dataNodeRequestType;
+  }
+
   public DataNodeRequestType getDataNodeRequestType() {
     return dataNodeRequestType;
+  }
+
+  public Map<Integer, TDataNodeLocation> getDataNodeLocationMap() {
+    return dataNodeLocationMap;
+  }
+
+  public void setCountDownLatch(CountDownLatch countDownLatch) {
+    this.countDownLatch = countDownLatch;
+  }
+
+  public void setTargetDataNode(TDataNodeLocation targetDataNode) {
+    this.targetDataNode = targetDataNode;
   }
 }

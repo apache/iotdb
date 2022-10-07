@@ -53,8 +53,10 @@ public class SessionTimeoutManager {
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         executorService,
         () -> {
-          LOGGER.info("cleaning up expired sessions");
-          cleanup();
+          if (!sessionIdToLastActiveTime.isEmpty()) {
+            LOGGER.info("cleaning up expired sessions");
+            cleanup();
+          }
         },
         0,
         Math.max(MINIMUM_CLEANUP_PERIOD, SESSION_TIMEOUT / 5),
@@ -97,9 +99,9 @@ public class SessionTimeoutManager {
             entry -> {
               if (unregister(entry.getKey())) {
                 LOGGER.debug(
-                    String.format(
-                        "session-%s timed out in %d ms",
-                        entry.getKey(), currentTime - entry.getValue()));
+                    "session-{} timed out in {} ms",
+                    entry.getKey(),
+                    currentTime - entry.getValue());
               }
             });
   }

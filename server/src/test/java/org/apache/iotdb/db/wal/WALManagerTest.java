@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -41,6 +43,7 @@ import static org.junit.Assert.assertTrue;
 
 public class WALManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final String[] walDirs =
       new String[] {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),
@@ -51,8 +54,8 @@ public class WALManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    prevWalDirs = config.getWalDirs();
-    config.setWalDirs(walDirs);
+    prevWalDirs = commonConfig.getWalDirs();
+    commonConfig.setWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
   }
 
@@ -62,7 +65,7 @@ public class WALManagerTest {
     for (String walDir : walDirs) {
       EnvironmentUtils.cleanDir(walDir);
     }
-    config.setWalDirs(prevWalDirs);
+    commonConfig.setWalDirs(prevWalDirs);
   }
 
   @Test

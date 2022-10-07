@@ -43,7 +43,6 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
-    | AUTOREGISTER
     | BEFORE
     | BEGIN
     | BOUNDARY
@@ -75,6 +74,7 @@ keyWords
     | EVERY
     | EXPLAIN
     | FILL
+    | FILE
     | FLUSH
     | FOR
     | FROM
@@ -129,7 +129,6 @@ keyWords
     | QUERY
     | RUNNING
     | READONLY
-    | ERROR
     | REGEXP
     | REGIONS
     | REMOVE
@@ -148,6 +147,8 @@ keyWords
     | SOFFSET
     | STORAGE
     | START
+    | STATEFUL
+    | STATELESS
     | STOP
     | SYSTEM
     | TAGS
@@ -167,6 +168,7 @@ keyWords
     | UNSET
     | UPDATE
     | UPSERT
+    | URI
     | USER
     | USING
     | VALUES

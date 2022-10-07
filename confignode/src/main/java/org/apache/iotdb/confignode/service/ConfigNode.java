@@ -139,7 +139,6 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -177,10 +176,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
     registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
-    // Setup MetricService
     registerManager.register(MetricService.getInstance());
-    MetricService.getInstance().startAllReporter();
-
     LOGGER.info("Successfully setup internal services.");
   }
 
@@ -202,7 +198,8 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSchemaRegionPerDataNode(),
             CONF.getDataReplicationFactor(),
             CONF.getDataRegionPerProcessor(),
-            CONF.getReadConsistencyLevel());
+            CONF.getReadConsistencyLevel(),
+            CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.binary;
 
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -36,55 +35,12 @@ public abstract class CompareBinaryExpression extends BinaryExpression {
   }
 
   @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      final TSDataType leftExpressionDataType = leftExpression.inferTypes(typeProvider);
-      final TSDataType rightExpressionDataType = rightExpression.inferTypes(typeProvider);
-
-      if (!leftExpressionDataType.equals(rightExpressionDataType)) {
-        final String leftExpressionString = leftExpression.toString();
-        final String rightExpressionString = rightExpression.toString();
-
-        if (TSDataType.BOOLEAN.equals(leftExpressionDataType)
-            || TSDataType.BOOLEAN.equals(rightExpressionDataType)) {
-          checkInputExpressionDataType(
-              leftExpressionString, leftExpressionDataType, TSDataType.BOOLEAN);
-          checkInputExpressionDataType(
-              rightExpressionString, rightExpressionDataType, TSDataType.BOOLEAN);
-        } else if (TSDataType.TEXT.equals(leftExpressionDataType)
-            || TSDataType.TEXT.equals(rightExpressionDataType)) {
-          checkInputExpressionDataType(
-              leftExpressionString, leftExpressionDataType, TSDataType.TEXT);
-          checkInputExpressionDataType(
-              rightExpressionString, rightExpressionDataType, TSDataType.TEXT);
-        } else {
-          checkInputExpressionDataType(
-              leftExpressionString,
-              leftExpressionDataType,
-              TSDataType.INT32,
-              TSDataType.INT64,
-              TSDataType.FLOAT,
-              TSDataType.DOUBLE);
-          checkInputExpressionDataType(
-              rightExpressionString,
-              rightExpressionDataType,
-              TSDataType.INT32,
-              TSDataType.INT64,
-              TSDataType.FLOAT,
-              TSDataType.DOUBLE);
-        }
-      }
-
-      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
-    }
-
-    return TSDataType.BOOLEAN;
+  public boolean isCompareBinaryExpression() {
+    return true;
   }
 
   @Override
-  public boolean isCompareBinaryExpression() {
-    return true;
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitCompareBinaryExpression(this, context);
   }
 }

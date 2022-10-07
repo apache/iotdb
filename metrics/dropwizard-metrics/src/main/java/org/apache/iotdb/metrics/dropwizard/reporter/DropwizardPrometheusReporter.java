@@ -27,6 +27,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.MetricRegistry;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -47,14 +49,13 @@ public class DropwizardPrometheusReporter implements Reporter {
   @Override
   public boolean start() {
     if (httpServer != null) {
-      LOGGER.warn("Dropwizard Prometheus Reporter already start!");
       return false;
     }
     int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
     httpServer =
         HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+            .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
             .port(port)
             .route(
                 routes ->
@@ -95,7 +96,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        httpServer.disposeNow();
+        httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);

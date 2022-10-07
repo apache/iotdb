@@ -69,18 +69,22 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
-    if (flushBeforeSnapshot) {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    }
-
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
       boolean success = true;
       snapshotLogger.logSnapshotId(snapshotDir.getName());
 
-      readLockTheFile();
       try {
+        readLockTheFile();
+        if (flushBeforeSnapshot) {
+          try {
+            dataRegion.writeLock("snapshotTaker");
+            dataRegion.syncCloseAllWorkingTsFileProcessors();
+          } finally {
+            dataRegion.writeUnlock();
+          }
+        }
         success = createSnapshot(seqFiles, snapshotDir.getName());
         success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
       } finally {
@@ -148,7 +152,13 @@ public class SnapshotTaker {
   private boolean createSnapshot(List<TsFileResource> resources, String snapshotId) {
     try {
       for (TsFileResource resource : resources) {
+        if (!resource.isClosed()) {
+          continue;
+        }
         File tsFile = resource.getTsFile();
+        if (!resource.isClosed()) {
+          continue;
+        }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
         createHardLink(snapshotTsFile, tsFile);
@@ -169,6 +179,13 @@ public class SnapshotTaker {
   }
 
   private void createHardLink(File target, File source) throws IOException {
+    if (!target.getParentFile().exists()) {
+      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+    }
+    if (!source.exists()) {
+      LOGGER.error("Hard link source file {} doesn't exist", source);
+    }
+    Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
   }
@@ -216,6 +233,7 @@ public class SnapshotTaker {
   }
 
   private void cleanUpWhenFail(String snapshotId) {
+    LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       File dataDirForThisSnapshot =
           new File(

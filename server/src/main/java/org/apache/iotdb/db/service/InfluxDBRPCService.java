@@ -67,7 +67,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INFLUXDB_CLIENT.getName(),
+              ThreadName.INFLUXDB_RPC_PROCESSOR.getName(),
               config.getRpcAddress(),
               config.getInfluxDBRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -77,7 +77,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INFLUXDB_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.INFLUXDB_RPC_SERVICE.getName());
   }
 
   @Override

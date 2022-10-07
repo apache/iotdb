@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -410,7 +412,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
         }
-      } catch (IOException e) {
+      } catch (IOException | IllegalPathException e) {
         System.out.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
@@ -426,7 +428,8 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByTime(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
+      throws IllegalPathException {
     HashMap<String, List<String>> deviceAndMeasurementNames = new HashMap<>();
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
@@ -472,10 +475,10 @@ public class ImportCsv extends AbstractCsvTool {
             List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
-              String value = record.get(header);
+              String value = record.get(headerNameMap.get(header));
               if (!"".equals(value)) {
                 TSDataType type;
-                if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
+                if (!headerTypeMap.containsKey(header)) {
                   type = typeInfer(value);
                   if (type != null) {
                     headerTypeMap.put(header, type);
@@ -486,7 +489,7 @@ public class ImportCsv extends AbstractCsvTool {
                     isFail = true;
                   }
                 }
-                type = headerTypeMap.get(headerNameMap.get(header));
+                type = headerTypeMap.get(header);
                 if (type != null) {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
@@ -495,7 +498,7 @@ public class ImportCsv extends AbstractCsvTool {
                         "Line '%s', column '%s': '%s' can't convert to '%s'%n",
                         record.getRecordNumber(), header, value, type);
                   } else {
-                    measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
+                    measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
                     values.add(valueTrans);
                     pointSize.getAndIncrement();
@@ -538,7 +541,8 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByDevice(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
+      throws IllegalPathException {
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
@@ -763,7 +767,8 @@ public class ImportCsv extends AbstractCsvTool {
       List<String> headerNames,
       @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
       HashMap<String, TSDataType> headerTypeMap,
-      HashMap<String, String> headerNameMap) {
+      HashMap<String, String> headerNameMap)
+      throws IllegalPathException {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
@@ -776,16 +781,17 @@ public class ImportCsv extends AbstractCsvTool {
       }
       Matcher matcher = pattern.matcher(headerName);
       String type;
+      String headerNameWithoutType;
       if (matcher.find()) {
         type = matcher.group();
-        String headerNameWithoutType =
-            headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
-        headerNameMap.put(headerName, headerNameWithoutType);
+        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
+        headerNameMap.put(headerNameWithoutType, headerName);
         headerTypeMap.put(headerNameWithoutType, getType(type));
       } else {
+        headerNameWithoutType = headerName;
         headerNameMap.put(headerName, headerName);
       }
-      String[] split = headerName.split("\\.");
+      String[] split = PathUtils.splitPathToDetachedNodes(headerNameWithoutType);
       String measurementName = split[split.length - 1];
       String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {

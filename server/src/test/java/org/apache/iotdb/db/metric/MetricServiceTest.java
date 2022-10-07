@@ -61,7 +61,6 @@ public class MetricServiceTest {
       metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
       metricService = new DoNothingMetricService();
       metricService.startService();
-      metricService.startAllReporter();
 
       // test metric service
       assertTrue(metricService.isEnable());

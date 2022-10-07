@@ -32,7 +32,7 @@ RESTful services are disabled by default.
 
 * User
 
-  Find the `conf/iotdb.properties` file under the IoTDB installation directory and set `enable_rest_service` to `true` to enable the module.
+  Find the `conf/iotdb.rest.properties` file under the IoTDB installation directory and set `enable_rest_service` to `true` to enable the module.
 
   ```properties
   enable_rest_service=true
@@ -780,7 +780,7 @@ Parameter Description:
 
 |parameter name  |parameter type |parameter describe|
 |:--- | :--- | :---|
-|  sql | string | query content  | 
+|  sql | string | query content  |
 
 Example request:
 ```shell
@@ -815,7 +815,7 @@ Request path: http://ip:port/rest/v1/insertTablet
 Parameter Description:
 
 |parameter name  |parameter type |is required|parameter describe|
-|:--- | :--- | :---| :---| 
+|:--- | :--- | :---| :---|
 |  timestamps | array | yes |  Time column  |
 |  measurements | array | yes  | The name of the measuring point |
 | dataTypes | array | yes  | The data type |

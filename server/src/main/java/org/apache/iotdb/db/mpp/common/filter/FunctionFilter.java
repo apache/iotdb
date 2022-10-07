@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

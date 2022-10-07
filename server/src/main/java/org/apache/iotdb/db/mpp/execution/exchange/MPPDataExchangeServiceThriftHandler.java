@@ -20,42 +20,35 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler {
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+
+  public MPPDataExchangeServiceThriftHandler() {
+    MetricService.getInstance()
+        .addMetricSet(new MppDataExchangeServiceThriftHandlerMetrics(thriftConnectionNumber));
+  }
 
   @Override
   public void preServe() {}
 
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            "MPPDataExchange")
-        .incr(1L);
+    thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
   @Override
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            "MPPDataExchange")
-        .decr(1L);
+    thriftConnectionNumber.decrementAndGet();
   }
 
   @Override

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -45,6 +46,8 @@ public class MPPQueryContext {
   // onto this node.
   private final List<TEndPoint> endPointBlackList;
 
+  private final TypeProvider typeProvider = new TypeProvider();
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -61,7 +64,7 @@ public class MPPQueryContext {
     this.session = session;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
-    this.resultNodeContext = new ResultNodeContext(queryId);
+    this.initResultNodeContext();
   }
 
   public MPPQueryContext(
@@ -73,9 +76,17 @@ public class MPPQueryContext {
       long timeOut,
       long startTime) {
     this(sql, queryId, session, localDataBlockEndpoint, localInternalEndpoint);
-    this.resultNodeContext = new ResultNodeContext(queryId);
     this.timeOut = timeOut;
     this.startTime = startTime;
+    this.initResultNodeContext();
+  }
+
+  public void prepareForRetry() {
+    this.initResultNodeContext();
+  }
+
+  private void initResultNodeContext() {
+    this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
   public QueryId getQueryId() {
@@ -128,5 +139,9 @@ public class MPPQueryContext {
 
   public List<TEndPoint> getEndPointBlackList() {
     return endPointBlackList;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
   }
 }

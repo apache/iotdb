@@ -92,10 +92,17 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
 
+    // The routing policy is limited
     if (!CONF.getRoutingPolicy().equals(RouteBalancer.LEADER_POLICY)
         && !CONF.getRoutingPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
           "routing_policy", CONF.getRoutingPolicy(), "leader or greedy");
+    }
+
+    // The ip of target ConfigNode couldn't be 0.0.0.0
+    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
+      throw new ConfigurationException(
+          "The ip address of any target_config_nodes couldn't be 0.0.0.0");
     }
   }
 

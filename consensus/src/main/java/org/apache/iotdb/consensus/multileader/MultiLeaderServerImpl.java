@@ -28,14 +28,31 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.multileader.snapshot.SnapshotFragmentReader;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +61,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +76,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MultiLeaderServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+  private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
+  private static final String SNAPSHOT_DIR_NAME = "snapshot";
 
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
 
@@ -69,6 +91,9 @@ public class MultiLeaderServerImpl {
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
   private final ConsensusReqReader reader;
+  private boolean active;
+  private String latestSnapshotId;
+  private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -76,10 +101,13 @@ public class MultiLeaderServerImpl {
       List<Peer> configuration,
       IStateMachine stateMachine,
       IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
+      IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager,
       MultiLeaderConfig config) {
+    this.active = true;
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
+    this.syncClientManager = syncClientManager;
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
@@ -127,7 +155,9 @@ public class MultiLeaderServerImpl {
               !stateMachineCondition.await(
                   config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
           if (timeout) {
-            return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+            return RpcUtils.getStatus(
+                TSStatusCode.WRITE_PROCESS_REJECT,
+                "Reject write because there are too many requests need to process");
           }
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);
@@ -173,36 +203,308 @@ public class MultiLeaderServerImpl {
     return stateMachine.read(request);
   }
 
-  public boolean takeSnapshot(File snapshotDir) {
-    return stateMachine.takeSnapshot(snapshotDir);
+  public void takeSnapshot() throws ConsensusGroupAddPeerException {
+    try {
+      latestSnapshotId =
+          String.format(
+              "%s_%s_%d",
+              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), System.currentTimeMillis());
+      File snapshotDir = new File(storageDir, latestSnapshotId);
+      if (snapshotDir.exists()) {
+        FileUtils.deleteDirectory(snapshotDir);
+      }
+      if (!snapshotDir.mkdirs()) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("%s: cannot mkdir for snapshot", thisNode.getGroupId()));
+      }
+      if (!stateMachine.takeSnapshot(snapshotDir)) {
+        throw new ConsensusGroupAddPeerException("unknown error when taking snapshot");
+      }
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException("error when taking snapshot", e);
+    }
   }
 
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
+  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    File snapshotDir = new File(storageDir, latestSnapshotId);
+    List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    logger.info("transit snapshots: {}", snapshotPaths);
+    try (SyncMultiLeaderServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      for (Path path : snapshotPaths) {
+        SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
+        try {
+          while (reader.hasNext()) {
+            TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
+            req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
+            TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            if (!isSuccess(res.getStatus())) {
+              throw new ConsensusGroupAddPeerException(
+                  String.format("error when sending snapshot fragment to %s", targetPeer));
+            }
+          }
+        } finally {
+          reader.close();
+        }
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when send snapshot file to %s", targetPeer), e);
+    }
+  }
+
+  public void receiveSnapshotFragment(
+      String snapshotId, String originalFilePath, ByteBuffer fileChunk)
+      throws ConsensusGroupAddPeerException {
+    try {
+      String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
+      File targetFile = new File(storageDir, targetFilePath);
+      Path parentDir = Paths.get(targetFile.getParent());
+      if (!Files.exists(parentDir)) {
+        Files.createDirectories(parentDir);
+      }
+      Files.write(
+          Paths.get(targetFile.getAbsolutePath()),
+          fileChunk.array(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when receiving snapshot %s", snapshotId), e);
+    }
+  }
+
+  private String calculateSnapshotPath(String snapshotId, String originalFilePath)
+      throws ConsensusGroupAddPeerException {
+    if (!originalFilePath.contains(snapshotId)) {
+      throw new ConsensusGroupAddPeerException(
+          String.format(
+              "invalid snapshot file. snapshotId: %s, filePath: %s", snapshotId, originalFilePath));
+    }
+    return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
+  }
+
+  public void loadSnapshot(String snapshotId) {
+    // TODO: (xingtanzjr) throw exception if the snapshot load failed
+    stateMachine.loadSnapshot(new File(storageDir, snapshotId));
+  }
+
+  public void inactivePeer(Peer peer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TInactivatePeerRes res =
+          client.inactivatePeer(
+              new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when inactivating %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when inactivating %s", peer), e);
+    }
+  }
+
+  public void triggerSnapshotLoad(Peer peer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TTriggerSnapshotLoadRes res =
+          client.triggerSnapshotLoad(
+              new TTriggerSnapshotLoadReq(
+                  thisNode.getGroupId().convertToTConsensusGroupId(), latestSnapshotId));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(String.format("error when activating %s", peer), e);
+    }
+  }
+
+  public void activePeer(Peer peer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TActivatePeerRes res =
+          client.activatePeer(new TActivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when activating %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(String.format("error when activating %s", peer), e);
+    }
+  }
+
+  public void notifyPeersToBuildSyncLogChannel(Peer targetPeer)
+      throws ConsensusGroupAddPeerException {
+    // The configuration will be modified during iterating because we will add the targetPeer to
+    // configuration
+    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    logger.info(
+        "[MultiLeaderConsensus] notify current peers to build sync log. group member: {}, target: {}",
+        currentMembers,
+        targetPeer);
+    for (Peer peer : currentMembers) {
+      logger.info("[MultiLeaderConsensus] build sync log channel from {}", peer);
+      if (peer.equals(thisNode)) {
+        // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
+        // snapshot produced by thisNode
+        buildSyncLogChannel(targetPeer, index.get());
+      } else {
+        // use RPC to tell other peers to build sync log channel to target peer
+        try (SyncMultiLeaderServiceClient client =
+            syncClientManager.borrowClient(peer.getEndpoint())) {
+          TBuildSyncLogChannelRes res =
+              client.buildSyncLogChannel(
+                  new TBuildSyncLogChannelReq(
+                      targetPeer.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getEndpoint()));
+          if (!isSuccess(res.status)) {
+            throw new ConsensusGroupAddPeerException(
+                String.format("build sync log channel failed from %s to %s", peer, targetPeer));
+          }
+        } catch (IOException | TException e) {
+          // We use a simple way to deal with the connection issue when notifying other nodes to
+          // build sync log. If the un-responsible peer is the peer which will be removed, we cannot
+          // suspend the operation and need to skip it. In order to keep the mechanism works fine,
+          // we will skip the peer which cannot be reached.
+          // If following error message appears, the un-responsible peer should be removed manually
+          // after current operation
+          // TODO: (xingtanzjr) design more reliable way for MultiLeaderConsensus
+          logger.error(
+              "cannot notify {} to build sync log channel. Please check the status of this node manually",
+              peer,
+              e);
+        }
+      }
+    }
+  }
+
+  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer)
+      throws ConsensusGroupAddPeerException {
+    // The configuration will be modified during iterating because we will add the targetPeer to
+    // configuration
+    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    for (Peer peer : currentMembers) {
+      if (peer.equals(targetPeer)) {
+        // if the targetPeer is the same as current peer, skip it because removing itself is illegal
+        continue;
+      }
+      if (peer.equals(thisNode)) {
+        removeSyncLogChannel(targetPeer);
+      } else {
+        // use RPC to tell other peers to build sync log channel to target peer
+        try (SyncMultiLeaderServiceClient client =
+            syncClientManager.borrowClient(peer.getEndpoint())) {
+          TRemoveSyncLogChannelRes res =
+              client.removeSyncLogChannel(
+                  new TRemoveSyncLogChannelReq(
+                      targetPeer.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getEndpoint()));
+          if (!isSuccess(res.status)) {
+            throw new ConsensusGroupAddPeerException(
+                String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
+          }
+        } catch (IOException | TException e) {
+          throw new ConsensusGroupAddPeerException(
+              String.format("error when removing sync log channel to %s", peer), e);
+        }
+      }
+    }
+  }
+
+  private boolean isSuccess(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  /** build SyncLog channel with safeIndex as the default initial sync index */
+  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
+  }
+
+  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
+      throws ConsensusGroupAddPeerException {
+    // step 1, build sync channel in LogDispatcher
+    logger.info(
+        "[MultiLeaderConsensus] build sync log channel to {} with initialSyncIndex {}",
+        targetPeer,
+        initialSyncIndex);
+    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    // step 2, update configuration
+    configuration.add(targetPeer);
+    // step 3, persist configuration
+    logger.info("[MultiLeaderConsensus] persist new configuration: {}", configuration);
+    persistConfigurationUpdate();
+  }
+
+  public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    try {
+      // step 1, remove sync channel in LogDispatcher
+      logDispatcher.removeLogDispatcherThread(targetPeer);
+      logger.info("[MultiLeaderConsensus] log dispatcher to {} removed and cleanup", targetPeer);
+      // step 2, update configuration
+      configuration.remove(targetPeer);
+      // step 3, persist configuration
+      persistConfigurationUpdate();
+      logger.info("[MultiLeaderConsensus] configuration updated to {}", this.configuration);
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException("error when remove LogDispatcherThread", e);
+    }
   }
 
   public void persistConfiguration() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      outputStream.writeInt(configuration.size());
-      for (Peer peer : configuration) {
-        peer.serialize(outputStream);
-      }
+      serializeConfigurationTo(outputStream);
       Files.write(
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
           publicBAOS.getBuf());
     } catch (IOException e) {
+      // TODO: (xingtanzjr) need to handle the IOException because the MultiLeaderConsensus won't
+      // work expectedly
+      //  if the exception occurs
       logger.error("Unexpected error occurs when persisting configuration", e);
+    }
+  }
+
+  public void persistConfigurationUpdate() throws ConsensusGroupAddPeerException {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      serializeConfigurationTo(outputStream);
+      Path tmpConfigurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+      Path configurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
+      Files.delete(configurationPath);
+      Files.move(tmpConfigurationPath, configurationPath);
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException(
+          "Unexpected error occurs when update configuration", e);
+    }
+  }
+
+  private void serializeConfigurationTo(DataOutputStream outputStream) throws IOException {
+    outputStream.writeInt(configuration.size());
+    for (Peer peer : configuration) {
+      peer.serialize(outputStream);
     }
   }
 
   public void recoverConfiguration() {
     ByteBuffer buffer;
     try {
-      buffer =
-          ByteBuffer.wrap(
-              Files.readAllBytes(
-                  Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath())));
+      Path tmpConfigurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+      Path configurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      // If the tmpConfigurationPath exists, it means the `persistConfigurationUpdate` is
+      // interrupted
+      // unexpectedly, we need substitute configuration with tmpConfiguration file
+      if (Files.exists(tmpConfigurationPath)) {
+        if (Files.exists(configurationPath)) {
+          Files.delete(configurationPath);
+        }
+        Files.move(tmpConfigurationPath, configurationPath);
+      }
+      buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
       int size = buffer.getInt();
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
@@ -275,5 +577,14 @@ public class MultiLeaderServerImpl {
 
   public boolean isReadOnly() {
     return stateMachine.isReadOnly();
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public void setActive(boolean active) {
+    logger.info("set {} active status to {}", this.thisNode, active);
+    this.active = active;
   }
 }

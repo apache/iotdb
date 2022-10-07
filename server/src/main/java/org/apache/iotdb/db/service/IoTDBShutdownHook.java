@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -41,7 +42,12 @@ public class IoTDBShutdownHook extends Thread {
       IoTDB.configManager.clear();
     }
 
-    // == flush data to Tsfile and remove WAL log files
+    // reject write operations to make sure all tsfiles will be sealed
+    CommonDescriptor.getInstance().getConfig().setNodeStatusToShutdown();
+    // wait all wal are flushed
+    WALManager.getInstance().waitAllWALFlushed();
+
+    // flush data to Tsfile and remove WAL log files
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
       if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
         StorageEngineV2.getInstance().syncCloseAllProcessor();

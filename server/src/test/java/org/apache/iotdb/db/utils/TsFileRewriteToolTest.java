@@ -174,7 +174,7 @@ public class TsFileRewriteToolTest {
     deviceSensorsMap.put(DEVICE1, sensors);
     createOneTsFile(deviceSensorsMap);
     // try load the tsfile
-    String sql = String.format("load '%s' autoregister=true", path);
+    String sql = String.format("load '%s'", path);
     try {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
     } catch (Exception e) {
@@ -190,7 +190,7 @@ public class TsFileRewriteToolTest {
     deviceSensorsMap.put(DEVICE1, sensors);
     createOneTsFileWithOnlyOnePage(deviceSensorsMap);
     // try load the tsfile
-    String sql = String.format("load '%s' autoregister=true", path);
+    String sql = String.format("load '%s'", path);
     try {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
     } catch (Exception e) {

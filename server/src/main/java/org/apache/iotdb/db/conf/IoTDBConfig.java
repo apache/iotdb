@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -35,7 +34,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -84,13 +83,6 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
-
-  /** What will the system do when unrecoverable error occurs. */
-  private HandleSystemErrorStrategy handleSystemErrorStrategy =
-      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
-
-  /** Status of current system. */
-  private volatile NodeStatus status = NodeStatus.Running;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -156,6 +148,8 @@ public class IoTDBConfig {
 
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
+
+  private double chunkMetadataSizeProportionInWrite = 0.1;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
@@ -266,13 +260,17 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded JAR files */
-  private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  /** External temporary lib directory for storing downloaded udf JAR files */
+  private String udfTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded trigger JAR files */
+  private String triggerTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -296,6 +294,9 @@ public class IoTDBConfig {
   private String[] dataDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
+
+  private String loadTsFileDir =
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -390,6 +391,9 @@ public class IoTDBConfig {
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
+  /** The sort algorithm used in TVList */
+  private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
+
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
@@ -434,6 +438,8 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  private double chunkMetadataSizeProportionInCompaction = 0.05;
+
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
@@ -466,6 +472,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -755,6 +764,12 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
+  /** Time partition interval for storage in milliseconds */
+  private long timePartitionIntervalForStorage = 86400000;
+
+  /** Time partition interval for routing in milliseconds */
+  private long timePartitionIntervalForRouting = 86400000;
+
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -861,7 +876,7 @@ public class IoTDBConfig {
   private int pageCacheSizeInSchemaFile = 1024;
 
   /** Internal address for data node */
-  private String internalAddress = "127.0.0.1";
+  private String internalAddress = "0.0.0.0";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -919,6 +934,15 @@ public class IoTDBConfig {
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
+  /** the maximum number of clients that can be applied for a node's InternalService */
+  private int maxConnectionForInternalService = 100;
+
+  /**
+   * the maximum number of clients that can be idle for a node's InternalService. When the number of
+   * idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreConnectionForInternalService = 100;
+
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
@@ -963,6 +987,12 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  /**
+   * Whether the schema memory allocation is default config. Used for cluster mode initialization
+   * judgement
+   */
+  private boolean isDefaultSchemaMemoryConfig = true;
+
   /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
 
@@ -978,11 +1008,34 @@ public class IoTDBConfig {
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+
+  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  private long cacheWindowTimeInMs = 60 * 1000;
+
+  private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+
+  private long dataRatisConsensusSnapshotTriggerThreshold = 400000L;
+  private long schemaRatisConsensusSnapshotTriggerThreshold = 400000L;
+
+  private boolean dataRatisConsensusLogUnsafeFlushEnable = false;
+  private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
+
+  private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  private long dataRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+  private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
+  private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
+
+  private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+  private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   IoTDBConfig() {}
 
@@ -1067,6 +1120,22 @@ public class IoTDBConfig {
     this.partitionInterval = partitionInterval;
   }
 
+  public long getTimePartitionIntervalForStorage() {
+    return timePartitionIntervalForStorage;
+  }
+
+  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
+    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
+  }
+
+  public long getTimePartitionIntervalForRouting() {
+    return timePartitionIntervalForRouting;
+  }
+
+  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
+    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  }
+
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }
@@ -1084,6 +1153,7 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    loadTsFileDir = addHomeDir(loadTsFileDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1091,14 +1161,12 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
-    temporaryLibDir = addHomeDir(temporaryLibDir);
+    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
+    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     mqttDir = addHomeDir(mqttDir);
     externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
     externalLimiterDir = addHomeDir(externalLimiterDir);
-    for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i]);
-    }
     extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -1247,6 +1315,14 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
+  public String getLoadTsFileDir() {
+    return loadTsFileDir;
+  }
+
+  public void setLoadTsFileDir(String loadTsFileDir) {
+    this.loadTsFileDir = loadTsFileDir;
+  }
+
   public String getSchemaDir() {
     return schemaDir;
   }
@@ -1309,12 +1385,12 @@ public class IoTDBConfig {
     return udfDir;
   }
 
-  public String getTemporaryLibDir() {
-    return temporaryLibDir;
-  }
-
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+  }
+
+  public String getUdfTemporaryLibDir() {
+    return udfTemporaryLibDir;
   }
 
   public String getTriggerDir() {
@@ -1323,6 +1399,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getTriggerTemporaryLibDir() {
+    return triggerTemporaryLibDir;
   }
 
   public String getMqttDir() {
@@ -1355,6 +1435,20 @@ public class IoTDBConfig {
 
   void setMultiDirStrategyClassName(String multiDirStrategyClassName) {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
+  }
+
+  public void checkMultiDirStrategyClassName() {
+    if (isClusterMode
+        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
+            || multiDirStrategyClassName.equals(
+                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
+      String msg =
+          String.format(
+              "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
+              multiDirStrategyClassName);
+      logger.error(msg);
+      throw new RuntimeException(msg);
+    }
   }
 
   public int getBatchSize() {
@@ -1551,37 +1645,6 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  public HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
-    return handleSystemErrorStrategy;
-  }
-
-  public void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
-    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
-  }
-
-  public boolean isReadOnly() {
-    return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error
-            && handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY);
-  }
-
-  public NodeStatus getNodeStatus() {
-    return status;
-  }
-
-  public void setNodeStatus(NodeStatus newStatus) {
-    if (newStatus == NodeStatus.ReadOnly) {
-      logger.error(
-          "Change system status to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == NodeStatus.Error) {
-      newStatus = handleSystemErrorStrategy.handle();
-    } else {
-      logger.info("Set system mode from {} to {}.", status, newStatus);
-    }
-    this.status = newStatus;
-  }
-
   public String getRpcImplClassName() {
     return rpcImplClassName;
   }
@@ -1600,14 +1663,6 @@ public class IoTDBConfig {
 
   public void setWalMode(WALMode walMode) {
     this.walMode = walMode;
-  }
-
-  public String[] getWalDirs() {
-    return walDirs;
-  }
-
-  public void setWalDirs(String[] walDirs) {
-    this.walDirs = walDirs;
   }
 
   public int getMaxWalNodesNum() {
@@ -1770,6 +1825,13 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForFree() {
+    return Runtime.getRuntime().maxMemory()
+        - allocateMemoryForStorageEngine
+        - allocateMemoryForRead
+        - allocateMemoryForSchema;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -1922,6 +1984,14 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public TVListSortAlgorithm getTvListSortAlgorithm() {
+    return tvListSortAlgorithm;
+  }
+
+  public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
+    this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -2745,6 +2815,14 @@ public class IoTDBConfig {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
   public long getCompactionSubmissionIntervalInMs() {
     return compactionSubmissionIntervalInMs;
   }
@@ -2937,6 +3015,22 @@ public class IoTDBConfig {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
+  public int getMaxConnectionForInternalService() {
+    return maxConnectionForInternalService;
+  }
+
+  public void setMaxConnectionForInternalService(int maxConnectionForInternalService) {
+    this.maxConnectionForInternalService = maxConnectionForInternalService;
+  }
+
+  public int getCoreConnectionForInternalService() {
+    return coreConnectionForInternalService;
+  }
+
+  public void setCoreConnectionForInternalService(int coreConnectionForInternalService) {
+    this.coreConnectionForInternalService = coreConnectionForInternalService;
+  }
+
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -2959,6 +3053,7 @@ public class IoTDBConfig {
 
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
+    checkMultiDirStrategyClassName();
   }
 
   public int getDataNodeId() {
@@ -3069,6 +3164,14 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
+  boolean isDefaultSchemaMemoryConfig() {
+    return isDefaultSchemaMemoryConfig;
+  }
+
+  void setDefaultSchemaMemoryConfig(boolean defaultSchemaMemoryConfig) {
+    isDefaultSchemaMemoryConfig = defaultSchemaMemoryConfig;
+  }
+
   public long getAllocateMemoryForSchemaRegion() {
     return allocateMemoryForSchemaRegion;
   }
@@ -3141,6 +3244,40 @@ public class IoTDBConfig {
     this.throttleThreshold = throttleThreshold;
   }
 
+  public double getChunkMetadataSizeProportionInWrite() {
+    return chunkMetadataSizeProportionInWrite;
+  }
+
+  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
+    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
+  }
+
+  public double getChunkMetadataSizeProportionInCompaction() {
+    return chunkMetadataSizeProportionInCompaction;
+  }
+
+  public void setChunkMetadataSizeProportionInCompaction(
+      double chunkMetadataSizeProportionInCompaction) {
+    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
+  }
+
+  public long getCacheWindowTimeInMs() {
+    return cacheWindowTimeInMs;
+  }
+
+  public void setCacheWindowTimeInMs(long cacheWindowTimeInMs) {
+    this.cacheWindowTimeInMs = cacheWindowTimeInMs;
+  }
+
+  public long getDataRatisConsensusLogAppenderBufferSizeMax() {
+    return dataRatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public void setDataRatisConsensusLogAppenderBufferSizeMax(
+      long dataRatisConsensusLogAppenderBufferSizeMax) {
+    this.dataRatisConsensusLogAppenderBufferSizeMax = dataRatisConsensusLogAppenderBufferSizeMax;
+  }
+
   public String getConfigMessage() {
     String configMessage = "";
     String configContent;
@@ -3172,5 +3309,126 @@ public class IoTDBConfig {
       }
     }
     return configMessage;
+  }
+
+  public long getDataRatisConsensusSnapshotTriggerThreshold() {
+    return dataRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public void setDataRatisConsensusSnapshotTriggerThreshold(
+      long dataRatisConsensusSnapshotTriggerThreshold) {
+    this.dataRatisConsensusSnapshotTriggerThreshold = dataRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public boolean isDataRatisConsensusLogUnsafeFlushEnable() {
+    return dataRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public void setDataRatisConsensusLogUnsafeFlushEnable(
+      boolean dataRatisConsensusLogUnsafeFlushEnable) {
+    this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public long getDataRatisConsensusLogSegmentSizeMax() {
+    return dataRatisConsensusLogSegmentSizeMax;
+  }
+
+  public void setDataRatisConsensusLogSegmentSizeMax(long dataRatisConsensusLogSegmentSizeMax) {
+    this.dataRatisConsensusLogSegmentSizeMax = dataRatisConsensusLogSegmentSizeMax;
+  }
+
+  public long getDataRatisConsensusGrpcFlowControlWindow() {
+    return dataRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public void setDataRatisConsensusGrpcFlowControlWindow(
+      long dataRatisConsensusGrpcFlowControlWindow) {
+    this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
+    return dataRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public void setDataRatisConsensusLeaderElectionTimeoutMinMs(
+      long dataRatisConsensusLeaderElectionTimeoutMinMs) {
+    this.dataRatisConsensusLeaderElectionTimeoutMinMs =
+        dataRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public long getDataRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return dataRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setDataRatisConsensusLeaderElectionTimeoutMaxMs(
+      long dataRatisConsensusLeaderElectionTimeoutMaxMs) {
+    this.dataRatisConsensusLeaderElectionTimeoutMaxMs =
+        dataRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getSchemaRatisConsensusLogAppenderBufferSizeMax() {
+    return schemaRatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public void setSchemaRatisConsensusLogAppenderBufferSizeMax(
+      long schemaRatisConsensusLogAppenderBufferSizeMax) {
+    this.schemaRatisConsensusLogAppenderBufferSizeMax =
+        schemaRatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public long getSchemaRatisConsensusSnapshotTriggerThreshold() {
+    return schemaRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public void setSchemaRatisConsensusSnapshotTriggerThreshold(
+      long schemaRatisConsensusSnapshotTriggerThreshold) {
+    this.schemaRatisConsensusSnapshotTriggerThreshold =
+        schemaRatisConsensusSnapshotTriggerThreshold;
+  }
+
+  public boolean isSchemaRatisConsensusLogUnsafeFlushEnable() {
+    return schemaRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public void setSchemaRatisConsensusLogUnsafeFlushEnable(
+      boolean schemaRatisConsensusLogUnsafeFlushEnable) {
+    this.schemaRatisConsensusLogUnsafeFlushEnable = schemaRatisConsensusLogUnsafeFlushEnable;
+  }
+
+  public long getSchemaRatisConsensusLogSegmentSizeMax() {
+    return schemaRatisConsensusLogSegmentSizeMax;
+  }
+
+  public void setSchemaRatisConsensusLogSegmentSizeMax(long schemaRatisConsensusLogSegmentSizeMax) {
+    this.schemaRatisConsensusLogSegmentSizeMax = schemaRatisConsensusLogSegmentSizeMax;
+  }
+
+  public long getSchemaRatisConsensusGrpcFlowControlWindow() {
+    return schemaRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public void setSchemaRatisConsensusGrpcFlowControlWindow(
+      long schemaRatisConsensusGrpcFlowControlWindow) {
+    this.schemaRatisConsensusGrpcFlowControlWindow = schemaRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getSchemaRatisConsensusLeaderElectionTimeoutMinMs() {
+    return schemaRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public void setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
+      long schemaRatisConsensusLeaderElectionTimeoutMinMs) {
+    this.schemaRatisConsensusLeaderElectionTimeoutMinMs =
+        schemaRatisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public long getSchemaRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
+      long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
+    this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
+        schemaRatisConsensusLeaderElectionTimeoutMaxMs;
   }
 }

@@ -35,6 +35,7 @@ struct TDataNodeRegisterResp {
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
+  6: optional TRatisConfig ratisConfig
 }
 
 struct TGlobalConfig {
@@ -44,6 +45,30 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
+}
+
+struct TRatisConfig {
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
+
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
+
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
+
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
+
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
+
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
+
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -192,7 +217,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -213,6 +238,7 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
 }
 
 struct TAddConsensusGroupReq {
@@ -228,6 +254,40 @@ struct TCreateFunctionReq {
 
 struct TDropFunctionReq {
   1: required string udfName
+}
+
+// Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required string className,
+  3: required string jarPath,
+  4: required bool usingURI,
+  5: required byte triggerEvent,
+  6: required byte triggerType
+  7: required binary pathPattern,
+  8: required map<string, string> attributes,
+  9: optional binary jarFile,
+  10: optional string jarMD5,
+  11: required i32 failureStrategy
+}
+
+struct TDropTriggerReq {
+  1: required string triggerName
+}
+
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster
@@ -259,6 +319,7 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {
@@ -339,6 +400,45 @@ struct TSetSchemaTemplateReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
+}
+
+// SYNC
+struct TPipeInfo {
+  1: required i64 createTime
+  2: required string pipeName
+  3: required string role
+  4: required string remote
+  5: required string status
+  6: required string message
+}
+
+struct TPipeSinkInfo {
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
+}
+
+struct TDropPipeSinkReq {
+  1: required string pipeSinkName
+}
+
+struct TGetPipeSinkReq {
+  1: optional string pipeSinkName
+}
+
+struct TGetPipeSinkResp {
+  1: required common.TSStatus status
+  2: required list<TPipeSinkInfo> pipeSinkInfoList
+}
+
+struct TShowPipeResp {
+  1: required common.TSStatus status
+  2: optional list<TPipeInfo> pipeInfoList
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {
@@ -584,6 +684,32 @@ service IConfigNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
+  // Trigger
+  // ======================================================
+
+  /**
+     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+     * and sync Information of it to all ConfigNodes
+     *
+     * @return SUCCESS_STATUS if the trigger was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
+
+  /**
+     * Remove a trigger on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /**
+     * Return the trigger table of config leader
+     */
+  TGetTriggerTableResp getTriggerTable()
+
+  // ======================================================
   // Maintenance Tools
   // ======================================================
 
@@ -645,5 +771,27 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  // ======================================================
+  // Sync
+  // ======================================================
+
+  /** Create PipeSink */
+  common.TSStatus createPipeSink(TPipeSinkInfo req)
+
+  /** Drop PipeSink */
+  common.TSStatus dropPipeSink(TDropPipeSinkReq req)
+
+  /** Get PipeSink by name, if name is empty, get all PipeSink */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 }
 

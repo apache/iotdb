@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.sync.receiver.recovery;
 
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
+import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.sync.SyncTestUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -36,8 +37,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /** This test is for ReceiverLog and ReceiverLogAnalyzer */
@@ -63,72 +65,56 @@ public class SyncLogTest {
   @Test
   public void testServiceLog() {
     try {
-      SyncLogWriter log = SyncLogWriter.getInstance();
-      CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
-      createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
-      createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
-      log.addPipeSink(createPipeSinkPlan);
-      log.addPipe(new CreatePipePlan(pipe1, "demo"), 1);
-      log.operatePipe(pipe1, Operator.OperatorType.DROP_PIPE);
+      SyncLogWriter log = new SyncLogWriter(new File(SyncPathUtil.getSysDir()));
+      PipeSink pipeSink = new IoTDBPipeSink("demo");
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("ip", "192.168.11.11");
+      attributes.put("port", "7766");
+      pipeSink.setAttribute(attributes);
+      log.addPipeSink(pipeSink);
+      PipeInfo pipeInfo1 = new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true);
+      PipeInfo pipeInfo2 = new TsFilePipeInfo(pipe2, "demo", createdTime2, 99, false);
+      log.addPipe(pipeInfo1);
+      log.operatePipe(pipe1, SyncOperation.DROP_PIPE);
 
-      log.addPipe(new CreatePipePlan(pipe2, "demo"), 2);
-      log.operatePipe(pipe1, Operator.OperatorType.STOP_PIPE);
-      log.operatePipe(pipe1, Operator.OperatorType.START_PIPE);
+      log.addPipe(pipeInfo2);
+      log.operatePipe(pipe2, SyncOperation.STOP_PIPE);
+      log.operatePipe(pipe2, SyncOperation.START_PIPE);
       log.close();
-      SyncLogReader syncLogReader = new SyncLogReader();
+      SyncLogReader syncLogReader = new SyncLogReader(new File(SyncPathUtil.getSysDir()));
+
       syncLogReader.recover();
-      List<PipeInfo> pipes = syncLogReader.getAllPipeInfos();
+
+      // check PipeSink
       Map<String, PipeSink> allPipeSinks = syncLogReader.getAllPipeSinks();
-      PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
       Assert.assertEquals(1, allPipeSinks.size());
-      Assert.assertEquals(2, pipes.size());
-      Assert.assertEquals(pipe2, runningPipe.getPipeName());
-      for (PipeInfo p : pipes) {
-        if (p.getPipeName().equals(pipe1)) {
-          Assert.assertEquals(1, p.getCreateTime());
-          Assert.assertEquals("demo", p.getPipeSinkName());
-        } else if (p.getPipeName().equals(pipe2)) {
-          Assert.assertEquals(2, p.getCreateTime());
-          Assert.assertEquals("demo", p.getPipeSinkName());
-        }
-      }
-      Assert.assertEquals(PipeStatus.RUNNING, runningPipe.getStatus());
-    } catch (Exception e) {
-      Assert.fail();
-      e.printStackTrace();
-    }
-  }
 
-  @Test
-  public void testMessageLog() {
-    String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
-    String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
-    try {
-      SyncLogWriter log = SyncLogWriter.getInstance();
-      PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
-      PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
-      PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
-
-      log.writePipeMsg(pipeIdentifier1, info);
-      log.writePipeMsg(pipeIdentifier1, warn);
-      log.comsumePipeMsg(pipeIdentifier1);
-      log.writePipeMsg(pipeIdentifier1, error);
-      log.writePipeMsg(pipeIdentifier1, info);
-      log.writePipeMsg(pipeIdentifier1, warn);
-
-      log.writePipeMsg(pipeIdentifier2, error);
-      log.comsumePipeMsg(pipeIdentifier2);
-      log.close();
-
-      SyncLogReader syncLogReader = new SyncLogReader();
-      syncLogReader.recover();
-      Map<String, List<PipeMessage>> map = syncLogReader.getPipeMessageMap();
-      Assert.assertNotNull(map);
-      Assert.assertEquals(3, map.get(pipeIdentifier1).size());
-      Assert.assertNull(map.get(pipeIdentifier2));
-      Assert.assertEquals(error, map.get(pipeIdentifier1).get(0));
-      Assert.assertEquals(info, map.get(pipeIdentifier1).get(1));
-      Assert.assertEquals(warn, map.get(pipeIdentifier1).get(2));
+      // check Pipe
+      PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
+      SyncTestUtils.checkPipeInfo(
+          runningPipe,
+          pipe2,
+          "demo",
+          PipeStatus.RUNNING,
+          createdTime2,
+          PipeMessage.PipeMessageType.NORMAL);
+      Map<String, Map<Long, PipeInfo>> pipes = syncLogReader.getAllPipeInfos();
+      PipeInfo pipeInfoRecover1 = pipes.get(pipe1).get(createdTime1);
+      SyncTestUtils.checkPipeInfo(
+          pipeInfoRecover1,
+          pipe1,
+          "demo",
+          PipeStatus.DROP,
+          createdTime1,
+          PipeMessage.PipeMessageType.NORMAL);
+      PipeInfo pipeInfoRecover2 = pipes.get(pipe2).get(createdTime2);
+      SyncTestUtils.checkPipeInfo(
+          pipeInfoRecover2,
+          pipe2,
+          "demo",
+          PipeStatus.RUNNING,
+          createdTime2,
+          PipeMessage.PipeMessageType.NORMAL);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

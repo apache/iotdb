@@ -19,16 +19,17 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
@@ -104,6 +105,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperat
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -821,13 +823,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
     final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
     final Expression[] projectExpressions = node.getOutputExpressions();
-    final TypeProvider typeProvider = context.getTypeProvider();
+    final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+
+    for (Expression projectExpression : projectExpressions) {
+      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+    }
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
     boolean hasNonMappableUDF = false;
     for (Expression expression : projectExpressions) {
-      if (!expression.isMappable(typeProvider)) {
+      if (!expression.isMappable(expressionTypes)) {
         hasNonMappableUDF = true;
         break;
       }
@@ -849,7 +855,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
           new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
               projectContext,
-              typeProvider,
+              expressionTypes,
               projectLeafColumnTransformerList,
               inputLocations,
               projectExpressionColumnTransformerMap,
@@ -885,7 +891,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getOutputExpressions(),
           node.isKeepNull(),
           node.getZoneId(),
-          context.getTypeProvider(),
+          expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException | IOException e) {
       throw new RuntimeException(e);
@@ -895,10 +901,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
     final Expression filterExpression = node.getPredicate();
-    final TypeProvider typeProvider = context.getTypeProvider();
+    final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+    ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, filterExpression);
 
     // check whether predicate contains Non-Mappable UDF
-    if (!filterExpression.isMappable(typeProvider)) {
+    if (!filterExpression.isMappable(expressionTypes)) {
       throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
     }
 
@@ -916,9 +923,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 FilterAndProjectOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
+    for (Expression projectExpression : projectExpressions) {
+      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+    }
+
     boolean hasNonMappableUDF = false;
     for (Expression expression : projectExpressions) {
-      if (!expression.isMappable(typeProvider)) {
+      if (!expression.isMappable(expressionTypes)) {
         hasNonMappableUDF = true;
         break;
       }
@@ -945,7 +956,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ColumnTransformerVisitor.ColumnTransformerVisitorContext filterColumnTransformerContext =
         new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
             filterContext,
-            typeProvider,
+            expressionTypes,
             filterLeafColumnTransformerList,
             inputLocations,
             filterExpressionColumnTransformerMap,
@@ -970,7 +981,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
           new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
               projectContext,
-              typeProvider,
+              expressionTypes,
               projectLeafColumnTransformerList,
               inputLocations,
               projectExpressionColumnTransformerMap,
@@ -1021,7 +1032,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           projectExpressions,
           node.isKeepNull(),
           node.getZoneId(),
-          context.getTypeProvider(),
+          expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException | IOException e) {
       throw new RuntimeException(e);

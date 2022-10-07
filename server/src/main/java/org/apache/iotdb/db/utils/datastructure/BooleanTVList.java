@@ -36,20 +36,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
-public class BooleanTVList extends TVList {
-
-  // list of primitive array, add 1 when expanded -> boolean primitive array
+public abstract class BooleanTVList extends TVList {
+  // list of primitive array, add 1 when expanded -> Binary primitive array
   // index relation: arrayIndex -> elementIndex
-  private List<boolean[]> values;
-
-  private boolean[][] sortedValues;
-
-  private boolean pivotValue;
+  protected List<boolean[]> values;
 
   BooleanTVList() {
     super();
     values = new ArrayList<>();
+  }
+
+  public static BooleanTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickBooleanTVList();
+      case BACKWARD:
+        return new BackBooleanTVList();
+      default:
+        return new TimBooleanTVList();
+    }
+  }
+
+  @Override
+  public BooleanTVList clone() {
+    BooleanTVList cloneList = BooleanTVList.newList();
+    cloneAs(cloneList);
+    for (boolean[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private boolean[] cloneValue(boolean[] array) {
+    boolean[] cloneArray = new boolean[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -87,40 +110,6 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public BooleanTVList clone() {
-    BooleanTVList cloneList = new BooleanTVList();
-    cloneAs(cloneList);
-    for (boolean[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private boolean[] cloneValue(boolean[] array) {
-    boolean[] cloneArray = new boolean[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
-
-  @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (boolean[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.BOOLEAN, rowCount);
-    }
-    sort(0, rowCount);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
-  }
-
-  @Override
   void clearValue() {
     if (values != null) {
       for (boolean[] dataArray : values) {
@@ -131,60 +120,8 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
-    }
-  }
-
-  @Override
-  protected void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    boolean srcV = getBoolean(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getBoolean(src);
-  }
-
-  @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      boolean loV = getBoolean(lo);
-      long hiT = getTime(hi);
-      boolean hiV = getBoolean(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
-  }
-
-  @Override
   protected void expandValues() {
     values.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
-  }
-
-  @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getBoolean(pos);
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
   }
 
   @Override
@@ -319,7 +256,7 @@ public class BooleanTVList extends TVList {
   }
 
   public static BooleanTVList deserialize(DataInputStream stream) throws IOException {
-    BooleanTVList tvList = new BooleanTVList();
+    BooleanTVList tvList = BooleanTVList.newList();
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     boolean[] values = new boolean[rowCount];

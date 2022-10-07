@@ -91,7 +91,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
 ```
 
 Now, we use root user to grant the two users write privileges to the corresponding storage groups.
@@ -144,7 +144,7 @@ Msg: The statement is executed successfully.
 After revoking, ln_write_user has no permission to writing data to root.ln.**
 ```
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
 ```
 
 ### SQL Statements
@@ -373,7 +373,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|alter timeseries; path dependent|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
 |READ\_TIMESERIES|query data; path dependent|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root.**`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers`<br />Eg12: Count-Query<br />`count devices`|
-|DELETE\_TIMESERIES|delete data or timeseries; path dependent|Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`|
+|DELETE\_TIMESERIES|delete data or timeseries; path dependent|Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`<br />Eg3: use drop semantic<br />`drop timeseries root.ln.wf01.wt01.status|
 |CREATE\_USER|create users; path independent|Eg: `create user thulab 'passwd';`|
 |DELETE\_USER|delete users; path independent|Eg: `drop user xiaoming;`|
 |MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|Eg: `alter user tempuser SET PASSWORD 'newpwd';`|

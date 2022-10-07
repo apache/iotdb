@@ -22,6 +22,9 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -49,6 +52,11 @@ public class RemoteServerEnv implements BaseEnv {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
   }
 
   @Override
@@ -141,5 +149,22 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
     return null;
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    Session session = new Session(ip_addr, Integer.parseInt(port));
+    session.open();
+    return session;
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    getDataNodeWrapperList().get(index).start();
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    getDataNodeWrapperList().get(index).stop();
   }
 }

@@ -27,6 +27,7 @@
   <allow pkg="java.io"/>
   <allow pkg="java.math"/>
   <allow pkg="java.text"/>
+  <allow class="java.nio.file.Files"/>
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
@@ -43,4 +44,10 @@
   <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.db\.mpp\.common\.header.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tsfile\.exception\.write.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+  <allow pkg="org\.slf4j.*" regex="true" />
 </import-control>

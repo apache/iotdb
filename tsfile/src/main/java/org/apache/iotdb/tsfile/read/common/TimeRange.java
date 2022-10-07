@@ -57,16 +57,14 @@ public class TimeRange implements Comparable<TimeRange> {
     if (r == null) {
       throw new NullPointerException("The input cannot be null!");
     }
-    long res1 = this.min - r.min;
-    if (res1 > 0) {
+    if (this.min > r.min) {
       return 1;
-    } else if (res1 < 0) {
+    } else if (this.min < r.min) {
       return -1;
     } else {
-      long res2 = this.max - r.max;
-      if (res2 > 0) {
+      if (this.max > r.max) {
         return 1;
-      } else if (res2 < 0) {
+      } else if (this.max < r.max) {
         return -1;
       } else {
         return 0;
@@ -305,9 +303,7 @@ public class TimeRange implements Comparable<TimeRange> {
     while (iterator.hasNext()) {
       TimeRange rangeNext = iterator.next();
       if (rangeCurr.intersects(rangeNext)) {
-        rangeCurr.set(
-            Math.min(rangeCurr.getMin(), rangeNext.getMin()),
-            Math.max(rangeCurr.getMax(), rangeNext.getMax()));
+        rangeCurr.merge(rangeNext);
       } else {
         unionResult.add(rangeCurr);
         rangeCurr = rangeNext;
@@ -315,6 +311,10 @@ public class TimeRange implements Comparable<TimeRange> {
     }
     unionResult.add(rangeCurr);
     return unionResult;
+  }
+
+  public void merge(TimeRange rhs) {
+    set(Math.min(getMin(), rhs.getMin()), Math.max(getMax(), rhs.getMax()));
   }
 
   /**

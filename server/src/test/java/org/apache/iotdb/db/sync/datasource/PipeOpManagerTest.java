@@ -24,9 +24,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -34,11 +37,12 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -53,16 +57,28 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PipeOpManagerTest {
-  public static final String TMP_DIR = "target";
+  public static final String TMP_DIR = "target" + File.separator + "PipeOpManagerTest";
   private static final String seqTsFileName1 = TMP_DIR + File.separator + "test1.tsfile";
-  private final String seqModsFileName1 = seqTsFileName1 + ".mods";
+  private static final String seqModsFileName1 = seqTsFileName1 + ".mods";
   private static final String unSeqTsFileName1 = TMP_DIR + File.separator + "test2.unseq.tsfile";
-  private final String unSeqModsFileName1 = unSeqTsFileName1 + ".mods";
+  private static final String unSeqModsFileName1 = unSeqTsFileName1 + ".mods";
   public static final String DEFAULT_TEMPLATE = "template";
-  public final List<String> delFileList = new LinkedList<>();
+  public static final List<String> delFileList = new LinkedList<>();
 
-  @Before
-  public void prepareTestData() throws Exception {
+  private static final String bigSeqTsFileName1 = TMP_DIR + File.separator + "test1.big.seq.tsfile";
+  private static final String bigSeqTsFileName2 = TMP_DIR + File.separator + "test2.big.seq.tsfile";
+  private static final String bigSeqTsFileName3 = TMP_DIR + File.separator + "test3.big.seq.tsfile";
+
+  private static int oldMaxNumberOfPointsInPage;
+
+  @BeforeClass
+  public static void prepareTestData() throws Exception {
+    oldMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+    EnvironmentUtils.envSetUp();
+    IoTDB.configManager.init();
+
     createSeqTsfile(seqTsFileName1);
     delFileList.add(seqTsFileName1);
     creatSeqModsFile(seqModsFileName1);
@@ -72,19 +88,34 @@ public class PipeOpManagerTest {
     delFileList.add(unSeqTsFileName1);
     creatUnSeqModsFile(unSeqModsFileName1);
     delFileList.add(unSeqModsFileName1);
+
+    createBigSeqTsfile(bigSeqTsFileName1, 1, -1);
+    delFileList.add(bigSeqTsFileName1);
+    createBigSeqTsfile(bigSeqTsFileName2, 2, 100);
+    delFileList.add(bigSeqTsFileName2);
+    createBigSeqTsfile(bigSeqTsFileName3, 3, 57);
+    delFileList.add(bigSeqTsFileName3);
   }
 
-  @After
-  public void removeTestData() throws Exception {
+  @AfterClass
+  public static void removeTestData() throws Exception {
     for (String fileName : delFileList) {
       File file = new File(fileName);
       if (file.exists()) {
         file.delete();
       }
     }
+
+    IoTDB.configManager.clear();
+    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
-  private void createSeqTsfile(String tsfilePath) throws Exception {
+  private static void createSeqTsfile(String tsfilePath) throws Exception {
     File file = new File(tsfilePath);
     if (file.exists()) {
       file.delete();
@@ -137,7 +168,7 @@ public class PipeOpManagerTest {
     tsFileWriter.close();
   }
 
-  private void createUnSeqTsfile(String tsfilePath) throws Exception {
+  private static void createUnSeqTsfile(String tsfilePath) throws Exception {
     File file = new File(tsfilePath);
     if (file.exists()) {
       file.delete();
@@ -194,7 +225,7 @@ public class PipeOpManagerTest {
     tsFileWriter.close();
   }
 
-  private void creatSeqModsFile(String modsFilePath) throws IllegalPathException {
+  private static void creatSeqModsFile(String modsFilePath) throws IllegalPathException {
     Modification[] modifications =
         new Modification[] {
           new Deletion(new PartialPath("root.lemming.device2.sensor2"), 2, 1617206403002L),
@@ -212,7 +243,7 @@ public class PipeOpManagerTest {
     }
   }
 
-  private void creatUnSeqModsFile(String modsFilePath) throws IllegalPathException {
+  private static void creatUnSeqModsFile(String modsFilePath) throws IllegalPathException {
     Modification[] modifications =
         new Modification[] {
           new Deletion(new PartialPath("root2.lemming.device1.sensor1"), 2, 1617206403001L),
@@ -451,5 +482,117 @@ public class PipeOpManagerTest {
     assertEquals(partialPath, deleteOperation.getDeletePath());
     assertEquals(-200, deleteOperation.getStartTime());
     assertEquals(400, deleteOperation.getEndTime());
+  }
+
+  // == test big seq files and 1 chunk contains multiple pages.
+  private static void createBigSeqTsfile(String tsfilePath, int seed, int maxPointNumInPage)
+      throws Exception {
+    File file = new File(tsfilePath);
+    if (file.exists()) {
+      file.delete();
+    }
+
+    if (maxPointNumInPage > 0) {
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(maxPointNumInPage);
+    }
+
+    Schema schema = new Schema();
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor2", TSDataType.INT32, TSEncoding.RLE));
+    schema.extendTemplate(
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor3", TSDataType.INT64, TSEncoding.RLE));
+
+    TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
+
+    long ts = 1617206403000L;
+    TSRecord tsRecord;
+    for (int i = 0; i < 1000; i++) {
+      for (int j = 0; j < 1000; j++) {
+        int k = seed * 100000000 + i * 1000 + j;
+        ts++;
+        tsRecord = new TSRecord(ts, "root.lemming.device1");
+        tsRecord.addTuple(new FloatDataPoint("sensor1", k * 1.3f));
+        tsRecord.addTuple(new IntDataPoint("sensor2", k));
+        tsRecord.addTuple(new LongDataPoint("sensor3", k * k));
+        tsFileWriter.write(tsRecord);
+      }
+      tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+
+      for (int j = 0; j < 1000; j++) {
+        int k = seed * 100000000 + i * 2000 + j;
+        ts++;
+        tsRecord = new TSRecord(ts, "root.lemming.device2");
+        tsRecord.addTuple(new IntDataPoint("sensor2", k));
+        tsFileWriter.write(tsRecord);
+      }
+      tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+
+      for (int j = 0; j < 1000; j++) {
+        int k = seed * 100000000 + i * 3000 + j;
+        ts++;
+        tsRecord = new TSRecord(ts, "root.lemming.device3");
+        tsRecord.addTuple(new FloatDataPoint("sensor1", k * 1.3f));
+        tsRecord.addTuple(new IntDataPoint("sensor2", k));
+        tsFileWriter.write(tsRecord);
+      }
+      tsFileWriter.flushAllChunkGroups(); // flush above data to disk at once
+    }
+    // close TsFile
+    tsFileWriter.close();
+  }
+
+  @Test
+  public void testManyBigTsfiles() throws IOException {
+    PipeOpManager pipeOpManager = new PipeOpManager(null);
+
+    String sgName1 = "root.test1";
+    pipeOpManager.appendOpBlock(sgName1, new TsFileOpBlock(sgName1, bigSeqTsFileName1, 1));
+    pipeOpManager.appendOpBlock(sgName1, new TsFileOpBlock(sgName1, bigSeqTsFileName2, 2));
+    pipeOpManager.appendOpBlock(sgName1, new TsFileOpBlock(sgName1, bigSeqTsFileName3, 3));
+
+    long idx = pipeOpManager.getFirstAvailableIndex(sgName1);
+    long sum = 0;
+    Operation operation;
+    int bulkSize = 1000;
+    while (true) {
+      operation = pipeOpManager.getOperation(sgName1, idx, bulkSize);
+      if (operation == null) {
+        System.out.println("operation == null, idx=" + idx + " length=" + bulkSize);
+        assertEquals(18000000, idx);
+        break;
+      }
+      long count = operation.getDataCount();
+      // System.out.println("idx=" + idx + ", " + "count=" + count);
+      if (count == 0) {
+        break;
+      }
+      idx += count;
+      sum += count;
+      pipeOpManager.commitData(sgName1, idx - 1);
+    }
+    // System.out.println("data sum = " + sum);
+    assertEquals(18000000, sum);
+
+    bulkSize = 777;
+    while (true) {
+      operation = pipeOpManager.getOperation(sgName1, idx, bulkSize);
+      if (operation == null) {
+        System.out.println("operation == null, idx=" + idx + " length=" + bulkSize);
+        assertEquals(18000000, idx);
+        break;
+      }
+      long count = operation.getDataCount();
+      // System.out.println("idx=" + idx + ", " + "count=" + count);
+      if (count == 0) {
+        break;
+      }
+      idx += count;
+      sum += count;
+      pipeOpManager.commitData(sgName1, idx - 1);
+    }
+    // System.out.println("data sum = " + sum);
+    assertEquals(18000000, sum);
   }
 }

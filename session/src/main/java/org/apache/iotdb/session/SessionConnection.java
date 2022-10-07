@@ -117,7 +117,9 @@ public class SessionConnection {
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
               endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -782,7 +784,7 @@ public class SessionConnection {
   private boolean reconnect() {
     boolean connectedSuccess = false;
     Random random = new Random();
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
         int currHostIndex = random.nextInt(endPointList.size());

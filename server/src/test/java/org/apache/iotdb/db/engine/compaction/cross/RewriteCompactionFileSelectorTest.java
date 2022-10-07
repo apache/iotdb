@@ -264,8 +264,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "seq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -284,8 +283,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "unseq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -348,8 +346,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -368,8 +365,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -423,8 +419,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -443,8 +438,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -573,8 +567,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -593,8 +586,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -652,8 +644,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -674,8 +665,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR

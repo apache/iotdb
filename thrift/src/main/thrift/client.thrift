@@ -353,6 +353,7 @@ struct ServerProperties {
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
   10:optional bool isReadOnly;
+  11:optional string buildInfo;
 }
 
 struct TSSetSchemaTemplateReq {
@@ -418,6 +419,7 @@ struct TSyncIdentityInfo{
   3:required i64 createTime
   // The version of sender and receiver need to be the same.
   4:required string version
+  5:required string storageGroup
 }
 
 struct TSyncTransportMetaInfo{

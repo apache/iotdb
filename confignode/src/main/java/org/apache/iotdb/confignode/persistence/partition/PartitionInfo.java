@@ -32,19 +32,20 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -70,7 +71,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -94,49 +95,19 @@ public class PartitionInfo implements SnapshotProcessor {
 
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+
   // Map<StorageGroupName, StorageGroupPartitionInfo>
   private final ConcurrentHashMap<String, StorageGroupPartitionTable> storageGroupPartitionTables;
 
-  private final Set<TRegionReplicaSet> deletedRegionSet;
+  // For RegionReplicas' asynchronous management
+  private final List<RegionMaintainTask> regionMaintainTaskList;
 
   private final String snapshotFileName = "partition_info.bin";
 
   public PartitionInfo() {
-    this.storageGroupPartitionTables = new ConcurrentHashMap<>();
     this.nextRegionGroupId = new AtomicInteger(-1);
-    // For RegionCleaner
-    this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
-  }
-
-  public void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.STORAGE_GROUP.toString(),
-            MetricLevel.CORE,
-            storageGroupPartitionTables,
-            ConcurrentHashMap::size,
-            Tag.NAME.toString(),
-            "number");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
+    this.storageGroupPartitionTables = new ConcurrentHashMap<>();
+    this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
   }
 
   public int generateNextRegionGroupId() {
@@ -155,8 +126,12 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     String storageGroupName = plan.getSchema().getName();
-    storageGroupPartitionTables.put(
-        storageGroupName, new StorageGroupPartitionTable(storageGroupName));
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        new StorageGroupPartitionTable(storageGroupName);
+    storageGroupPartitionTables.put(storageGroupName, storageGroupPartitionTable);
+    MetricService.getInstance()
+        .addMetricSet(
+            new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -194,38 +169,39 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Synchronously delete RegionGroups in PartitionTable and asynchronously delete RegionReplica on
-   * remote DataNodes
+   * Offer a batch of RegionMaintainTasks for the RegionMaintainer
    *
    * @return SUCCESS_STATUS
    */
-  public TSStatus deleteRegionGroups(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
-    // Delete RegionGroups' in PartitionTable if necessary
-    if (deleteRegionGroupsPlan.isNeedsDeleteInPartitionTable()) {
-      deleteRegionGroupsPlan
-          .getRegionGroupMap()
-          .forEach(
-              (storageGroup, deleteRegionGroups) -> {
-                if (isStorageGroupExisted(storageGroup)) {
-                  storageGroupPartitionTables
-                      .get(storageGroup)
-                      .deleteRegionGroups(deleteRegionGroups);
-                }
-              });
+  public TSStatus offerRegionMaintainTasks(
+      OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
+    synchronized (regionMaintainTaskList) {
+      regionMaintainTaskList.addAll(offerRegionMaintainTasksPlan.getRegionMaintainTaskList());
+      return RpcUtils.SUCCESS_STATUS;
     }
-
-    // Delete RegionReplicaSets on remote DataNodes asynchronously
-    synchronized (deletedRegionSet) {
-      deleteRegionGroupsPlan.getRegionGroupMap().values().forEach(deletedRegionSet::addAll);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
   }
 
-  /** @return The Regions that should be deleted among the DataNodes */
-  public Set<TRegionReplicaSet> getDeletedRegionSet() {
-    synchronized (deletedRegionSet) {
-      return deletedRegionSet;
+  /**
+   * Poll the head of RegionMaintainTasks from the regionMaintainTaskList after it's executed
+   * successfully
+   *
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus pollRegionMaintainTask() {
+    synchronized (regionMaintainTaskList) {
+      regionMaintainTaskList.remove(0);
+      return RpcUtils.SUCCESS_STATUS;
+    }
+  }
+
+  /**
+   * Get a deep copy of RegionCleanList for RegionCleaner to maintain cluster RegionReplicas
+   *
+   * @return A deep copy of RegionCleanList
+   */
+  public List<RegionMaintainTask> getRegionMaintainEntryList() {
+    synchronized (regionMaintainTaskList) {
+      return new ArrayList<>(regionMaintainTaskList);
     }
   }
 
@@ -261,21 +237,8 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan DeleteStorageGroupPlan
    */
   public void deleteStorageGroup(DeleteStorageGroupPlan plan) {
-    StorageGroupPartitionTable storageGroupPartitionTable =
-        storageGroupPartitionTables.get(plan.getName());
-    if (storageGroupPartitionTable == null) {
-      return;
-    }
-    // Cache RegionReplicaSets
-    synchronized (deletedRegionSet) {
-      storageGroupPartitionTable = storageGroupPartitionTables.get(plan.getName());
-      if (storageGroupPartitionTable == null) {
-        return;
-      }
-      deletedRegionSet.addAll(storageGroupPartitionTable.getAllReplicaSets());
-      // Clean the cache
-      storageGroupPartitionTables.remove(plan.getName());
-    }
+    // Clean the StorageGroupTable cache
+    storageGroupPartitionTables.remove(plan.getName());
   }
 
   /**
@@ -323,6 +286,8 @@ public class PartitionInfo implements SnapshotProcessor {
                     // Remove empty Map
                     schemaPartition.remove(storageGroup);
                   }
+                } else {
+                  isAllPartitionsExist.set(false);
                 }
               });
     }
@@ -360,6 +325,8 @@ public class PartitionInfo implements SnapshotProcessor {
                   // Remove empty Map
                   dataPartition.remove(storageGroup);
                 }
+              } else {
+                isAllPartitionsExist.set(false);
               }
             });
 
@@ -467,7 +434,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** Get region information */
   public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
     RegionInfoListResp regionResp = new RegionInfoListResp();
-    List<TRegionInfo> regionInfoList = new ArrayList<>();
+    List<TRegionInfo> regionInfoList = new Vector<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       regionResp.setRegionInfoList(new ArrayList<>());
@@ -481,10 +448,13 @@ public class PartitionInfo implements SnapshotProcessor {
           if (storageGroups != null && !storageGroups.contains(storageGroup)) {
             return;
           }
-          storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);
+          regionInfoList.addAll(storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan));
         });
     regionInfoList.sort(
-        Comparator.comparingInt(regionId -> regionId.getConsensusGroupId().getId()));
+        (o1, o2) ->
+            o1.getConsensusGroupId().getId() != o2.getConsensusGroupId().getId()
+                ? o1.getConsensusGroupId().getId() - o2.getConsensusGroupId().getId()
+                : o1.getDataNodeId() - o2.getDataNodeId());
     regionResp.setRegionInfoList(regionInfoList);
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
@@ -584,7 +554,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @return All Regions' RegionReplicaSet
+   * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
@@ -594,6 +564,20 @@ public class PartitionInfo implements SnapshotProcessor {
             storageGroupPartitionTable ->
                 result.addAll(storageGroupPartitionTable.getAllReplicaSets()));
     return result;
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup The specified StorageGroup
+   * @return All Regions' RegionReplicaSet of the specified StorageGroup
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
+    if (storageGroupPartitionTables.containsKey(storageGroup)) {
+      return storageGroupPartitionTables.get(storageGroup).getAllReplicaSets();
+    } else {
+      return new ArrayList<>();
+    }
   }
 
   /**
@@ -614,8 +598,8 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getRegionGroupCount(type);
   }
 
-  public int getSlotCount(String storageGroup) {
-    return storageGroupPartitionTables.get(storageGroup).getSlotsCount();
+  public int getAssignedSeriesPartitionSlotsCount(String storageGroup) {
+    return storageGroupPartitionTables.get(storageGroup).getAssignedSeriesPartitionSlotsCount();
   }
 
   /**
@@ -635,11 +619,12 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
-   * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
+   * @return The StorageGroup's Running or Available Regions that sorted by the number of allocated
+   *     slots
    */
-  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
+  public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).getSortedRegionGroupSlotsCounter(type);
+    return storageGroupPartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
   }
 
   /**
@@ -648,7 +633,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int updateRegionGroupMetric(TConsensusGroupType type) {
+  public int updateRegionGroupMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
@@ -676,6 +661,7 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
+      // TODO: this metric can be optimized
       MetricService.getInstance()
           .getOrCreateGauge(
               Metric.REGION.toString(),
@@ -704,13 +690,13 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    // TODO: Lock PartitionInfo
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       // serialize nextRegionGroupId
       ReadWriteIOUtils.write(nextRegionGroupId.get(), fileOutputStream);
+
       // serialize StorageGroupPartitionTable
       ReadWriteIOUtils.write(storageGroupPartitionTables.size(), fileOutputStream);
       for (Map.Entry<String, StorageGroupPartitionTable> storageGroupPartitionTableEntry :
@@ -718,10 +704,11 @@ public class PartitionInfo implements SnapshotProcessor {
         ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
         storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
       }
-      // serialize deletedRegionSet
-      ReadWriteIOUtils.write(deletedRegionSet.size(), fileOutputStream);
-      for (TRegionReplicaSet regionReplicaSet : deletedRegionSet) {
-        regionReplicaSet.write(protocol);
+
+      // serialize regionCleanList
+      ReadWriteIOUtils.write(regionMaintainTaskList.size(), fileOutputStream);
+      for (RegionMaintainTask task : regionMaintainTaskList) {
+        task.serialize(fileOutputStream, protocol);
       }
 
       // write to file
@@ -752,12 +739,12 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    // TODO: Lock PartitionInfo
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
       clear();
+
       // start to restore
       nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
@@ -765,25 +752,32 @@ public class PartitionInfo implements SnapshotProcessor {
       int length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
         String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
+        if (storageGroup == null) {
+          throw new IOException("Failed to load snapshot because get null StorageGroup name");
+        }
         StorageGroupPartitionTable storageGroupPartitionTable =
             new StorageGroupPartitionTable(storageGroup);
         storageGroupPartitionTable.deserialize(fileInputStream, protocol);
         storageGroupPartitionTables.put(storageGroup, storageGroupPartitionTable);
       }
+
       // restore deletedRegionSet
       length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
-        TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-        regionReplicaSet.read(protocol);
-        deletedRegionSet.add(regionReplicaSet);
+        RegionMaintainTask task = RegionMaintainTask.Factory.create(fileInputStream, protocol);
+        regionMaintainTaskList.add(task);
       }
     }
+  }
+
+  public int getStorageGroupPartitionTableSize() {
+    return storageGroupPartitionTables.size();
   }
 
   public void clear() {
     nextRegionGroupId.set(-1);
     storageGroupPartitionTables.clear();
-    deletedRegionSet.clear();
+    regionMaintainTaskList.clear();
   }
 
   @Override
@@ -792,11 +786,11 @@ public class PartitionInfo implements SnapshotProcessor {
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
     return storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
-        && deletedRegionSet.equals(that.deletedRegionSet);
+        && regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPartitionTables, deletedRegionSet);
+    return Objects.hash(storageGroupPartitionTables, regionMaintainTaskList);
   }
 }

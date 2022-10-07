@@ -125,13 +125,11 @@ public class NewIoTDB implements NewIoTDBMBean {
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
 
-    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
@@ -178,9 +176,8 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-
-    // start reporter
-    MetricService.getInstance().startAllReporter();
+    registerManager.register(MetricService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");

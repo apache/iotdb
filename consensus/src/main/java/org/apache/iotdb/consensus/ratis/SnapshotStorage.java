@@ -36,9 +36,11 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -47,6 +49,9 @@ public class SnapshotStorage implements StateMachineStorage {
 
   private File stateMachineDir;
 
+  private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
+  private SnapshotInfo currentSnapshot = null;
+
   public SnapshotStorage(IStateMachine applicationStateMachine) {
     this.applicationStateMachine = applicationStateMachine;
   }
@@ -54,6 +59,7 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
     this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
+    updateSnapshotCache();
   }
 
   private Path[] getSortedSnapshotDirPaths() {
@@ -81,7 +87,6 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File findLatestSnapshotDir() {
-    moveSnapshotFileToSubDirectory();
     Path[] snapshots = getSortedSnapshotDirPaths();
     if (snapshots == null || snapshots.length == 0) {
       return null;
@@ -103,8 +108,7 @@ public class SnapshotStorage implements StateMachineStorage {
     return i < 0 ? null : snapshots[i].toFile();
   }
 
-  @Override
-  public SnapshotInfo getLatestSnapshot() {
+  SnapshotInfo findLatestSnapshot() {
     File latestSnapshotDir = findLatestSnapshotDir();
     if (latestSnapshotDir == null) {
       return null;
@@ -115,25 +119,48 @@ public class SnapshotStorage implements StateMachineStorage {
     if (actualSnapshotFiles == null) {
       return null;
     }
+    Path metaFilePath = Paths.get(getMetafilePath(latestSnapshotDir, latestSnapshotDir.getName()));
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    FileInfo metafileInfo = null;
     for (Path file : actualSnapshotFiles) {
-      if (file.endsWith(".md5")) {
+      if (file.endsWith(".md5") || file.startsWith(META_FILE_PREFIX)) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
-      if (file.toFile().getName().startsWith(META_FILE_PREFIX)) {
-        metafileInfo = fileInfo;
-      } else {
-        fileInfos.add(fileInfo);
-      }
+      fileInfos.add(fileInfo);
     }
     // metafile should be sent last for atomicity considerations
+    FileInfo metafileInfo = new FileInfoWithDelayedMd5Computing(metaFilePath);
     fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
+  }
+
+  /*
+  Snapshot cache will be updated upon:
+  1. takeSnapshot, when RaftServer takes a new snapshot
+  2. loadSnapshot, when RaftServer is asked to load a snapshot. loadSnapshot will be called when
+  (1) initialize, RaftServer first starts
+  (2) reinitialize, RaftServer resumes from pause. Leader will install a snapshot during pause.
+   */
+  void updateSnapshotCache() {
+    snapshotCacheGuard.writeLock().lock();
+    try {
+      currentSnapshot = findLatestSnapshot();
+    } finally {
+      snapshotCacheGuard.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public SnapshotInfo getLatestSnapshot() {
+    snapshotCacheGuard.readLock().lock();
+    try {
+      return currentSnapshot;
+    } finally {
+      snapshotCacheGuard.readLock().unlock();
+    }
   }
 
   @Override
@@ -181,56 +208,5 @@ public class SnapshotStorage implements StateMachineStorage {
   private String getMetafilePath(File snapshotDir, String termIndexMetadata) {
     // e.g. /_sm/3_39/.ratis_meta.3_39
     return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
-  }
-
-  /**
-   * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
-   * under statemachineDir. We need to handle this special scenario and rearrange these files to
-   * appropriate sub-directory this function will move all snapshot files directly under /sm to
-   * /sm/term_index/
-   */
-  void moveSnapshotFileToSubDirectory() {
-    File[] potentialMetafile =
-        stateMachineDir.listFiles((dir, name) -> name.startsWith(META_FILE_PREFIX));
-    if (potentialMetafile == null || potentialMetafile.length == 0) {
-      // the statemachine dir contains no direct metafile
-      return;
-    }
-    String metadata = potentialMetafile[0].getName().substring(META_FILE_PREFIX.length());
-
-    File snapshotDir = getSnapshotDir(metadata);
-    snapshotDir.mkdir();
-
-    File[] snapshotFiles = stateMachineDir.listFiles();
-
-    // move files to snapshotDir, if an error occurred, delete snapshotDir
-    try {
-      if (snapshotFiles == null) {
-        logger.error(
-            "An unexpected condition triggered. please check implementation "
-                + this.getClass().getName());
-        FileUtils.deleteFully(snapshotDir);
-        return;
-      }
-
-      for (File file : snapshotFiles) {
-        if (file.equals(snapshotDir)) {
-          continue;
-        }
-        boolean success = file.renameTo(new File(snapshotDir + File.separator + file.getName()));
-        if (!success) {
-          logger.warn(
-              "move snapshot file "
-                  + file.getAbsolutePath()
-                  + " to sub-directory "
-                  + snapshotDir.getAbsolutePath()
-                  + "failed");
-          FileUtils.deleteFully(snapshotDir);
-          break;
-        }
-      }
-    } catch (IOException e) {
-      logger.warn("delete directory failed: ", e);
-    }
   }
 }

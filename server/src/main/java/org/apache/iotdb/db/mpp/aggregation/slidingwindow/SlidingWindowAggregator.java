@@ -45,6 +45,8 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   // cached partial aggregation result of pre-aggregate windows
   protected Deque<PartialAggregationResult> deque;
 
+  protected TimeRange curTimeRange;
+
   public SlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
     super(accumulator, step, inputLocationList);

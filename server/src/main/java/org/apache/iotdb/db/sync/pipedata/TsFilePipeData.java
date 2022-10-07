@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
@@ -112,6 +112,10 @@ public class TsFilePipeData extends PipeData {
     return getTsFilePath() + ModificationFile.FILE_SUFFIX;
   }
 
+  public void setStorageGroupName(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
+  }
+
   public String getStorageGroupName() {
     return storageGroupName;
   }
@@ -141,7 +145,7 @@ public class TsFilePipeData extends PipeData {
 
   @Override
   public ILoader createLoader() {
-    return new TsFileLoader(new File(getTsFilePath()));
+    return new TsFileLoader(new File(getTsFilePath()), storageGroupName);
   }
 
   public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {

@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SchemaStatisticsManager {
@@ -41,17 +36,6 @@ public class SchemaStatisticsManager {
   /** we should not use this function in other place, but only in IoTDB class */
   public static SchemaStatisticsManager getInstance() {
     return SchemaStatisticsHolder.INSTANCE;
-  }
-
-  public void init() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            totalSeriesNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "timeSeries");
   }
 
   public long getTotalSeriesNumber() {

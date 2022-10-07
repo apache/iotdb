@@ -33,6 +33,8 @@ public class IndexControllerTest {
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
   private static final String prefix = "version";
 
+  private static final long CHECK_POINT_GAP = 500;
+
   @Before
   public void setUp() throws IOException {
     FileUtils.createDirectories(storageDir);
@@ -46,37 +48,38 @@ public class IndexControllerTest {
   /** test indexController when incrementIntervalAfterRestart == false */
   @Test
   public void testIncrementIntervalAfterRestart() {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller.updateAndGet(IndexController.FLUSH_INTERVAL - 1);
+    controller.updateAndGet(CHECK_POINT_GAP - 1);
 
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL - 1, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller.updateAndGet(IndexController.FLUSH_INTERVAL + 1);
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL + 1, controller.getCurrentIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
+    controller.updateAndGet(CHECK_POINT_GAP + 1);
+    Assert.assertEquals(CHECK_POINT_GAP + 1, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getCurrentIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller.updateAndGet(IndexController.FLUSH_INTERVAL * 2 - 1);
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2 - 1, controller.getCurrentIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
+    controller.updateAndGet(CHECK_POINT_GAP * 2 - 1);
+    Assert.assertEquals(CHECK_POINT_GAP * 2 - 1, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getCurrentIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller.updateAndGet(IndexController.FLUSH_INTERVAL * 2 + 1);
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2 + 1, controller.getCurrentIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2, controller.getLastFlushedIndex());
+    controller.updateAndGet(CHECK_POINT_GAP * 2 + 1);
+    Assert.assertEquals(CHECK_POINT_GAP * 2 + 1, controller.getCurrentIndex());
+    Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getLastFlushedIndex());
   }
 }

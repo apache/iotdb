@@ -85,6 +85,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showFunctionsColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowTriggersHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTriggersColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowRegionHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, true);
   }
@@ -119,5 +123,9 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowPipeSinkHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showPipeSinkColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowPipeHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -28,36 +29,43 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -66,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
@@ -104,6 +113,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       if (typeNum >= ConfigPhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
+
       ConfigPhysicalPlanType type = ConfigPhysicalPlanType.values()[typeNum];
       ConfigPhysicalPlan req;
       switch (type) {
@@ -143,8 +153,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateRegionGroups:
           req = new CreateRegionGroupsPlan();
           break;
-        case DeleteRegionGroups:
-          req = new DeleteRegionGroupsPlan();
+        case OfferRegionMaintainTasks:
+          req = new OfferRegionMaintainTasksPlan();
+          break;
+        case PollRegionMaintainTask:
+          req = new PollRegionMaintainTaskPlan();
           break;
         case GetSchemaPartition:
           req = new GetSchemaPartitionPlan();
@@ -207,6 +220,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case DropFunction:
           req = new DropFunctionPlan();
           break;
+        case AddTriggerInTable:
+          req = new AddTriggerInTablePlan();
+          break;
+        case DeleteTriggerInTable:
+          req = new DeleteTriggerInTablePlan();
+          break;
+        case UpdateTriggerStateInTable:
+          req = new UpdateTriggerStateInTablePlan();
+          break;
+        case GetTriggerTable:
+          req = new GetTriggerTablePlan();
+          break;
         case CreateSchemaTemplate:
           req = new CreateSchemaTemplatePlan();
           break;
@@ -237,6 +262,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateRegionLocation:
           req = new UpdateRegionLocationPlan();
           break;
+        case CreatePipeSink:
+          req = new CreatePipeSinkPlan();
+          break;
+        case DropPipeSink:
+          req = new DropPipeSinkPlan();
+          break;
+        case GetPipeSink:
+          req = new GetPipeSinkPlan();
+          break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
       }
@@ -247,5 +281,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
     private Factory() {
       // empty constructor
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ConfigPhysicalPlan that = (ConfigPhysicalPlan) o;
+    return type == that.type;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type);
   }
 }

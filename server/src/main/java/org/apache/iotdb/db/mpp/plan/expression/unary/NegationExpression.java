@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -46,23 +44,6 @@ public class NegationExpression extends UnaryExpression {
   }
 
   @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      TSDataType inputExpressionType = expression.inferTypes(typeProvider);
-      Expression.checkInputExpressionDataType(
-          expression.toString(),
-          inputExpressionType,
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      typeProvider.setType(expressionString, inputExpressionType);
-    }
-    return typeProvider.getType(expressionString);
-  }
-
-  @Override
   public String getExpressionStringInternal() {
     return expression instanceof TimeSeriesOperand
             || expression instanceof FunctionExpression
@@ -75,5 +56,10 @@ public class NegationExpression extends UnaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.NEGATION;
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitNegationExpression(this, context);
   }
 }

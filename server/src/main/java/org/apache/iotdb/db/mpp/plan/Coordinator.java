@@ -38,8 +38,8 @@ import org.apache.iotdb.db.mpp.plan.execution.QueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +120,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
-        LOGGER.info("start executing sql: {}", sql);
+        LOGGER.info("[QueryStart] sql: {}", sql);
       }
       MPPQueryContext queryContext =
           new MPPQueryContext(

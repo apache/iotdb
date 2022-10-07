@@ -67,7 +67,7 @@ public class SchemaRegionUtils {
     }
   }
 
-  public static void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
+  public static void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataTypeInSchema)
       throws MetadataException {
     TSDataType insertDataType;
     if (plan instanceof InsertRowPlan) {
@@ -75,19 +75,19 @@ public class SchemaRegionUtils {
         // only when InsertRowPlan's values is object[], we should check type
         insertDataType = getTypeInLoc(plan, loc);
       } else {
-        insertDataType = dataType;
+        insertDataType = dataTypeInSchema;
       }
     } else {
       insertDataType = getTypeInLoc(plan, loc);
     }
-    if (dataType != insertDataType) {
+    if (dataTypeInSchema != insertDataType) {
       String measurement = plan.getMeasurements()[loc];
       String device = plan.getDevicePath().getFullPath();
       throw new DataTypeMismatchException(
           device,
           measurement,
           insertDataType,
-          dataType,
+          dataTypeInSchema,
           plan.getMinTime(),
           plan.getFirstValueOfIndex(loc));
     }

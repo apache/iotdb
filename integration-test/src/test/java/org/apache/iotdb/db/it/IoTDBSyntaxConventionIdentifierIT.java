@@ -513,6 +513,16 @@ public class IoTDBSyntaxConventionIdentifierIT {
         }
         Assert.assertEquals(0, cnt);
       }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT text FROM root.sg1.d1 where text = '\\' and text = 'asdf'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();

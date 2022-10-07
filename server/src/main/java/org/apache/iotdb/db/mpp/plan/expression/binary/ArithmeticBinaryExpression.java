@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.binary;
 
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -36,25 +35,7 @@ public abstract class ArithmeticBinaryExpression extends BinaryExpression {
   }
 
   @Override
-  public final TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      checkInputExpressionDataType(
-          leftExpression.toString(),
-          leftExpression.inferTypes(typeProvider),
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      checkInputExpressionDataType(
-          rightExpression.toString(),
-          rightExpression.inferTypes(typeProvider),
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      typeProvider.setType(expressionString, TSDataType.DOUBLE);
-    }
-    return TSDataType.DOUBLE;
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitArithmeticBinaryExpression(this, context);
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf.directories;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -147,7 +148,7 @@ public class DirectoryManager {
       return sequenceFileFolders.get(sequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }
@@ -161,7 +162,7 @@ public class DirectoryManager {
       return unsequenceFileFolders.get(unsequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }

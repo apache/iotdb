@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -37,7 +38,7 @@ import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SeriesPartitionTable {
 
@@ -112,19 +113,25 @@ public class SeriesPartitionTable {
    * Create DataPartition within the specific SeriesPartitionSlot
    *
    * @param assignedSeriesPartitionTable Assigned result
-   * @param deltaMap Number of DataPartitions added to each Region
+   * @param seriesPartitionSlot Corresponding TSeriesPartitionSlot
+   * @param groupDeltaMap Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot
+   *     Count>>
    */
   public void createDataPartition(
       SeriesPartitionTable assignedSeriesPartitionTable,
-      Map<TConsensusGroupId, AtomicInteger> deltaMap) {
+      TSeriesPartitionSlot seriesPartitionSlot,
+      Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap) {
     assignedSeriesPartitionTable
         .getSeriesPartitionMap()
         .forEach(
             ((timePartitionSlot, consensusGroupIds) -> {
               seriesPartitionMap.put(timePartitionSlot, new Vector<>(consensusGroupIds));
-              deltaMap
-                  .computeIfAbsent(consensusGroupIds.get(0), empty -> new AtomicInteger(0))
-                  .getAndIncrement();
+              consensusGroupIds.forEach(
+                  consensusGroupId ->
+                      groupDeltaMap
+                          .computeIfAbsent(consensusGroupId, empty -> new ConcurrentHashMap<>())
+                          .computeIfAbsent(seriesPartitionSlot, empty -> new AtomicLong(0))
+                          .getAndIncrement());
             }));
   }
 

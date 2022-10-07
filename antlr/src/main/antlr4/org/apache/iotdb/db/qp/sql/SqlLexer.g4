@@ -85,10 +85,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTOREGISTER
-    : A U T O R E G I S T E R
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -215,6 +211,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -335,6 +335,10 @@ NODES
     : N O D E S
     ;
 
+NONE
+    : N O N E
+    ;
+
 NOW
     : N O W
     ;
@@ -357,6 +361,10 @@ ON
 
 ORDER
     : O R D E R
+    ;
+
+ONSUCCESS
+    : O N S U C C E S S
     ;
 
 PARTITION
@@ -429,10 +437,6 @@ RUNNING
 
 READONLY
     : R E A D O N L Y
-    ;
-
-ERROR
-    : E R R O R
     ;
 
 REGEXP
@@ -509,6 +513,14 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
     ;
 
 STOP
@@ -593,6 +605,10 @@ UPDATE
 
 UPSERT
     : U P S E R T
+    ;
+
+URI
+    : U R I
     ;
 
 USER
@@ -949,11 +965,11 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\"' | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING

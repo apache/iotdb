@@ -34,6 +34,9 @@ import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import org.slf4j.Logger;
 
@@ -59,9 +62,9 @@ public abstract class AbstractEnv implements BaseEnv {
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  private final Random rand = new Random();
   protected String testMethodName = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
@@ -264,6 +267,15 @@ public abstract class AbstractEnv implements BaseEnv {
     }
   }
 
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
+  }
+
   protected NodeConnection getWriteConnection(
       Constant.Version version, String username, String password) throws SQLException {
     DataNodeWrapper dataNode;
@@ -368,6 +380,7 @@ public abstract class AbstractEnv implements BaseEnv {
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
       try {
+        // Return ConfigNode connection of the Seed-ConfigNode
         return clientManager.borrowClient(
             new TEndPoint(
                 configNodeWrapperList.get(0).getIp(), configNodeWrapperList.get(0).getPort()));
@@ -375,5 +388,14 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     throw new IOException("Failed to get config node connection");
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    dataNodeWrapperList.get(index).start();
+  }
+
+  public void shutdownDataNode(int index) {
+    dataNodeWrapperList.get(index).stop();
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -36,7 +36,7 @@ public class MetricConfig {
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MonitorType monitorType = MonitorType.DROPWIZARD;
+  private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList =

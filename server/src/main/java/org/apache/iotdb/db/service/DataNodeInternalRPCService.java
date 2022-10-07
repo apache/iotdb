@@ -21,18 +21,14 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
-import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 
 public class DataNodeInternalRPCService extends ThriftService
@@ -64,7 +60,7 @@ public class DataNodeInternalRPCService extends ThriftService
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INTERNAL_SERVICE_RPC_CLIENT.getName(),
+              ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -75,15 +71,9 @@ public class DataNodeInternalRPCService extends ThriftService
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.THRIFT_ACTIVE_THREADS.toString(),
-            MetricLevel.CORE,
-            thriftServiceThread,
-            AbstractThriftServiceThread::getActiveThreadCount,
-            Tag.NAME.toString(),
-            ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+        .addMetricSet(new DataNodeInternalRPCServiceMetrics(thriftServiceThread));
   }
 
   @Override

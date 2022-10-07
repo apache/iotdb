@@ -315,7 +315,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     leafAggDescriptorList.forEach(
         d ->
             LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                d, analysis.getTypeProvider()));
+                d, context.queryContext.getTypeProvider()));
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
@@ -532,7 +532,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     rootAggDescriptorList.forEach(
         d ->
             LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                d, analysis.getTypeProvider()));
+                d, context.queryContext.getTypeProvider()));
     checkArgument(
         sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
     SeriesAggregationSourceNode seed = sources.get(0);
@@ -590,7 +590,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
-    calculateGroupByLevelNodeAttributes(newRoot, 0);
+    calculateGroupByLevelNodeAttributes(newRoot, 0, context);
     return newRoot;
   }
 
@@ -672,11 +672,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   // TODO: (xingtanzjr) consider to implement the descriptor construction in every class
-  private void calculateGroupByLevelNodeAttributes(PlanNode node, int level) {
+  private void calculateGroupByLevelNodeAttributes(
+      PlanNode node, int level, DistributionPlanContext context) {
     if (node == null) {
       return;
     }
-    node.getChildren().forEach(child -> calculateGroupByLevelNodeAttributes(child, level + 1));
+    node.getChildren()
+        .forEach(child -> calculateGroupByLevelNodeAttributes(child, level + 1, context));
 
     // Construct all outputColumns from children. Using Set here to avoid duplication
     Set<String> childrenOutputColumns = new HashSet<>();
@@ -697,7 +699,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         if (keep) {
           descriptorList.add(originalDescriptor);
           LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-              originalDescriptor, analysis.getTypeProvider());
+              originalDescriptor, context.queryContext.getTypeProvider());
         }
       }
       handle.setAggregationDescriptorList(descriptorList);
@@ -730,7 +732,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
         LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-            descriptor, analysis.getTypeProvider());
+            descriptor, context.queryContext.getTypeProvider());
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
@@ -779,7 +781,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               d -> {
                 d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL);
                 LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                    d, analysis.getTypeProvider());
+                    d, context.queryContext.getTypeProvider());
               });
     }
     return sources;

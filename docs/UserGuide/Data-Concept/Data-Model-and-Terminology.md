@@ -51,7 +51,7 @@ Once a prefix path is set as a storage group, the storage group settings cannot 
 
 After a storage group is set, the ancestral layers, children and descendant layers of the corresponding prefix path are not allowed to be set up again (for example, after `root.ln` is set as the storage group, the root layer and `root.ln.wf01` are not allowed to be set as storage groups).
 
-The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
+The Layer Name of storage group can only consist of characters, numbers, and underscores, like `root.storagegroup_1`.
 
 ### Path
 
@@ -80,7 +80,7 @@ The following are the constraints on the `nodeName`:
 * `root` is a reserved character, and it is only allowed to appear at the beginning layer of the time series mentioned below. If `root` appears in other layers, it cannot be parsed and an error will be reported.
 * Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
-  * [ 0-9 a-z A-Z _ : @ # $ { } ] （letters, numbers, a few special characters)
+  * [ 0-9 a-z A-Z _ ] （letters, numbers, underscore)
   * ['\u2E80'..'\u9FFF'] （Chinese characters）
 * In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 * If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Reference/Syntax-Conventions.html).

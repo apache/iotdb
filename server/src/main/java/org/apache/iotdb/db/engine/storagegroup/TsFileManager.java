@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -373,12 +373,12 @@ public class TsFileManager {
     return unsequenceRecoverTsFileResources;
   }
 
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
     readLock();
     try {
       List<File> historyTsFiles = new ArrayList<>();
-      collectTsFile(historyTsFiles, getTsFileList(true), dataStartTime);
-      collectTsFile(historyTsFiles, getTsFileList(false), dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(true), syncManager, dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(false), syncManager, dataStartTime);
       return historyTsFiles;
     } finally {
       readUnlock();
@@ -386,8 +386,10 @@ public class TsFileManager {
   }
 
   private void collectTsFile(
-      List<File> historyTsFiles, List<TsFileResource> tsFileResources, long dataStartTime) {
-    TsFileSyncManager syncManager = TsFileSyncManager.getInstance();
+      List<File> historyTsFiles,
+      List<TsFileResource> tsFileResources,
+      ISyncManager syncManager,
+      long dataStartTime) {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (tsFileResource.getFileEndTime() < dataStartTime) {

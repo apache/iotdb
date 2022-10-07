@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -91,9 +92,9 @@ public class IoTDBSyncReceiverIT {
     FileUtils.moveDirectory(srcDir, tmpDir);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
-    Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
+    Pipe pipe = new TsFilePipe(createdTime1, pipeName1, new IoTDBPipeSink("sink"), 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1");
+    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1", "root.vehicle");
     client.handshake();
   }
 

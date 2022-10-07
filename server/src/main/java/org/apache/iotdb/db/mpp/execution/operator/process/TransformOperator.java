@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
@@ -85,7 +85,7 @@ public class TransformOperator implements ProcessOperator {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider,
+      Map<NodeRef<Expression>, TSDataType> expressionTypes,
       boolean isAscending)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
@@ -94,7 +94,7 @@ public class TransformOperator implements ProcessOperator {
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
-    initTransformers(inputLocations, outputExpressions, typeProvider);
+    initTransformers(inputLocations, outputExpressions, expressionTypes);
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
@@ -116,8 +116,7 @@ public class TransformOperator implements ProcessOperator {
   protected void initTransformers(
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
-      TypeProvider typeProvider)
-      throws QueryProcessException, IOException {
+      Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
       // This statement must be surrounded by the registration lock.
@@ -129,7 +128,7 @@ public class TransformOperator implements ProcessOperator {
                   inputLayer,
                   inputLocations,
                   outputExpressions,
-                  typeProvider,
+                  expressionTypes,
                   udtfContext,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
               .buildLayerMemoryAssigner()

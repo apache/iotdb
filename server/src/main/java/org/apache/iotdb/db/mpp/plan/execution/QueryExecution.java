@@ -52,17 +52,19 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
+import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,7 +155,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              logger.info("release resource because Query State is: {}", state);
+              logger.info("[ReleaseQueryResource] state is: {}", state);
               releaseResource();
             }
           }
@@ -162,7 +164,7 @@ public class QueryExecution implements IQueryExecution {
 
   public void start() {
     if (skipExecute()) {
-      logger.info("execution of query will be skipped. Transit to RUNNING immediately.");
+      logger.info("[SkipExecute]");
       constructResultForMemorySource();
       stateMachine.transitionToRunning();
       return;
@@ -184,14 +186,14 @@ public class QueryExecution implements IQueryExecution {
 
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
-      logger.error("reach max retry count. transit query to failed");
+      logger.warn("[ReachMaxRetryCount]");
       stateMachine.transitionToFailed();
       return getStatus();
     }
     logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup();
-    logger.info("wait {}ms before retry...", RETRY_INTERVAL_IN_MS);
+    logger.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
@@ -199,10 +201,12 @@ public class QueryExecution implements IQueryExecution {
       Thread.currentThread().interrupt();
     }
     retryCount++;
-    logger.info("start to retry. Retry count is: {}", retryCount);
+    logger.info("[Retry] retry count is: {}", retryCount);
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
+    // clear runtime variables in MPPQueryContext
+    context.prepareForRetry();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
@@ -233,6 +237,13 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void schedule() {
+    if (rawStatement instanceof LoadTsFileStatement) {
+      this.scheduler =
+          new LoadTsFileScheduler(
+              distributedPlan, context, stateMachine, internalServiceClientManager);
+      this.scheduler.start();
+      return;
+    }
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
         config.isClusterMode()
@@ -326,7 +337,7 @@ public class QueryExecution implements IQueryExecution {
     while (true) {
       try {
         if (resultHandle.isAborted()) {
-          logger.info("resultHandle for client is aborted");
+          logger.warn("[ResultHandleAborted]");
           stateMachine.transitionToAborted();
           if (stateMachine.getFailureStatus() != null) {
             throw new IoTDBException(
@@ -339,7 +350,7 @@ public class QueryExecution implements IQueryExecution {
           // Once the resultHandle is finished, we should transit the state of this query to
           // FINISHED.
           // So that the corresponding cleanup work could be triggered.
-          logger.info("resultHandle for client is finished");
+          logger.info("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
@@ -356,7 +367,7 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
       } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e);
+        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
         if (stateMachine.getFailureStatus() != null) {
           throw new IoTDBException(
               stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);

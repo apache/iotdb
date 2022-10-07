@@ -52,6 +52,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_PATHS = "paths";
 
   // column names for count statement
@@ -66,12 +67,22 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
   public static final String COLUMN_HOST = "Host";
-  public static final String COLUMN_PORT = "Port";
+  public static final String COLUMN_INTERNAL_PORT = "InternalPort";
+  public static final String COLUMN_RPC_PORT = "RpcPort";
 
   // column names for show functions statement
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  // column names for show triggers statement
+  public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
+  public static final String COLUMN_TRIGGER_EVENT = "Event";
+  public static final String COLUMN_TRIGGER_TYPE = "Type";
+  public static final String COLUMN_TRIGGER_STATE = "STATE";
+  public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
+  public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
+  public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
 
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
@@ -95,6 +106,14 @@ public class ColumnHeaderConstant {
   // column names for show pipe sink
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+
+  // column names for show pipe
+  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
+  public static final String COLUMN_PIPE_NAME = "name";
+  public static final String COLUMN_PIPE_ROLE = "role";
+  public static final String COLUMN_PIPE_REMOTE = "remote";
+  public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_MESSAGE = "message";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -155,7 +174,9 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVersionColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT));
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_BUILD_INFO, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathsUsingTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
@@ -190,7 +211,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
@@ -198,7 +219,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32));
 
@@ -207,7 +228,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
+          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
       ImmutableList.of(
@@ -215,13 +237,23 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
+          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTriggersColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_TRIGGER_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_EVENT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_STATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_PATTERN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_CLASSNAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_LOCATION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
@@ -234,4 +266,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPESINK_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPESINK_ATTRIBUTES, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_PIPE_CREATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 }

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -40,15 +40,20 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.load.LoadTsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -56,6 +61,7 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -94,7 +100,7 @@ public class StorageEngineV2 implements IService {
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
    */
-  @ServerConfigConsistent private static long timePartitionInterval = -1;
+  private static long timePartitionIntervalForStorage = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
@@ -131,6 +137,8 @@ public class StorageEngineV2 implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
+  private LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+
   private StorageEngineV2() {}
 
   public static StorageEngineV2 getInstance() {
@@ -138,44 +146,27 @@ public class StorageEngineV2 implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval =
-        convertMilliWithPrecision(
-            IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
+    timePartitionIntervalForStorage =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
-  }
-
-  public static long getTimePartitionInterval() {
-    if (timePartitionInterval == -1) {
+  public static long getTimePartitionIntervalForStorage() {
+    if (timePartitionIntervalForStorage == -1) {
       initTimePartition();
     }
-    return timePartitionInterval;
+    return timePartitionIntervalForStorage;
   }
 
   @TestOnly
-  public static void setTimePartitionInterval(long timePartitionInterval) {
-    StorageEngineV2.timePartitionInterval = timePartitionInterval;
+  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
+    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
   }
 
   public static long getTimePartition(long time) {
-    if (timePartitionInterval == -1) {
+    if (timePartitionIntervalForStorage == -1) {
       initTimePartition();
     }
-    return enablePartition ? time / timePartitionInterval : 0;
+    return enablePartition ? time / timePartitionIntervalForStorage : 0;
   }
 
   public static boolean isEnablePartition() {
@@ -205,19 +196,6 @@ public class StorageEngineV2 implements IService {
         Thread.currentThread().interrupt();
       }
     }
-  }
-
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (enablePartition) {
-      if (timePartitionInterval == -1) {
-        initTimePartition();
-      }
-      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime(0);
-    }
-    return timePartitionSlot;
   }
 
   public boolean isAllSgReady() {
@@ -328,7 +306,7 @@ public class StorageEngineV2 implements IService {
   public void start() {
     // build time Interval to divide time partition
     if (!enablePartition) {
-      timePartitionInterval = Long.MAX_VALUE;
+      timePartitionIntervalForStorage = Long.MAX_VALUE;
     } else {
       initTimePartition();
     }
@@ -560,7 +538,7 @@ public class StorageEngineV2 implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     dataRegionMap.values().forEach(DataRegion::compact);
@@ -664,6 +642,7 @@ public class StorageEngineV2 implements IService {
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
+        SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
@@ -679,6 +658,10 @@ public class StorageEngineV2 implements IService {
 
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
+  }
+
+  public List<DataRegion> getAllDataRegions() {
+    return new ArrayList<>(dataRegionMap.values());
   }
 
   public List<DataRegionId> getAllDataRegionIds() {
@@ -725,6 +708,79 @@ public class StorageEngineV2 implements IService {
 
   public TsFileFlushPolicy getFileFlushPolicy() {
     return fileFlushPolicy;
+  }
+
+  public TSStatus writeLoadTsFileNode(
+      DataRegionId dataRegionId, LoadTsFilePieceNode pieceNode, String uuid) {
+    TSStatus status = new TSStatus();
+
+    try {
+      loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
+    } catch (PageException e) {
+      logger.error(
+          String.format(
+              "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
+              pieceNode.getTsFile(), dataRegionId),
+          e);
+      status.setCode(TSStatusCode.TSFILE_RUNTIME_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } catch (IOException e) {
+      logger.error(
+          String.format(
+              "IO error when writing piece node of TsFile %s to DataRegion %s.",
+              pieceNode.getTsFile(), dataRegionId),
+          e);
+      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus executeLoadCommand(LoadTsFileScheduler.LoadCommand loadCommand, String uuid) {
+    TSStatus status = new TSStatus();
+
+    try {
+      switch (loadCommand) {
+        case EXECUTE:
+          if (loadTsFileManager.loadAll(uuid)) {
+            status = RpcUtils.SUCCESS_STATUS;
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
+          }
+          break;
+        case ROLLBACK:
+          if (loadTsFileManager.deleteAll(uuid)) {
+            status = RpcUtils.SUCCESS_STATUS;
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
+          }
+          break;
+        default:
+          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+          status.setMessage(String.format("Wrong load command %s.", loadCommand));
+      }
+    } catch (IOException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
+      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    } catch (LoadFileException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+
+    return status;
   }
 
   static class InstanceHolder {

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -228,7 +228,9 @@ public class ReceiverManager {
       buff.get(byteArray);
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
-        handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
+        TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
+        tsFilePipeData.setStorageGroupName(identityInfo.getStorageGroup());
+        handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
       logger.error("Pipe data transport error, {}", e.getMessage());

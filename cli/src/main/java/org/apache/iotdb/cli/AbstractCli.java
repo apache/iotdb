@@ -303,7 +303,7 @@ public abstract class AbstractCli {
     }
   }
 
-  static void displayLogo(String version) {
+  static void displayLogo(String version, String buildInfo) {
     println(
         " _____       _________  ______   ______    \n"
             + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
@@ -312,6 +312,9 @@ public abstract class AbstractCli {
             + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
             + "|_____|'.__.' |_____|  |______.'|_______/  version "
             + version
+            + " (Build: "
+            + (buildInfo != null ? buildInfo : "UNKNOWN")
+            + ")"
             + "\n"
             + "                                           \n");
   }

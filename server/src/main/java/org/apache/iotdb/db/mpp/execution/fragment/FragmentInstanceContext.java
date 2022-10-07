@@ -70,6 +70,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
     instanceContext.initialize();
+    instanceContext.start();
     return instanceContext;
   }
 
@@ -186,6 +187,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getEndTime() {
     return executionEndTime.get();
+  }
+
+  public long getStartTime() {
+    return executionStartTime.get();
   }
 
   public FragmentInstanceInfo getInstanceInfo() {

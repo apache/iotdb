@@ -645,11 +645,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreateTriggerOperator createTriggerOperator =
         new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
     createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
+    if (ctx.triggerEventClause().DELETE() != null) {
+      throw new SQLParserException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+    }
     createTriggerOperator.setEvent(
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT);
-    createTriggerOperator.setFullPath(parseFullPath(ctx.fullPath()));
+    createTriggerOperator.setFullPath(parsePrefixPath(ctx.prefixPath()));
     createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -2243,8 +2246,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }
@@ -2361,8 +2362,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     LoadFilesOperator loadFilesOperator =
         new LoadFilesOperator(
             new File(parseFilePath(ctx.fileName.getText())),
-            true,
+            IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled(),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true,
             true);
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
@@ -2379,17 +2381,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    */
   private void parseLoadFiles(
       LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
-    if (ctx.AUTOREGISTER() != null) {
-      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else if (ctx.SGLEVEL() != null) {
+    if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else {
-      throw new SQLParserException(
-          String.format(
-              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
-              ctx.getText()));
+    } else if (ctx.ONSUCCESS() != null) {
+      operator.setDeleteAfterLoad(ctx.DELETE() != null);
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());
@@ -2794,10 +2791,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
-      if (ctx.MINUS() != null) {
-        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SQLParserException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_LITERAL().getText()));
       }
-      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
@@ -2958,26 +2960,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Expression parseRegularExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new RegularExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new LikeExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -3289,8 +3281,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
-      String unWrappedString =
-          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
+      String unWrappedString = src.substring(1, src.length() - 1);
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
         String replaced = unWrappedString.replace("\"\"", "\"");
@@ -3310,23 +3301,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
           || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         return "'" + parseStringLiteral(src) + "'";
-      }
-    }
-    return src;
-  }
-
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
       }
     }
     return src;

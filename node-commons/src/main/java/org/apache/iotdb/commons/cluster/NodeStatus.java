@@ -30,13 +30,8 @@ public enum NodeStatus {
   Removing("Removing"),
 
   /** Only query statements are permitted */
-  ReadOnly("ReadOnly"),
-
-  /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
-   */
-  Error("Error");
+  ReadOnly("ReadOnly");
+  public static final String DISK_FULL = "DiskFull";
 
   private final String status;
 
