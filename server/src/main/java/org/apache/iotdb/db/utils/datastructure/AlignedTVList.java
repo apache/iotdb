@@ -89,10 +89,44 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickAlignedTVList(dataTypes);
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickAlignedTVList(dataTypes);
+      case BACKWARD:
+        return new BackAlignedTVList(dataTypes);
+      default:
+        return new TimAlignedTVList(dataTypes);
     }
-    return new TimAlignedTVList(dataTypes);
+  }
+
+  @Override
+  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
+    List<List<Object>> values = new ArrayList<>();
+    List<List<BitMap>> bitMaps = null;
+    for (int i = 0; i < columnIndex.size(); i++) {
+      // columnIndex == -1 means querying a non-exist column, add null column here
+      if (columnIndex.get(i) == -1) {
+        values.add(null);
+      } else {
+        values.add(this.values.get(columnIndex.get(i)));
+        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
+          if (bitMaps == null) {
+            bitMaps = new ArrayList<>(columnIndex.size());
+            for (int j = 0; j < columnIndex.size(); j++) {
+              bitMaps.add(null);
+            }
+          }
+          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
+        }
+      }
+    }
+    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(dataTypeList);
+    alignedTvList.timestamps = this.timestamps;
+    alignedTvList.indices = this.indices;
+    alignedTvList.values = values;
+    alignedTvList.bitMaps = bitMaps;
+    alignedTvList.rowCount = this.rowCount;
+    return alignedTvList;
   }
 
   @Override
