@@ -37,6 +37,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER;
+
 public class VotingLogList {
 
   private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
@@ -56,11 +58,13 @@ public class VotingLogList {
           long newCommitIndex = computeNewCommitIndex();
           if (newCommitIndex > member.getLogManager().getCommitLogIndex()) {
             synchronized (member.getLogManager()) {
+              long operationStartTime = RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
               try {
                 member.getLogManager().commitTo(newCommitIndex);
               } catch (LogExecutionException e) {
                 logger.error("Fail to commit {}", newCommitIndex, e);
               }
+              RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(operationStartTime);
             }
           }
         },
