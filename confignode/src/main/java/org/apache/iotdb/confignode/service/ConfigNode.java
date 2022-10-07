@@ -91,6 +91,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+        initConsensusManager();
+
         SystemPropertiesUtils.storeSystemParameters();
         SystemPropertiesUtils.storeConfigNodeId(0);
         // Seed-ConfigNode should apply itself when first start
@@ -167,6 +169,10 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
+  private void initConsensusManager() throws IOException {
+    configManager.initConsensusManager();
+  }
+
   private void setUpInternalServices() throws StartupException, IOException {
     // Setup JMXService
     registerManager.register(new JMXService());
@@ -219,6 +225,8 @@ public class ConfigNode implements ConfigNodeMBean {
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
         CONF.setConfigNodeId(resp.getConfigNodeId());
+
+        initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();

@@ -134,7 +134,7 @@ public class ConfigManager implements IManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
-  private final ConsensusManager consensusManager;
+  private ConsensusManager consensusManager;
 
   /** Manage cluster node */
   private final NodeManager nodeManager;
@@ -161,6 +161,8 @@ public class ConfigManager implements IManager {
   /** Sync */
   private final SyncManager syncManager;
 
+  private final PartitionRegionStateMachine stateMachine;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -183,7 +185,7 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             syncInfo);
-    PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
+    this.stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
@@ -198,6 +200,13 @@ public class ConfigManager implements IManager {
 
     // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
     // above managers
+    // TODO:
+    // consensusManager不做初始化，因为创建时内部的RatisConsensus需要nodeId作为server的id，但是这个id只有在向seedConfignode发送注册时才会生成
+    // this.consensusManager = new ConsensusManager(this, stateMachine);
+    this.consensusManager = null;
+  }
+
+  public void initConsensusManager() throws IOException {
     this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
