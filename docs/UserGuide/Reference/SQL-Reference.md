@@ -177,10 +177,11 @@ Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 * Delete Timeseries Statement
 
 ```
-DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
+(DELETE | DROP) TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
+Eg: IoTDB > DROP TIMESERIES root.ln.wf01.wt01.*
 ```
 
 * Alter Timeseries Statement

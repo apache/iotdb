@@ -166,10 +166,11 @@ Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 * 删除时间序列语句
 
 ```
-DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
+(DELETE | DROP) TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
+Eg: IoTDB > DROP TIMESERIES root.ln.wf01.wt01.*
 ```
 
 * 修改时间序列标签属性语句

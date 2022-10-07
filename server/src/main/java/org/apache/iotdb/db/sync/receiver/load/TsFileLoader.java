@@ -62,6 +62,7 @@ public class TsFileLoader implements ILoader {
               Operator.OperatorType.LOAD_FILES,
               true,
               IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+              true,
               true);
       planExecutor.processNonQuery(plan);
     } catch (Exception e) {

@@ -1267,11 +1267,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
+      Set<TTimePartitionSlot> timePartitionSlotSet =
+          dataPartitionQueryParamMap.computeIfAbsent(
+              insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet());
+      timePartitionSlotSet.addAll(insertRowStatement.getTimePartitionSlots());
+    }
+
+    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
+      dataPartitionQueryParam.setDevicePath(entry.getKey());
+      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
@@ -1290,13 +1298,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
         insertMultiTabletsStatement.getInsertTabletStatementList()) {
+      Set<TTimePartitionSlot> timePartitionSlotSet =
+          dataPartitionQueryParamMap.computeIfAbsent(
+              insertTabletStatement.getDevicePath().getFullPath(), k -> new HashSet());
+      timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
+    }
+
+    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(
-          insertTabletStatement.getTimePartitionSlots());
+      dataPartitionQueryParam.setDevicePath(entry.getKey());
+      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
@@ -1361,23 +1376,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // auto create and verify schema
-    if (loadTsFileStatement.isAutoCreateSchema()) {
-      try {
-        if (loadTsFileStatement.isVerifySchema()) {
-          verifyLoadingMeasurements(device2Schemas);
-        }
-        autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
-        ISchemaTree schemaTree = autoCreateSchema(device2Schemas, device2IsAligned);
-        if (loadTsFileStatement.isVerifySchema()) {
-          verifySchema(schemaTree, device2Schemas, device2IsAligned);
-        }
-      } catch (Exception e) {
-        logger.error("Auto create or verify schema error.", e);
-        throw new SemanticException(
-            String.format(
-                "Auto create or verify schema error when executing statement %s.",
-                loadTsFileStatement));
+    try {
+      if (loadTsFileStatement.isVerifySchema()) {
+        verifyLoadingMeasurements(device2Schemas);
       }
+      if (loadTsFileStatement.isAutoCreateSchema()) {
+        autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
+      }
+      ISchemaTree schemaTree =
+          autoCreateSchema(
+              device2Schemas,
+              device2IsAligned); // schema fetcher will not auto create if config set
+      // isAutoCreateSchemaEnabled is false.
+      if (loadTsFileStatement.isVerifySchema()) {
+        verifySchema(schemaTree, device2Schemas, device2IsAligned);
+      }
+    } catch (Exception e) {
+      logger.error("Auto create or verify schema error.", e);
+      throw new SemanticException(
+          String.format(
+              "Auto create or verify schema error when executing statement %s.",
+              loadTsFileStatement));
     }
 
     // construct partition info

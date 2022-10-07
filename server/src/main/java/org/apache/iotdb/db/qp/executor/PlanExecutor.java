@@ -1444,7 +1444,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource, true);
+        StorageEngine.getInstance().loadNewTsFile(resource, plan.isDeleteAfterLoad());
       }
     } catch (Exception e) {
       logger.error("fail to load file {}", file.getName(), e);
