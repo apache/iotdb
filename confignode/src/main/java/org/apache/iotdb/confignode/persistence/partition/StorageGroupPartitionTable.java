@@ -94,6 +94,15 @@ public class StorageGroupPartitionTable {
         replicaSet -> regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
   }
 
+  /**
+   * Delete RegionGroups' cache
+   *
+   * @param replicaSets List<TRegionReplicaSet>
+   */
+  public void deleteRegionGroups(List<TRegionReplicaSet> replicaSets) {
+    replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
+  }
+
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
@@ -380,6 +389,7 @@ public class StorageGroupPartitionTable {
         return Stream.concat(
                 schemaPartitionTable.getSeriesSlotList().stream(),
                 dataPartitionTable.getSeriesSlotList().stream())
+            .distinct()
             .collect(Collectors.toList());
     }
   }

@@ -31,7 +31,10 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -41,6 +44,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteSt
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.GetRoutingResp;
+import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -249,7 +255,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public DataSet getSchemaPartition(GetSchemaPartitionPlan plan) {
     AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
-    // TODO: Replace this map whit new SchemaPartition
+    // TODO: Replace this map with new SchemaPartition
     Map<String, SchemaPartitionTable> schemaPartition = new ConcurrentHashMap<>();
 
     if (plan.getPartitionSlotsMap().size() == 0) {
@@ -770,31 +776,41 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  public List<TConsensusGroupId> getRouting(
-      String storageGroup, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
-    if (!isStorageGroupExisted(storageGroup)) {
-      return new ArrayList<>();
+  public DataSet getRouting(GetRoutingPlan plan) {
+    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+      return new GetRoutingResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
-    return sgPartitionTable.getRouting(seriesSlotId, timeSlotId);
+    StorageGroupPartitionTable sgPartitionTable =
+        storageGroupPartitionTables.get(plan.getStorageGroup());
+    return new GetRoutingResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        sgPartitionTable.getRouting(plan.getSeriesSlotId(), plan.getTimeSlotId()));
   }
 
-  public List<TTimePartitionSlot> getTimeSlotList(
-      String storageGroup, TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
-    if (!isStorageGroupExisted(storageGroup)) {
-      return new ArrayList<>();
+  public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
+    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+      return new GetTimeSlotListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
-    return sgPartitionTable.getTimeSlotList(seriesSlotId, startTime, endTime);
+    StorageGroupPartitionTable sgPartitionTable =
+        storageGroupPartitionTables.get(plan.getStorageGroup());
+    return new GetTimeSlotListResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        sgPartitionTable.getTimeSlotList(
+            plan.getSeriesSlotId(), plan.getStartTime(), plan.getEndTime()));
   }
 
-  public List<TSeriesPartitionSlot> getSeriesSlotList(
-      String storageGroup, TConsensusGroupType type) {
-    if (!isStorageGroupExisted(storageGroup)) {
-      return new ArrayList<>();
+  public DataSet getSeriesSlotList(GetSeriesSlotListPlan plan) {
+    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+      return new GetSeriesSlotListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable = storageGroupPartitionTables.get(storageGroup);
-    return sgPartitionTable.getSeriesSlotList(type);
+    StorageGroupPartitionTable sgPartitionTable =
+        storageGroupPartitionTables.get(plan.getStorageGroup());
+    return new GetSeriesSlotListResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        sgPartitionTable.getSeriesSlotList(plan.getPartitionType()));
   }
 
   public int getStorageGroupPartitionTableSize() {

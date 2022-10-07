@@ -667,19 +667,22 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
       Assert.assertEquals(timePartitionBatchSize, getTimeSlotListResp.getTimeSlotListSize());
 
-      getTimeSlotListReq.setStartTime(5 * testTimePartitionInterval);
+      long startTime = 5;
+      getTimeSlotListReq.setStartTime(startTime * testTimePartitionInterval);
 
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-      Assert.assertEquals(timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
+      Assert.assertEquals(
+          timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
 
-      getTimeSlotListReq.setEndTime(6 * testTimePartitionInterval);
+      long endTime = 6;
+      getTimeSlotListReq.setEndTime(endTime * testTimePartitionInterval);
 
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-      Assert.assertEquals(1, getTimeSlotListResp.getTimeSlotListSize());
+      Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
 
       // Test GetSeriesSlotList api
       TGetSeriesSlotListReq getSeriesSlotListReq;
@@ -696,7 +699,8 @@ public class IoTDBClusterPartitionIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionBatchSize + 2, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          seriesPartitionBatchSize + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 

@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -48,8 +47,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionP
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -94,12 +96,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -488,8 +487,7 @@ public class ConfigManager implements IManager {
         new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
 
     SchemaPartitionResp queryResult =
-        (SchemaPartitionResp)
-            partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+        partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     // TODO: Delete or hide this LOGGER before officially release.
@@ -511,8 +509,7 @@ public class ConfigManager implements IManager {
         getNodePathsPartitionPlan.setLevel(level);
       }
       SchemaNodeManagementResp resp =
-          (SchemaNodeManagementResp)
-              partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
+          partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
               getLoadManager().genLatestRegionRouteMap());
@@ -565,7 +562,7 @@ public class ConfigManager implements IManager {
     }
 
     DataPartitionResp queryResult =
-        (DataPartitionResp) partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
@@ -850,7 +847,7 @@ public class ConfigManager implements IManager {
   public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
+      return partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
@@ -1013,46 +1010,33 @@ public class ConfigManager implements IManager {
     }
   }
 
+  @Override
   @TestOnly
-  public TGetRoutingResp getRouting(TGetRoutingReq req) {
+  public TGetRoutingResp getRouting(GetRoutingPlan plan) {
     TSStatus status = confirmLeader();
-    TGetRoutingResp resp = new TGetRoutingResp();
-    resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataRegionIdList(
-          partitionManager.getRouting(
-              req.getStorageGroup(), req.getSeriesSlotId(), req.getTimeSlotId()));
-    }
-    return resp;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getRouting(plan).convertToRpcGetRoutingResp()
+        : new TGetRoutingResp(status);
   }
 
+  @Override
   @TestOnly
-  public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
+  public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    TGetTimeSlotListResp resp = new TGetTimeSlotListResp();
-    resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
-      long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
-      resp.setStatus(status);
-      resp.setTimeSlotList(
-          partitionManager.getTimeSlotList(
-              req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime));
-    }
-    return resp;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
+        : new TGetTimeSlotListResp(status);
   }
 
+  @Override
   @TestOnly
-  public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+  public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
     TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TConsensusGroupType type =
-          req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
-      resp.setSeriesSlotList(partitionManager.getSeriesSlotList(req.getStorageGroup(), type));
-    }
-    return resp;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
+        : new TGetSeriesSlotListResp(status);
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */
