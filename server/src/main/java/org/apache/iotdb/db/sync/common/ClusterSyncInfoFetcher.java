@@ -86,7 +86,7 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public List<PipeSink> getAllPipeSinks() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   // endregion
@@ -115,12 +115,12 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public List<PipeInfo> getAllPipeInfos() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public PipeInfo getRunningPipeInfo() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
