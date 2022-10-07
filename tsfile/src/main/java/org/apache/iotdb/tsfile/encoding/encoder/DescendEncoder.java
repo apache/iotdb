@@ -119,10 +119,10 @@ public class DescendEncoder extends Encoder {
     BitConstructor constructor = new BitConstructor();
     // 32位数据点个数
     constructor.add(writeIndex, 32);
-    System.out.println("N:" + writeIndex);
+    //    System.out.println("N:" + writeIndex);
     // 32位有效数据点个数
     constructor.add(m, 32);
-    System.out.println("M:" + m);
+    //    System.out.println("M:" + m);
     constructor.add(beta, 32);
     // 分组位压缩编码index序列
     encodeIndex(index, constructor);

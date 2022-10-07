@@ -79,6 +79,8 @@ public abstract class TSEncodingBuilder {
         return new Simple8b();
       case SIMPLE8B_SPARSE:
         return new SparseSimple8b();
+      case BUFF:
+        return new Buff();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -559,6 +561,33 @@ public abstract class TSEncodingBuilder {
     @Override
     public String toString() {
       return JsonFormatConstant.MAX_POINT_NUMBER + ":" + maxPointNumber;
+    }
+  }
+
+  /** for INT32, INT64, FLOAT, DOUBLE. */
+  public static class Buff extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+          return new BuffEncoder();
+        default:
+          throw new UnSupportedDataTypeException(
+              "SIMPLE8B_SPARSE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    /**
+     * Descend could specify <b>max_point_number</b> in given JSON Object, which means the maximum
+     * decimal digits for float or double data.
+     */
+    public void initFromProps(Map<String, String> props) {
+      // set max error from initialized map or default value if not set
     }
   }
 }

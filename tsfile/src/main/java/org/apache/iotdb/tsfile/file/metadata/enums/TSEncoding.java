@@ -32,7 +32,8 @@ public enum TSEncoding {
   FREQ((byte) 10),
   DESCEND((byte) 11),
   SIMPLE8B((byte) 12),
-  SIMPLE8B_SPARSE((byte) 13);
+  SIMPLE8B_SPARSE((byte) 13),
+  BUFF((byte) 14);
 
   private final byte type;
 
@@ -80,6 +81,8 @@ public enum TSEncoding {
         return TSEncoding.SIMPLE8B;
       case 13:
         return TSEncoding.SIMPLE8B_SPARSE;
+      case 14:
+        return TSEncoding.BUFF;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

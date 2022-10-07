@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.compress.arithmetic.AdaptiveArithmeticCompress;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.exception.compress.GZIPCompressOverflowException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -65,6 +65,8 @@ public interface ICompressor extends Serializable {
         return new IOTDBLZ4Compressor();
       case GZIP:
         return new GZIPCompressor();
+      case ARITHMETIC:
+        return new ArithmeticCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -188,6 +190,7 @@ public interface ICompressor extends Serializable {
   }
 
   class IOTDBLZ4Compressor implements ICompressor {
+
     private LZ4Compressor compressor;
 
     public IOTDBLZ4Compressor() {
@@ -232,6 +235,7 @@ public interface ICompressor extends Serializable {
   }
 
   class GZIPCompress {
+
     public static byte[] compress(byte[] data) throws IOException {
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       GZIPOutputStream gzip = new GZIPOutputStream(out);
@@ -257,6 +261,7 @@ public interface ICompressor extends Serializable {
   }
 
   class GZIPCompressor implements ICompressor {
+
     @Override
     public byte[] compress(byte[] data) throws IOException {
       if (null == data) {
@@ -309,6 +314,59 @@ public interface ICompressor extends Serializable {
     @Override
     public CompressionType getType() {
       return GZIP;
+    }
+  }
+
+  class ArithmeticCompressor implements ICompressor {
+
+    @Override
+    public byte[] compress(byte[] data) throws IOException {
+      if (null == data) {
+        return new byte[0];
+      }
+      return AdaptiveArithmeticCompress.compress(data);
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(data, offset, dataBefore, 0, length);
+
+      return AdaptiveArithmeticCompress.compress(dataBefore);
+    }
+
+    @Override
+    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+      byte[] res = compress(data, offset, length);
+      if (res.length > compressed.length) {
+        throw new GZIPCompressOverflowException();
+      }
+
+      System.arraycopy(res, 0, compressed, 0, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+      int length = data.remaining();
+      byte[] dataBefore = new byte[length];
+      data.get(dataBefore, 0, length);
+      byte[] res = compress(dataBefore);
+      if (res.length > compressed.capacity()) {
+        throw new GZIPCompressOverflowException();
+      }
+      compressed.put(res);
+      return res.length;
+    }
+
+    @Override
+    public int getMaxBytesForCompression(int uncompressedDataSize) {
+      return uncompressedDataSize;
+    }
+
+    @Override
+    public CompressionType getType() {
+      return CompressionType.ARITHMETIC;
     }
   }
 }

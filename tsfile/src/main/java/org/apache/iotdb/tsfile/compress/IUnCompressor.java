@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.compress.arithmetic.AdaptiveArithmeticCompress;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
@@ -54,6 +54,8 @@ public interface IUnCompressor {
         return new LZ4UnCompressor();
       case GZIP:
         return new GZIPUnCompressor();
+      case ARITHMETIC:
+        return new ArithmeticUncompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -310,6 +312,56 @@ public interface IUnCompressor {
     @Override
     public CompressionType getCodecName() {
       return CompressionType.GZIP;
+    }
+  }
+
+  class ArithmeticUncompressor implements IUnCompressor {
+
+    @Override
+    public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
+      throw new UnsupportedOperationException(
+          "Not supported yet."); // To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public int getUncompressedLength(ByteBuffer buffer) throws IOException {
+      throw new UnsupportedOperationException(
+          "Not supported yet."); // To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public byte[] uncompress(byte[] byteArray) throws IOException {
+      if (null == byteArray) {
+        return new byte[0];
+      }
+      return AdaptiveArithmeticCompress.decompress(byteArray);
+    }
+
+    @Override
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(byteArray, offset, dataBefore, 0, length);
+      byte[] res = uncompress(dataBefore);
+      System.arraycopy(res, 0, output, outOffset, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+      int length = compressed.remaining();
+      byte[] dataBefore = new byte[length];
+      compressed.get(dataBefore, 0, length);
+
+      byte[] res = uncompress(dataBefore);
+      uncompressed.put(res);
+
+      return res.length;
+    }
+
+    @Override
+    public CompressionType getCodecName() {
+      return CompressionType.ARITHMETIC;
     }
   }
 }

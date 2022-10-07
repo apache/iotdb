@@ -73,6 +73,7 @@ public class SchemaUtils {
     intSet.add(TSEncoding.DESCEND);
     intSet.add(TSEncoding.SIMPLE8B);
     intSet.add(TSEncoding.SIMPLE8B_SPARSE);
+    intSet.add(TSEncoding.BUFF);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -86,6 +87,7 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.DESCEND);
     floatSet.add(TSEncoding.SIMPLE8B);
     floatSet.add(TSEncoding.SIMPLE8B_SPARSE);
+    floatSet.add(TSEncoding.BUFF);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
