@@ -145,7 +145,7 @@ public class EnvironmentUtils {
     }
 
     // clear archiving manager
-    ArchivingManager.getInstance().close();
+    ArchivingManager.getInstance().clear();
 
     IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
