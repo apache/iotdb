@@ -73,7 +73,9 @@ public class StopPipeProcedure extends OperatePipeProcedure {
     LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
     TSStatus status =
         RpcUtils.squashResponseStatusList(
-            env.operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE));
+            env.getConfigManager()
+                .getSyncManager()
+                .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(

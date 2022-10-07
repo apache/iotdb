@@ -532,6 +532,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         case STOP_PIPE:
           SyncService.getInstance().stopPipe(req.getPipeName());
           break;
+        case DROP_PIPE:
+          SyncService.getInstance().dropPipe(req.getPipeName());
+          break;
+        default:
+          return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+              .setMessage("Unsupported operation.");
       }
       return RpcUtils.SUCCESS_STATUS;
     } catch (PipeException e) {

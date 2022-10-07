@@ -73,7 +73,9 @@ public class StartPipeProcedure extends OperatePipeProcedure {
     LOGGER.info("Start to broadcast start PIPE [{}] on Data Nodes", pipeName);
     TSStatus status =
         RpcUtils.squashResponseStatusList(
-            env.operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE));
+            env.getConfigManager()
+                .getSyncManager()
+                .operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(

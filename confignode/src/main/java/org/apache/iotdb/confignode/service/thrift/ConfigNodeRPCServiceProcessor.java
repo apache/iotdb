@@ -634,7 +634,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropPipe(String pipeName) throws TException {
-    return null;
+    return configManager.dropPipe(pipeName);
   }
 
   @Override

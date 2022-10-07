@@ -1049,6 +1049,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus dropPipe(String pipeName) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.dropPipe(pipeName);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TShowPipeResp showPipe(TShowPipeReq req) {
     TSStatus status = confirmLeader();
     TShowPipeResp resp = new TShowPipeResp();

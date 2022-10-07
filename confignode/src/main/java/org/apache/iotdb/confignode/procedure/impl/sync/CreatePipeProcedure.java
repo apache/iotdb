@@ -72,7 +72,9 @@ public class CreatePipeProcedure extends OperatePipeProcedure {
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", pipeInfo.getPipeName());
-    TSStatus status = RpcUtils.squashResponseStatusList(env.preCreatePipeOnDataNodes(pipeInfo));
+    TSStatus status =
+        RpcUtils.squashResponseStatusList(
+            env.getConfigManager().getSyncManager().preCreatePipeOnDataNodes(pipeInfo));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
