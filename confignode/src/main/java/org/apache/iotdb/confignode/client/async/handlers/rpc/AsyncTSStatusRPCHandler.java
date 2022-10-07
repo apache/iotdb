@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
+/** General RPC handler for TSStatus response type */
 public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler.class);
@@ -46,8 +47,11 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
   @Override
   public void onComplete(TSStatus response) {
+    // Put response
     responseMap.put(requestId, response);
+
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Remove only if success
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
@@ -57,6 +61,8 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
           formattedTargetLocation,
           response);
     }
+
+    // Always CountDown
     countDownLatch.countDown();
   }
 
@@ -71,10 +77,12 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
             + e.getMessage();
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     responseMap.put(
         requestId,
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+
+    // Always CountDown
+    countDownLatch.countDown();
   }
 }

@@ -33,11 +33,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * Asynchronous Client handler
+ *
+ * @param <Q> ClassName of RPC request
+ * @param <R> ClassName of RPC response
+ */
 public class AsyncClientHandler<Q, R> {
 
   // Type of RPC request
   protected final DataNodeRequestType requestType;
 
+  /**
+   * Map key: The indices of asynchronous RPC requests
+   *
+   * <p>Map value: The corresponding RPC request
+   */
   private final Map<Integer, Q> requestMap;
 
   /**
