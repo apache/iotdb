@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// TODO(sync): there may need acquire and release lock to control concurrency
 public class ClusterSyncInfo implements SnapshotProcessor {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfo.class);

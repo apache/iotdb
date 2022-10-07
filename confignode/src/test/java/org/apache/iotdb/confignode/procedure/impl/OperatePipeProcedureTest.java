@@ -20,7 +20,9 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -68,8 +70,6 @@ public class OperatePipeProcedureTest {
   public void serializeDeserializeStartPipeProcedureTest() throws PipeException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    ;
-
     StartPipeProcedure p1 = new StartPipeProcedure("pipeName");
 
     try {
@@ -78,6 +78,42 @@ public class OperatePipeProcedureTest {
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
       StartPipeProcedure p2 = (StartPipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeStopPipeProcedureTest() throws PipeException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    StopPipeProcedure p1 = new StopPipeProcedure("pipeName");
+
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      StopPipeProcedure p2 = (StopPipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void serializeDeserializeDropPipeProcedureTest() throws PipeException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    DropPipeProcedure p1 = new DropPipeProcedure("pipeName");
+
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      DropPipeProcedure p2 = (DropPipeProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
     } catch (Exception e) {
       fail();
