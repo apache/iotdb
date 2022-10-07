@@ -1,4 +1,4 @@
-package org.apache.iotdb.confignode.client.async.handlers;
+package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.async.handlers;
+package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -31,37 +31,33 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class DeleteDataForDeleteTimeSeriesHandler extends AbstractAsyncRPCHandler<TSStatus> {
+public class DeleteTimeSeriesRPCHandler extends AsyncTSStatusRPCHandler {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DeleteDataForDeleteTimeSeriesHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesRPCHandler.class);
 
-  public DeleteDataForDeleteTimeSeriesHandler(
+  public DeleteTimeSeriesRPCHandler(
       DataNodeRequestType requestType,
+      int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       Map<Integer, TSStatus> responseMap,
       CountDownLatch countDownLatch) {
-    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
+    super(requestType, requestId, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    responseMap.put(targetDataNode.getDataNodeId(), tsStatus);
+    responseMap.put(requestId, tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.info("Successfully delete data for delete timeseries on DataNode: {}", targetDataNode);
+      dataNodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
+      dataNodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to delete data for delete timeseries on DataNode {}, {}",
-          targetDataNode,
-          tsStatus);
+          "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to delete data for delete timeseries on DataNode {}, {}",
-          targetDataNode,
-          tsStatus);
+          "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -69,7 +65,8 @@ public class DeleteDataForDeleteTimeSeriesHandler extends AbstractAsyncRPCHandle
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Delete data for delete timeseries error on DataNode: {id="
+        requestType
+            + " error on DataNode: {id="
             + targetDataNode.getDataNodeId()
             + ", internalEndPoint="
             + targetDataNode.getInternalEndPoint()
@@ -79,7 +76,7 @@ public class DeleteDataForDeleteTimeSeriesHandler extends AbstractAsyncRPCHandle
 
     countDownLatch.countDown();
     responseMap.put(
-        targetDataNode.dataNodeId,
+        requestId,
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
   }

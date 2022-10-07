@@ -217,37 +217,36 @@ public class ClusterSchemaManager {
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
-    Map<Integer, TDataNodeLocation> dataNodeLocationMaps = new ConcurrentHashMap<>();
+
+    // Map<DataNodeId, TDataNodeLocation>
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    // Map<DataNodeId, StorageGroupPatterns>
     Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
     for (String storageGroup : storageSchemaMap.keySet()) {
-
+      // Get related DataNodes
       Set<TDataNodeLocation> dataNodeLocations =
           getPartitionManager()
               .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        if (!dataNodeLocationMaps.containsKey(dataNodeLocation.getDataNodeId())) {
-          dataNodeLocationMaps.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-          List<String> storageGroups = new ArrayList<>();
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        } else {
-          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        }
+        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+        dnlToSgMap
+            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
+            .add(storageGroup);
       }
     }
 
-    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler = new AsyncClientHandler<>();
-    for (Map.Entry<Integer, List<String>> entry : dnlToSgMap.entrySet()) {
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-      dataNodeLocationMap.put(entry.getKey(), dataNodeLocationMaps.get(entry.getKey()));
-      AsyncDataNodeClientPool.getInstance()
-          .sendAsyncRequestToDataNodeWithRetry(
-              new TSetTTLReq(entry.getValue(), setTTLPlan.getTTL()),
-              dataNodeLocationMap,
-              DataNodeRequestType.SET_TTL);
-    }
+    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+    dnlToSgMap
+        .keySet()
+        .forEach(
+            dataNodeId -> {
+              TSetTTLReq setTTLReq =
+                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
+              clientHandler.putRequest(dataNodeId, setTTLReq);
+              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
+            });
     // TODO: Check response
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 

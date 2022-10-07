@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure;
+package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;

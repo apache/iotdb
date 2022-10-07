@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.procedure.impl;
+package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
-import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -49,6 +49,8 @@ public class CreateRegionGroupsProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionGroupsProcedure.class);
 
+  private TConsensusGroupType consensusGroupType;
+
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
@@ -58,13 +60,18 @@ public class CreateRegionGroupsProcedure
     super();
   }
 
-  public CreateRegionGroupsProcedure(CreateRegionGroupsPlan createRegionGroupsPlan) {
+  public CreateRegionGroupsProcedure(
+      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+    this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
   }
 
+  @TestOnly
   public CreateRegionGroupsProcedure(
+      TConsensusGroupType consensusGroupType,
       CreateRegionGroupsPlan createRegionGroupsPlan,
       Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
+    this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
     this.failedRegionReplicaSets = failedRegionReplicaSets;
   }
@@ -73,7 +80,7 @@ public class CreateRegionGroupsProcedure
   protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateRegionGroupsState state) {
     switch (state) {
       case CREATE_REGION_GROUPS:
-        failedRegionReplicaSets = env.doRegionCreation(createRegionGroupsPlan);
+        failedRegionReplicaSets = env.doRegionCreation(consensusGroupType, createRegionGroupsPlan);
         setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
         break;
       case SHUNT_REGION_REPLICAS:
@@ -214,6 +221,7 @@ public class CreateRegionGroupsProcedure
     // must serialize CREATE_REGION_GROUPS.ordinal() firstly
     stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
     super.serialize(stream);
+    stream.writeInt(consensusGroupType.getValue());
     createRegionGroupsPlan.serializeForProcedure(stream);
     stream.writeInt(failedRegionReplicaSets.size());
     failedRegionReplicaSets.forEach(
@@ -226,6 +234,7 @@ public class CreateRegionGroupsProcedure
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+    this.consensusGroupType = TConsensusGroupType.findByValue(byteBuffer.getInt());
     try {
       createRegionGroupsPlan.deserializeForProcedure(byteBuffer);
       failedRegionReplicaSets.clear();
@@ -244,21 +253,17 @@ public class CreateRegionGroupsProcedure
   }
 
   @Override
-  public boolean equals(Object that) {
-    if (that instanceof CreateRegionGroupsProcedure) {
-      CreateRegionGroupsProcedure thatProc = (CreateRegionGroupsProcedure) that;
-      return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
-          && thatProc.createRegionGroupsPlan.equals(this.createRegionGroupsPlan)
-          && thatProc.failedRegionReplicaSets.equals(this.failedRegionReplicaSets);
-    }
-    return false;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CreateRegionGroupsProcedure that = (CreateRegionGroupsProcedure) o;
+    return consensusGroupType == that.consensusGroupType
+        && createRegionGroupsPlan.equals(that.createRegionGroupsPlan)
+        && failedRegionReplicaSets.equals(that.failedRegionReplicaSets);
   }
 
   @Override
   public int hashCode() {
-    int result = createRegionGroupsPlan.hashCode();
-    result = 31 * result + Objects.hash(failedRegionReplicaSets);
-    return result;
+    return Objects.hash(consensusGroupType, createRegionGroupsPlan, failedRegionReplicaSets);
   }
 }

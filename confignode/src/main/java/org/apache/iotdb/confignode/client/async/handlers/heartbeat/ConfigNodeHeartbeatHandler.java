@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.async.handlers;
+package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
 import org.apache.iotdb.confignode.manager.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;

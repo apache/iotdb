@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.async.handlers;
+
+package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -30,48 +32,56 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class SetSystemStatusHandler extends AbstractAsyncRPCHandler<TSStatus> {
+public class FetchSchemaBlackListRPCHandler
+    extends AbstractAsyncRPCHandler<TFetchSchemaBlackListResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SetSystemStatusHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(FetchSchemaBlackListRPCHandler.class);
 
-  public SetSystemStatusHandler(
+  public FetchSchemaBlackListRPCHandler(
       DataNodeRequestType requestType,
+      int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> responseMap,
+      Map<Integer, TFetchSchemaBlackListResp> responseMap,
       CountDownLatch countDownLatch) {
-    super(requestType, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
+    super(requestType, requestId, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
-  public void onComplete(TSStatus response) {
-    responseMap.put(targetDataNode.getDataNodeId(), response);
-    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.info("Successfully Set System Status on DataNode: {}", targetDataNode);
+  public void onComplete(TFetchSchemaBlackListResp tFetchSchemaBlackListResp) {
+    TSStatus tsStatus = tFetchSchemaBlackListResp.getStatus();
+    responseMap.put(requestId, tFetchSchemaBlackListResp);
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataNodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully fetch schema black list on DataNode: {}", targetDataNode);
+    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      dataNodeLocationMap.remove(requestId);
+      LOGGER.error(
+          "Failed to fetch schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to Set System Status on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          response);
+          "Failed to fetch schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(Exception e) {
     String errorMsg =
-        "Set System Status error on DataNode: {id="
+        "Fetch schema black list error on DataNode: {id="
             + targetDataNode.getDataNodeId()
             + ", internalEndPoint="
             + targetDataNode.getInternalEndPoint()
             + "}"
-            + exception.getMessage();
+            + e.getMessage();
+    LOGGER.error(errorMsg);
 
     countDownLatch.countDown();
-    responseMap.put(
-        targetDataNode.getDataNodeId(),
+    TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
+    resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+    responseMap.put(requestId, resp);
   }
 }

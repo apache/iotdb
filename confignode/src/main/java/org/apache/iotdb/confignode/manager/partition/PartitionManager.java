@@ -383,7 +383,8 @@ public class PartitionManager {
       if (!allotmentMap.isEmpty()) {
         CreateRegionGroupsPlan createRegionGroupsPlan =
             getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
-        result = getProcedureManager().createRegionGroups(createRegionGroupsPlan);
+        result =
+            getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
       } else {
         result = RpcUtils.SUCCESS_STATUS;
       }
