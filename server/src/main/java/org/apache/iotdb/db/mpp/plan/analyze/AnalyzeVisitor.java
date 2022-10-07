@@ -1391,8 +1391,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
-    if (!config.isAutoCreateSchemaEnabled() && dataPartition.isEmpty()) {
+    if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailMessage(
+          "Failed to auto create storage group because enable_auto_create_schema is FALSE.");
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
