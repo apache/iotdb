@@ -186,6 +186,11 @@ public class ArchivingManager {
     currentTaskId = 0;
   }
 
+  public void clear() {
+    close();
+    LOG_FILE.delete();
+  }
+
   /** creates a copy of archivingTasks and returns */
   public List<ArchivingTask> getArchivingTasks() {
     try {
