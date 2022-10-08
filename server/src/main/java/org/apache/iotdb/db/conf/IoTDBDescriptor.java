@@ -406,12 +406,6 @@ public class IoTDBDescriptor {
                 "avg_series_point_number_threshold",
                 Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
-    conf.setMaxChunkRawSizeThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "max_chunk_raw_size_threshold",
-                Long.toString(conf.getMaxChunkRawSizeThreshold()))));
-
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
             properties.getProperty(
