@@ -79,10 +79,10 @@ public class TsFileAndModSettleToolTest {
 
     config = IoTDBDescriptor.getInstance().getConfig();
     originEnablePartition = config.isEnablePartition();
-    originPartitionInterval = config.getPartitionInterval();
+    originPartitionInterval = config.getTimePartitionIntervalForStorage();
 
     config.setEnablePartition(newEnablePartition);
-    config.setPartitionInterval(newPartitionInterval);
+    config.setTimePartitionIntervalForStorage(newPartitionInterval);
 
     StorageEngine.setEnablePartition(newEnablePartition);
     StorageEngine.setTimePartitionInterval(newPartitionInterval);
@@ -105,7 +105,7 @@ public class TsFileAndModSettleToolTest {
       }
     }
     config.setEnablePartition(originEnablePartition);
-    config.setPartitionInterval(originPartitionInterval);
+    config.setTimePartitionIntervalForStorage(originPartitionInterval);
 
     StorageEngine.setEnablePartition(originEnablePartition);
     StorageEngine.setTimePartitionInterval(originPartitionInterval);

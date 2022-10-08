@@ -889,11 +889,6 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
 
-    conf.setPartitionInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "partition_interval", String.valueOf(conf.getPartitionInterval()))));
-
     conf.setTimePartitionIntervalForStorage(
         Long.parseLong(
             properties.getProperty(

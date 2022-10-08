@@ -758,12 +758,6 @@ public class IoTDBConfig {
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
 
-  /**
-   * Time range for partitioning data inside each storage group, the unit is second. Default time is
-   * a day.
-   */
-  private long partitionInterval = 86400;
-
   /** Time partition interval for storage in milliseconds */
   private long timePartitionIntervalForStorage = 86400000;
 
@@ -1110,14 +1104,6 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
-  }
-
-  public long getPartitionInterval() {
-    return partitionInterval;
-  }
-
-  public void setPartitionInterval(long partitionInterval) {
-    this.partitionInterval = partitionInterval;
   }
 
   public long getTimePartitionIntervalForStorage() {
