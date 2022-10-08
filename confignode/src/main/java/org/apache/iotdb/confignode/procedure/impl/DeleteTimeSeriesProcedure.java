@@ -94,38 +94,46 @@ public class DeleteTimeSeriesProcedure
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeleteTimeSeriesState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    switch (state) {
-      case CONSTRUCT_BLACK_LIST:
-        LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
-        if (constructBlackList(env) > 0) {
-          setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+    long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case CONSTRUCT_BLACK_LIST:
+          LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
+          if (constructBlackList(env) > 0) {
+            setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+            break;
+          } else {
+            setFailure(
+                new ProcedureException(
+                    new PathNotExistException(
+                        patternTree.getAllPathPatterns().stream()
+                            .map(PartialPath::getFullPath)
+                            .collect(Collectors.toList()))));
+            return Flow.NO_MORE_STATE;
+          }
+        case CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
+          invalidateCache(env);
           break;
-        } else {
-          setFailure(
-              new ProcedureException(
-                  new PathNotExistException(
-                      patternTree.getAllPathPatterns().stream()
-                          .map(PartialPath::getFullPath)
-                          .collect(Collectors.toList()))));
+        case DELETE_DATA:
+          LOGGER.info("Delete data of timeseries {}", requestMessage);
+          deleteData(env);
+          break;
+        case DELETE_TIMESERIES_SCHEMA:
+          LOGGER.info("Delete timeseries schema of {}", requestMessage);
+          deleteTimeSeriesSchema(env);
           return Flow.NO_MORE_STATE;
-        }
-      case CLEAN_DATANODE_SCHEMA_CACHE:
-        LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
-        invalidateCache(env);
-        break;
-      case DELETE_DATA:
-        LOGGER.info("Delete data of timeseries {}", requestMessage);
-        deleteData(env);
-        break;
-      case DELETE_TIMESERIES:
-        LOGGER.info("Delete timeseries schema of {}", requestMessage);
-        deleteTimeSeries(env);
-        return Flow.NO_MORE_STATE;
-      default:
-        setFailure(new ProcedureException("Unrecognized state " + state.toString()));
-        return Flow.NO_MORE_STATE;
+        default:
+          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          String.format(
+              "DeleteTimeSeries-[%s] costs %sms",
+              state.toString(), (System.currentTimeMillis() - startTime)));
     }
-    return Flow.HAS_MORE_STATE;
   }
 
   // return the total num of timeseries in schema black list
@@ -195,6 +203,19 @@ public class DeleteTimeSeriesProcedure
   }
 
   private void deleteData(ConfigNodeProcedureEnv env) {
+    deleteDataWithRawPathPattern(env);
+  }
+
+  private void deleteDataWithRawPathPattern(ConfigNodeProcedureEnv env) {
+    executeDeleteData(env, patternTree);
+    if (isFailed()) {
+      return;
+    }
+    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+  }
+
+  // todo this will be used in IDTable scenarios
+  private void deleteDataWithResolvedPath(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
@@ -233,39 +254,44 @@ public class DeleteTimeSeriesProcedure
         continue;
       }
 
-      Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-          env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+      executeDeleteData(env, patternTree);
 
-      // target timeseries has no data
-      if (relatedDataRegionGroup.isEmpty()) {
-        continue;
-      }
-
-      RegionTask<TSStatus> deleteDataTask =
-          new RegionTask<TSStatus>("delete data", env, relatedDataRegionGroup) {
-            @Override
-            Map<Integer, TSStatus> sendRequest(
-                TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-              Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-              dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-              DeleteDataForDeleteTimeSeriesDataNodeTask dataNodeTask =
-                  new DeleteDataForDeleteTimeSeriesDataNodeTask(dataNodeLocationMap);
-              AsyncDataNodeClientPool.getInstance()
-                  .sendAsyncRequestToDataNodeWithRetry(
-                      new TDeleteDataForDeleteTimeSeriesReq(
-                          new ArrayList<>(consensusGroupIdList),
-                          preparePatternTreeBytesData(patternTree)),
-                      dataNodeTask);
-              return dataNodeTask.getDataNodeResponseMap();
-            }
-          };
-      deleteDataTask.setExecuteOnAllReplicaset(true);
-      deleteDataTask.execute();
       if (isFailed()) {
         return;
       }
     }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES);
+    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+  }
+
+  private void executeDeleteData(ConfigNodeProcedureEnv env, PathPatternTree patternTree) {
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+
+    // target timeseries has no data
+    if (relatedDataRegionGroup.isEmpty()) {
+      return;
+    }
+
+    RegionTask<TSStatus> deleteDataTask =
+        new RegionTask<TSStatus>("delete data", env, relatedDataRegionGroup) {
+          @Override
+          Map<Integer, TSStatus> sendRequest(
+              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
+            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+            DeleteDataForDeleteTimeSeriesDataNodeTask dataNodeTask =
+                new DeleteDataForDeleteTimeSeriesDataNodeTask(dataNodeLocationMap);
+            AsyncDataNodeClientPool.getInstance()
+                .sendAsyncRequestToDataNodeWithRetry(
+                    new TDeleteDataForDeleteTimeSeriesReq(
+                        new ArrayList<>(consensusGroupIdList),
+                        preparePatternTreeBytesData(patternTree)),
+                    dataNodeTask);
+            return dataNodeTask.getDataNodeResponseMap();
+          }
+        };
+    deleteDataTask.setExecuteOnAllReplicaset(true);
+    deleteDataTask.execute();
   }
 
   private PathPatternTree fetchSchemaBlackListOnTargetDataNode(
@@ -315,10 +341,10 @@ public class DeleteTimeSeriesProcedure
     return patternTree;
   }
 
-  private void deleteTimeSeries(ConfigNodeProcedureEnv env) {
+  private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
     RegionTask<TSStatus> deleteTimeSeriesTask =
         new RegionTask<TSStatus>(
-            "delete timeseries",
+            "delete timeseries schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
           @Override

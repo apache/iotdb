@@ -85,6 +85,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -701,6 +702,29 @@ public class NodeManager {
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
+  }
+
+  /**
+   * Get the DataNodeLocation of the DataNode which has the lowest load
+   *
+   * @return TDataNodeLocation
+   */
+  public TDataNodeLocation getLowestLoadDataNode() {
+    AtomicInteger result = new AtomicInteger();
+    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+
+    nodeCacheMap.forEach(
+        (dataNodeId, heartbeatCache) -> {
+          long score = heartbeatCache.getLoadScore();
+          if (score < lowestLoadScore.get()) {
+            result.set(dataNodeId);
+            lowestLoadScore.set(score);
+          }
+        });
+
+    LOGGER.info(
+        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
   }
 
   public boolean isNodeRemoving(int dataNodeId) {

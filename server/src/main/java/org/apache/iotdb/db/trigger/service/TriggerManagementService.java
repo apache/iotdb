@@ -85,11 +85,6 @@ public class TriggerManagementService {
       acquireLock();
       checkIfRegistered(triggerInformation);
       doRegister(triggerInformation);
-    } catch (Throwable e) {
-      LOGGER.warn(
-          "Failed to register trigger({}) on data node, the cause is: {}",
-          triggerInformation.getTriggerName(),
-          e.getMessage());
     } finally {
       releaseLock();
     }
@@ -220,8 +215,8 @@ public class TriggerManagementService {
                     "Failed to registered trigger %s, "
                         + "because error occurred when trying to compute md5 of jar file for trigger %s ",
                     triggerName, triggerName);
-            LOGGER.warn(errorMessage);
-            throw e;
+            LOGGER.warn(errorMessage, e);
+            throw new TriggerManagementException(errorMessage);
           }
         }
 

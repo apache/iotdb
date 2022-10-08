@@ -63,7 +63,7 @@ public class SchemaValidator {
     try {
       insertNode.validateAndSetSchema(schemaTree);
     } catch (QueryProcessException | MetadataException e) {
-      throw new SemanticException(e.getMessage());
+      throw new SemanticException(e);
     }
 
     return schemaTree;

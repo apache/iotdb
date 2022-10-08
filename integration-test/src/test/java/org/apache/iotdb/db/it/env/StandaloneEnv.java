@@ -50,6 +50,11 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void cleanAfterClass() {
     cleanAfterTest();
   }

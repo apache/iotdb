@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
@@ -404,12 +405,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "avg_series_point_number_threshold",
                 Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
-
-    conf.setMaxChunkRawSizeThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "max_chunk_raw_size_threshold",
-                Long.toString(conf.getMaxChunkRawSizeThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -1013,6 +1008,9 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
+
+    conf.setTimePartitionIntervalForStorage(
+        convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1583,12 +1581,15 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        conf.setAllocateMemoryForConsensus(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       }
     }
 
-    logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
-    logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+    logger.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
+    logger.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
+    logger.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+    logger.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
@@ -1928,7 +1929,8 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(
+        convertMilliWithPrecision(globalConfig.timePartitionInterval));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
@@ -1959,6 +1961,12 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+  }
+
+  public void reclaimConsensusMemory() {
+    conf.setAllocateMemoryForStorageEngine(
+        conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
+    SystemInfo.getInstance().allocateWriteMemory();
   }
 
   public void initClusterSchemaMemoryAllocate() {
@@ -1993,6 +2001,22 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
+  }
+
+  public long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = conf.getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
+        break;
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
+    }
+    return result;
   }
 
   private static class IoTDBDescriptorHolder {

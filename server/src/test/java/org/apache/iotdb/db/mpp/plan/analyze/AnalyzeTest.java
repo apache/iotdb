@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -569,6 +570,19 @@ public class AnalyzeTest {
         assertEquals(predicates[i], queryStatement.getWhereCondition().getPredicate());
       }
     }
+  }
+
+  @Test
+  public void testDataPartitionAnalyze() {
+    Analysis analysis = analyzeSQL("insert into root.sg.d1(timestamp,s) values(1,10),(86401,11)");
+    Assert.assertEquals(
+        analysis
+            .getDataPartitionInfo()
+            .getDataPartitionMap()
+            .get("root.sg")
+            .get(new TSeriesPartitionSlot(8923))
+            .size(),
+        1);
   }
 
   private Analysis analyzeSQL(String sql) {
