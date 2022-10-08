@@ -739,7 +739,7 @@ public class BytesUtils {
   }
 
   /**
-   * get one bit in input byte. the offset is from low to high and start with 0<br>
+   * get one bit in input byte. the offset is from high to low and start with 0<br>
    * e.g.<br>
    * data:16(00010000), if offset is 4, return 1(000 "1" 0000) if offset is 7, return 0("0"
    * 0010000).
@@ -758,7 +758,7 @@ public class BytesUtils {
   }
 
   /**
-   * set one bit in input byte. the offset is from low to high and start with index 0<br>
+   * set one bit in input byte. the offset is from high to low and start with index 0<br>
    * e.g.<br>
    * data:16(00010000), if offset is 4, value is 0, return 0({000 "0" 0000}) if offset is 1, value
    * is 1, return 18({00010010}) if offset is 0, value is 0, return 16(no change).
