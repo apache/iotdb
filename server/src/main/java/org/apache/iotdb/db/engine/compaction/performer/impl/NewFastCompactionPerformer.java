@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,7 +104,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
-          compactAlignedSeries(deviceIterator, compactionWriter);
+          compactAlignedSeries(device, deviceIterator, compactionWriter);
         } else {
           compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }
@@ -153,15 +152,24 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   }
 
   private void compactAlignedSeries(
+      String deviceId,
       MultiTsFileDeviceIterator deviceIterator,
       NewFastCrossCompactionWriter newFastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    Pair<List<AlignedChunkMetadata>, Map<String, MeasurementSchema>> measurementsPair =
-        deviceIterator.getAllAlignedSchemasAndMetadatasOfCurrentDevice();
+    //    Pair<List<AlignedChunkMetadata>, Map<String, MeasurementSchema>> measurementsPair =
+    //        deviceIterator.getAllAlignedSchemasAndMetadatasOfCurrentDevice();
+
+    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
+
+    List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+
     new NewFastCompactionPerformerSubTask(
             newFastCrossCompactionWriter,
+            this,
             measurementsPair.left,
             new ArrayList<>(measurementsPair.right.values()),
+            deviceId,
             0)
         .call();
   }
