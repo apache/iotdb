@@ -134,7 +134,7 @@ public class LogDispatcher {
     return newRequest;
   }
 
-  private boolean addToQueue(BlockingQueue<SendLogRequest> nodeLogQueue, SendLogRequest request) {
+  protected boolean addToQueue(BlockingQueue<SendLogRequest> nodeLogQueue, SendLogRequest request) {
     if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
       long waitStart = System.currentTimeMillis();
       long waitTime = 1;

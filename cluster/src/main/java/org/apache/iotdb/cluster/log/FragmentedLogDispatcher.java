@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -31,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class FragmentedLogDispatcher extends LogDispatcher {
 
@@ -55,29 +53,16 @@ public class FragmentedLogDispatcher extends LogDispatcher {
       fragmentedRequest
           .getVotingLog()
           .setLog(new FragmentedLog((FragmentedLog) request.getVotingLog().getLog(), i++));
-      try {
-        boolean addSucceeded;
-        if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
-          addSucceeded =
-              nodeLogQueue.offer(
-                  fragmentedRequest,
-                  ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS(),
-                  TimeUnit.MILLISECONDS);
-        } else {
-          addSucceeded = nodeLogQueue.add(fragmentedRequest);
-        }
 
-        if (!addSucceeded) {
-          logger.debug(
-              "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
-        } else {
-          request.setEnqueueTime(System.nanoTime());
-        }
-      } catch (IllegalStateException e) {
+      boolean addSucceeded = addToQueue(nodeLogQueue, request);
+
+      if (!addSucceeded) {
         logger.debug(
-            "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+            "Log queue[{}] of {} is full, ignore the request to this node",
+            entry.left,
+            member.getName());
+      } else {
+        request.setEnqueueTime(System.nanoTime());
       }
     }
     Statistic.LOG_DISPATCHER_LOG_ENQUEUE.calOperationCostTimeFromStart(startTime);
