@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
@@ -55,6 +56,10 @@ public class MeasurementPath extends PartialPath {
   public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
     super(measurementPath);
     this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
+  }
+
+  public MeasurementPath(PartialPath path, TSDataType type) {
+    this(path, new MeasurementSchema(path.getMeasurement(), type), false);
   }
 
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
@@ -122,6 +127,9 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public String getFullPathWithAlias() {
+    if (getDevice().isEmpty()) {
+      return measurementAlias;
+    }
     return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
@@ -186,7 +194,7 @@ public class MeasurementPath extends PartialPath {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     PathType.Measurement.serialize(stream);
     super.serializeWithoutType(stream);
     if (measurementSchema == null) {

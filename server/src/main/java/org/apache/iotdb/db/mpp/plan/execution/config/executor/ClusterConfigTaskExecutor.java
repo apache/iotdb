@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -429,11 +428,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getTriggerTableResp.getStatus().message, getTriggerTableResp.getStatus().code));
         return future;
       }
+      // convert triggerTable and buildTsBlock
+      ShowTriggersTask.buildTsBlock(getTriggerTableResp.getAllTriggerInformation(), future);
     } catch (TException | IOException e) {
       future.setException(e);
     }
-    // convert triggerTable and buildTsBlock
-    ShowTriggersTask.buildTsBlock(new TriggerTable(), future);
+
     return future;
   }
 

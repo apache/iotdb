@@ -24,14 +24,18 @@ import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class IoTDBPipeSink implements PipeSink {
-  private final PipeSinkType pipeSinkType;
+  private final PipeSinkType pipeSinkType = PipeSinkType.IoTDB;
 
   private String name;
   private String ip;
@@ -40,11 +44,13 @@ public class IoTDBPipeSink implements PipeSink {
   private static final String ATTRIBUTE_IP_KEY = "ip";
   private static final String ATTRIBUTE_PORT_KEY = "port";
 
+  public IoTDBPipeSink() {}
+
   public IoTDBPipeSink(String name) {
-    ip = SyncConstant.DEFAULT_PIPE_SINK_IP;
-    port = SyncConstant.DEFAULT_PIPE_SINK_PORT;
+    this();
+    this.ip = SyncConstant.DEFAULT_PIPE_SINK_IP;
+    this.port = SyncConstant.DEFAULT_PIPE_SINK_PORT;
     this.name = name;
-    pipeSinkType = PipeSinkType.IoTDB;
   }
 
   @Override
@@ -120,6 +126,21 @@ public class IoTDBPipeSink implements PipeSink {
     attributes.put(ATTRIBUTE_IP_KEY, ip);
     attributes.put(ATTRIBUTE_PORT_KEY, String.valueOf(port));
     return new TPipeSinkInfo(this.name, this.pipeSinkType.name()).setAttributes(attributes);
+  }
+
+  @Override
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) pipeSinkType.ordinal(), outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(ip, outputStream);
+    ReadWriteIOUtils.write(port, outputStream);
+  }
+
+  @Override
+  public void deserialize(InputStream inputStream) throws IOException {
+    name = ReadWriteIOUtils.readString(inputStream);
+    ip = ReadWriteIOUtils.readString(inputStream);
+    port = ReadWriteIOUtils.readInt(inputStream);
   }
 
   @Override

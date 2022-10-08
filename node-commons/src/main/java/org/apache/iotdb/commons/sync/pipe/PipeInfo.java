@@ -18,12 +18,22 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 public abstract class PipeInfo {
+
   protected String pipeName;
   protected String pipeSinkName;
   protected PipeStatus status;
   protected long createTime;
   protected PipeMessage.PipeMessageType messageType;
+
+  // only used for serialization
+  protected PipeInfo() {}
 
   public PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;
@@ -40,6 +50,8 @@ public abstract class PipeInfo {
     this.status = status;
     this.messageType = PipeMessage.PipeMessageType.NORMAL;
   }
+
+  abstract PipeType getType();
 
   public String getPipeName() {
     return pipeName;
@@ -91,5 +103,43 @@ public abstract class PipeInfo {
 
   public void setCreateTime(long createTime) {
     this.createTime = createTime;
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) getType().ordinal(), outputStream);
+    ReadWriteIOUtils.write(pipeName, outputStream);
+    ReadWriteIOUtils.write(pipeSinkName, outputStream);
+    ReadWriteIOUtils.write((byte) status.ordinal(), outputStream);
+    ReadWriteIOUtils.write(createTime, outputStream);
+    ReadWriteIOUtils.write((byte) messageType.ordinal(), outputStream);
+  }
+
+  protected void deserialize(InputStream inputStream) throws IOException {
+    pipeName = ReadWriteIOUtils.readString(inputStream);
+    pipeSinkName = ReadWriteIOUtils.readString(inputStream);
+    status = PipeStatus.values()[ReadWriteIOUtils.readByte(inputStream)];
+    createTime = ReadWriteIOUtils.readLong(inputStream);
+    messageType = PipeMessage.PipeMessageType.values()[ReadWriteIOUtils.readByte(inputStream)];
+  }
+
+  public static PipeInfo deserializePipeInfo(InputStream inputStream) throws IOException {
+    PipeType pipeType = PipeType.values()[ReadWriteIOUtils.readByte(inputStream)];
+    PipeInfo pipeInfo;
+    switch (pipeType) {
+      case TsFilePipe:
+        pipeInfo = new TsFilePipeInfo();
+        pipeInfo.deserialize(inputStream);
+        break;
+      case WALPipe:
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Can not recognize PipeType %s.", pipeType.name()));
+    }
+    return pipeInfo;
+  }
+
+  enum PipeType {
+    TsFilePipe,
+    WALPipe
   }
 }

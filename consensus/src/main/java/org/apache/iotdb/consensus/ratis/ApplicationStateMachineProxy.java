@@ -219,6 +219,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       return RaftLog.INVALID_LOG_INDEX;
     }
 
+    snapshotStorage.updateSnapshotCache();
+
     return lastApplied.getIndex();
   }
 
@@ -233,6 +235,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   private void loadSnapshot(File latestSnapshotDir) {
+    snapshotStorage.updateSnapshotCache();
     if (latestSnapshotDir == null) {
       return;
     }

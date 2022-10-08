@@ -48,10 +48,14 @@ public abstract class LongTVList extends TVList {
   }
 
   public static LongTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickLongTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickLongTVList();
+      case BACKWARD:
+        return new BackLongTVList();
+      default:
+        return new TimLongTVList();
     }
-    return new TimLongTVList();
   }
 
   @Override

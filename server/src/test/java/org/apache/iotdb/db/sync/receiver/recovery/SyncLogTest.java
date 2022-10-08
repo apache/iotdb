@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.sync.receiver.recovery;
 
+import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
+import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.SyncTestUtils;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -36,7 +37,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 /** This test is for ReceiverLog and ReceiverLogAnalyzer */
@@ -62,19 +65,23 @@ public class SyncLogTest {
   @Test
   public void testServiceLog() {
     try {
-      SyncLogWriter log = SyncLogWriter.getInstance();
-      CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
-      createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
-      createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
-      log.addPipeSink(createPipeSinkPlan);
-      log.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
+      SyncLogWriter log = new SyncLogWriter(new File(SyncPathUtil.getSysDir()));
+      PipeSink pipeSink = new IoTDBPipeSink("demo");
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("ip", "192.168.11.11");
+      attributes.put("port", "7766");
+      pipeSink.setAttribute(attributes);
+      log.addPipeSink(pipeSink);
+      PipeInfo pipeInfo1 = new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true);
+      PipeInfo pipeInfo2 = new TsFilePipeInfo(pipe2, "demo", createdTime2, 99, false);
+      log.addPipe(pipeInfo1);
       log.operatePipe(pipe1, SyncOperation.DROP_PIPE);
 
-      log.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
-      log.operatePipe(pipe1, SyncOperation.STOP_PIPE);
-      log.operatePipe(pipe1, SyncOperation.START_PIPE);
+      log.addPipe(pipeInfo2);
+      log.operatePipe(pipe2, SyncOperation.STOP_PIPE);
+      log.operatePipe(pipe2, SyncOperation.START_PIPE);
       log.close();
-      SyncLogReader syncLogReader = new SyncLogReader();
+      SyncLogReader syncLogReader = new SyncLogReader(new File(SyncPathUtil.getSysDir()));
 
       syncLogReader.recover();
 
@@ -92,25 +99,25 @@ public class SyncLogTest {
           createdTime2,
           PipeMessage.PipeMessageType.NORMAL);
       Map<String, Map<Long, PipeInfo>> pipes = syncLogReader.getAllPipeInfos();
-      PipeInfo pipeInfo1 = pipes.get(pipe1).get(createdTime1);
+      PipeInfo pipeInfoRecover1 = pipes.get(pipe1).get(createdTime1);
       SyncTestUtils.checkPipeInfo(
-          pipeInfo1,
+          pipeInfoRecover1,
           pipe1,
           "demo",
           PipeStatus.DROP,
           createdTime1,
           PipeMessage.PipeMessageType.NORMAL);
-      PipeInfo pipeInfo2 = pipes.get(pipe2).get(createdTime2);
+      PipeInfo pipeInfoRecover2 = pipes.get(pipe2).get(createdTime2);
       SyncTestUtils.checkPipeInfo(
-          pipeInfo2,
+          pipeInfoRecover2,
           pipe2,
           "demo",
           PipeStatus.RUNNING,
           createdTime2,
           PipeMessage.PipeMessageType.NORMAL);
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

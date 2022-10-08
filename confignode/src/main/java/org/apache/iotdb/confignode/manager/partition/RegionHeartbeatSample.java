@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.partition;
 
+import org.apache.iotdb.commons.cluster.RegionStatus;
+
 public class RegionHeartbeatSample {
 
   // Unit: ms
@@ -26,16 +28,22 @@ public class RegionHeartbeatSample {
 
   private final int belongedDataNodeId;
   private final boolean isLeader;
+  private final RegionStatus status;
 
   // TODO: Add load sample
 
   public RegionHeartbeatSample(
-      long sendTimestamp, long receiveTimestamp, int belongedDataNodeId, boolean isLeader) {
+      long sendTimestamp,
+      long receiveTimestamp,
+      int belongedDataNodeId,
+      boolean isLeader,
+      RegionStatus status) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
 
     this.belongedDataNodeId = belongedDataNodeId;
     this.isLeader = isLeader;
+    this.status = status;
   }
 
   public long getSendTimestamp() {
@@ -52,5 +60,9 @@ public class RegionHeartbeatSample {
 
   public boolean isLeader() {
     return isLeader;
+  }
+
+  public RegionStatus getStatus() {
+    return status;
   }
 }

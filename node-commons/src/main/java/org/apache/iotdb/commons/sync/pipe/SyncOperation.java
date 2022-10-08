@@ -19,6 +19,9 @@
 package org.apache.iotdb.commons.sync.pipe;
 
 public enum SyncOperation {
+  CREATE_PIPESINK,
+  DROP_PIPESINK,
+  CREATE_PIPE,
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE

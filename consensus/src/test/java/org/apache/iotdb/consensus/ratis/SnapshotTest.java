@@ -130,6 +130,8 @@ public class SnapshotTest {
 
     // delete meta file, then the proxy will consider the latest snapshotInfo incomplete
     Assert.assertTrue(new File(getSnapshotMetaFilename("616_4217")).delete());
+    // reinitialize so that the statemachine would notice the snapshot change
+    proxy.reinitialize();
     info = proxy.getLatestSnapshot();
     Assert.assertNull(info);
     Assert.assertFalse(new File(snapshotFilenameLatest).exists());

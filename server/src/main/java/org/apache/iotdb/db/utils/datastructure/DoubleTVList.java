@@ -49,10 +49,14 @@ public abstract class DoubleTVList extends TVList {
   }
 
   public static DoubleTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickDoubleTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickDoubleTVList();
+      case BACKWARD:
+        return new BackDoubleTVList();
+      default:
+        return new TimDoubleTVList();
     }
-    return new TimDoubleTVList();
   }
 
   @Override

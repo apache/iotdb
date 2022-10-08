@@ -49,13 +49,26 @@ struct TGlobalConfig {
 }
 
 struct TRatisConfig {
-  1: optional i64 appenderBufferSize
-  2: optional i64 snapshotTriggerThreshold
-  3: optional bool logUnsafeFlushEnable
-  4: optional i64 logSegmentSizeMax
-  5: optional i64 grpcFlowControlWindow
-  6: optional i64 leaderElectionTimeoutMin
-  7: optional i64 leaderElectionTimeoutMax
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
+
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
+
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
+
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
+
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
+
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
+
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -247,9 +260,7 @@ struct TDropFunctionReq {
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
@@ -276,7 +287,7 @@ struct TDropTriggerReq {
 // Get trigger table from config node
 struct TGetTriggerTableResp {
   1: required common.TSStatus status
-  2: required binary triggerTable
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster

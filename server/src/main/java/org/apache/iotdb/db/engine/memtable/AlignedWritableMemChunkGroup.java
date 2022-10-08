@@ -34,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
@@ -99,9 +102,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
-    for (String measurement : measurements) {
-      PartialPath fullPath = devicePath.concatNode(measurement);
-      if (originalPath.matchFullPath(fullPath)) {
+    String targetMeasurement = originalPath.getMeasurement();
+    if (targetMeasurement.equals(ONE_LEVEL_PATH_WILDCARD)
+        || targetMeasurement.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      for (String measurement : measurements) {
         Pair<Integer, Boolean> deleteInfo =
             memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
         deletedPointsNumber += deleteInfo.left;
@@ -109,7 +113,17 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
           columnsToBeRemoved.add(measurement);
         }
       }
+    } else {
+      if (measurements.contains(targetMeasurement)) {
+        Pair<Integer, Boolean> deleteInfo =
+            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, targetMeasurement);
+        deletedPointsNumber += deleteInfo.left;
+        if (Boolean.TRUE.equals(deleteInfo.right)) {
+          columnsToBeRemoved.add(targetMeasurement);
+        }
+      }
     }
+
     for (String columnToBeRemoved : columnsToBeRemoved) {
       memChunk.removeColumn(columnToBeRemoved);
     }

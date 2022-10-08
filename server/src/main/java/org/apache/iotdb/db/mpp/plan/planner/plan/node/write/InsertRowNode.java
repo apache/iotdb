@@ -21,9 +21,11 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -178,27 +180,29 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
+  public void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
-      return false;
+      throw new AlignedTimeseriesException(
+          String.format(
+              "timeseries under this device are%s aligned, " + "please use %s interface",
+              deviceSchemaInfo.isAligned() ? "" : " not",
+              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
+          devicePath.getFullPath());
     }
     this.measurementSchemas =
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // transfer data types from string values when necessary
     if (isNeedInferType) {
-      try {
-        transferType();
-        return true;
-      } catch (QueryProcessException e) {
-        return false;
-      }
+      transferType();
+      return;
     }
 
     // validate whether data types are matched
-    return selfCheckDataTypes();
+    selfCheckDataTypes();
   }
 
   @Override

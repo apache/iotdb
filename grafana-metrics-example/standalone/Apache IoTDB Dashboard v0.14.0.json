@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1656326628391,
+  "iteration": 1664934999432,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -742,7 +742,7 @@
           "exemplar": true,
           "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[10m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[10m])",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -837,7 +837,7 @@
           "exemplar": true,
           "expr": "file_size{instance=~\"$instance\"}",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         },
         {
@@ -1514,6 +1514,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Dashboard",
   "uid": "TbEVYRw7k",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

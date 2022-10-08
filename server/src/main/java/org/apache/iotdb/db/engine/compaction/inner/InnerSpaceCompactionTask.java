@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
@@ -206,6 +207,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileMetricManager.getInstance().deleteFile(resource.getTsFile().length(), sequence);
+      }
+      // inner space compaction task has only one target file
+      TsFileMetricManager.getInstance()
+          .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
