@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.path;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum PathType {
@@ -41,7 +41,7 @@ public enum PathType {
     ReadWriteIOUtils.write(pathType, buffer);
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(pathType, stream);
   }
 

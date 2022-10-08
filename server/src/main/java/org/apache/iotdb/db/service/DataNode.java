@@ -63,6 +63,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -212,6 +213,14 @@ public class DataNode implements DataNodeMBean {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
+
+          // In current implementation, only MultiLeader need separated memory from Consensus
+          if (!config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            IoTDBDescriptor.getInstance().reclaimConsensusMemory();
+          }
+
           IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
@@ -273,7 +282,6 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
     // close wal when using ratis consensus
@@ -304,6 +312,9 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
+    // must init after SchemaEngine and StorageEngine prepared well
+    DataNodeRegionManager.getInstance().init();
+
     registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
@@ -316,6 +327,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(MetricService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
   }
 
   /** set up RPC and protocols after DataNode is available */

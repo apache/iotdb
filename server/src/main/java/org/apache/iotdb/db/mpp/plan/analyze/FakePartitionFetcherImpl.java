@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -41,6 +42,16 @@ import java.util.List;
 import java.util.Map;
 
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
+
+  private final String seriesSlotExecutorName =
+      IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
+
+  private final int seriesPartitionSlotNum =
+      IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
+
+  private final SeriesPartitionExecutor partitionExecutor =
+      SeriesPartitionExecutor.getSeriesPartitionExecutor(
+          seriesSlotExecutorName, seriesPartitionSlotNum);
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
@@ -212,7 +223,71 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    return null;
+
+    // only test root.sg
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+        new HashMap<>();
+    dataPartitionMap.put("root.sg", sgPartitionMap);
+    dataPartition.setDataPartitionMap(dataPartitionMap);
+
+    List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
+    d1DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.1.2", 9000)))));
+    d1DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(21)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.2.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(22)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.2.2", 9000)))));
+
+    List<TRegionReplicaSet> d2DataRegions = new ArrayList<>();
+    d2DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(31)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.3.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(32)
+                    .setClientRpcEndPoint(new TEndPoint("192.0.3.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TTimePartitionSlot(), d2DataRegions);
+
+    for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+      TSeriesPartitionSlot seriesPartitionSlot =
+          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+      Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
+          sgPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
+      for (TTimePartitionSlot timePartitionSlot :
+          dataPartitionQueryParam.getTimePartitionSlotList()) {
+        if (timePartitionSlot.startTime == 0) {
+          timePartitionSlotListMap.put(timePartitionSlot, d1DataRegions);
+        } else {
+          timePartitionSlotListMap.put(timePartitionSlot, d2DataRegions);
+        }
+      }
+    }
+    return dataPartition;
   }
 
   @Override

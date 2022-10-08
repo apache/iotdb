@@ -255,6 +255,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    confignodeProperties.setProperty(
+        "ratis_snapshot_trigger_threshold", String.valueOf(ratisSnapshotTriggerThreshold));
+    return this;
+  }
+
+  @Override
   public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
     confignodeProperties.setProperty(
         "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));

@@ -197,7 +197,7 @@ deleteStorageGroup
 
 // Delete Timeseries
 deleteTimeseries
-    : DELETE TIMESERIES prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Partition
@@ -709,9 +709,9 @@ loadFile
     ;
 
 loadFilesClause
-    : AUTOREGISTER operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
-    | SGLEVEL operator_eq INTEGER_LITERAL (COMMA loadFilesClause)?
-    | VERIFY operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
+    : SGLEVEL operator_eq INTEGER_LITERAL (loadFilesClause)?
+    | VERIFY operator_eq BOOLEAN_LITERAL (loadFilesClause)?
+    | ONSUCCESS operator_eq (DELETE|NONE) (loadFilesClause)?
     ;
 
 // Remove TsFile

@@ -195,7 +195,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
     Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
     Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
-    Assert.assertEquals(86400, storageGroupSchema.getTimePartitionInterval());
+    Assert.assertEquals(86400000, storageGroupSchema.getTimePartitionInterval());
     storageGroupSchema = schemaMap.get(sg1);
     Assert.assertNotNull(storageGroupSchema);
     Assert.assertEquals(sg1, storageGroupSchema.getName());

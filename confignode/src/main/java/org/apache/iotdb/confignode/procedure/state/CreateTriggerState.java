@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.runtime;
+package org.apache.iotdb.confignode.procedure.state;
 
-public class SerializationRunTimeException extends RuntimeException {
-
-  public SerializationRunTimeException(Throwable e) {
-    super("Unexpected error occurs in serialization", e);
-  }
+public enum CreateTriggerState {
+  INIT,
+  VALIDATED,
+  CONFIG_NODE_INACTIVE,
+  DATA_NODE_INACTIVE,
+  DATA_NODE_ACTIVE,
+  CONFIG_NODE_ACTIVE
 }

@@ -110,6 +110,9 @@ public interface ISchemaRegion {
 
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
+  Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
    * is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -138,7 +141,7 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
-  List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Delete timeseries in schema black list.
