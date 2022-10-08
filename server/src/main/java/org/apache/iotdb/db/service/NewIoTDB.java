@@ -83,7 +83,8 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
     config.setMppMode(true);
-
+    // In standalone mode, Consensus memory should be reclaimed
+    IoTDBDescriptor.getInstance().reclaimConsensusMemory();
     loadExternLib(config);
 
     daemon.active();

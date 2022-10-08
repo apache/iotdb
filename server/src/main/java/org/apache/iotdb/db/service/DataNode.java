@@ -212,6 +212,14 @@ public class DataNode implements DataNodeMBean {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
+
+          // In current implementation, only MultiLeader need separated memory from Consensus
+          if (!config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            IoTDBDescriptor.getInstance().reclaimConsensusMemory();
+          }
+
           IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
