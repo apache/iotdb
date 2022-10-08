@@ -128,7 +128,7 @@ public class IoTDBArchivingIT {
       statement.execute(
           "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 1000 '" + testTargetDir.getPath() + "'");
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
@@ -182,7 +182,7 @@ public class IoTDBArchivingIT {
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
