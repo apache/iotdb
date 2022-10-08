@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.V012FileTimeIndex;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
@@ -94,9 +95,6 @@ public class TsFileResource {
 
   /** time index */
   protected ITimeIndex timeIndex;
-
-  /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
-  private byte timeIndexType;
 
   private volatile ModificationFile modFile;
 
@@ -162,7 +160,6 @@ public class TsFileResource {
     this.file = other.file;
     this.processor = other.processor;
     this.timeIndex = other.timeIndex;
-    this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
     this.status = other.status;
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
@@ -181,7 +178,6 @@ public class TsFileResource {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
   /** unsealed TsFile, for writter */
@@ -189,7 +185,6 @@ public class TsFileResource {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
@@ -202,7 +197,6 @@ public class TsFileResource {
       throws IOException {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
-    this.timeIndexType = originTsFileResource.timeIndexType;
     this.pathToReadOnlyMemChunkMap.put(path, readOnlyMemChunk);
     this.pathToChunkMetadataListMap.put(path, chunkMetadataList);
     this.originTsFileResource = originTsFileResource;
@@ -217,7 +211,6 @@ public class TsFileResource {
       throws IOException {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
-    this.timeIndexType = originTsFileResource.timeIndexType;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
     generatePathToTimeSeriesMetadataMap();
@@ -230,14 +223,12 @@ public class TsFileResource {
       File file, Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.file = file;
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
-    this.timeIndexType = 1;
   }
 
   public synchronized void serialize() throws IOException {
     try (OutputStream outputStream =
         fsFactory.getBufferedOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-      ReadWriteIOUtils.write(timeIndexType, outputStream);
       timeIndex.serialize(outputStream);
 
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
@@ -258,8 +249,8 @@ public class TsFileResource {
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 2)[1];
-      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+      ReadWriteIOUtils.readByte(inputStream);
+      timeIndex = ITimeIndex.createTimeIndex(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       if (inputStream.available() > 0) {
@@ -273,8 +264,8 @@ public class TsFileResource {
 
     // upgrade from v0.12 to v0.13, we need to rewrite the TsFileResource if the previous time index
     // is file time index
-    if (timeIndexType == 0) {
-      timeIndexType = 2;
+    if (timeIndex.getTimeIndexType() == ITimeIndex.V012_FILE_TIME_INDEX_TYPE) {
+      timeIndex = ((V012FileTimeIndex) timeIndex).getFileTimeIndex();
       serialize();
     }
   }
@@ -299,7 +290,6 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         endTimesArray[i] = time;
       }
-      timeIndexType = (byte) 1;
       timeIndex = new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
       if (inputStream.available() > 0) {
         int versionSize = ReadWriteIOUtils.readInt(inputStream);
@@ -989,12 +979,21 @@ public class TsFileResource {
   }
 
   public byte getTimeIndexType() {
-    return timeIndexType;
+    return timeIndex.getTimeIndexType();
   }
 
   @TestOnly
   public void setTimeIndexType(byte type) {
-    this.timeIndexType = type;
+    switch (type) {
+      case ITimeIndex.DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new DeviceTimeIndex();
+        break;
+      case ITimeIndex.FILE_TIME_INDEX_TYPE:
+        this.timeIndex = new FileTimeIndex();
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
   }
 
   public long getRamSize() {
@@ -1003,7 +1002,7 @@ public class TsFileResource {
 
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
-    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(getTimeIndexType());
     // if current timeIndex is FileTimeIndex, no need to degrade
     if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) {
       return 0;
@@ -1014,7 +1013,6 @@ public class TsFileResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-    timeIndexType = 2;
     return ramSize - timeIndex.calculateRamSize();
   }
 

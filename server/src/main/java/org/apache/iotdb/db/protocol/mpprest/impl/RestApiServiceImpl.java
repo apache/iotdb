@@ -106,8 +106,8 @@ public class RestApiServiceImpl extends RestApiService {
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
-                      .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                      .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                      .code(result.status.getCode())
+                      .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -141,8 +141,8 @@ public class RestApiServiceImpl extends RestApiService {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                    .code(result.status.getCode())
+                    .message(result.status.getMessage()))
             .build();
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -190,8 +190,8 @@ public class RestApiServiceImpl extends RestApiService {
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
-                      .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                      .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                      .code(result.status.getCode())
+                      .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.runtime;
+package org.apache.iotdb.commons.exception.runtime;
 
 public class SerializationRunTimeException extends RuntimeException {
 

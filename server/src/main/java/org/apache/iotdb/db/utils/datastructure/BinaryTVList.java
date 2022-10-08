@@ -55,10 +55,14 @@ public abstract class BinaryTVList extends TVList {
   }
 
   public static BinaryTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickBinaryTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickBinaryTVList();
+      case BACKWARD:
+        return new BackBinaryTVList();
+      default:
+        return new TimBinaryTVList();
     }
-    return new TimBinaryTVList();
   }
 
   @Override
@@ -95,7 +99,7 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   public boolean reachMaxChunkSizeThreshold() {
-    return memoryBinaryChunkSize >= maxChunkRawSizeThreshold;
+    return memoryBinaryChunkSize >= targetChunkSize;
   }
 
   @Override

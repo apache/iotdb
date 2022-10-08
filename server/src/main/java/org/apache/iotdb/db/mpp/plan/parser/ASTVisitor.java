@@ -1465,9 +1465,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    */
   private void parseLoadFiles(
       LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
-    if (ctx.AUTOREGISTER() != null) {
-      loadTsFileStatement.setAutoCreateSchema(
-          Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    if (ctx.ONSUCCESS() != null) {
+      loadTsFileStatement.setDeleteAfterLoad(ctx.DELETE() != null);
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
