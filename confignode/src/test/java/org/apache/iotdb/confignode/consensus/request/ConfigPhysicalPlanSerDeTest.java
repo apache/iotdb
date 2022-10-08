@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -43,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -69,6 +72,9 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -77,11 +83,14 @@ import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
@@ -872,5 +881,64 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         getPipeSinkPlanWithNullName.getPipeSinkName(),
         getPipeSinkPlanWithNullName1.getPipeSinkName());
+  }
+
+  @Test
+  public void GetTriggerTablePlan() throws IOException {
+    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan();
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer())
+            instanceof GetTriggerTablePlan);
+  }
+
+  @Test
+  public void AddTriggerInTablePlanTest() throws IOException, IllegalPathException {
+    TriggerInformation triggerInformation =
+        new TriggerInformation(
+            new PartialPath("root.test.**"),
+            "test",
+            "test.class",
+            "test.jar",
+            null,
+            TriggerEvent.AFTER_INSERT,
+            TTriggerState.INACTIVE,
+            false,
+            null,
+            "testMD5test");
+    AddTriggerInTablePlan addTriggerInTablePlan0 =
+        new AddTriggerInTablePlan(triggerInformation, new Binary(new byte[] {1, 2, 3}));
+    AddTriggerInTablePlan addTriggerInTablePlan1 =
+        (AddTriggerInTablePlan)
+            ConfigPhysicalPlan.Factory.create(addTriggerInTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        addTriggerInTablePlan0.getTriggerInformation(),
+        addTriggerInTablePlan1.getTriggerInformation());
+    Assert.assertEquals(addTriggerInTablePlan0.getJarFile(), addTriggerInTablePlan1.getJarFile());
+  }
+
+  @Test
+  public void DeleteTriggerInTablePlanTest() throws IOException {
+    DeleteTriggerInTablePlan deleteTriggerInTablePlan0 = new DeleteTriggerInTablePlan("test");
+    DeleteTriggerInTablePlan deleteTriggerInTablePlan1 =
+        (DeleteTriggerInTablePlan)
+            ConfigPhysicalPlan.Factory.create(deleteTriggerInTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        deleteTriggerInTablePlan0.getTriggerName(), deleteTriggerInTablePlan1.getTriggerName());
+  }
+
+  @Test
+  public void UpdateTriggerStateInTablePlanTest() throws IOException {
+    UpdateTriggerStateInTablePlan updateTriggerStateInTablePlan0 =
+        new UpdateTriggerStateInTablePlan("test", TTriggerState.ACTIVE);
+    UpdateTriggerStateInTablePlan updateTriggerStateInTablePlan1 =
+        (UpdateTriggerStateInTablePlan)
+            ConfigPhysicalPlan.Factory.create(
+                updateTriggerStateInTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        updateTriggerStateInTablePlan0.getTriggerName(),
+        updateTriggerStateInTablePlan1.getTriggerName());
+    Assert.assertEquals(
+        updateTriggerStateInTablePlan0.getTriggerState(),
+        updateTriggerStateInTablePlan1.getTriggerState());
   }
 }

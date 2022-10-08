@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -172,5 +174,11 @@ public class V012FileTimeIndex implements ITimeIndex {
   public boolean mayContainsDevice(String device) {
     throw new UnsupportedOperationException(
         "V012FileTimeIndex should be rewritten while upgrading and containsDevice() method should not be called any more.");
+  }
+
+  @Override
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+    throw new UnsupportedOperationException(
+        "V012FileTimeIndex should be rewritten while upgrading and getPossibleStartTimeAndEndTime() method should not be called any more.");
   }
 }

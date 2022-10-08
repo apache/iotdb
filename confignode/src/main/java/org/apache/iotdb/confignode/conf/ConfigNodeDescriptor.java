@@ -202,6 +202,8 @@ public class ConfigNodeDescriptor {
       conf.setTemporaryLibDir(
           properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
 
+      conf.setTriggerLibDir(properties.getProperty("trigger_lib_dir", conf.getTriggerLibDir()));
+
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(

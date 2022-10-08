@@ -77,12 +77,12 @@ public class ColumnHeaderConstant {
 
   // column names for show triggers statement
   public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
-  public static final String COLUMN_TRIGGER_EVENT = "Trigger Event";
-  public static final String COLUMN_TRIGGER_TYPE = "Trigger Type";
-  public static final String COLUMN_TRIGGER_STATE = "Trigger STATE";
-  public static final String COLUMN_TRIGGER_PATTERN = "Trigger PathPattern";
-  public static final String COLUMN_TRIGGER_CLASSNAME = "Trigger ClassName";
-  public static final String COLUMN_TRIGGER_LOCATION = "Trigger Location";
+  public static final String COLUMN_TRIGGER_EVENT = "Event";
+  public static final String COLUMN_TRIGGER_TYPE = "Type";
+  public static final String COLUMN_TRIGGER_STATE = "STATE";
+  public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
+  public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
+  public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
 
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
@@ -252,6 +252,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TRIGGER_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_STATE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_PATTERN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_CLASSNAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_LOCATION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =

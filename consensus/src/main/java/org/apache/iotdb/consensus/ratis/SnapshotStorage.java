@@ -155,11 +155,9 @@ public class SnapshotStorage implements StateMachineStorage {
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
-    SnapshotInfo latestSnapshot;
     snapshotCacheGuard.readLock().lock();
     try {
-      latestSnapshot = currentSnapshot;
-      return latestSnapshot;
+      return currentSnapshot;
     } finally {
       snapshotCacheGuard.readLock().unlock();
     }

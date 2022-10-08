@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -50,6 +51,8 @@ public class TriggerManagementService {
   private final TriggerTable triggerTable;
 
   private final Map<String, TriggerExecutor> executorMap;
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
@@ -155,8 +158,8 @@ public class TriggerManagementService {
                     "Failed to registered trigger %s, "
                         + "because error occurred when trying to compute md5 of jar file for trigger %s ",
                     triggerName, triggerName);
-            LOGGER.warn(errorMessage);
-            throw e;
+            LOGGER.warn(errorMessage, e);
+            throw new TriggerManagementException(errorMessage);
           }
         }
 
@@ -214,7 +217,6 @@ public class TriggerManagementService {
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
   }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
