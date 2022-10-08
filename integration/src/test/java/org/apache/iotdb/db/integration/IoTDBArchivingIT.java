@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -160,7 +162,7 @@ public class IoTDBArchivingIT {
               + testTargetDir.getPath()
               + "'");
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
@@ -195,7 +197,7 @@ public class IoTDBArchivingIT {
       // test resume archive
       statement.execute("RESUME ARCHIVING ON root.ARCHIVING_SG1");
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
@@ -232,7 +234,7 @@ public class IoTDBArchivingIT {
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
@@ -240,6 +242,19 @@ public class IoTDBArchivingIT {
           cnt++;
         }
         assertEquals(100, cnt);
+      }
+    }
+  }
+
+  private void waitUntilAllFinished() throws InterruptedException {
+    int cnt = 10;
+    for (ArchivingTask task : ArchivingManager.getInstance().getArchivingTasks()) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.FINISHED) {
+        Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+        cnt++;
+        if (cnt >= 50) {
+          throw new RuntimeException("Wait too long for all archiving task finished.");
+        }
       }
     }
   }
