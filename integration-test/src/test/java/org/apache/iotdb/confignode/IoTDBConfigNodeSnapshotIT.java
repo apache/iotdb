@@ -73,7 +73,7 @@ public class IoTDBConfigNodeSnapshotIT {
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   protected static int originalRatisSnapshotTriggerThreshold;
-  private static final int testRatisSnapshotTriggerThreshold = 10;
+  private static final int testRatisSnapshotTriggerThreshold = 100;
 
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
@@ -122,7 +122,7 @@ public class IoTDBConfigNodeSnapshotIT {
   public void testPartitionInfoSnapshot() throws IOException, IllegalPathException, TException {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
-    final int seriesPartitionSlotsNum = 10;
+    final int seriesPartitionSlotsNum = 100;
     final int timePartitionSlotsNum = 10;
 
     try (SyncConfigNodeIServiceClient client =
