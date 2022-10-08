@@ -198,7 +198,7 @@ launch_service()
   fi
 
   # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
-  if [ "x$foreground" == "x" ]; then
+  if [ "x$foreground" == "xyes" ]; then
       iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
       if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
           exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
