@@ -207,7 +207,7 @@ public class ConfigManager implements IManager {
   }
 
   public void initConsensusManager() throws IOException {
-    this.consensusManager = new ConsensusManager(this, stateMachine);
+    this.consensusManager = new ConsensusManager(this, this.stateMachine);
   }
 
   public void close() throws IOException {
