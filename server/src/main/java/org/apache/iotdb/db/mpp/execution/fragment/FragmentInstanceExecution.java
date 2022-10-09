@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
-import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskTimeoutSentinelThread;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -35,8 +34,7 @@ import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.F
 
 public class FragmentInstanceExecution {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(FragmentInstanceExecution.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceExecution.class);
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
