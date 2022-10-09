@@ -53,7 +53,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
-import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -84,6 +83,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -124,30 +124,32 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private MemMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
-  private final TagManager tagManager;
+  private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
-      IStorageGroupMNode storageGroupMNode, TagManager tagManager, int schemaRegionId) {
+      IStorageGroupMNode storageGroupMNode,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      int schemaRegionId) {
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     store = new MemMTreeStore(storageGroup, true);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroup.getNodeLength() - 1;
-    this.tagManager = tagManager;
+    this.tagGetter = tagGetter;
   }
 
   private MTreeBelowSGMemoryImpl(
       MemMTreeStore store,
       IStorageGroupMNode storageGroupMNode,
-      TagManager tagManager,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
       int schemaRegionId) {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
-    this.tagManager = tagManager;
+    this.tagGetter = tagGetter;
   }
 
   @Override
@@ -165,12 +167,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       IStorageGroupMNode storageGroupMNode,
       int schemaRegionId,
       Consumer<IMeasurementMNode> measurementProcess,
-      TagManager tagManager)
+      Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws IOException {
     return new MTreeBelowSGMemoryImpl(
         MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
         storageGroupMNode,
-        tagManager,
+        tagGetter,
         schemaRegionId);
   }
 
@@ -764,11 +766,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               path.setMeasurementAlias(node.getAlias());
             }
             if (withTags) {
-              try {
-                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
+              path.setTagMap(tagGetter.apply(node));
             }
             result.add(path);
           }
@@ -796,11 +794,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               path.setMeasurementAlias(node.getAlias());
             }
             if (withTags) {
-              try {
-                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
+              path.setTagMap(tagGetter.apply(node));
             }
             result.add(path);
           }

@@ -51,7 +51,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
-import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -78,6 +77,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -115,14 +115,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   private CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
-  private final TagManager tagManager;
+  private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
-      IStorageGroupMNode storageGroupMNode, TagManager tagManager, int schemaRegionId)
+      IStorageGroupMNode storageGroupMNode,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      int schemaRegionId)
       throws MetadataException, IOException {
-    this.tagManager = tagManager;
+    this.tagGetter = tagGetter;
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     store = new CachedMTreeStore(storageGroup, schemaRegionId);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
@@ -675,11 +677,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
               path.setMeasurementAlias(node.getAlias());
             }
             if (withTags) {
-              try {
-                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
+              path.setTagMap(tagGetter.apply(node));
             }
             result.add(path);
           }

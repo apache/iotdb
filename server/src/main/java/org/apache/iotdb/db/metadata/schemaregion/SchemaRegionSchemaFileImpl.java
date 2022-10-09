@@ -257,7 +257,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSGCachedImpl(storageGroupMNode, tagManager, schemaRegionId.getId());
+      mtree =
+          new MTreeBelowSGCachedImpl(
+              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
 
       int lineNumber = initFromLog(logFile);
 

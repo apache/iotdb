@@ -244,7 +244,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSGMemoryImpl(storageGroupMNode, tagManager, schemaRegionId.getId());
+      mtree =
+          new MTreeBelowSGMemoryImpl(
+              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -562,7 +564,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
-              tagManager);
+              tagManager::readTags);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
