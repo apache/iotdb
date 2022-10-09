@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 public class ConsensusConfig {
 
-  private final TEndPoint thisNode;
+  private final TEndPoint thisNodeEndPoint;
   private final int thisNodeId;
   private final String storageDir;
   private final RatisConfig ratisConfig;
@@ -35,15 +35,15 @@ public class ConsensusConfig {
       String storageDir,
       RatisConfig ratisConfig,
       MultiLeaderConfig multiLeaderConfig) {
-    this.thisNode = thisNode;
+    this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.ratisConfig = ratisConfig;
     this.multiLeaderConfig = multiLeaderConfig;
   }
 
-  public TEndPoint getThisNode() {
-    return thisNode;
+  public TEndPoint getThisNodeEndPoint() {
+    return thisNodeEndPoint;
   }
 
   public int getThisNodeId() {

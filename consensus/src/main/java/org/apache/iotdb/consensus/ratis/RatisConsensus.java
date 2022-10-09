@@ -121,13 +121,13 @@ class RatisConsensus implements IConsensus {
       throws IOException {
     myself =
         Utils.fromTEndPointAndPriorityToRaftPeer(
-            config.getThisNodeId(), config.getThisNode(), DEFAULT_PRIORITY);
+            config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
 
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(
         properties, Collections.singletonList(new File(config.getStorageDir())));
-    GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
+    GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
@@ -499,7 +499,7 @@ class RatisConsensus implements IConsensus {
         // degrade every other peer to default priority
         newConfiguration.add(
             Utils.fromTEndPointAndPriorityToRaftPeer(
-                Utils.formRaftPeerIdToNodeId(raftPeer.getId()),
+                Utils.frommRaftPeerIdToNodeId(raftPeer.getId()),
                 Utils.formRaftPeerAddressToTEndPoint(raftPeer.getAddress()),
                 DEFAULT_PRIORITY));
       }
@@ -607,7 +607,7 @@ class RatisConsensus implements IConsensus {
     if (leaderId == null) {
       return null;
     }
-    int nodeId = Utils.formRaftPeerIdToNodeId(leaderId);
+    int nodeId = Utils.frommRaftPeerIdToNodeId(leaderId);
     return new Peer(groupId, nodeId, null);
   }
 

@@ -82,7 +82,7 @@ public class MultiLeaderConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
   public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
-    this.thisNode = config.getThisNode();
+    this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.config = config.getMultiLeaderConfig();

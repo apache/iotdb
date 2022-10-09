@@ -79,11 +79,11 @@ public class Utils {
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
-  public static int formRaftPeerIdToNodeId(RaftPeerId id) {
+  public static int frommRaftPeerIdToNodeId(RaftPeerId id) {
     return Integer.parseInt(id.toString());
   }
 
-  public static TEndPoint formRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
+  public static TEndPoint fromRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
     String[] items = proto.getAddress().split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
@@ -108,8 +108,7 @@ public class Utils {
         .collect(Collectors.toList());
   }
 
-  // TODO: RaftPeerProto的Id是否是nodeId
-  public static int formRaftPeerProtoToNodeId(RaftPeerProto proto) {
+  public static int fromRaftPeerProtoToNodeId(RaftPeerProto proto) {
     return Integer.parseInt(proto.getId().toStringUtf8());
   }
 
@@ -121,8 +120,8 @@ public class Utils {
             peer ->
                 new Peer(
                     consensusGroupId,
-                    Utils.formRaftPeerProtoToNodeId(peer),
-                    Utils.formRaftPeerProtoToTEndPoint(peer)))
+                    Utils.fromRaftPeerProtoToNodeId(peer),
+                    Utils.fromRaftPeerProtoToTEndPoint(peer)))
         .collect(Collectors.toList());
   }
 

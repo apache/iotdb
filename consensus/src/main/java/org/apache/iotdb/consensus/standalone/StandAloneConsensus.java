@@ -69,7 +69,7 @@ class StandAloneConsensus implements IConsensus {
       new ConcurrentHashMap<>();
 
   public StandAloneConsensus(ConsensusConfig config, Registry registry) {
-    this.thisNode = config.getThisNode();
+    this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.registry = registry;

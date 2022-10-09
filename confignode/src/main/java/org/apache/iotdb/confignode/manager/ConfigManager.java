@@ -198,11 +198,7 @@ public class ConfigManager implements IManager {
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
 
-    // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
-    // above managers
-    // TODO:
-    // consensusManager不做初始化，因为创建时内部的RatisConsensus需要nodeId作为server的id，但是这个id只有在向seedConfignode发送注册时才会生成
-    // this.consensusManager = new ConsensusManager(this, stateMachine);
+    // ConsensusManager doesn't initialize until the ConfigNode knows its own nodeId
     this.consensusManager = null;
   }
 
