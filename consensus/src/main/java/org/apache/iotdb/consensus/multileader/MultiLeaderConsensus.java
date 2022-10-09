@@ -46,6 +46,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.SyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.logdispatcher.MultiLeaderMemoryManager;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -96,6 +97,9 @@ public class MultiLeaderConsensus implements IConsensus {
         new IClientManager.Factory<TEndPoint, SyncMultiLeaderServiceClient>()
             .createClientManager(
                 new SyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
+    // init multiLeader memory manager
+    MultiLeaderMemoryManager.getInstance()
+        .init(config.getMultiLeaderConfig().getReplication().getAllocateMemoryForConsensus());
   }
 
   @Override

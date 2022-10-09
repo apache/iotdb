@@ -106,7 +106,7 @@ public class IoTDBGroupByFillMixPathsIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(86400000);
     EnvironmentUtils.cleanEnv();
   }
 
