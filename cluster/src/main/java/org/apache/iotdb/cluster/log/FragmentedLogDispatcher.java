@@ -40,10 +40,6 @@ public class FragmentedLogDispatcher extends LogDispatcher {
   }
 
   public void offer(SendLogRequest request) {
-    if (!(request.getVotingLog().getLog() instanceof FragmentedLog)) {
-      super.offer(request);
-      return;
-    }
     // do serialization here to avoid taking LogManager for too long
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
@@ -58,7 +54,7 @@ public class FragmentedLogDispatcher extends LogDispatcher {
           .getVotingLog()
           .setLog(new FragmentedLog((FragmentedLog) request.getVotingLog().getLog(), i++));
 
-      boolean addSucceeded = addToQueue(nodeLogQueue, request);
+      boolean addSucceeded = addToQueue(nodeLogQueue, fragmentedRequest);
 
       if (!addSucceeded) {
         logger.debug(
@@ -97,6 +93,8 @@ public class FragmentedLogDispatcher extends LogDispatcher {
             request.getVotingLog().getLog().getCreateTime());
         long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
         request.getAppendEntryRequest().entry = request.getVotingLog().getLog().serialize();
+        request.getVotingLog().getLog().setByteSize(request.getAppendEntryRequest().entry.limit());
+        Statistic.RAFT_SENT_ENTRY_SIZE.add(request.getAppendEntryRequest().entry.limit());
         Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
       }
     }

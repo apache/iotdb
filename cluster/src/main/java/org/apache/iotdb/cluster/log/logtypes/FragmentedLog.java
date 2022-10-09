@@ -124,7 +124,7 @@ public class FragmentedLog extends Log {
     parityShardNum = buffer.getInt();
     shardLength = buffer.getInt();
 
-    logFragments = new byte[dataShardNum + parityShardNum][shardLength];
+    logFragments = new byte[dataShardNum + parityShardNum][];
     fragmentPresent = new boolean[dataShardNum + parityShardNum];
 
     for (int i = 0, fragmentPresentLength = fragmentPresent.length;
@@ -133,6 +133,7 @@ public class FragmentedLog extends Log {
       boolean present = buffer.get() == 1;
       fragmentPresent[i] = present;
       if (present) {
+        logFragments[i] = new byte[shardLength];
         buffer.get(logFragments[i], 0, shardLength);
       }
     }

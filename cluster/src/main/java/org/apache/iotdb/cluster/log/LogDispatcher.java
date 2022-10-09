@@ -338,10 +338,8 @@ public class LogDispatcher {
             request.getVotingLog().getLog().getCreateTime());
         long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
         request.getAppendEntryRequest().entry = request.getVotingLog().getLog().serialize();
-        request
-            .getVotingLog()
-            .getLog()
-            .setByteSize(request.getAppendEntryRequest().entry.capacity());
+        request.getVotingLog().getLog().setByteSize(request.getAppendEntryRequest().entry.limit());
+        Statistic.RAFT_SENT_ENTRY_SIZE.add(request.getAppendEntryRequest().entry.limit());
         if (clusterConfig.isUseVGRaft()) {
           request
               .getAppendEntryRequest()
