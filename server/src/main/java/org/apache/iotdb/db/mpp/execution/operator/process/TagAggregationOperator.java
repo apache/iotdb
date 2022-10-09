@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -49,7 +48,6 @@ public class TagAggregationOperator implements ProcessOperator {
 
   // These fields record the to be consumed index of each tsBlock.
   private final int[] consumedIndices;
-  private final BitMap dataReady;
   private final TsBlockBuilder tsBlockBuilder;
   private final long maxRetainedSize;
   private final long childrenRetainedSize;
@@ -84,7 +82,6 @@ public class TagAggregationOperator implements ProcessOperator {
     // Initialize input tsblocks for each aggregator group.
     this.inputTsBlocks = new TsBlock[children.size()];
     this.consumedIndices = new int[children.size()];
-    this.dataReady = new BitMap(children.size());
     this.maxRetainedSize = children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
     this.childrenRetainedSize =
         children.stream().mapToLong(Operator::calculateRetainedSizeAfterCallingNext).sum();
@@ -114,22 +111,16 @@ public class TagAggregationOperator implements ProcessOperator {
 
   private boolean processOneRow() {
     for (int i = 0; i < children.size(); i++) {
-      if (dataReady.isMarked(i)) {
-        continue;
-      }
+      // If the data is unavailable first, try to find next tsblock of the child.
       if (dataUnavailable(i)) {
-        // Find next non-empty tsblock of the child
-        do {
-          inputTsBlocks[i] = children.get(i).next();
-        } while (inputTsBlocks[i] != null && inputTsBlocks[i].isEmpty());
+        inputTsBlocks[i] = children.get(i).next();
         consumedIndices[i] = 0;
       }
 
-      // Blocked by children i
-      if (inputTsBlocks[i] == null) {
+      // If it's still unavailable, then blocked by children i.
+      if (dataUnavailable(i)) {
         return false;
       }
-      dataReady.mark(i);
     }
 
     TsBlock[] rowBlocks = new TsBlock[children.size()];
@@ -174,7 +165,6 @@ public class TagAggregationOperator implements ProcessOperator {
     // Reset dataReady for next iteration
     for (int i = 0; i < children.size(); i++) {
       consumedIndices[i]++;
-      dataReady.unmark(i);
     }
     return true;
   }
@@ -199,7 +189,7 @@ public class TagAggregationOperator implements ProcessOperator {
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < children.size(); i++) {
       ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone() && consumedIndices[i] == inputTsBlocks[i].getPositionCount()) {
+      if (!blocked.isDone() && dataUnavailable(i)) {
         listenableFutures.add(blocked);
       }
     }
