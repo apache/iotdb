@@ -49,10 +49,14 @@ public abstract class FloatTVList extends TVList {
   }
 
   public static FloatTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickFloatTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickFloatTVList();
+      case BACKWARD:
+        return new BackFloatTVList();
+      default:
+        return new TimFloatTVList();
     }
-    return new TimFloatTVList();
   }
 
   @Override
