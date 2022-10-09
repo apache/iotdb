@@ -2669,13 +2669,24 @@ public class DataRegion {
     }
   }
 
-  private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
+  private void resetLastCacheWhenLoadingTsFile(TsFileResource resource)
+      throws IllegalPathException {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
 
-    // TODO: implement more precise process
-    DataNodeSchemaCache.getInstance().cleanUp();
+    if (config.isMppMode()) {
+      // TODO: implement more precise process
+      DataNodeSchemaCache.getInstance().cleanUp();
+    } else {
+      for (String device : resource.getDevices()) {
+        try {
+          IoTDB.schemaProcessor.deleteLastCacheByDevice(new PartialPath(device));
+        } catch (MetadataException e) {
+          logger.warn(String.format("Create device %s error.", device));
+        }
+      }
+    }
   }
 
   /**
@@ -2728,7 +2739,7 @@ public class DataRegion {
           insertPos,
           deleteOriginFile);
 
-      resetLastCacheWhenLoadingTsFile(); // update last cache
+      resetLastCacheWhenLoadingTsFile(newTsFileResource); // update last cache
       updateLastFlushTime(newTsFileResource); // update last flush time
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
