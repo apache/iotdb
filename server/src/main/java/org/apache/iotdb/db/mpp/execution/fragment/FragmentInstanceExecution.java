@@ -36,7 +36,7 @@ import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.F
 public class FragmentInstanceExecution {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(DriverTaskTimeoutSentinelThread.class);
+      LoggerFactory.getLogger(FragmentInstanceExecution.class);
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
