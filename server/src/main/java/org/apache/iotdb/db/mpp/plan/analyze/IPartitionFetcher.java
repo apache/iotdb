@@ -30,11 +30,11 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  /** get schema partition without automatically create storage group, used in query scenarios. */
+  /** get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * get or create schema partition, used in write scenarios. if storage group not exists, then
+   * get or create schema partition, used when create schema. if schemaPartition not exists, then
    * automatically create.
    */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
