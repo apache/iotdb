@@ -221,6 +221,8 @@ public class ClusterConfig {
 
   private boolean useCRaft = false;
 
+  private boolean enableInstrumenting = true;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -691,5 +693,13 @@ public class ClusterConfig {
 
   public void setUseCRaft(boolean useCRaft) {
     this.useCRaft = useCRaft;
+  }
+
+  public boolean isEnableInstrumenting() {
+    return enableInstrumenting;
+  }
+
+  public void setEnableInstrumenting(boolean enableInstrumenting) {
+    this.enableInstrumenting = enableInstrumenting;
   }
 }

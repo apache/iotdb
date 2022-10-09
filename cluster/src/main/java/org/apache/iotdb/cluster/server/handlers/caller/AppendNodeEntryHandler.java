@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
@@ -52,9 +52,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
   protected RaftMember member;
-  protected AtomicLong receiverTerm;
   protected VotingLog log;
-  protected AtomicBoolean leaderShipStale;
   protected Node directReceiver;
   protected int quorumSize;
 
@@ -67,6 +65,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       sendStart = System.nanoTime();
     }
   }
+
+  // TODO-remove
+  private static Map<Long, Integer> entryAcceptedTimes = new ConcurrentHashMap<>();
 
   @Override
   public void onComplete(AppendEntryResult response) {
@@ -81,10 +82,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
     logger.debug(
         "{}: Append response {} from {} for log {}", member.getName(), response, trueReceiver, log);
-    if (leaderShipStale.get()) {
-      // someone has rejected this log because the leadership is stale
-      return;
-    }
 
     long resp = response.status;
 
@@ -96,22 +93,33 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
               log.getLog().getCurrLogTerm(),
               trueReceiver,
               response.signature);
+      Integer count =
+          entryAcceptedTimes.compute(
+              log.getLog().getCurrLogIndex(),
+              (index, cnt) -> {
+                if (cnt == null) {
+                  cnt = 1;
+                } else {
+                  cnt = cnt + 1;
+                }
+                return cnt;
+              });
+      if (count == quorumSize) {
+        Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
+            log.getLog().getCreateTime());
+      }
+
       member.getPeer(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
       // a response > 0 is the follower's term
       // the leadership is stale, wait for the new leader's heartbeat
-      long prevReceiverTerm = receiverTerm.get();
       logger.debug(
-          "{}: Received a rejection from {} because term is stale: {}/{}, log: {}",
+          "{}: Received a rejection from {} because term is stale: {}, log: {}",
           member.getName(),
           trueReceiver,
-          prevReceiverTerm,
           resp,
           log);
-      if (resp > prevReceiverTerm) {
-        receiverTerm.set(resp);
-      }
-      leaderShipStale.set(true);
+      member.stepDown(resp, false);
       synchronized (log) {
         log.notifyAll();
       }
@@ -186,16 +194,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     this.member = member;
   }
 
-  public void setLeaderShipStale(AtomicBoolean leaderShipStale) {
-    this.leaderShipStale = leaderShipStale;
-  }
-
   public void setDirectReceiver(Node follower) {
     this.directReceiver = follower;
-  }
-
-  public void setReceiverTerm(AtomicLong receiverTerm) {
-    this.receiverTerm = receiverTerm;
   }
 
   public void setQuorumSize(int quorumSize) {

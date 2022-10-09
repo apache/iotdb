@@ -132,7 +132,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -739,17 +738,10 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public void sendLogAsync(
-      VotingLog log,
-      Node node,
-      AtomicBoolean leaderShipStale,
-      AtomicLong newLeaderTerm,
-      AppendEntryRequest request,
-      int quorumSize,
-      boolean isVerifier) {
+      VotingLog log, Node node, AppendEntryRequest request, int quorumSize, boolean isVerifier) {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, quorumSize);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, node, quorumSize);
       try {
         client.appendEntry(request, isVerifier, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -1251,12 +1243,8 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     try {
       AppendLogResult appendLogResult =
-          waitAppendResult(
-              sendLogRequest.getVotingLog(),
-              sendLogRequest.getLeaderShipStale(),
-              sendLogRequest.getNewLeaderTerm(),
-              sendLogRequest.getQuorumSize());
-      Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
+          waitAppendResult(sendLogRequest.getVotingLog(), sendLogRequest.getQuorumSize());
+      Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_END.calOperationCostTimeFromStart(
           sendLogRequest.getVotingLog().getLog().getCreateTime());
       long startTime;
       switch (appendLogResult) {
@@ -1296,15 +1284,12 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public SendLogRequest buildSendLogRequest(Log log) {
     VotingLog votingLog = buildVotingLog(log);
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
     long startTime = Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.getOperationStartTime();
     AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log, false);
     Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.calOperationCostTimeFromStart(startTime);
 
-    return new SendLogRequest(
-        votingLog, leaderShipStale, newLeaderTerm, appendEntryRequest, allNodes.size() / 2);
+    return new SendLogRequest(votingLog, appendEntryRequest, allNodes.size() / 2);
   }
 
   public VotingLog buildVotingLog(Log log) {
@@ -1711,6 +1696,9 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   private boolean canBeWeaklyAccepted(Log log) {
+    if (log instanceof FragmentedLog) {
+      return true;
+    }
     if (!(log instanceof RequestLog)) {
       return false;
     }
@@ -1726,6 +1714,8 @@ public abstract class RaftMember implements RaftMemberMBean {
   @SuppressWarnings({"java:S2445"}) // safe synchronized
   private void waitAppendResultLoop(VotingLog log, int quorumSize) {
     int totalAccepted = votingLogList.totalAcceptedNodeNum(log);
+    int weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
+    int stronglyAccepted = totalAccepted - weaklyAccepted;
     long nextTimeToPrint = 5000;
 
     long waitStart = System.nanoTime();
@@ -1736,7 +1726,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     synchronized (log.getLog()) {
       while (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
           || (!ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
-                      && getCommitIndex() < log.getLog().getCurrLogIndex()
+                      && stronglyAccepted < quorumSize
                   || ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
                       && log.getSignatures().size()
                           < TrustValueHolder.verifierGroupSize(allNodes.size()) / 2)
@@ -1768,6 +1758,8 @@ public abstract class RaftMember implements RaftMemberMBean {
           nextTimeToPrint *= 2;
         }
         totalAccepted = votingLogList.totalAcceptedNodeNum(log);
+        weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
+        stronglyAccepted = totalAccepted - weaklyAccepted;
       }
     }
     if (logger.isDebugEnabled()) {
@@ -1787,15 +1779,16 @@ public abstract class RaftMember implements RaftMemberMBean {
    * wait until "voteCounter" counts down to zero, which means the quorum has received the log, or
    * one follower tells the node that it is no longer a valid leader, or a timeout is triggered.
    */
-  protected AppendLogResult waitAppendResult(
-      VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, int quorumSize) {
+  protected AppendLogResult waitAppendResult(VotingLog log, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
     int totalAccepted = votingLogList.totalAcceptedNodeNum(log);
+    int weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
+    int stronglyAccepted = totalAccepted - weaklyAccepted;
 
     if (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
         || ((!ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
-                    && log.getLog().getCurrLogIndex() > getCommitIndex()
+                    && stronglyAccepted < quorumSize
                 || ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
                     && log.getSignatures().size()
                         < TrustValueHolder.verifierGroupSize(allNodes.size()) / 2)
@@ -1805,6 +1798,8 @@ public abstract class RaftMember implements RaftMemberMBean {
       waitAppendResultLoop(log, quorumSize);
     }
     totalAccepted = votingLogList.totalAcceptedNodeNum(log);
+    weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
+    stronglyAccepted = totalAccepted - weaklyAccepted;
 
     if (log.acceptedTime.get() != 0) {
       Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime.get());
@@ -1812,8 +1807,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calOperationCostTimeFromStart(startTime);
 
     // a node has a larger term than the local node, so this node is no longer a valid leader
-    if (leaderShipStale.get()) {
-      stepDown(newLeaderTerm.get(), false);
+    if (term.get() != log.getLog().getCurrLogTerm()) {
       return AppendLogResult.LEADERSHIP_STALE;
     }
     // the node knows it is no long the leader from other requests
@@ -1821,12 +1815,12 @@ public abstract class RaftMember implements RaftMemberMBean {
       return AppendLogResult.LEADERSHIP_STALE;
     }
 
-    if (totalAccepted >= quorumSize && log.getLog().getCurrLogIndex() > getCommitIndex()) {
+    if (totalAccepted >= quorumSize && stronglyAccepted < quorumSize) {
       return AppendLogResult.WEAK_ACCEPT;
     }
 
     // cannot get enough agreements within a certain amount of time
-    if (log.getLog().getCurrLogIndex() > getCommitIndex()) {
+    if (totalAccepted < quorumSize) {
       return AppendLogResult.TIME_OUT;
     }
 
@@ -2092,11 +2086,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
     logger.debug("{} sending a log to followers: {}", name, log);
 
-    // if a follower has larger term than this node, leaderShipStale will be set to true and
-    // newLeaderTerm will store the follower's term
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicLong newLeaderTerm = new AtomicLong(term.get());
-
     AppendEntryRequest request = buildAppendEntryRequest(log.getLog(), true);
     log.getFailedNodeIds().clear();
     log.setHasFailed(false);
@@ -2107,9 +2096,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // follower will not be blocked
         for (Node node : allNodes) {
           appendLogThreadPool.submit(
-              () ->
-                  sendLogToFollower(
-                      log, node, leaderShipStale, newLeaderTerm, request, quorumSize, false));
+              () -> sendLogToFollower(log, node, request, quorumSize, false));
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -2118,7 +2105,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // there is only one member, send to it within this thread to reduce thread switching
         // overhead
         for (Node node : allNodes) {
-          sendLogToFollower(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, false);
+          sendLogToFollower(log, node, request, quorumSize, false);
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -2130,18 +2117,12 @@ public abstract class RaftMember implements RaftMemberMBean {
       return AppendLogResult.TIME_OUT;
     }
 
-    return waitAppendResult(log, leaderShipStale, newLeaderTerm, quorumSize);
+    return waitAppendResult(log, quorumSize);
   }
 
   /** Send "log" to "node". */
   public void sendLogToFollower(
-      VotingLog log,
-      Node node,
-      AtomicBoolean leaderShipStale,
-      AtomicLong newLeaderTerm,
-      AppendEntryRequest request,
-      int quorumSize,
-      boolean isVerifier) {
+      VotingLog log, Node node, AppendEntryRequest request, int quorumSize, boolean isVerifier) {
     if (node.equals(thisNode)) {
       return;
     }
@@ -2163,9 +2144,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     if (config.isUseAsyncServer()) {
-      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, isVerifier);
+      sendLogAsync(log, node, request, quorumSize, isVerifier);
     } else {
-      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, isVerifier);
+      sendLogSync(log, node, request, quorumSize, isVerifier);
     }
   }
 
@@ -2198,17 +2179,10 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   private void sendLogSync(
-      VotingLog log,
-      Node node,
-      AtomicBoolean leaderShipStale,
-      AtomicLong newLeaderTerm,
-      AppendEntryRequest request,
-      int quorumSize,
-      boolean isVerifier) {
+      VotingLog log, Node node, AppendEntryRequest request, int quorumSize, boolean isVerifier) {
     Client client = getSyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, quorumSize);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, node, quorumSize);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
@@ -2230,17 +2204,11 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public AppendNodeEntryHandler getAppendNodeEntryHandler(
-      VotingLog log,
-      Node node,
-      AtomicBoolean leaderShipStale,
-      AtomicLong newLeaderTerm,
-      int quorumSize) {
+      VotingLog log, Node node, int quorumSize) {
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
     handler.setDirectReceiver(node);
-    handler.setLeaderShipStale(leaderShipStale);
     handler.setLog(log);
     handler.setMember(this);
-    handler.setReceiverTerm(newLeaderTerm);
     handler.setQuorumSize(quorumSize);
     if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
       registerAppendLogHandler(

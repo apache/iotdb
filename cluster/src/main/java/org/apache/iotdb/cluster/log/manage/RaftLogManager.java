@@ -656,16 +656,15 @@ public abstract class RaftLogManager {
     }
 
     startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
+    for (Log entry : entries) {
+      Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.calOperationCostTimeFromStart(
+          entry.getCreateTime());
+    }
     try {
       // Operations here are so simple that the execution could be thought
       // success or fail together approximately.
       // TODO: make it real atomic
       getCommittedEntryManager().append(entries);
-      for (Log entry : entries) {
-        synchronized (entry) {
-          entry.notifyAll();
-        }
-      }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
       commitIndex = lastLog.getCurrLogIndex();

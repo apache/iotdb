@@ -80,7 +80,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
         BlockingQueue<SendLogRequest> logBlockingQueue;
         logBlockingQueue =
             new ArrayBlockingQueue<>(
-                ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+                ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem(), true);
         nodesLogQueuesList.add(new Pair<>(node, logBlockingQueue));
       }
     }
@@ -92,10 +92,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
                 pair.left,
                 n ->
                     IoTDBThreadPoolFactory.newCachedThreadPool(
-                        "LogDispatcher-"
-                            + member.getName()
-                            + "-"
-                            + ClusterUtils.nodeToString(pair.left)))
+                        "LogDispatcher-" + member.getName() + "-" + pair.left.nodeIdentifier))
             .submit(newDispatcherThread(pair.left, pair.right));
       }
     }

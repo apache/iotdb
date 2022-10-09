@@ -392,6 +392,11 @@ public class ClusterDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("use_c_raft", String.valueOf(config.isUseCRaft()))));
 
+    config.setEnableInstrumenting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_instrumenting", String.valueOf(config.isEnableInstrumenting()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

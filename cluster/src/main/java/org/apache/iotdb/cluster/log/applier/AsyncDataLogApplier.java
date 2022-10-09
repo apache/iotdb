@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -168,8 +168,6 @@ public class AsyncDataLogApplier implements LogApplier {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
       sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
-    } else if (plan instanceof DummyPlan) {
-      sgPath = new PartialPath("dummy", false);
     }
     return sgPath;
   }
@@ -217,7 +215,9 @@ public class AsyncDataLogApplier implements LogApplier {
 
   private class DataLogConsumer implements Runnable, Consumer<Log> {
 
-    private BlockingQueue<Log> logQueue = new ArrayBlockingQueue<>(4096);
+    private BlockingQueue<Log> logQueue =
+        new ArrayBlockingQueue<>(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     private volatile long lastLogIndex;
     private volatile long lastAppliedLogIndex;
     private String name;

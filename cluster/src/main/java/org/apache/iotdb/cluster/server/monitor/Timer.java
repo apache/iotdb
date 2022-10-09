@@ -34,7 +34,8 @@ public class Timer {
 
   private static final Logger logger = LoggerFactory.getLogger(Timer.class);
 
-  public static final boolean ENABLE_INSTRUMENTING = true;
+  public static final boolean ENABLE_INSTRUMENTING =
+      ClusterDescriptor.getInstance().getConfig().isEnableInstrumenting();
 
   private static final String COORDINATOR = "Coordinator";
   private static final String META_GROUP_MEMBER = "Meta group member";
@@ -98,6 +99,12 @@ public class Timer {
     RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2(
         RAFT_MEMBER_SENDER,
         "compete for log manager before append",
+        TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND(
+        RAFT_MEMBER_SENDER,
+        "occupy log manager in append",
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
         DATA_GROUP_MEMBER_LOCAL_EXECUTION),
@@ -239,12 +246,6 @@ public class Timer {
         RAFT_MEMBER_SENDER, "in apply queue", TIME_SCALE, true, RAFT_SENDER_COMMIT_WAIT_LOG_APPLY),
     RAFT_SENDER_DATA_LOG_APPLY(
         RAFT_MEMBER_SENDER, "apply data log", TIME_SCALE, true, RAFT_SENDER_COMMIT_WAIT_LOG_APPLY),
-    RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT(
-        RAFT_MEMBER_SENDER,
-        "log from create to accept",
-        TIME_SCALE,
-        RaftMember.USE_LOG_DISPATCHER,
-        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     // raft member - receiver
     RAFT_RECEIVER_LOG_PARSE(
         RAFT_MEMBER_RECEIVER, "log parse", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
@@ -279,6 +280,12 @@ public class Timer {
     LOG_DISPATCHER_LOG_ENQUEUE(
         LOG_DISPATCHER,
         "enqueue",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_LOG_ENQUEUE_SINGLE(
+        LOG_DISPATCHER,
+        "enqueue (single)",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
@@ -317,6 +324,24 @@ public class Timer {
     LOG_DISPATCHER_FROM_CREATE_TO_SENT(
         LOG_DISPATCHER,
         "from create to sent",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT(
+        LOG_DISPATCHER,
+        "from create to accept",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT(
+        LOG_DISPATCHER,
+        "from create to commit",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_END(
+        LOG_DISPATCHER,
+        "from create to wait end",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

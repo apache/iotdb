@@ -389,6 +389,6 @@ public class ClusterUtils {
   }
 
   public static String nodeToString(Node node) {
-    return node.getInternalIp() + "-" + node.getMetaPort();
+    return node.getInternalIp() + ":" + node.getMetaPort();
   }
 }

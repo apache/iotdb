@@ -34,8 +34,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller
@@ -71,6 +69,8 @@ public class SynchronousSequencer implements LogSequencer {
 
     while (true) {
       synchronized (logManager) {
+        long occupyStart =
+            Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.getOperationStartTime();
         if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
             || (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
                 <= ClusterDescriptor.getInstance()
@@ -104,6 +104,8 @@ public class SynchronousSequencer implements LogSequencer {
               && ClusterDescriptor.getInstance().getConfig().isEnableWeakAcceptance())) {
             sendLogRequest = enqueueEntry(sendLogRequest);
           }
+          Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.calOperationCostTimeFromStart(
+              occupyStart);
           break;
         }
         try {
@@ -116,6 +118,9 @@ public class SynchronousSequencer implements LogSequencer {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
+
+        Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.calOperationCostTimeFromStart(
+            occupyStart);
       }
     }
 
@@ -134,19 +139,12 @@ public class SynchronousSequencer implements LogSequencer {
 
   private SendLogRequest buildSendLogRequest(Log log) {
     VotingLog votingLog = member.buildVotingLog(log);
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicLong newLeaderTerm = new AtomicLong(member.getTerm().get());
 
     long startTime = Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.getOperationStartTime();
     AppendEntryRequest appendEntryRequest = member.buildAppendEntryRequest(log, false);
     Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.calOperationCostTimeFromStart(startTime);
 
-    return new SendLogRequest(
-        votingLog,
-        leaderShipStale,
-        newLeaderTerm,
-        appendEntryRequest,
-        member.getAllNodes().size() / 2);
+    return new SendLogRequest(votingLog, appendEntryRequest, member.getAllNodes().size() / 2);
   }
 
   public static class Factory implements LogSequencerFactory {

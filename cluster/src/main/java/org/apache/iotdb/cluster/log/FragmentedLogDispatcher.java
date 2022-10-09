@@ -40,6 +40,10 @@ public class FragmentedLogDispatcher extends LogDispatcher {
   }
 
   public void offer(SendLogRequest request) {
+    if (!(request.getVotingLog().getLog() instanceof FragmentedLog)) {
+      super.offer(request);
+      return;
+    }
     // do serialization here to avoid taking LogManager for too long
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
@@ -89,6 +93,8 @@ public class FragmentedLogDispatcher extends LogDispatcher {
       for (SendLogRequest request : currBatch) {
         Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
             request.getVotingLog().getLog().getEnqueueTime());
+        Statistic.LOG_DISPATCHER_FROM_CREATE_TO_DEQUEUE.calOperationCostTimeFromStart(
+            request.getVotingLog().getLog().getCreateTime());
         long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
         request.getAppendEntryRequest().entry = request.getVotingLog().getLog().serialize();
         Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);

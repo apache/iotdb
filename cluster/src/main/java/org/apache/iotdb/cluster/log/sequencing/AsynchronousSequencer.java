@@ -42,8 +42,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_SENDER_SEQUENCE_LOG;
 
@@ -76,12 +74,8 @@ public class AsynchronousSequencer implements LogSequencer {
 
   public SendLogRequest enqueueSendLogRequest(Log log) {
     VotingLog votingLog = member.buildVotingLog(log);
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicLong newLeaderTerm = new AtomicLong(member.getTerm().get());
 
-    SendLogRequest request =
-        new SendLogRequest(
-            votingLog, leaderShipStale, newLeaderTerm, null, member.getAllNodes().size() / 2);
+    SendLogRequest request = new SendLogRequest(votingLog, null, member.getAllNodes().size() / 2);
     try {
       if (!unsequencedLogQueue.offer(
           request,
