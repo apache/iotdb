@@ -2620,8 +2620,41 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
             + PATH_SEPARATOR
             + "d"
             + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3));
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 3; i++) {
       if (i == 0) {
+        Assert.assertFalse(
+            targetResources
+                .get(i)
+                .isDeviceIdExist(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset())));
+        Assert.assertFalse(
+            targetResources
+                .get(i)
+                .isDeviceIdExist(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
+        Assert.assertFalse(
+            targetResources
+                .get(i)
+                .isDeviceIdExist(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
+        Assert.assertTrue(
+            targetResources
+                .get(i)
+                .isDeviceIdExist(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
+      } else if (i == 1) {
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -2679,7 +2712,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
                         + PATH_SEPARATOR
                         + "d"
                         + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
-        Assert.assertTrue(
+        Assert.assertFalse(
             targetResources
                 .get(i)
                 .isDeviceIdExist(
@@ -2696,6 +2729,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
     for (int i = 0; i < 4; i++) {
       TSDataType tsDataType = i < 2 ? TSDataType.TEXT : TSDataType.INT64;
       for (int j = 0; j < 7; j++) {
+        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -2755,7 +2789,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
         }
         tsBlockReader.close();
         if (i < 2 && j < 7) {
-          assertEquals(300, count);
+          assertEquals(400, count);
         } else if (i == 3 && j < 5) {
           assertEquals(600, count);
         } else {
@@ -3068,7 +3102,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.clear();
     measurementIndex.add(0);
     measurementIndex.add(2);
-    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 400, 0, true, false);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 600, 0, true, false);
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
@@ -3149,6 +3183,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
+        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR

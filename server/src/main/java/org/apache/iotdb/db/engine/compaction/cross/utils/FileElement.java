@@ -13,4 +13,9 @@ public class FileElement {
     public FileElement(TsFileResource resource) {
         this.resource = resource;
     }
+
+  public FileElement(TsFileResource resource, MetadataIndexNode firstMeasurementNode) {
+    this.resource = resource;
+    this.firstMeasurementNode = firstMeasurementNode;
+  }
 }

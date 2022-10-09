@@ -841,9 +841,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     return null;
   }
 
-  public Map<String, Pair<Long, Long>> getTimeseriesMetadataOffsetByDevice(
-      MetadataIndexNode measurementNode) throws IOException {
-    Map<String, Pair<Long, Long>> timeseriesMetadataOffsetMap = new HashMap<>();
+  public Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>>
+      getTimeseriesMetadataOffsetByDevice(
+          MetadataIndexNode measurementNode, boolean needChunkMetadata) throws IOException {
+    Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        new HashMap<>();
     List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
     for (int i = 0; i < childrenEntryList.size(); i++) {
       long startOffset = childrenEntryList.get(i).getOffset();
@@ -856,17 +858,20 @@ public class TsFileSequenceReader implements AutoCloseable {
         // leaf measurement node
         while (nextBuffer.hasRemaining()) {
           int metadataStartOffset = nextBuffer.position();
-          String measurementId =
-              TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId();
+          TimeseriesMetadata timeseriesMetadata =
+              TimeseriesMetadata.deserializeFrom(nextBuffer, needChunkMetadata);
           timeseriesMetadataOffsetMap.put(
-              measurementId,
-              new Pair<>(startOffset + metadataStartOffset, startOffset + nextBuffer.position()));
+              timeseriesMetadata.getMeasurementId(),
+              new Pair<>(
+                  timeseriesMetadata.getChunkMetadataList(),
+                  new Pair<>(
+                      startOffset + metadataStartOffset, startOffset + nextBuffer.position())));
         }
 
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
-        return getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode);
+        return getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode, needChunkMetadata);
       }
     }
     return timeseriesMetadataOffsetMap;

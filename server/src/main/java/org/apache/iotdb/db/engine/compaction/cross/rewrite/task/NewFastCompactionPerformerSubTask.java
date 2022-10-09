@@ -19,10 +19,8 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -40,8 +38,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -78,18 +76,21 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
-  Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-  private List<String> measurementIds = new ArrayList<>();
+  private Map<String, IMeasurementSchema> measurementSchemaMap = new LinkedHashMap<>();
+
+  private List<String> allMeasurements = new ArrayList<>();
 
   // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
-  private List<Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
+  Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
+
+  Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+      timeseriesSchemaAndMetadataOffsetMap;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
   // sorted source files by the start time of device
   private List<FileElement> fileList = new ArrayList<>();
 
-  private List<Boolean> hasFileSelected;
 
   private boolean isAligned;
 
@@ -128,8 +129,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       NewFastCrossCompactionWriter compactionWriter,
       String deviceId,
       List<Integer> pathsIndex,
+      List<String> allMeasurements,
       NewFastCompactionPerformer newFastCompactionPerformer,
-      List<Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
+      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
     this.newFastCompactionPerformer = newFastCompactionPerformer;
@@ -137,6 +139,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     this.pathsIndex = pathsIndex;
     this.deviceId = deviceId;
     this.subTaskId = subTaskId;
+    this.allMeasurements = allMeasurements;
     chunkMetadataQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -156,12 +159,13 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   public NewFastCompactionPerformerSubTask(
       NewFastCrossCompactionWriter compactionWriter,
       NewFastCompactionPerformer newFastCompactionPerformer,
-      List<AlignedChunkMetadata> alignedChunkMetadataList,
+      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       List<IMeasurementSchema> measurementSchemas,
       String deviceId,
       int subTaskId) {
-    this(measurementSchemas, true, compactionWriter, subTaskId);
-    this.alignedSensorMetadatas = alignedChunkMetadataList;
+    this(null, true, compactionWriter, subTaskId);
+    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
+    this.measurementSchemas = measurementSchemas;
     this.newFastCompactionPerformer = newFastCompactionPerformer;
     this.deviceId = deviceId;
   }
@@ -177,13 +181,13 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       //            new ChunkMetadataElement(alignedChunkMetadata, chunkMetadataPriority++));
       // }
       newFastCompactionPerformer
-          .getSortedSourceFiles()
-          .forEach(x -> fileList.add(new FileElement(x)));
+          .getSortedSourceFilesAndFirstMeasurementNodeOfCurrentDevice()
+          .forEach(x -> fileList.add(new FileElement(x.left, x.right)));
 
+      compactionWriter.startMeasurement(measurementSchemas, subTaskId);
       compactFiles();
-      if (hasStartMeasurement) {
-        compactionWriter.endMeasurement(subTaskId);
-      }
+      compactionWriter.endMeasurement(subTaskId);
+
     } else {
       for (Integer index : pathsIndex) {
         newFastCompactionPerformer
@@ -211,14 +215,16 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       // read chunk metadatas from files and put them into chunk metadata queue
       deserializeFileIntoQueue(overlappedFiles);
 
-      startMeasurement();
+      if (!isAligned) {
+        startMeasurement();
+      }
 
       compactChunks();
     }
   }
 
   private void startMeasurement() throws IOException {
-    if (!isAligned) {
+
       if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
         ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
         MeasurementSchema measurementSchema =
@@ -229,13 +235,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
         hasStartMeasurement = true;
       }
-    } else {
-      if (!hasStartMeasurement) {
-        compactionWriter.startMeasurement(
-            new ArrayList<>(measurementSchemaMap.values()), subTaskId);
-        hasStartMeasurement = true;
-      }
-    }
+
   }
 
   /**
@@ -294,7 +294,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       for (FileElement fileElement : fileElements) {
         TsFileResource resource = fileElement.resource;
         Pair<Long, Long> timeseriesMetadataOffset =
-            timeseriesMetadataOffsetMap.get(currentSensorIndex).get(resource);
+            timeseriesMetadataOffsetMap.get(allMeasurements.get(currentSensorIndex)).get(resource);
         if (timeseriesMetadataOffset == null) {
           // tsfile does not contain this timeseries
           removeFile(fileElement);
@@ -336,33 +336,73 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     } else {
       for (FileElement fileElement : fileElements) {
         TsFileResource resource = fileElement.resource;
-        List<ITimeSeriesMetadata> iTimeseriesMetadataList = new ArrayList<>();
         TsFileSequenceReader reader = newFastCompactionPerformer.getReaderFromCache(resource);
-        reader.getDeviceTimeseriesMetadata(
-            iTimeseriesMetadataList,
-            fileElement.firstMeasurementNode,
-            Collections.emptySet(),
-            true);
-        AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
-            (AlignedTimeSeriesMetadata) iTimeseriesMetadataList.get(0);
+
+        // read time chunk metadatas and value chunk metadatas in the current file
+        List<IChunkMetadata> timeChunkMetadatas = new ArrayList<>();
+        List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
+        for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
+            timeseriesMetadataOffsetMap.entrySet()) {
+          String measurementID = entry.getKey();
+          Pair<Long, Long> timeseriesOffsetInCurrentFile = entry.getValue().get(resource);
+          if (measurementID.equals("")) {
+            // read time chunk metadatas
+            timeChunkMetadatas =
+                reader.getChunkMetadataListByTimeseriesMetadataOffset(
+                    timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+          } else {
+            // read value chunk metadatas
+            if (timeseriesOffsetInCurrentFile == null) {
+              // current file does not contain this aligned timeseries
+              valueChunkMetadatas.add(null);
+            } else {
+              // current file contains this aligned timeseries
+              valueChunkMetadatas.add(
+                  reader.getChunkMetadataListByTimeseriesMetadataOffset(
+                      timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
+            }
+          }
+        }
+
+        // construct aligned chunk metadatas
+        List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+        for (int i = 0; i < timeChunkMetadatas.size(); i++) {
+          List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+          for (List<IChunkMetadata> chunkMetadata : valueChunkMetadatas) {
+            if (chunkMetadata == null) {
+              valueChunkMetadataList.add(null);
+            } else {
+              valueChunkMetadataList.add(chunkMetadata.get(i));
+            }
+          }
+          AlignedChunkMetadata alignedChunkMetadata =
+              new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
+
+          // set file path
+          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
+          alignedChunkMetadataList.add(alignedChunkMetadata);
+        }
 
         // get value modifications of this file
         List<List<Modification>> valueModifications = new ArrayList<>();
-        alignedTimeSeriesMetadata
-            .getValueTimeseriesMetadataList()
+        alignedChunkMetadataList
+            .get(0)
+            .getValueChunkMetadataList()
             .forEach(
                 x -> {
                   try {
-                    valueModifications.add(
-                        newFastCompactionPerformer.getModifications(
-                            resource, new PartialPath(deviceId, x.getMeasurementId())));
+                    if (x == null) {
+                      valueModifications.add(null);
+                    } else {
+                      valueModifications.add(
+                          newFastCompactionPerformer.getModifications(
+                              resource, new PartialPath(deviceId, x.getMeasurementUid())));
+                    }
                   } catch (IllegalPathException e) {
                     throw new RuntimeException(e);
                   }
                 });
 
-        List<AlignedChunkMetadata> alignedChunkMetadataList =
-            alignedTimeSeriesMetadata.getChunkMetadataList();
         // modify aligned chunk metadatas
         QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
 
@@ -371,34 +411,92 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           removeFile(fileElement);
         }
 
+        // put aligned chunk metadatas into queue
         for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
-          AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
-          alignedChunkMetadata
-              .getValueChunkMetadataList()
-              .forEach(
-                  x -> {
-                    if (!measurementSchemaMap.containsKey(x.getMeasurementUid())) {
-                      try {
-                        measurementSchemaMap.put(
-                            x.getMeasurementUid(),
-                            reader.getMeasurementSchema(Collections.singletonList(x)));
-                      } catch (IOException e) {
-                        throw new RuntimeException(e);
-                      }
-                    }
-                  });
-          // set file path
-          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
-
-          // add into queue
           chunkMetadataQueue.add(
               new ChunkMetadataElement(
-                  alignedChunkMetadata,
+                  alignedChunkMetadataList.get(i),
                   (int) resource.getVersion(),
                   i == alignedChunkMetadataList.size() - 1,
                   fileElement));
         }
       }
+
+      //      for (FileElement fileElement : fileElements) {
+      //        TsFileResource resource = fileElement.resource;
+      //        List<ITimeSeriesMetadata> iTimeseriesMetadataList = new ArrayList<>();
+      //        TsFileSequenceReader reader =
+      // newFastCompactionPerformer.getReaderFromCache(resource);
+      //        reader.getDeviceTimeseriesMetadata(
+      //            iTimeseriesMetadataList,
+      //            fileElement.firstMeasurementNode,
+      //            Collections.emptySet(),
+      //            true);
+      //        AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
+      //            (AlignedTimeSeriesMetadata) iTimeseriesMetadataList.get(0);
+      //
+      //
+      //        // get value modifications of this file
+      //        List<List<Modification>> valueModifications = new ArrayList<>();
+      //        alignedTimeSeriesMetadata
+      //            .getValueTimeseriesMetadataList()
+      //            .forEach(
+      //                x -> {
+      //                  try {
+      //                    valueModifications.add(
+      //                        newFastCompactionPerformer.getModifications(
+      //                            resource, new PartialPath(deviceId, x.getMeasurementId())));
+      //                  } catch (IllegalPathException e) {
+      //                    throw new RuntimeException(e);
+      //                  }
+      //                });
+      //
+      //        List<AlignedChunkMetadata> alignedChunkMetadataList =
+      //            alignedTimeSeriesMetadata.getChunkMetadataList();
+      //        // modify aligned chunk metadatas
+      //        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
+      //
+      //        if (alignedChunkMetadataList.size() == 0) {
+      //          // all chunks has been deleted in this file, just remove it
+      //          removeFile(fileElement);
+      //        }
+      //
+      //        Map<String, IChunkMetadata> valueChunkMetadataMap = new LinkedHashMap<>();
+      //        for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
+      //          AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
+      //          List<IChunkMetadata> valueChunkMetadataList =
+      //              alignedChunkMetadata.getValueChunkMetadataList();
+      //          int valueIndex = 0;
+      //          for (int i = 0; i < allMeasruements.size(); i++) {
+      //            if (allMeasruements.get(i) <= valueChunkMetadataList.get(valueIndex))
+      //              valueChunkMetadataList.add();
+      //          }
+      //          alignedChunkMetadata
+      //              .getValueChunkMetadataList()
+      //              .forEach(
+      //                  x -> {
+      //                    if (!measurementSchemaMap.containsKey(x.getMeasurementUid())) {
+      //                      try {
+      //                        measurementSchemaMap.put(
+      //                            x.getMeasurementUid(),
+      //                            reader.getMeasurementSchema(Collections.singletonList(x)));
+      //                      } catch (IOException e) {
+      //                        throw new RuntimeException(e);
+      //                      }
+      //                    }
+      //                  });
+      //          // set file path
+      //          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
+      //
+      //          // add into queue
+      //          chunkMetadataQueue.add(
+      //              new ChunkMetadataElement(
+      //                  alignedChunkMetadata,
+      //                  (int) resource.getVersion(),
+      //                  i == alignedChunkMetadataList.size() - 1,
+      //                  fileElement));
+      //        }
+      //      }
     }
   }
 
@@ -467,14 +565,14 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           // value chunk has been deleted completely
           valuePageHeaders.add(null);
           compressedValuePageDatas.add(null);
-          // valueChunks.add(null);
+          valueChunks.add(null);
           continue;
         }
         Chunk valueChunk = ChunkCache.getInstance().get(chunkMetadata);
         chunkReader = new ChunkReader(valueChunk);
         chunkDataBuffer = valueChunk.getData();
         chunkHeader = valueChunk.getHeader();
-        valueChunks.set(i, valueChunk);
+        valueChunks.add(valueChunk);
 
         valuePageHeaders.add(new ArrayList<>());
         compressedValuePageDatas.add(new ArrayList<>());

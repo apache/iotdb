@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -169,6 +170,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return schemaMap;
   }
 
+
   public Map<String, Map<TsFileResource, Pair<Long, Long>>>
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
@@ -178,16 +180,44 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<Long, Long>> entrySet :
+      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
           reader
               .getTimeseriesMetadataOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice())
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(), false)
               .entrySet()) {
         String measurementId = entrySet.getKey();
         if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
           timeseriesMetadataOffsetMap.put(measurementId, new HashMap<>());
         }
-        timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue());
+        timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
+  public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+      getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
+    Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+        timeseriesMetadataOffsetMap = new HashMap<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
+          reader
+              .getTimeseriesMetadataOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(), true)
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
+          MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+          timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
+        }
+        timeseriesMetadataOffsetMap
+            .get(measurementId)
+            .right
+            .put(resource, entrySet.getValue().right);
       }
     }
     return timeseriesMetadataOffsetMap;
@@ -588,5 +618,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       return readerAndChunkMetadataForThisSeries;
     }
+  }
+
+  public MetadataIndexNode getFirstMeasurementNodeOfCurrentDeviceByResource(
+      TsFileResource tsFileResource) {
+    return deviceIteratorMap.get(tsFileResource).getFirstMeasurementNodeOfCurrentDevice();
   }
 }
