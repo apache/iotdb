@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode.GroupByTagAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -43,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 
 import org.apache.commons.lang3.Validate;
 
@@ -184,11 +184,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("GroupByTag-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Tag keys: %s", node.getTagKeys()));
     int bucketIdx = 0;
-    for (Entry<List<String>, List<GroupByTagAggregationDescriptor>> entry :
+    for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         node.getTagValuesToAggregationDescriptors().entrySet()) {
       boxValue.add(String.format("Bucket-%d: %s", bucketIdx, entry.getKey()));
       int aggregatorIdx = 0;
-      for (GroupByTagAggregationDescriptor descriptor : entry.getValue()) {
+      for (CrossSeriesAggregationDescriptor descriptor : entry.getValue()) {
         if (descriptor == null) {
           boxValue.add(String.format("    Aggregator-%d: NULL", aggregatorIdx));
         } else {

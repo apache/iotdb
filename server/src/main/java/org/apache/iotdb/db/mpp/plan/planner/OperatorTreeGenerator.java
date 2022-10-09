@@ -154,8 +154,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
@@ -1054,8 +1054,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
-    List<GroupByLevelDescriptor> aggregationDescriptors = node.getGroupByLevelDescriptors();
-    for (GroupByLevelDescriptor descriptor : aggregationDescriptors) {
+    List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
+        node.getGroupByLevelDescriptors();
+    for (CrossSeriesAggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       TSDataType seriesDataType =
           context
@@ -1106,12 +1107,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<List<String>> groups = new ArrayList<>();
     List<List<Aggregator>> groupedAggregators = new ArrayList<>();
     int aggregatorCount = 0;
-    for (Map.Entry<List<String>, List<GroupByTagNode.GroupByTagAggregationDescriptor>> entry :
+    for (Map.Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         node.getTagValuesToAggregationDescriptors().entrySet()) {
       groups.add(entry.getKey());
       List<Aggregator> aggregators = new ArrayList<>();
-      for (GroupByTagNode.GroupByTagAggregationDescriptor aggregationDescriptor :
-          entry.getValue()) {
+      for (CrossSeriesAggregationDescriptor aggregationDescriptor : entry.getValue()) {
         if (aggregationDescriptor == null) {
           aggregators.add(null);
           continue;

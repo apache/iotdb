@@ -57,7 +57,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode.GroupByTagAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -73,8 +72,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -246,12 +245,6 @@ public class LogicalPlanBuilder {
             groupByTimeParameter);
     updateTypeProvider(aggregationExpressions);
     updateTypeProvider(sourceTransformExpressions);
-
-    // Update data types of GROUP BY TAG output
-    if (crossGroupByAggregations != null) {
-      updateTypeProvider(crossGroupByAggregations.keySet());
-      updateTypeProviderWithConstantType(tagKeys, TSDataType.TEXT);
-    }
 
     return convergeAggregationSource(
         sourceNodeList,
@@ -473,7 +466,7 @@ public class LogicalPlanBuilder {
   }
 
   public static void updateTypeProviderByPartialAggregation(
-      GroupByLevelDescriptor aggregationDescriptor, TypeProvider typeProvider) {
+      CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<AggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
@@ -611,10 +604,10 @@ public class LogicalPlanBuilder {
       AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
+    List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
     for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
       groupByLevelDescriptors.add(
-          new GroupByLevelDescriptor(
+          new CrossSeriesAggregationDescriptor(
               ((FunctionExpression) groupedExpression).getFunctionName(),
               curStep,
               groupByLevelExpressions.get(groupedExpression).stream()
@@ -626,7 +619,7 @@ public class LogicalPlanBuilder {
     updateTypeProvider(groupByLevelExpressions.keySet());
     updateTypeProvider(
         groupByLevelDescriptors.stream()
-            .map(GroupByLevelDescriptor::getOutputExpression)
+            .map(CrossSeriesAggregationDescriptor::getOutputExpression)
             .collect(Collectors.toList()));
     return new GroupByLevelNode(
         context.getQueryId().genPlanNodeId(),
@@ -645,12 +638,12 @@ public class LogicalPlanBuilder {
       AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    Map<List<String>, List<GroupByTagAggregationDescriptor>> tagValuesToAggregationDescriptors =
+    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
         new HashMap<>();
     for (List<String> tagValues : tagValuesToGroupedTimeseriesOperands.keySet()) {
       LinkedHashMap<Expression, List<Expression>> groupedTimeseriesOperands =
           tagValuesToGroupedTimeseriesOperands.get(tagValues);
-      List<GroupByTagAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
+      List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
 
       Iterator<Expression> iter = groupedTimeseriesOperands.keySet().iterator();
       for (Expression groupByTagOutputExpression : groupByTagOutputExpressions) {
@@ -661,9 +654,12 @@ public class LogicalPlanBuilder {
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
           String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
-          GroupByTagAggregationDescriptor aggregationDescriptor =
-              new GroupByTagAggregationDescriptor(
-                  functionName, curStep, groupedTimeseriesOperands.get(next), next);
+          CrossSeriesAggregationDescriptor aggregationDescriptor =
+              new CrossSeriesAggregationDescriptor(
+                  functionName,
+                  curStep,
+                  groupedTimeseriesOperands.get(next),
+                  next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);
         } else {
           aggregationDescriptors.add(null);
@@ -672,6 +668,8 @@ public class LogicalPlanBuilder {
       tagValuesToAggregationDescriptors.put(tagValues, aggregationDescriptors);
     }
 
+    updateTypeProvider(groupByTagOutputExpressions);
+    updateTypeProviderWithConstantType(tagKeys, TSDataType.TEXT);
     return new GroupByTagNode(
         context.getQueryId().genPlanNodeId(),
         children,

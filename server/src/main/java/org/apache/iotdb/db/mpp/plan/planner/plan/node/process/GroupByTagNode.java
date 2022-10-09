@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -38,7 +36,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +46,7 @@ import java.util.stream.Collectors;
 public class GroupByTagNode extends MultiChildNode {
 
   private final List<String> tagKeys;
-  private final Map<List<String>, List<GroupByTagAggregationDescriptor>>
+  private final Map<List<String>, List<CrossSeriesAggregationDescriptor>>
       tagValuesToAggregationDescriptors;
   private final List<String> outputColumnNames;
 
@@ -65,7 +62,7 @@ public class GroupByTagNode extends MultiChildNode {
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder,
       List<String> tagKeys,
-      Map<List<String>, List<GroupByTagAggregationDescriptor>> tagValuesToAggregationDescriptors,
+      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors,
       List<String> outputColumnNames) {
     super(id, children);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -80,7 +77,7 @@ public class GroupByTagNode extends MultiChildNode {
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder,
       List<String> tagKeys,
-      Map<List<String>, List<GroupByTagAggregationDescriptor>> tagValuesToAggregationDescriptors,
+      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors,
       List<String> outputColumnNames) {
     super(id);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -139,11 +136,11 @@ public class GroupByTagNode extends MultiChildNode {
 
     // Tag values to aggregation descriptors.
     ReadWriteIOUtils.write(tagValuesToAggregationDescriptors.size(), byteBuffer);
-    for (Entry<List<String>, List<GroupByTagAggregationDescriptor>> entry :
+    for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         tagValuesToAggregationDescriptors.entrySet()) {
       ReadWriteIOUtils.writeStringList(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
-      for (GroupByTagAggregationDescriptor aggregationDescriptor : entry.getValue()) {
+      for (CrossSeriesAggregationDescriptor aggregationDescriptor : entry.getValue()) {
         if (aggregationDescriptor == null) {
           ReadWriteIOUtils.write((byte) 0, byteBuffer);
         } else {
@@ -178,11 +175,11 @@ public class GroupByTagNode extends MultiChildNode {
 
     // Tag values to aggregation descriptors.
     ReadWriteIOUtils.write(tagValuesToAggregationDescriptors.size(), stream);
-    for (Entry<List<String>, List<GroupByTagAggregationDescriptor>> entry :
+    for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
         tagValuesToAggregationDescriptors.entrySet()) {
       ReadWriteIOUtils.writeStringList(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue().size(), stream);
-      for (GroupByTagAggregationDescriptor aggregationDescriptor : entry.getValue()) {
+      for (CrossSeriesAggregationDescriptor aggregationDescriptor : entry.getValue()) {
         if (aggregationDescriptor == null) {
           ReadWriteIOUtils.write((byte) 0, stream);
         } else {
@@ -220,7 +217,7 @@ public class GroupByTagNode extends MultiChildNode {
     return tagKeys;
   }
 
-  public Map<List<String>, List<GroupByTagAggregationDescriptor>>
+  public Map<List<String>, List<CrossSeriesAggregationDescriptor>>
       getTagValuesToAggregationDescriptors() {
     return tagValuesToAggregationDescriptors;
   }
@@ -231,16 +228,16 @@ public class GroupByTagNode extends MultiChildNode {
 
     // Tag values to aggregation descriptors.
     int numOfEntries = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<List<String>, List<GroupByTagAggregationDescriptor>> tagValuesToAggregationDescriptors =
+    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
         new HashMap<>();
     while (numOfEntries > 0) {
       List<String> tagValues = ReadWriteIOUtils.readStringList(byteBuffer);
-      List<GroupByTagAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
+      List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
       int numOfAggregationDescriptors = ReadWriteIOUtils.readInt(byteBuffer);
       while (numOfAggregationDescriptors > 0) {
         byte isNotNull = ReadWriteIOUtils.readByte(byteBuffer);
         if (isNotNull == 1) {
-          aggregationDescriptors.add(GroupByTagAggregationDescriptor.deserialize(byteBuffer));
+          aggregationDescriptors.add(CrossSeriesAggregationDescriptor.deserialize(byteBuffer));
         }
         numOfAggregationDescriptors -= 1;
       }
@@ -308,51 +305,8 @@ public class GroupByTagNode extends MultiChildNode {
         getPlanNodeId(),
         getOutputColumnNames(),
         tagValuesToAggregationDescriptors.values().stream()
-            .flatMap(list -> list.stream().map(AggregationDescriptor::getInputExpressions))
+            .flatMap(
+                list -> list.stream().map(CrossSeriesAggregationDescriptor::getInputExpressions))
             .collect(Collectors.toList()));
-  }
-
-  public static class GroupByTagAggregationDescriptor extends AggregationDescriptor {
-    private final Expression outputExpression;
-
-    public GroupByTagAggregationDescriptor(
-        String aggregationFuncName,
-        AggregationStep step,
-        List<Expression> inputExpressions,
-        Expression outputExpression) {
-      super(aggregationFuncName, step, inputExpressions);
-      this.outputExpression = Validate.notNull(outputExpression);
-    }
-
-    public Expression getOutputExpression() {
-      return outputExpression;
-    }
-
-    @Override
-    public void serialize(ByteBuffer byteBuffer) {
-      super.serialize(byteBuffer);
-      Expression.serialize(outputExpression, byteBuffer);
-    }
-
-    @Override
-    public void serialize(DataOutputStream stream) throws IOException {
-      super.serialize(stream);
-      Expression.serialize(outputExpression, stream);
-    }
-
-    @Override
-    public List<String> getOutputColumnNames() {
-      return Collections.singletonList(outputExpression.toString());
-    }
-
-    public static GroupByTagAggregationDescriptor deserialize(ByteBuffer byteBuffer) {
-      AggregationDescriptor aggregationDescriptor = AggregationDescriptor.deserialize(byteBuffer);
-      Expression outputExpression = Expression.deserialize(byteBuffer);
-      return new GroupByTagAggregationDescriptor(
-          aggregationDescriptor.getAggregationFuncName(),
-          aggregationDescriptor.getStep(),
-          aggregationDescriptor.getInputExpressions(),
-          outputExpression);
-    }
   }
 }

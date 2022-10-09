@@ -55,7 +55,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
@@ -728,8 +728,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       GroupByLevelNode handle = (GroupByLevelNode) node;
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
-      List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
-      for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
+      List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
+      for (CrossSeriesAggregationDescriptor originalDescriptor :
+          handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
         for (String childColumn : childrenOutputColumns) {
           // If this condition matched, the childColumn should come from GroupByLevelNode
@@ -746,7 +747,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         if (descriptorExpressions.size() == 0) {
           continue;
         }
-        GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
+        CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);

@@ -47,12 +47,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode.GroupByTagAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -634,16 +634,16 @@ public class LogicalPlannerTest {
 
       Assert.assertEquals(Collections.singletonList("key1"), root.getTagKeys());
 
-      Map<List<String>, List<GroupByTagAggregationDescriptor>> tagValuesToAggregationDescriptors =
+      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
           root.getTagValuesToAggregationDescriptors();
       Assert.assertEquals(1, tagValuesToAggregationDescriptors.size());
       Assert.assertEquals(
           Collections.singleton(Collections.singletonList("value1")),
           tagValuesToAggregationDescriptors.keySet());
-      List<GroupByTagAggregationDescriptor> descriptors =
+      List<CrossSeriesAggregationDescriptor> descriptors =
           tagValuesToAggregationDescriptors.get(Collections.singletonList("value1"));
       Assert.assertEquals(1, descriptors.size());
-      GroupByTagAggregationDescriptor descriptor = descriptors.get(0);
+      CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
       Assert.assertEquals("max_value(s1)", descriptor.getOutputExpression().toString());
       Assert.assertEquals(AggregationType.MAX_VALUE, descriptor.getAggregationType());
       Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
