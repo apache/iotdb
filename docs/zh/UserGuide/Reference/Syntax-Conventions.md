@@ -713,7 +713,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-## 了解更多
+## 词法与文法详细定义
 
 请阅读代码仓库中的词法和语法描述文件：
 

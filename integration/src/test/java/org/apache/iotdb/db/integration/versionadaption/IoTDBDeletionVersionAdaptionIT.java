@@ -65,7 +65,8 @@ public class IoTDBDeletionVersionAdaptionIT {
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();

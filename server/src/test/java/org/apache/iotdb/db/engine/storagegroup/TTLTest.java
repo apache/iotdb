@@ -88,8 +88,9 @@ public class TTLTest {
 
   @Before
   public void setUp() throws MetadataException, DataRegionException {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
+    prevPartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(86400000);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -98,7 +99,9 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTimePartitionIntervalForStorage(prevPartitionInterval);
   }
 
   private void createSchemas() throws MetadataException, DataRegionException {

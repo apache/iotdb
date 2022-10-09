@@ -32,16 +32,22 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TriggerInfo implements SnapshotProcessor {
@@ -77,17 +83,6 @@ public class TriggerInfo implements SnapshotProcessor {
   public void releaseTriggerTableLock() {
     LOGGER.info("release TriggerTableLock");
     triggerTableLock.unlock();
-  }
-
-  @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    // TODO implement when 'Drop Trigger' done
-    return true;
-  }
-
-  @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    // TODO implement when 'Drop Trigger' done
   }
 
   /**
@@ -171,5 +166,96 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TriggerTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         triggerTable.getAllTriggerInformation());
+  }
+
+  /** only used in Test */
+  public Map<String, TriggerInformation> getRawTriggerTable() {
+    return triggerTable.getTable();
+  }
+
+  /** only used in Test */
+  public Map<String, String> getRawExistedJarToMD5() {
+    return existedJarToMD5;
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+
+    acquireTriggerTableLock();
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile)) {
+
+      serializeExistedJarToMD5(fileOutputStream);
+
+      triggerTable.serializeTriggerTable(fileOutputStream);
+
+      fileOutputStream.flush();
+
+      fileOutputStream.close();
+
+      return tmpFile.renameTo(snapshotFile);
+    } finally {
+      releaseTriggerTableLock();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
+    }
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+
+    acquireTriggerTableLock();
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
+
+      clear();
+
+      deserializeExistedJarToMD5(fileInputStream);
+
+      triggerTable.deserializeTriggerTable(fileInputStream);
+    } finally {
+      releaseTriggerTableLock();
+    }
+  }
+
+  public void serializeExistedJarToMD5(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(existedJarToMD5.size(), outputStream);
+    for (Map.Entry<String, String> entry : existedJarToMD5.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+  }
+
+  public void deserializeExistedJarToMD5(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      existedJarToMD5.put(
+          ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readString(inputStream));
+      size--;
+    }
+  }
+
+  public void clear() {
+    existedJarToMD5.clear();
+    triggerTable.clear();
   }
 }

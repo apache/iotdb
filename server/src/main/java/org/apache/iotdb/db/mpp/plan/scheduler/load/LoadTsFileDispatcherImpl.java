@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
@@ -65,12 +67,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
+  private final ExecutorService executor;
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.executor =
+        IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
   }
 
   public void setUuid(String uuid) {
@@ -79,21 +84,24 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-    for (FragmentInstance instance : instances) {
-      try (SetThreadName threadName =
-          new SetThreadName(LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
-        dispatchOneInstance(instance);
-      } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
-        logger.error("cannot dispatch FI for load operation", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
-      }
-    }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+    return executor.submit(
+        () -> {
+          for (FragmentInstance instance : instances) {
+            try (SetThreadName threadName =
+                new SetThreadName(
+                    LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
+              dispatchOneInstance(instance);
+            } catch (FragmentInstanceDispatchException e) {
+              return new FragInstanceDispatchResult(e.getFailureStatus());
+            } catch (Throwable t) {
+              logger.error("cannot dispatch FI for load operation", t);
+              return new FragInstanceDispatchResult(
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+            }
+          }
+          return new FragInstanceDispatchResult(true);
+        });
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
