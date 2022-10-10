@@ -72,7 +72,7 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
           IChunkMetadata valueChunkMetadata =
               alignedChunkMetadata.getValueChunkMetadataList().get(i);
           if (valueChunkMetadata == null) {
-            // value chunk has been deleted completely
+            // sub sensor does not exist in current file or value chunk has been deleted completely
             AlignedChunkWriterImpl alignedChunkWriter =
                 (AlignedChunkWriterImpl) chunkWriters[subTaskId];
             ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
@@ -122,6 +122,7 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     // flush new value pages to chunk writer directly
     for (int i = 0; i < valuePageHeaders.size(); i++) {
       if (valuePageHeaders.get(i) == null) {
+        // sub sensor does not exist in current file or value page has been deleted completely
         alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
         continue;
       }

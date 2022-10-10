@@ -272,7 +272,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
             Long.MIN_VALUE);
@@ -298,11 +297,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
                 >= iterator.currentTime()) {
-              System.out.println(
-                  measurementMaxTime.get(
-                          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                      + ","
-                      + iterator.currentTime());
               Assert.fail();
             }
             measurementMaxTime.put(
@@ -2242,7 +2236,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
             Long.MIN_VALUE);
@@ -2484,7 +2477,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
             Long.MIN_VALUE);
@@ -2735,7 +2727,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     for (int i = 0; i < 4; i++) {
       TSDataType tsDataType = i < 2 ? TSDataType.TEXT : TSDataType.INT64;
       for (int j = 0; j < 7; j++) {
-        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -3189,7 +3180,6 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR

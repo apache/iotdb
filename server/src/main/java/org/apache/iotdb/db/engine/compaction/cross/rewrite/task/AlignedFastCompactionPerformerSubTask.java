@@ -254,29 +254,12 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
   }
 
   /**
-   * Check whether the chunk is modified.
-   *
-   * <p>Notice: if is aligned chunk, return true if any of value chunk has data been deleted. Return
-   * false if and only if all value chunks has no data been deleted.
-   */
-  protected boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-    boolean isAlignedChunkModified = alignedChunkMetadata.isModified();
-    if (!isAlignedChunkModified) {
-      // check if one of the value chunk has been deleted completely
-      isAlignedChunkModified = alignedChunkMetadata.getValueChunkMetadataList().contains(null);
-    }
-    return isAlignedChunkModified;
-  }
-
-  /**
    * -1 means that no data on this page has been deleted. <br>
    * 0 means that there is data on this page been deleted. <br>
    * 1 means that all data on this page has been deleted.
    *
    * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
-   * if and only if no data exists on all value pages is deleted
+   * if value page has no data or all data has been deleted.
    */
   protected int isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;
@@ -290,6 +273,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
               ? 1
               : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
       if (currentPageStatus == 0) {
+        // one of the value pages exist data been deleted partially
         return 0;
       }
       if (lastPageStatus == Integer.MIN_VALUE) {
@@ -298,7 +282,9 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
         continue;
       }
       if (currentPageStatus != lastPageStatus) {
-        return 0;
+        // there are at least two value pages, one is that all data is deleted, the other is that no
+        // data is deleted
+        lastPageStatus = -1;
       }
     }
     return lastPageStatus;

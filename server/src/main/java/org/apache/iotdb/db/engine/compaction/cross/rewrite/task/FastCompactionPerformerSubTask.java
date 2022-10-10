@@ -377,7 +377,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * <p>Notice: if is aligned chunk, return true if any of value chunk has data been deleted. Return
    * false if and only if all value chunks has no data been deleted.
    */
-  protected abstract boolean isChunkModified(ChunkMetadataElement chunkMetadataElement);
+  protected boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
+    return chunkMetadataElement.chunkMetadata.isModified();
+  }
 
   /**
    * -1 means that no data on this page has been deleted. <br>
@@ -394,11 +396,11 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
     if (deletions != null) {
       for (TimeRange range : deletions) {
         if (range.contains(startTime, endTime)) {
-          // all data on this page has been deleted
+          // all data on this page or chunk has been deleted
           return 1;
         }
         if (range.overlaps(new TimeRange(startTime, endTime))) {
-          // exist data on this page been deleted
+          // exist data on this page or chunk been deleted
           status = 0;
         }
       }

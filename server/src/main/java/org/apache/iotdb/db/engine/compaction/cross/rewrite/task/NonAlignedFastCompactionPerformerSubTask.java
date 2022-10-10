@@ -164,11 +164,6 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
     }
   }
 
-  /** Check whether the chunk is modified. */
-  protected boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
-    return chunkMetadataElement.chunkMetadata.isModified();
-  }
-
   /**
    * -1 means that no data on this page has been deleted. <br>
    * 0 means that there is data on this page been deleted. <br>
