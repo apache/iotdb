@@ -54,7 +54,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
-    this.statementType = StatementType.LOAD_TSFILE;
+    this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
       tsFiles.add(file);
