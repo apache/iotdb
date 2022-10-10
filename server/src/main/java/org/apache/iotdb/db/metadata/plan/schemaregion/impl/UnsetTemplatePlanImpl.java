@@ -18,33 +18,21 @@
  *
  */
 
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+public class UnsetTemplatePlanImpl implements IUnsetTemplatePlan {
 
-public class UnsetTemplatePlan extends PhysicalPlan implements IUnsetTemplatePlan {
+  private String prefixPath;
+  public String templateName;
 
-  String prefixPath;
-  String templateName;
+  public UnsetTemplatePlanImpl() {}
 
-  public UnsetTemplatePlan() {
-    super(Operator.OperatorType.UNSET_TEMPLATE);
-  }
-
-  public UnsetTemplatePlan(String prefixPath, String templateName) throws IllegalPathException {
-    super(Operator.OperatorType.UNSET_TEMPLATE);
+  public UnsetTemplatePlanImpl(String prefixPath, String templateName) throws IllegalPathException {
 
     String[] pathNodes = PathUtils.splitPathToDetachedNodes(prefixPath);
     for (String s : pathNodes) {
@@ -59,52 +47,23 @@ public class UnsetTemplatePlan extends PhysicalPlan implements IUnsetTemplatePla
     this.templateName = templateName;
   }
 
+  @Override
   public String getPrefixPath() {
     return prefixPath;
   }
 
+  @Override
   public void setPrefixPath(String prefixPath) {
     this.prefixPath = prefixPath;
   }
 
+  @Override
   public String getTemplateName() {
     return templateName;
   }
 
+  @Override
   public void setTemplateName(String templateName) {
     this.templateName = templateName;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return null;
-  }
-
-  @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.UNSET_TEMPLATE.ordinal());
-
-    ReadWriteIOUtils.write(prefixPath, buffer);
-    ReadWriteIOUtils.write(templateName, buffer);
-
-    buffer.putLong(index);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    prefixPath = ReadWriteIOUtils.readString(buffer);
-    templateName = ReadWriteIOUtils.readString(buffer);
-
-    this.index = buffer.getLong();
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.UNSET_TEMPLATE.ordinal());
-
-    ReadWriteIOUtils.write(prefixPath, stream);
-    ReadWriteIOUtils.write(templateName, stream);
-
-    stream.writeLong(index);
   }
 }

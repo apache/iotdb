@@ -33,10 +33,10 @@ import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -93,7 +93,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException if the device is not aligned, throw it
    */
   @Override
-  public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
+  public synchronized void createAlignedTimeseries(ICreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath().toString(), true);
 
@@ -120,7 +120,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException if the device is aligned, throw it
    */
   @Override
-  public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+  public synchronized void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPath().getDevice(), false);
     SchemaEntry schemaEntry =
         new SchemaEntry(

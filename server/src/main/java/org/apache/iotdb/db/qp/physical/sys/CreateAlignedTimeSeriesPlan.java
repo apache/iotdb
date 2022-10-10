@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -41,7 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
+public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
+    implements ICreateAlignedTimeSeriesPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(CreateAlignedTimeSeriesPlan.class);
   private static final int PLAN_SINCE_0_14 = -1;
