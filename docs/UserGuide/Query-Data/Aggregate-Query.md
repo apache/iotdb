@@ -528,7 +528,7 @@ insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 If the user wants to know the average temperature of each workshop, he can query like this
 
 ```SQL
-SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS city;
+SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS(city);
 ```
 
 The query will calculate the average of the temperatures of those timeseries which have the same tag value of the key `city`.
@@ -562,7 +562,7 @@ So the aggregation by the tag `city` should be done first, and then by the tag `
 SQL
 
 ```SQL
-SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS city, workshop;
+SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS(city, workshop);
 ```
 
 The results
@@ -592,7 +592,7 @@ For example, a user wants to know the average temperature of the devices in each
 SQL
 
 ```SQL
-SELECT avg(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS city, workshop;
+SELECT avg(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop);
 ```
 
 The results

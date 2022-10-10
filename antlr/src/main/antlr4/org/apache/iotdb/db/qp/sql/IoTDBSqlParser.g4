@@ -442,7 +442,7 @@ groupByTimeClause
     | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
     | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-    COMMA TAGS identifier (COMMA identifier)*
+    COMMA TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 groupByFillClause
@@ -455,7 +455,7 @@ groupByLevelClause
     ;
 
 groupByTagClause
-    : GROUP BY TAGS identifier (COMMA identifier)*
+    : GROUP BY TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 fillClause

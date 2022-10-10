@@ -627,7 +627,7 @@ public class LogicalPlannerTest {
 
   @Test
   public void testGroupByTag() {
-    String sql = "select max_value(s1) from root.** group by tags key1";
+    String sql = "select max_value(s1) from root.** group by tags(key1)";
     try {
       PlanNode pn = parseSQLToPlanNode(sql);
       GroupByTagNode root = (GroupByTagNode) pn;
@@ -644,7 +644,7 @@ public class LogicalPlannerTest {
           tagValuesToAggregationDescriptors.get(Collections.singletonList("value1"));
       Assert.assertEquals(1, descriptors.size());
       CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
-      Assert.assertEquals("max_value(s1)", descriptor.getOutputExpression().toString());
+      Assert.assertEquals("s1", descriptor.getOutputExpression().toString());
       Assert.assertEquals(AggregationType.MAX_VALUE, descriptor.getAggregationType());
       Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
       Assert.assertEquals(3, descriptor.getInputExpressions().size());
@@ -673,7 +673,7 @@ public class LogicalPlannerTest {
 
   @Test
   public void testGroupByTagWithValueFilter() {
-    String sql = "select max_value(s1) from root.** where s1>1 group by tags key1";
+    String sql = "select max_value(s1) from root.** where s1>1 group by tags(key1)";
     try {
       parseSQLToPlanNode(sql);
       fail();

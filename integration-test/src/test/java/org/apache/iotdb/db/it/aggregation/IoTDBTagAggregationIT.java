@@ -93,7 +93,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testAggregateFunctions() {
     String query =
-        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS k1";
+        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
@@ -148,7 +148,7 @@ public class IoTDBTagAggregationIT {
   @Test
   @Ignore
   public void testAggregateFunctionsWithNestedExpression() {
-    String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.sg.** GROUP BY TAGS k1";
+    String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.sg.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+------------+------------------+
     // |  k1|count(t + 1)|        avg(t + 1)|
@@ -200,7 +200,7 @@ public class IoTDBTagAggregationIT {
   @Ignore // TODO: support having in later commits
   public void testAggregateFunctionsWithHaving() {
     String query =
-        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS k1 HAVING avg(t) > 3";
+        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
@@ -243,7 +243,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testMultipleAggregationKeys() {
-    String query = "SELECT COUNT(t) FROM root.sg.** GROUP BY TAGS k1, k2";
+    String query = "SELECT COUNT(t) FROM root.sg.** GROUP BY TAGS(k1, k2)";
     // Expected result set:
     // +----+----+--------+
     // |  k1|  k2|count(t)|
@@ -280,7 +280,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeAggregation() {
-    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS k1";
+    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -332,7 +332,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testAlongWithTimeAggregationAndOrdering() {
     String query =
-        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS k1 ORDER BY TIME DESC";
+        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
     // Expected result set:
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -373,7 +373,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeFiltering() {
-    String query = "SELECT COUNT(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS k1";
+    String query = "SELECT COUNT(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+
     // |  k1|count(t)|
@@ -416,7 +416,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testIncompatibleMixedDataTypes() {
-    String query = "SELECT AVG(t) FROM root.** GROUP BY TAGS k3";
+    String query = "SELECT AVG(t) FROM root.** GROUP BY TAGS(k3)";
     // AVG() with numeric and text timeseries, an exception will be thrown
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -430,7 +430,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testWithValueFilters() {
-    String query = "SELECT AVG(t) FROM root.sg.** WHERE t > 1.5 GROUP BY TAGS k1";
+    String query = "SELECT AVG(t) FROM root.sg.** WHERE t > 1.5 GROUP BY TAGS(k1)";
     // Value filter is not supported yet
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

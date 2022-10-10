@@ -46,7 +46,7 @@ public class StatementGeneratorTest {
   public void testGroupByTagWithDuplicatedKeys() {
     try {
       checkQueryStatement(
-          "SELECT avg(*) FROM root.sg.** GROUP BY TAGS k1, k2, k1",
+          "SELECT avg(*) FROM root.sg.** GROUP BY TAGS(k1, k2, k1)",
           Collections.emptyList(),
           Collections.emptyList(),
           10,

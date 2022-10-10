@@ -708,8 +708,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MeasurementPath measurementPath =
           (MeasurementPath)
               ((TimeSeriesOperand) outputExpression.getExpressions().get(0)).getPath();
-      Expression measurementExpression =
-          new ConstantOperand(measurementPath.getSeriesType(), measurementPath.getMeasurement());
+      MeasurementPath fakePath = null;
+      try {
+        fakePath =
+            new MeasurementPath(measurementPath.getMeasurement(), measurementPath.getSeriesType());
+      } catch (IllegalPathException e) {
+        // do nothing
+      }
+      Expression measurementExpression = new TimeSeriesOperand(fakePath);
       Expression groupedExpression =
           new FunctionExpression(
               outputExpression.getFunctionName(),
