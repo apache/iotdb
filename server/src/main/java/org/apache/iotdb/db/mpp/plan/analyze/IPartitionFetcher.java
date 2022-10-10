@@ -34,7 +34,7 @@ public interface IPartitionFetcher {
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * get or create schema partition, used when create schema. if schemaPartition not exists, then
+   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if schemaPartition does not exist, then
    * automatically create.
    */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
