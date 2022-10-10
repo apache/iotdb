@@ -40,15 +40,15 @@ public interface IPartitionFetcher {
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * get data partition without automatically create storage group, used in query scenarios.
+   * get data partition, used in query scenarios.
    *
    * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * get or create data partition, used in write scenarios. if storage group not exists, then
-   * automatically create.
+   * get or create data partition, used in standalone write scenarios. if storage group not exists,
+   * then automatically create.
    *
    * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
    */
@@ -56,8 +56,8 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * get or create data partition, used in write scenarios. if storage group not exists, then
-   * automatically create.
+   * get or create data partition, used in cluster write scenarios. if storage group not exists,
+   * then automatically create.
    *
    * @param dataPartitionQueryParams the list of DataPartitionQueryParams
    */
