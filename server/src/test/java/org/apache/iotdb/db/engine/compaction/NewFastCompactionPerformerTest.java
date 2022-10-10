@@ -297,6 +297,11 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
                 >= iterator.currentTime()) {
+              System.out.println(
+                  measurementMaxTime.get(
+                          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                      + ","
+                      + iterator.currentTime());
               Assert.fail();
             }
             measurementMaxTime.put(

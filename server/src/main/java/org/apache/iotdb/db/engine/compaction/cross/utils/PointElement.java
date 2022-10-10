@@ -25,9 +25,18 @@ public class PointElement {
     this.priority = pageElement.priority;
   }
 
+  public void updateTimeValuePair() {
+    timeValuePair.left = page.currentTime();
+    timeValuePair.right = page.currentValue();
+  }
+
   public void setPoint(Long timestamp, Object value) {
     this.timeValuePair.left = timestamp;
     timeValuePair.right = value;
+    this.timestamp = timestamp;
+  }
+
+  public void setTimestamp(long timestamp) {
     this.timestamp = timestamp;
   }
 }

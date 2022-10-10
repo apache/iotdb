@@ -746,7 +746,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    */
   private void compactWithOverlapPages(List<PageElement> overlappedPages)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    pointPriorityReader.addNewPages(Collections.singletonList(overlappedPages.remove(0)));
+    pointPriorityReader.addNewPage(overlappedPages.remove(0));
     pointPriorityReader.setNewOverlappedPages(overlappedPages);
     while (pointPriorityReader.hasNext()) {
       for (int pageIndex = 0; pageIndex < overlappedPages.size(); pageIndex++) {
@@ -771,7 +771,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
             // no data on this page has been deleted
             if (isNextPageOverlap) {
               // has overlap with other pages, deserialize it
-              pointPriorityReader.addNewPages(Collections.singletonList(nextPageElement));
+              pointPriorityReader.addNewPage(nextPageElement);
             } else {
               // has none overlap, flush it to chunk writer directly
               compactWithNonOverlapPage(nextPageElement);
@@ -779,7 +779,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
             break;
           case 0:
             // there is data on this page been deleted, deserialize it
-            pointPriorityReader.addNewPages(Collections.singletonList(nextPageElement));
+            pointPriorityReader.addNewPage(nextPageElement);
             break;
           case 1:
             // all data on this page has been deleted, remove it
