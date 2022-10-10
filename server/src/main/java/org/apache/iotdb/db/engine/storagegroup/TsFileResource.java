@@ -976,7 +976,8 @@ public class TsFileResource {
   /**
    * Compare two TsFile's name.This method will first check whether the two names meet the standard
    * naming specifications, and then use the generating time as the first keyword, and use the
-   * version number as the second keyword to compare the size of the two names.
+   * version number as the second keyword to compare the size of the two names. Notice that this
+   * method will not compare the merge count.
    *
    * @param fileName1 a name of TsFile
    * @param fileName2 a name of TsFile
@@ -984,7 +985,7 @@ public class TsFileResource {
    *     fileName2
    * @throws IOException if fileName1 or fileName2 do not meet the standard naming specifications.
    */
-  public static int compareFileName(String fileName1, String fileName2) throws IOException {
+  public static int checkAndCompareFileName(String fileName1, String fileName2) throws IOException {
     TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
     TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
     long timeDiff = tsFileName1.getTime() - tsFileName2.getTime();

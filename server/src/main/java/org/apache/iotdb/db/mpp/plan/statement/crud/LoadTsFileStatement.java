@@ -80,7 +80,7 @@ public class LoadTsFileStatement extends Statement {
           String file1Name = o1.getName();
           String file2Name = o2.getName();
           try {
-            return TsFileResource.compareFileName(file1Name, file2Name);
+            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
           } catch (IOException e) {
             return file1Name.compareTo(file2Name);
           }
