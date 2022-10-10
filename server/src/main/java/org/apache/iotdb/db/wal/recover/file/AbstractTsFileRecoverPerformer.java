@@ -84,7 +84,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
                   (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
                       * IoTDBDescriptor.getInstance()
                           .getConfig()
-                          .getChunkMetadataSizeProportionInWrite()));
+                          .getChunkMetadataSizeProportion()));
     } catch (NotCompatibleTsFileException e) {
       boolean result = tsFile.delete();
       logger.warn(

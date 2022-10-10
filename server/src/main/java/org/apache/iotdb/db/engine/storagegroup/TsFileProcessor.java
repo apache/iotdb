@@ -184,9 +184,7 @@ public class TsFileProcessor {
             tsfile,
             (long)
                 (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
-                    * IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getChunkMetadataSizeProportionInWrite()));
+                    * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
