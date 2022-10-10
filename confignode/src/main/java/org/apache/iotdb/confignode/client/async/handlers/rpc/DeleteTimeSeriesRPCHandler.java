@@ -48,6 +48,7 @@ public class DeleteTimeSeriesRPCHandler extends AsyncTSStatusRPCHandler {
   @Override
   public void onComplete(TSStatus tsStatus) {
     responseMap.put(requestId, tsStatus);
+    LOGGER.info("{} for {} receives: {}", requestType, requestId, tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);

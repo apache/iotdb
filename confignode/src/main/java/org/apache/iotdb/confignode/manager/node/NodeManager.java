@@ -464,7 +464,7 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.MERGE, null, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.MERGE, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -482,7 +482,7 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CLEAR_CACHE, null, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -491,7 +491,7 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.LOAD_CONFIGURATION, null, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

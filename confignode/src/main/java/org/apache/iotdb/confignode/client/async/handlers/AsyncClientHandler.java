@@ -89,6 +89,16 @@ public class AsyncClientHandler<Q, R> {
     dataNodeLocationMap.put(requestId, dataNodeLocation);
   }
 
+  /** Constructor for null requests */
+  public AsyncClientHandler(
+      DataNodeRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    this.requestType = requestType;
+    this.dataNodeLocationMap = dataNodeLocationMap;
+
+    this.requestMap = new ConcurrentHashMap<>();
+    this.responseMap = new ConcurrentHashMap<>();
+  }
+
   /** Constructor for unique request */
   public AsyncClientHandler(
       DataNodeRequestType requestType,

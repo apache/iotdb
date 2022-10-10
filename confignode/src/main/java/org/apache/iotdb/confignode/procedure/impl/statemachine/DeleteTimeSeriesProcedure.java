@@ -154,7 +154,8 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return responseMap = clientHandler.getResponseMap();
+            responseMap.putAll(clientHandler.getResponseMap());
+            return clientHandler.getResponseMap();
           }
         };
     constructBlackListTask.execute();
@@ -278,7 +279,8 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return responseMap = clientHandler.getResponseMap();
+            responseMap.putAll(clientHandler.getResponseMap());
+            return clientHandler.getResponseMap();
           }
         };
     deleteDataTask.setExecuteOnAllReplicaset(true);
@@ -303,9 +305,9 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            responseMap = clientHandler.getResponseMap();
+            responseMap.putAll(clientHandler.getResponseMap());
             Map<Integer, TSStatus> statusMap = new HashMap<>();
-            responseMap.forEach((k, v) -> statusMap.put(k, v.getStatus()));
+            clientHandler.getResponseMap().forEach((k, v) -> statusMap.put(k, v.getStatus()));
             return statusMap;
           }
         };
@@ -345,7 +347,8 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return responseMap = clientHandler.getResponseMap();
+            responseMap.putAll(clientHandler.getResponseMap());
+            return clientHandler.getResponseMap();
           }
         };
     deleteTimeSeriesTask.execute();
@@ -419,7 +422,8 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return responseMap = clientHandler.getResponseMap();
+            responseMap.putAll(clientHandler.getResponseMap());
+            return clientHandler.getResponseMap();
           }
         };
     rollbackStateTask.execute();
