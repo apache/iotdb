@@ -19,16 +19,29 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
+
+import java.util.List;
+
 /** This class maintains information of {@code INTO} clause. */
-public abstract class IntoComponent {
+public class IntoComponent extends StatementNode {
 
-  protected final boolean isAligned;
+  private final List<IntoItem> intoItems;
 
-  protected IntoComponent(boolean isAligned) {
-    this.isAligned = isAligned;
+  public IntoComponent(List<IntoItem> intoItems) {
+    this.intoItems = intoItems;
   }
 
-  public boolean isAligned() {
-    return isAligned;
+  public List<IntoItem> getIntoItems() {
+    return intoItems;
+  }
+
+  public boolean isDeviceExistPlaceholder() {
+    for (IntoItem intoItem : intoItems) {
+      if (intoItem.isDeviceExistPlaceholder()) {
+        return true;
+      }
+    }
+    return false;
   }
 }

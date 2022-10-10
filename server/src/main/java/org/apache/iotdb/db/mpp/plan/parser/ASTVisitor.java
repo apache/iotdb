@@ -63,14 +63,14 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.component.AlignByDeviceIntoComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.AlignByTimeIntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -1369,29 +1369,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // parse INTO clause
 
   private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
-    boolean isAligned = ctx.ALIGNED() != null;
-    if (ctx.intoDeviceAndMeasurement().size() > 0) {
-      List<Pair<PartialPath, List<PartialPath>>> intoDeviceAndMeasurementList = new ArrayList<>();
-      for (IoTDBSqlParser.IntoDeviceAndMeasurementContext intoDeviceAndMeasurementContext :
-          ctx.intoDeviceAndMeasurement()) {
-        PartialPath intoDevice = parseIntoPath(intoDeviceAndMeasurementContext.intoPath());
-        List<PartialPath> intoMeasurements =
-            intoDeviceAndMeasurementContext.nodeNameInIntoPath().stream()
-                .map(
-                    nodeNameInIntoPathContext ->
-                        new PartialPath(parseNodeNameInIntoPath(nodeNameInIntoPathContext), false))
-                .collect(Collectors.toList());
-        intoDeviceAndMeasurementList.add(new Pair<>(intoDevice, intoMeasurements));
+    if (ctx.intoItem().size() > 0) {
+      List<IntoItem> intoItems = new ArrayList<>();
+      for (IoTDBSqlParser.IntoItemContext intoItemContext : ctx.intoItem()) {
+        intoItems.add(parseIntoItem(intoItemContext));
       }
-      queryStatement.setIntoComponent(
-          new AlignByDeviceIntoComponent(intoDeviceAndMeasurementList, isAligned));
+      queryStatement.setIntoComponent(new IntoComponent(intoItems));
     } else {
-      List<PartialPath> intoPaths = new ArrayList<>();
-      for (IoTDBSqlParser.IntoPathContext intoPathContext : ctx.intoPath()) {
-        intoPaths.add(parseIntoPath(intoPathContext));
-      }
-      queryStatement.setIntoComponent(new AlignByTimeIntoComponent(intoPaths, isAligned));
+      throw new SemanticException("The syntax of SELECT INTO statement has changed from v0.14");
     }
+  }
+
+  private IntoItem parseIntoItem(IoTDBSqlParser.IntoItemContext intoItemContext) {
+    boolean isAligned = intoItemContext.ALIGNED() != null;
+    PartialPath intoDevice = parseIntoPath(intoItemContext.intoPath());
+    List<String> intoMeasurements =
+        intoItemContext.nodeNameInIntoPath().stream()
+            .map(this::parseNodeNameInIntoPath)
+            .collect(Collectors.toList());
+    return new IntoItem(intoDevice, intoMeasurements, isAligned);
   }
 
   private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {

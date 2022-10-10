@@ -1271,25 +1271,31 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private SelectIntoOperator parseAndConstructSelectIntoOperator(
       IoTDBSqlParser.SelectStatementContext ctx) {
+    IoTDBSqlParser.IntoClauseContext intoClauseContext = ctx.intoClause();
+    if (intoClauseContext.intoItem().size() > 0) {
+      throw new SQLParserException(
+          "The new syntax of SELECT INTO statement will be supported starting from v0.14");
+    }
+
     if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
       throw new SQLParserException(
           "select into: the number of prefix paths in the from clause should be 1.");
     }
-
     int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
-    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
+    if (sourcePathsCount != intoClauseContext.intoPath().size()) {
       throw new SQLParserException(
           "select into: the number of source paths and the number of target paths should be the same.");
     }
 
     SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
     selectIntoOperator.setQueryOperator(queryOp);
+
     List<PartialPath> intoPaths = new ArrayList<>();
     for (int i = 0; i < sourcePathsCount; ++i) {
-      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
+      intoPaths.add(parseIntoPath(intoClauseContext.intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
-    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
+    selectIntoOperator.setIntoPathsAligned(intoClauseContext.ALIGNED() != null);
     return selectIntoOperator;
   }
 

@@ -381,7 +381,7 @@ selectStatement
 
 intoClause
     : INTO ALIGNED? intoPath (COMMA intoPath)*
-    | INTO ALIGNED? intoDeviceAndMeasurement (COMMA intoDeviceAndMeasurement)*
+    | INTO intoItem (COMMA intoItem)*
     ;
 
 intoPath
@@ -389,8 +389,8 @@ intoPath
     | nodeNameInIntoPath (DOT nodeNameInIntoPath)* #suffixPathInIntoPath
     ;
 
-intoDeviceAndMeasurement
-    : intoPath LR_BRACKET nodeNameInIntoPath (COMMA nodeNameInIntoPath)* RR_BRACKET
+intoItem
+    : ALIGNED? intoPath LR_BRACKET nodeNameInIntoPath (COMMA nodeNameInIntoPath)* RR_BRACKET
     ;
 
 nodeNameInIntoPath
