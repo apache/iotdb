@@ -100,6 +100,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -783,6 +785,12 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerTable()
         : new TGetTriggerTableResp().setStatus(status);
+  }
+
+  @Override
+  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+    // todo: implementation
+    return null;
   }
 
   @Override

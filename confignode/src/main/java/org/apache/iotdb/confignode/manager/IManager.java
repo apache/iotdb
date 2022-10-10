@@ -60,6 +60,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -295,6 +297,9 @@ public interface IManager {
 
   /** Show trigger & DataNode start */
   TGetTriggerTableResp getTriggerTable();
+
+  /** Get Trigger jar */
+  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);
 
   /** Merge on all DataNodes */
   TSStatus merge();
