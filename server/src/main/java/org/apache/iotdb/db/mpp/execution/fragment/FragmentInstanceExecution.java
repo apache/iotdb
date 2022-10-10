@@ -26,12 +26,15 @@ import org.apache.iotdb.db.utils.SetThreadName;
 
 import com.google.common.collect.ImmutableList;
 import io.airlift.stats.CounterStat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.FAILED;
 
 public class FragmentInstanceExecution {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceExecution.class);
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
@@ -56,6 +59,7 @@ public class FragmentInstanceExecution {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(instanceId, context, driver, stateMachine);
     execution.initialize(failedInstances, scheduler);
+    LOGGER.info("timeout is {}ms.", timeOut);
     scheduler.submitDrivers(instanceId.getQueryId(), ImmutableList.of(driver), timeOut);
     return execution;
   }
