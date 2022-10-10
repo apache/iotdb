@@ -152,7 +152,9 @@ public class DeleteTimeSeriesProcedure
                     DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
                     new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
                     dataNodeLocationMap);
-            return clientHandler.getResponseMap();
+            AsyncDataNodeClientPool.getInstance()
+                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+            return responseMap = clientHandler.getResponseMap();
           }
         };
     constructBlackListTask.execute();
@@ -276,7 +278,7 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return clientHandler.getResponseMap();
+            return responseMap = clientHandler.getResponseMap();
           }
         };
     deleteDataTask.setExecuteOnAllReplicaset(true);
@@ -301,15 +303,9 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            Map<Integer, TFetchSchemaBlackListResp> respMap = clientHandler.getResponseMap();
+            responseMap = clientHandler.getResponseMap();
             Map<Integer, TSStatus> statusMap = new HashMap<>();
-            respMap.forEach(
-                (k, v) -> {
-                  if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                    responseMap.put(k, v);
-                  }
-                  statusMap.put(k, v.getStatus());
-                });
+            responseMap.forEach((k, v) -> statusMap.put(k, v.getStatus()));
             return statusMap;
           }
         };
@@ -343,13 +339,13 @@ public class DeleteTimeSeriesProcedure
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
             AsyncClientHandler<TDeleteTimeSeriesReq, TSStatus> clientHandler =
-                new AsyncClientHandler(
+                new AsyncClientHandler<>(
                     DataNodeRequestType.DELETE_TIMESERIES,
                     new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes),
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return clientHandler.getResponseMap();
+            return responseMap = clientHandler.getResponseMap();
           }
         };
     deleteTimeSeriesTask.execute();
@@ -423,7 +419,7 @@ public class DeleteTimeSeriesProcedure
                     dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            return clientHandler.getResponseMap();
+            return responseMap = clientHandler.getResponseMap();
           }
         };
     rollbackStateTask.execute();

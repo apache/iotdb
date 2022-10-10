@@ -67,8 +67,11 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Send asynchronous requests to the specific DataNodes, and reconnect the DataNode that failed to
-   * receive the requests
+   * Send asynchronous requests to the specified DataNodes
+   *
+   * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
+   *
+   * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
   public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
     if (clientHandler.getRequestIndices().isEmpty()) {
