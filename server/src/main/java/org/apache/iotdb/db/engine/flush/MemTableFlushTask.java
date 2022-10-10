@@ -114,7 +114,7 @@ public class MemTableFlushTask {
       long memorySizeForMetadata =
           (long)
               (IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportionInWrite()
-                  * estimatedTemporaryMemSize);
+                  * memTable.memSize());
       writer.setMemorySizeForMetadata(memorySizeForMetadata);
       estimatedTemporaryMemSize += memorySizeForMetadata;
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
