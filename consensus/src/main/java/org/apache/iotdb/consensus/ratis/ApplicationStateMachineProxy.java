@@ -212,13 +212,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean addTermIndexMetafileSuccess =
-        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
-    if (!addTermIndexMetafileSuccess) {
-      deleteIncompleteSnapshot(snapshotDir);
-      return RaftLog.INVALID_LOG_INDEX;
-    }
-
     snapshotStorage.updateSnapshotCache();
 
     return lastApplied.getIndex();

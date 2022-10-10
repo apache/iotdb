@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +44,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
   private final IStateMachine applicationStateMachine;
-  private final String META_FILE_PREFIX = ".ratis_meta.";
 
   private File stateMachineDir;
 
@@ -91,21 +89,8 @@ public class SnapshotStorage implements StateMachineStorage {
     if (snapshots == null || snapshots.length == 0) {
       return null;
     }
-    int i = snapshots.length - 1;
-    for (; i >= 0; i--) {
-      String metafilePath =
-          getMetafilePath(snapshots[i].toFile(), snapshots[i].getFileName().toString());
-      if (new File(metafilePath).exists()) {
-        break;
-      } else {
-        try {
-          FileUtils.deleteFully(snapshots[i]);
-        } catch (IOException e) {
-          logger.warn("delete incomplete snapshot directory {} failed due to {}", snapshots[i], e);
-        }
-      }
-    }
-    return i < 0 ? null : snapshots[i].toFile();
+
+    return snapshots[snapshots.length - 1].toFile();
   }
 
   SnapshotInfo findLatestSnapshot() {
@@ -119,19 +104,15 @@ public class SnapshotStorage implements StateMachineStorage {
     if (actualSnapshotFiles == null) {
       return null;
     }
-    Path metaFilePath = Paths.get(getMetafilePath(latestSnapshotDir, latestSnapshotDir.getName()));
 
     List<FileInfo> fileInfos = new ArrayList<>();
     for (Path file : actualSnapshotFiles) {
-      if (file.endsWith(".md5") || file.startsWith(META_FILE_PREFIX)) {
+      if (file.endsWith(".md5")) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
       fileInfos.add(fileInfo);
     }
-    // metafile should be sent last for atomicity considerations
-    FileInfo metafileInfo = new FileInfoWithDelayedMd5Computing(metaFilePath);
-    fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
@@ -184,29 +165,5 @@ public class SnapshotStorage implements StateMachineStorage {
 
   public File getSnapshotDir(String snapshotMetadata) {
     return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
-  }
-
-  /**
-   * Currently, we name the snapshotDir with Term_Index so that we can tell which directory contains
-   * the latest snapshot files. Unfortunately, when leader install snapshot to a slow follower,
-   * current Ratis implementation will flatten the directory and place all the snapshots directly
-   * under statemachine dir. Under this scenario, we cannot restore Term_Index from directory name.
-   * We decided to add an empty metadata file containing only Term_Index into the snapshotDir. his
-   * metadata file will be installed along with application snapshot files, so that Term_Index
-   * information is kept during InstallSnapshot.
-   */
-  public boolean addTermIndexMetaFile(File snapshotDir, String termIndexMetadata) {
-    File snapshotMetaFile = new File(getMetafilePath(snapshotDir, termIndexMetadata));
-    try {
-      return snapshotMetaFile.createNewFile();
-    } catch (IOException e) {
-      logger.warn("cannot create snapshot metafile: ", e);
-      return false;
-    }
-  }
-
-  private String getMetafilePath(File snapshotDir, String termIndexMetadata) {
-    // e.g. /_sm/3_39/.ratis_meta.3_39
-    return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
   }
 }
