@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.AlignByTimeIntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -110,6 +111,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -141,6 +143,8 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
@@ -982,6 +986,61 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  private void analyzeInto(Analysis analysis, List<Pair<Expression, String>> outputExpressions) {
+    Map<String, PartialPath> outputColumnToIntoPathMap = new HashMap<>();
+    List<Expression> outputColumns =
+            outputExpressions.stream()
+                    .map(Pair::getLeft)
+                    .collect(Collectors.toCollection(ArrayList::new));
+    AlignByTimeIntoComponent intoComponent =
+            ((AlignByTimeIntoComponent) ((QueryStatement) analysis.getStatement()).getIntoComponent());
+    List<PartialPath> intoPaths = intoComponent.getIntoPaths();
+    boolean isAligned = intoComponent.isAligned();
+
+    boolean isAllRawSeriesQuery = checkIsAllRawSeriesQuery(outputColumns);
+    if (isAllRawSeriesQuery) {
+      if (intoPaths.size() != outputColumns.size()) {
+        throw new SemanticException(
+                "select into: the number of source paths and the number of target paths should be the same.");
+      }
+      if (intoPaths.size() > new HashSet<>(intoPaths).size()) {
+        throw new SemanticException(
+                "select into: target paths in into clause should be different.");
+      }
+      for (int i = 0; i < outputColumns.size(); i++) {
+        outputColumnToIntoPathMap.put(
+                outputColumns.get(i).toString(),
+                constructIntoPath(analysis, outputColumns.get(i), intoPaths.get(i), isAligned));
+      }
+    } else {
+
+    }
+    analysis.setOutputColumnToIntoPathMap(outputColumnToIntoPathMap);
+  }
+
+  private PartialPath constructIntoPath(
+          Analysis analysis, Expression outputColumn, PartialPath path, boolean isAligned) {
+    if (!path.startWith(SQLConstant.ROOT)) {
+      throw new SemanticException("select into: ");
+    }
+    if (path.containNode(DOUBLE_COLONS)) {
+      throw new SemanticException("select into: ");
+    }
+    if (LEVELED_PATH_TEMPLATE_PATTERN.matcher(path.getFullPath()).find()) {
+      throw new SemanticException("select into: ");
+    }
+    return new MeasurementPath(path, analysis.getType(outputColumn), isAligned);
+  }
+
+  private void analyzeInto(
+          Analysis analysis,
+          List<Pair<Expression, String>> outputExpressions,
+          Map<String, Set<String>> deviceToMeasurementsMap) {
+    Map<String, Map<String, PartialPath>> deviceToIntoPathMap = new HashMap<>();
+
+    analysis.setDeviceToIntoPathMap(deviceToIntoPathMap);
   }
 
   /**

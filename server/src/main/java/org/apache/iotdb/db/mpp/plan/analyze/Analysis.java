@@ -86,6 +86,9 @@ public class Analysis {
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
+  // map from output column to target into path
+  private Map<String, PartialPath> outputColumnToIntoPathMap;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +113,9 @@ public class Analysis {
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
 
   private Set<Expression> deviceViewOutputExpressions;
+
+  // map from device name to target into path of each output column
+  private Map<String, Map<String, PartialPath>> deviceToIntoPathMap;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
@@ -402,5 +408,21 @@ public class Analysis {
 
   public void setDeviceViewOutputExpressions(Set<Expression> deviceViewOutputExpressions) {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
+  }
+
+  public Map<String, PartialPath> getOutputColumnToIntoPathMap() {
+    return outputColumnToIntoPathMap;
+  }
+
+  public void setOutputColumnToIntoPathMap(Map<String, PartialPath> outputColumnToIntoPathMap) {
+    this.outputColumnToIntoPathMap = outputColumnToIntoPathMap;
+  }
+
+  public Map<String, Map<String, PartialPath>> getDeviceToIntoPathMap() {
+    return deviceToIntoPathMap;
+  }
+
+  public void setDeviceToIntoPathMap(Map<String, Map<String, PartialPath>> deviceToIntoPathMap) {
+    this.deviceToIntoPathMap = deviceToIntoPathMap;
   }
 }
