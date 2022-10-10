@@ -196,7 +196,6 @@ public class MultiLeaderConfig {
   }
 
   public static class Replication {
-    private final int maxPendingRequestNumPerNode;
     private final int maxRequestPerBatch;
     private final int maxPendingBatch;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
@@ -205,9 +204,9 @@ public class MultiLeaderConfig {
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
     private final long checkpointGap;
+    private final Long allocateMemoryForConsensus;
 
     private Replication(
-        int maxPendingRequestNumPerNode,
         int maxRequestPerBatch,
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
@@ -215,8 +214,8 @@ public class MultiLeaderConfig {
         long maxRetryWaitTimeMs,
         long walThrottleThreshold,
         long throttleTimeOutMs,
-        long checkpointGap) {
-      this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
+        long checkpointGap,
+        long allocateMemoryForConsensus) {
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
@@ -225,10 +224,7 @@ public class MultiLeaderConfig {
       this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
-    }
-
-    public int getMaxPendingRequestNumPerNode() {
-      return maxPendingRequestNumPerNode;
+      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
     }
 
     public int getMaxRequestPerBatch() {
@@ -263,12 +259,15 @@ public class MultiLeaderConfig {
       return checkpointGap;
     }
 
+    public Long getAllocateMemoryForConsensus() {
+      return allocateMemoryForConsensus;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 600;
       private int maxRequestPerBatch = 30;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
@@ -279,11 +278,7 @@ public class MultiLeaderConfig {
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
-
-      public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
-        this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
-        return this;
-      }
+      private long allocateMemoryForConsensus;
 
       public Replication.Builder setMaxRequestPerBatch(int maxRequestPerBatch) {
         this.maxRequestPerBatch = maxRequestPerBatch;
@@ -321,9 +316,13 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+        this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
-            maxPendingRequestNumPerNode,
             maxRequestPerBatch,
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
@@ -331,7 +330,8 @@ public class MultiLeaderConfig {
             maxRetryWaitTimeMs,
             walThrottleThreshold,
             throttleTimeOutMs,
-            checkpointGap);
+            checkpointGap,
+            allocateMemoryForConsensus);
       }
     }
   }
