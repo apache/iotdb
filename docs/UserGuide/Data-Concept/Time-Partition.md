@@ -49,9 +49,9 @@ Enable time partition and set partition_interval to 86400000 (one day), then the
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Time-Partition/time_partition_example.png?raw=true" alt="time partition example">
 
-* Insert one datapoint with timestamp 0, calculate 0/86400 = 0, then this datapoint will be stored in TsFile under folder 0
+* Insert one datapoint with timestamp 0, calculate 0/86400000 = 0, then this datapoint will be stored in TsFile under folder 0
 
-* Insert one datapoint with timestamp 1609459200010, calculate 1609459200010/86400 = 18628, then this datapoint will be stored in TsFile under folder 18628
+* Insert one datapoint with timestamp 1609459200010, calculate 1609459200010/86400000 = 18628, then this datapoint will be stored in TsFile under folder 18628
 
 ## Suggestions
 
