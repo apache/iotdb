@@ -1398,7 +1398,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailMessage(
-          "Storage group not exists because enable_auto_create_schema is FALSE.");
+          "Storage group not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;

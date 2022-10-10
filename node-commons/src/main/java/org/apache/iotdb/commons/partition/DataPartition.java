@@ -114,7 +114,7 @@ public class DataPartition extends Partition {
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     if (!dataPartitionMap.containsKey(storageGroup)) {
       throw new RuntimeException(
-          "Storage group not exists because enable_auto_create_schema is FALSE.");
+          "Storage group not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
         dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
