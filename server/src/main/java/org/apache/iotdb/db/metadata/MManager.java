@@ -2213,7 +2213,17 @@ public class MManager {
       encodings.add(getDefaultEncoding(dataType));
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
-    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+    try {
+      createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " non-exist aligned time series {} under device {}",
+            measurements,
+            prefixPath);
+      }
+    }
   }
 
   // endregion
