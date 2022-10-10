@@ -942,7 +942,8 @@ public class TsFileResource {
   /**
    * Compare the name of TsFiles corresponding to the two {@link TsFileResource}. Both names should
    * meet the naming specifications.Take the generation time as the first keyword, the version
-   * number is the second keyword
+   * number as the second keyword, the inner merge count as the third keyword, the cross merge as
+   * the fourth keyword.
    *
    * @param o1 a {@link TsFileResource}
    * @param o2 a {@link TsFileResource}
@@ -1000,7 +1001,7 @@ public class TsFileResource {
   /**
    * Compare the name of TsFiles corresponding to the two {@link TsFileResource}.This method will
    * first check whether the two names meet the standard naming specifications, and then compare
-   * version of tow names.
+   * version of two names.
    *
    * @param o1 a {@link TsFileResource}
    * @param o2 a {@link TsFileResource}
