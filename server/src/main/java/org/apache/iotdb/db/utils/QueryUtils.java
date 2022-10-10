@@ -155,7 +155,9 @@ public class QueryUtils {
               removed = false;
             }
           }
-          alignedChunkMetadata.setModified(modified);
+          if (!alignedChunkMetadata.isModified()) {
+            alignedChunkMetadata.setModified(modified);
+          }
           return removed;
         });
   }
