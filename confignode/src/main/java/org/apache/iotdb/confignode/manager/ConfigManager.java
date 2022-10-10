@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -46,8 +47,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionP
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -92,7 +96,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -204,11 +211,6 @@ public class ConfigManager implements IManager {
     consensusManager.close();
     partitionManager.getRegionMaintainer().shutdown();
     procedureManager.shiftExecutor(false);
-  }
-
-  @Override
-  public boolean isStopped() {
-    return false;
   }
 
   @Override
@@ -485,8 +487,7 @@ public class ConfigManager implements IManager {
         new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
 
     SchemaPartitionResp queryResult =
-        (SchemaPartitionResp)
-            partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+        partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     // TODO: Delete or hide this LOGGER before officially release.
@@ -508,8 +509,7 @@ public class ConfigManager implements IManager {
         getNodePathsPartitionPlan.setLevel(level);
       }
       SchemaNodeManagementResp resp =
-          (SchemaNodeManagementResp)
-              partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
+          partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
               getLoadManager().genLatestRegionRouteMap());
@@ -562,7 +562,7 @@ public class ConfigManager implements IManager {
     }
 
     DataPartitionResp queryResult =
-        (DataPartitionResp) partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
@@ -847,7 +847,7 @@ public class ConfigManager implements IManager {
   public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
+      return partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
@@ -1010,7 +1010,36 @@ public class ConfigManager implements IManager {
     }
   }
 
-  /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */
+  @Override
+  @TestOnly
+  public TGetRoutingResp getRouting(GetRoutingPlan plan) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getRouting(plan).convertToRpcGetRoutingResp()
+        : new TGetRoutingResp(status);
+  }
+
+  @Override
+  @TestOnly
+  public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
+        : new TGetTimeSlotListResp(status);
+  }
+
+  @Override
+  @TestOnly
+  public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
+    TSStatus status = confirmLeader();
+    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
+    resp.setStatus(status);
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
+        : new TGetSeriesSlotListResp(status);
+  }
+
+  /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
@@ -1036,7 +1065,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // get all storage group and slot by getting schema partition
+    // get all storage groups and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 

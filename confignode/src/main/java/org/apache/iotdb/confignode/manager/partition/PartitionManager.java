@@ -41,7 +41,10 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionP
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -49,6 +52,9 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.GetRoutingResp;
+import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -162,7 +168,7 @@ public class PartitionManager {
    *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
-  public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
+  public SchemaPartitionResp getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
     // After all the SchemaPartitions are allocated,
     // all the read requests about SchemaPartitionTable are parallel.
     SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
@@ -226,7 +232,7 @@ public class PartitionManager {
       }
     }
 
-    return getSchemaPartition(req);
+    return (SchemaPartitionResp) getSchemaPartition(req);
   }
 
   /**
@@ -238,7 +244,7 @@ public class PartitionManager {
    *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
-  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+  public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
     // After all the DataPartitions are allocated,
     // all the read requests about DataPartitionTable are parallel.
     DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
@@ -303,7 +309,7 @@ public class PartitionManager {
       }
     }
 
-    return getDataPartition(req);
+    return (DataPartitionResp) getDataPartition(req);
   }
 
   // ======================================================
@@ -515,7 +521,7 @@ public class PartitionManager {
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
    *     SchemaPartition and matched child paths aboveMTree
    */
-  public DataSet getNodePathsPartition(GetNodePathsPartitionPlan physicalPlan) {
+  public SchemaNodeManagementResp getNodePathsPartition(GetNodePathsPartitionPlan physicalPlan) {
     SchemaNodeManagementResp schemaNodeManagementResp;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
@@ -543,7 +549,7 @@ public class PartitionManager {
     return executor.getSeriesPartitionSlot(devicePath);
   }
 
-  public DataSet getRegionInfoList(GetRegionInfoListPlan req) {
+  public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
     // Get static result
     RegionInfoListResp regionInfoListResp =
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
@@ -586,6 +592,17 @@ public class PartitionManager {
     return getConsensusManager().write(req).getStatus();
   }
 
+  public GetRoutingResp getRouting(GetRoutingPlan plan) {
+    return (GetRoutingResp) getConsensusManager().read(plan).getDataset();
+  }
+
+  public GetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
+    return (GetTimeSlotListResp) getConsensusManager().read(plan).getDataset();
+  }
+
+  public GetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
+    return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
+  }
   /**
    * get storage group for region
    *
