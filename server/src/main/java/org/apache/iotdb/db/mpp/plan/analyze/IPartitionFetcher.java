@@ -30,7 +30,7 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  /** get schema partition without automatically create, used in write and query scenarios. */
+  /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   /**
