@@ -40,7 +40,7 @@ Time partition divides data according to time, and a time partition is used to s
 |:---:|:-------------------------------------------------------------------------------------------------------|
 |Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
 |Type| Int64                                                                                                  |
-|Default| 86400000                                                                                               |
+|Default| 604800000                                                                                               |
 |Effective| Only allowed to be modified in first start up                                                          |
 
 ## Configuration example
