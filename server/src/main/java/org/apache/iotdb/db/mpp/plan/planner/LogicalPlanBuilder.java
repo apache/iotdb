@@ -421,13 +421,13 @@ public class LogicalPlanBuilder {
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<AggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    PartialPath path =
-        ((TimeSeriesOperand) aggregationDescriptor.getInputExpressions().get(0)).getPath();
-    for (AggregationType aggregationType : splitAggregations) {
-      String functionName = aggregationType.toString().toLowerCase();
+    String inputExpressionStr = aggregationDescriptor.getInputExpressions().get(0).toString();
+    for (AggregationType aggregation : splitAggregations) {
+      String functionName = aggregation.toString().toLowerCase();
+      TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
       typeProvider.setType(
-          String.format("%s(%s)", functionName, path.getFullPath()),
-          SchemaUtils.getSeriesTypeByPath(path, functionName));
+          String.format("%s(%s)", functionName, inputExpressionStr),
+          aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
     }
   }
 

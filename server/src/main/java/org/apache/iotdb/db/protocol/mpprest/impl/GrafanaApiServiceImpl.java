@@ -124,7 +124,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -186,7 +187,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -242,7 +244,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
-        if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return Response.ok()
               .entity(
                   new ExecutionStatus()

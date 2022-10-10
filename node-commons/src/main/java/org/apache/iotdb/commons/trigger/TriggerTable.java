@@ -19,11 +19,14 @@
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,12 +73,6 @@ public class TriggerTable {
     triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
-  // for showTrigger
-  public Map<String, TTriggerState> getAllTriggerStates() {
-    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
-    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
-    return allTriggerStates;
-  }
   // for getTriggerTable
   public List<TriggerInformation> getAllTriggerInformation() {
     return new ArrayList<>(triggerTable.values());
@@ -87,5 +84,25 @@ public class TriggerTable {
 
   public Map<String, TriggerInformation> getTable() {
     return triggerTable;
+  }
+
+  public void serializeTriggerTable(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(triggerTable.size(), outputStream);
+    for (TriggerInformation triggerInformation : triggerTable.values()) {
+      ReadWriteIOUtils.write(triggerInformation.serialize(), outputStream);
+    }
+  }
+
+  public void deserializeTriggerTable(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      TriggerInformation triggerInformation = TriggerInformation.deserialize(inputStream);
+      triggerTable.put(triggerInformation.getTriggerName(), triggerInformation);
+      size--;
+    }
+  }
+
+  public void clear() {
+    triggerTable.clear();
   }
 }

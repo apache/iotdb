@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -187,6 +188,7 @@ public class CountMergeOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
       TsBlock tsBlock = null;
+      Assert.assertTrue(countMergeOperator.isBlocked().isDone());
       while (countMergeOperator.hasNext()) {
         tsBlock = countMergeOperator.next();
         assertFalse(countMergeOperator.hasNext());

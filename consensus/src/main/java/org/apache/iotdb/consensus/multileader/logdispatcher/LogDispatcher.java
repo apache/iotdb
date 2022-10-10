@@ -47,9 +47,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalLong;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -154,10 +154,9 @@ public class LogDispatcher {
                 "{}->{}: Push a log to the queue, where the queue length is {}",
                 impl.getThisNode().getGroupId(),
                 thread.getPeer().getEndpoint().getIp(),
-                thread.getPendingRequest().size());
-            if (!thread
-                .getPendingRequest()
-                .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+                thread.getPendingRequestSize());
+            if (!thread.offer(
+                new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
               logger.debug(
                   "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
                   impl.getThisNode().getGroupId(),
@@ -183,15 +182,16 @@ public class LogDispatcher {
     // A reader management class that gets requests from the DataRegion
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
+    private final MultiLeaderMemoryManager multiLeaderMemoryManager =
+        MultiLeaderMemoryManager.getInstance();
     private volatile boolean stopped = false;
 
-    private ConsensusReqReader.ReqIterator walEntryiterator;
+    private ConsensusReqReader.ReqIterator walEntryIterator;
 
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
-      this.pendingRequest =
-          new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
+      this.pendingRequest = new LinkedBlockingQueue<>();
       this.controller =
           new IndexController(
               impl.getStorageDir(),
@@ -199,7 +199,7 @@ public class LogDispatcher {
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
-      this.walEntryiterator = reader.getReqIterator(START_INDEX);
+      this.walEntryIterator = reader.getReqIterator(START_INDEX);
     }
 
     public IndexController getController() {
@@ -218,12 +218,43 @@ public class LogDispatcher {
       return config;
     }
 
-    public BlockingQueue<IndexedConsensusRequest> getPendingRequest() {
-      return pendingRequest;
+    public int getPendingRequestSize() {
+      return pendingRequest.size();
+    }
+
+    /** try to offer a request into queue with memory control */
+    public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
+      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
+        return false;
+      }
+      boolean success;
+      try {
+        success = pendingRequest.offer(indexedConsensusRequest);
+      } catch (Throwable t) {
+        // If exception occurs during request offer, the reserved memory should be released
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        throw t;
+      }
+      if (!success) {
+        // If offer failed, the reserved memory should be released
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      }
+      return success;
+    }
+
+    /** try to remove a request from queue with memory control */
+    private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
+      multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
       stopped = true;
+      for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      }
+      for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
+        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      }
     }
 
     public void cleanup() throws IOException {
@@ -289,7 +320,7 @@ public class LogDispatcher {
         logger.debug(
             "{} : pendingRequest Size: {}, bufferedRequest size: {}",
             impl.getThisNode().getGroupId(),
-            pendingRequest.size(),
+            getPendingRequestSize(),
             bufferedRequest.size());
         synchronized (impl.getIndexObject()) {
           pendingRequest.drainTo(
@@ -303,6 +334,7 @@ public class LogDispatcher {
           IndexedConsensusRequest request = iterator.next();
           if (request.getSearchIndex() < startIndex) {
             iterator.remove();
+            releaseReservedMemory(request);
           } else {
             break;
           }
@@ -333,6 +365,7 @@ public class LogDispatcher {
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
         iterator.remove();
+        releaseReservedMemory(prev);
         while (iterator.hasNext()
             && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
           IndexedConsensusRequest current = iterator.next();
@@ -357,6 +390,7 @@ public class LogDispatcher {
           // current function, but that's fine, we'll continue processing these elements in the
           // bufferedRequest the next time we go into the function, they're never lost
           iterator.remove();
+          releaseReservedMemory(current);
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.debug(
@@ -395,17 +429,17 @@ public class LogDispatcher {
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
-      walEntryiterator.skipTo(targetIndex);
+      walEntryIterator.skipTo(targetIndex);
       while (targetIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", targetIndex);
         try {
-          walEntryiterator.waitForNextReady();
+          walEntryIterator.waitForNextReady();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("wait for next WAL entry is interrupted");
         }
-        IndexedConsensusRequest data = walEntryiterator.next();
+        IndexedConsensusRequest data = walEntryIterator.next();
         if (targetIndex > data.getSearchIndex()) {
           // if the index of request is smaller than currentIndex, then continue
           logger.warn(

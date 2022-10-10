@@ -67,7 +67,6 @@ public enum ConfigPhysicalPlanType {
   CreateFunction,
   DropFunction,
   GetRegionInfoList,
-  GetDataNodesInfoList,
   GetNodePathsPartition,
   CreateSchemaTemplate,
   GetAllSchemaTemplate,
@@ -85,5 +84,8 @@ public enum ConfigPhysicalPlanType {
   AddTriggerInTable,
   DeleteTriggerInTable,
   GetTriggerTable,
-  UpdateTriggerStateInTable
+  UpdateTriggerStateInTable,
+  GetRouting,
+  GetSeriesSlotList,
+  GetTimeSlotList
 }

@@ -57,18 +57,18 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected TsBlock createTsBlock() {
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+  protected List<TsBlock> createTsBlockList() {
     try {
-      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-          .getSchemaRegion()
-          .getMatchedDevices(convertToPhysicalPlan())
-          .left
-          .forEach(device -> setColumns(device, builder));
+      List<ShowDevicesResult> schemaRegionResult =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getMatchedDevices(convertToPhysicalPlan())
+              .left;
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    return builder.build();
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online

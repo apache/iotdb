@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -172,6 +175,12 @@ public class ConfigPlanExecutor {
         return syncInfo.getPipeSink((GetPipeSinkPlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable();
+      case GetRouting:
+        return partitionInfo.getRouting((GetRoutingPlan) req);
+      case GetTimeSlotList:
+        return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
+      case GetSeriesSlotList:
+        return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
