@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.NewFastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 
 public enum CrossCompactionPerformer {
@@ -40,7 +40,7 @@ public enum CrossCompactionPerformer {
       case READ_POINT:
         return new ReadPointCompactionPerformer();
       case FAST:
-        return new NewFastCompactionPerformer();
+        return new FastCompactionPerformer();
       default:
         throw new RuntimeException("Illegal compaction performer for cross compaction " + this);
     }

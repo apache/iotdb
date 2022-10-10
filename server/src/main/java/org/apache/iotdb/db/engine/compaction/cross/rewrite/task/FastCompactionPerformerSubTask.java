@@ -7,7 +7,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
-import org.apache.iotdb.db.engine.compaction.performer.impl.NewFastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -46,7 +46,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 
-public class NewFastCompactionPerformerSubTask implements Callable<Void> {
+public class FastCompactionPerformerSubTask implements Callable<Void> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
@@ -62,7 +62,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private NewFastCrossCompactionWriter compactionWriter;
 
-  private NewFastCompactionPerformer newFastCompactionPerformer;
+  private FastCompactionPerformer fastCompactionPerformer;
 
   private int subTaskId;
 
@@ -100,7 +100,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   boolean hasStartMeasurement = false;
 
-  private NewFastCompactionPerformerSubTask(
+  private FastCompactionPerformerSubTask(
       List<IMeasurementSchema> measurementSchemas,
       boolean isAligned,
       NewFastCrossCompactionWriter compactionWriter,
@@ -125,16 +125,16 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /** Used for constructing nonAligned timeseries compaction. */
-  public NewFastCompactionPerformerSubTask(
+  public FastCompactionPerformerSubTask(
       NewFastCrossCompactionWriter compactionWriter,
       String deviceId,
       List<Integer> pathsIndex,
       List<String> allMeasurements,
-      NewFastCompactionPerformer newFastCompactionPerformer,
+      FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
-    this.newFastCompactionPerformer = newFastCompactionPerformer;
+    this.fastCompactionPerformer = fastCompactionPerformer;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.pathsIndex = pathsIndex;
     this.deviceId = deviceId;
@@ -156,9 +156,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /** Used for constructing aligned timeseries compaction. */
-  public NewFastCompactionPerformerSubTask(
+  public FastCompactionPerformerSubTask(
       NewFastCrossCompactionWriter compactionWriter,
-      NewFastCompactionPerformer newFastCompactionPerformer,
+      FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       List<IMeasurementSchema> measurementSchemas,
       String deviceId,
@@ -166,7 +166,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     this(null, true, compactionWriter, subTaskId);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
-    this.newFastCompactionPerformer = newFastCompactionPerformer;
+    this.fastCompactionPerformer = fastCompactionPerformer;
     this.deviceId = deviceId;
   }
 
@@ -180,7 +180,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       //        chunkMetadataQueue.add(
       //            new ChunkMetadataElement(alignedChunkMetadata, chunkMetadataPriority++));
       // }
-      newFastCompactionPerformer
+      fastCompactionPerformer
           .getSortedSourceFilesAndFirstMeasurementNodeOfCurrentDevice()
           .forEach(x -> fileList.add(new FileElement(x.left, x.right)));
 
@@ -190,7 +190,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
     } else {
       for (Integer index : pathsIndex) {
-        newFastCompactionPerformer
+        fastCompactionPerformer
             .getSortedSourceFiles()
             .forEach(x -> fileList.add(new FileElement(x)));
 
@@ -227,11 +227,11 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
       if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
         ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
-        MeasurementSchema measurementSchema =
-            newFastCompactionPerformer
-                .getReaderFromCache(firstChunkMetadataElement.fileElement.resource)
-                .getMeasurementSchema(
-                    Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
+      MeasurementSchema measurementSchema =
+          fastCompactionPerformer
+              .getReaderFromCache(firstChunkMetadataElement.fileElement.resource)
+              .getMeasurementSchema(
+                  Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
         compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
         hasStartMeasurement = true;
       }
@@ -301,7 +301,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           continue;
         }
         List<IChunkMetadata> iChunkMetadataList =
-            newFastCompactionPerformer
+            fastCompactionPerformer
                 .getReaderFromCache(resource)
                 .getChunkMetadataListByTimeseriesMetadataOffset(
                     timeseriesMetadataOffset.left, timeseriesMetadataOffset.right);
@@ -310,7 +310,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           // modify chunk metadatas
           QueryUtils.modifyChunkMetaData(
               iChunkMetadataList,
-              newFastCompactionPerformer.getModifications(
+              fastCompactionPerformer.getModifications(
                   resource,
                   new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
           if (iChunkMetadataList.size() == 0) {
@@ -336,7 +336,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     } else {
       for (FileElement fileElement : fileElements) {
         TsFileResource resource = fileElement.resource;
-        TsFileSequenceReader reader = newFastCompactionPerformer.getReaderFromCache(resource);
+        TsFileSequenceReader reader = fastCompactionPerformer.getReaderFromCache(resource);
 
         // read time chunk metadatas and value chunk metadatas in the current file
         List<IChunkMetadata> timeChunkMetadatas = new ArrayList<>();
@@ -395,7 +395,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
                       valueModifications.add(null);
                     } else {
                       valueModifications.add(
-                          newFastCompactionPerformer.getModifications(
+                          fastCompactionPerformer.getModifications(
                               resource, new PartialPath(deviceId, x.getMeasurementUid())));
                     }
                   } catch (IllegalPathException e) {

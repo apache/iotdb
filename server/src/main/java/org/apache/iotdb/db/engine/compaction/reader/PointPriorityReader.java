@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NewFastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointElement;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -23,7 +23,7 @@ public class PointPriorityReader {
 
   private final PriorityQueue<PointElement> pointQueue;
 
-  private final NewFastCompactionPerformerSubTask.RemovePage removePage;
+  private final FastCompactionPerformerSubTask.RemovePage removePage;
 
   private Pair<Long, Object> currentPoint;
 
@@ -32,8 +32,7 @@ public class PointPriorityReader {
 
   private List<PageElement> newOverlappedPages;
 
-
-  public PointPriorityReader(NewFastCompactionPerformerSubTask.RemovePage removePage) {
+  public PointPriorityReader(FastCompactionPerformerSubTask.RemovePage removePage) {
     this.removePage = removePage;
     pointQueue =
         new PriorityQueue<>(

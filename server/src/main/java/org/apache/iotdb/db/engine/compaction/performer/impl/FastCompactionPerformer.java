@@ -7,7 +7,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NewFastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
+public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResource> seqFiles;
 
@@ -71,7 +71,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
                   TsFileManager.compareFileName(
                       new File(o1.getFileName()), new File(o2.getFileName())));
 
-  public NewFastCompactionPerformer(
+  public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       List<TsFileResource> targetFiles) {
@@ -80,7 +80,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
     this.targetFiles = targetFiles;
   }
 
-  public NewFastCompactionPerformer() {}
+  public FastCompactionPerformer() {}
 
   @Override
   public void perform()
@@ -170,7 +170,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
-    new NewFastCompactionPerformerSubTask(
+    new FastCompactionPerformerSubTask(
             newFastCrossCompactionWriter,
             this,
             timeseriesMetadataOffsetMap,
@@ -219,7 +219,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
       futures.add(
           CompactionTaskManager.getInstance()
               .submitSubTask(
-                  new NewFastCompactionPerformerSubTask(
+                  new FastCompactionPerformerSubTask(
                       newFastCrossCompactionWriter,
                       deviceID,
                       measurementsForEachSubTask[i],
