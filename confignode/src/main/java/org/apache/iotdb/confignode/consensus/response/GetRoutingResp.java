@@ -21,32 +21,21 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
-public class SchemaPartitionResp implements DataSet {
+public class GetRoutingResp implements DataSet {
 
   private TSStatus status;
 
-  private final boolean allPartitionsExist;
+  private final List<TConsensusGroupId> dataRegionIdList;
 
-  // Map<StorageGroup, SchemaPartitionTable>
-  // TODO: Replace this map with new SchemaPartition
-  private final Map<String, SchemaPartitionTable> schemaPartition;
-
-  public SchemaPartitionResp(
-      TSStatus status,
-      boolean allPartitionsExist,
-      Map<String, SchemaPartitionTable> schemaPartition) {
+  public GetRoutingResp(TSStatus status, List<TConsensusGroupId> dataRegionIdList) {
     this.status = status;
-    this.allPartitionsExist = allPartitionsExist;
-    this.schemaPartition = schemaPartition;
+    this.dataRegionIdList = dataRegionIdList;
   }
 
   public TSStatus getStatus() {
@@ -57,23 +46,12 @@ public class SchemaPartitionResp implements DataSet {
     this.status = status;
   }
 
-  public boolean isAllPartitionsExist() {
-    return allPartitionsExist;
-  }
-
-  public TSchemaPartitionTableResp convertToRpcSchemaPartitionTableResp() {
-    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
+  public TGetRoutingResp convertToRpcGetRoutingResp() {
+    TGetRoutingResp resp = new TGetRoutingResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionMap =
-          new ConcurrentHashMap<>();
-
-      schemaPartition.forEach(
-          (storageGroup, schemaPartitionTable) ->
-              schemaPartitionMap.put(storageGroup, schemaPartitionTable.getSchemaPartitionMap()));
-
-      resp.setSchemaPartitionTable(schemaPartitionMap);
+      resp.dataRegionIdList = dataRegionIdList;
     }
 
     return resp;

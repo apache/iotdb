@@ -19,67 +19,66 @@
 
 package org.apache.iotdb.confignode.consensus.request.read;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
-  private PartialPath partialPath;
-  private int level = -1;
+public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
 
-  public GetNodePathsPartitionPlan() {
-    super(ConfigPhysicalPlanType.GetNodePathsPartition);
+  private String storageGroup;
+
+  private TConsensusGroupType partitionType;
+
+  public GetSeriesSlotListPlan() {
+    super(ConfigPhysicalPlanType.GetSeriesSlotList);
   }
 
-  public PartialPath getPartialPath() {
-    return partialPath;
+  public GetSeriesSlotListPlan(String storageGroup, TConsensusGroupType partitionType) {
+    this();
+    this.storageGroup = storageGroup;
+    this.partitionType = partitionType;
   }
 
-  public void setPartialPath(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
+  public TConsensusGroupType getPartitionType() {
+    return partitionType;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
-    partialPath.serialize(stream);
-    stream.writeInt(level);
+    ReadWriteIOUtils.write(storageGroup, stream);
+    stream.writeInt(partitionType.ordinal());
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    level = buffer.getInt();
+    this.storageGroup = ReadWriteIOUtils.readString(buffer);
+    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    GetNodePathsPartitionPlan that = (GetNodePathsPartitionPlan) o;
-    return level == that.level && Objects.equals(partialPath, that.partialPath);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetSeriesSlotListPlan that = (GetSeriesSlotListPlan) o;
+    return storageGroup.equals(that.storageGroup) && partitionType.equals(that.partitionType);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(partialPath, level);
+    int hashcode = 1;
+    hashcode = hashcode * 31 + Objects.hash(storageGroup);
+    hashcode = hashcode * 31 + partitionType.ordinal();
+    return hashcode;
   }
 }

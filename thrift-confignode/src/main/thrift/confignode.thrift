@@ -177,6 +177,39 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TGetRoutingReq {
+    1: required string storageGroup
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: required common.TTimePartitionSlot timeSlotId
+}
+
+struct TGetRoutingResp {
+    1: required common.TSStatus status
+    2: optional list<common.TConsensusGroupId> dataRegionIdList
+}
+
+struct TGetTimeSlotListReq {
+    1: required string storageGroup
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: optional i64 startTime
+    4: optional i64 endTime
+}
+
+struct TGetTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TTimePartitionSlot> timeSlotList
+}
+
+struct TGetSeriesSlotListReq {
+    1: required string storageGroup
+    2: optional common.TConsensusGroupType type
+}
+
+struct TGetSeriesSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TSeriesPartitionSlot> seriesSlotList
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -402,6 +435,7 @@ struct TSetSchemaTemplateReq {
   1: required string name
   2: required string path
 }
+
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
@@ -798,5 +832,19 @@ service IConfigNodeRPCService {
 
   /** Get PipeSink by name, if name is empty, get all PipeSink */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
+
+  // ======================================================
+  // TestTools
+  // ======================================================
+
+  /** Get a particular DataPartition's corresponding Regions */
+  TGetRoutingResp getRouting(TGetRoutingReq req)
+
+  /** Get a specific SeriesSlot's TimeSlots by start time and end time */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  /** Get the given storage group's assigned SeriesSlots */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
 }
 

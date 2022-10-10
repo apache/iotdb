@@ -40,11 +40,15 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -737,7 +741,7 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRegionLocaltionsPlanTest() throws IOException {
+  public void GetRegionLocationsPlanTest() throws IOException {
     GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
     TShowRegionReq showRegionReq = new TShowRegionReq();
     req0.setShowRegionReq(showRegionReq);
@@ -811,7 +815,17 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetAllTemplateSetInfoPlan() throws IOException {
+  public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
+    GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
+    getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
+    GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
+        (GetNodePathsPartitionPlan)
+            ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getNodePathsPartitionPlan0, getNodePathsPartitionPlan1);
+  }
+
+  @Test
+  public void GetAllTemplateSetInfoPlanTest() throws IOException {
     GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getAllTemplateSetInfoPlan.serializeToByteBuffer())
@@ -940,5 +954,34 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         updateTriggerStateInTablePlan0.getTriggerState(),
         updateTriggerStateInTablePlan1.getTriggerState());
+  }
+
+  @Test
+  public void GetRoutingPlanTest() throws IOException {
+    GetRoutingPlan getRoutingPlan0 =
+        new GetRoutingPlan("root.test", new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+    GetRoutingPlan getRoutingPlan1 =
+        (GetRoutingPlan) ConfigPhysicalPlan.Factory.create(getRoutingPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getRoutingPlan0, getRoutingPlan1);
+  }
+
+  @Test
+  public void GetTimeSlotListPlanTest() throws IOException {
+    GetTimeSlotListPlan getTimeSlotListPlan0 =
+        new GetTimeSlotListPlan("root.test", new TSeriesPartitionSlot(1), 0, Long.MAX_VALUE);
+    GetTimeSlotListPlan getTimeSlotListPlan1 =
+        (GetTimeSlotListPlan)
+            ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
+  }
+
+  @Test
+  public void GetSeriesSlotListPlanTest() throws IOException {
+    GetSeriesSlotListPlan getSeriesSlotListPlan0 =
+        new GetSeriesSlotListPlan("root.test", SchemaRegion);
+    GetSeriesSlotListPlan getSeriesSlotListPlan1 =
+        (GetSeriesSlotListPlan)
+            ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
   }
 }
