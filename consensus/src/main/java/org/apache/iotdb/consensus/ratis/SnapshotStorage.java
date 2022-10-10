@@ -45,6 +45,7 @@ public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
   private final IStateMachine applicationStateMachine;
 
+  private final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
 
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
@@ -64,7 +65,7 @@ public class SnapshotStorage implements StateMachineStorage {
     ArrayList<Path> snapshotPaths = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
       for (Path path : stream) {
-        if (path.toFile().isDirectory()) {
+        if (path.toFile().isDirectory() && !path.toFile().getName().startsWith(TMP_PREFIX)) {
           snapshotPaths.add(path);
         }
       }
@@ -165,5 +166,9 @@ public class SnapshotStorage implements StateMachineStorage {
 
   public File getSnapshotDir(String snapshotMetadata) {
     return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
+  }
+
+  public File getSnapshotTmpDir(String snapshotMetadata) {
+    return new File(stateMachineDir.getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
   }
 }

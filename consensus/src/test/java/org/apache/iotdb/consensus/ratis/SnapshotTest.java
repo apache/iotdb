@@ -135,7 +135,7 @@ public class SnapshotTest {
       try {
         Assert.assertTrue(snapshotRaw.createNewFile());
         FileWriter writer = new FileWriter(snapshotRecord);
-        writer.write(snapshotRaw.getAbsolutePath());
+        writer.write(snapshotRaw.getName());
         writer.close();
       } catch (IOException ioException) {
         ioException.printStackTrace();
@@ -148,17 +148,17 @@ public class SnapshotTest {
       File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
       Assert.assertTrue(log.exists());
       Scanner scanner = null;
-      String actualSnapshotPath = null;
+      String relativePath = null;
       try {
         scanner = new Scanner(log);
-        actualSnapshotPath = scanner.nextLine();
+        relativePath = scanner.nextLine();
         scanner.close();
       } catch (FileNotFoundException e) {
         e.printStackTrace();
       }
       Assert.assertNotNull(scanner);
 
-      return Collections.singletonList(Paths.get(actualSnapshotPath));
+      return Collections.singletonList(new File(latestSnapshotRootDir, relativePath).toPath());
     }
   }
 
