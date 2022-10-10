@@ -939,6 +939,15 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
+  /**
+   * Compare the name of TsFiles corresponding to the two {@link TsFileResource}. Both names should
+   * meet the naming specifications.Take the generation time as the first keyword, the version
+   * number is the second keyword
+   *
+   * @param o1 a {@link TsFileResource}
+   * @param o2 a {@link TsFileResource}
+   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2
+   */
   // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
   public static int compareFileName(TsFileResource o1, TsFileResource o2) {
     String[] items1 =
@@ -963,6 +972,17 @@ public class TsFileResource {
     }
   }
 
+  /**
+   * Compare two TsFile's name.This method will first check whether the two names meet the standard
+   * naming specifications, and then use the generating time as the first keyword, and use the
+   * version number as the second keyword to compare the size of the two names.
+   *
+   * @param fileName1 a name of TsFile
+   * @param fileName2 a name of TsFile
+   * @return -1, if fileName1 is smaller than fileNam2, 1 if bigger, 0 means fileName1 equals to
+   *     fileName2
+   * @throws IOException if fileName1 or fileName2 do not meet the standard naming specifications.
+   */
   public static int compareFileName(String fileName1, String fileName2) throws IOException {
     TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
     TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
@@ -977,6 +997,16 @@ public class TsFileResource {
     return 0;
   }
 
+  /**
+   * Compare the name of TsFiles corresponding to the two {@link TsFileResource}.This method will
+   * first check whether the two names meet the standard naming specifications, and then compare
+   * version of tow names.
+   *
+   * @param o1 a {@link TsFileResource}
+   * @param o2 a {@link TsFileResource}
+   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2 or do not meet the
+   *     naming specifications
+   */
   public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
     try {
       TsFileNameGenerator.TsFileName n1 =
