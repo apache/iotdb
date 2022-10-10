@@ -23,24 +23,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class SnapshotLogAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLogAnalyzer.class);
-  private File snapshotLogFile;
-  private BufferedReader reader;
-  private FileReader fileReader;
-  private FileInputStream fileInputStream;
-  String snapshotId;
+  private final File snapshotLogFile;
+  private final BufferedReader reader;
+  private final String snapshotId;
 
   public SnapshotLogAnalyzer(File snapshotLogFile) throws IOException {
     this.snapshotLogFile = snapshotLogFile;
-    this.fileReader = new FileReader(snapshotLogFile);
-    this.fileInputStream = new FileInputStream(snapshotLogFile);
-    this.reader = new BufferedReader(fileReader);
+    this.reader = new BufferedReader(new FileReader(snapshotLogFile));
     this.snapshotId = reader.readLine();
   }
 
@@ -73,7 +68,7 @@ public class SnapshotLogAnalyzer {
     reader.reset();
     String currLine;
     int cnt = 0;
-    while ((currLine = reader.readLine()) != null) {
+    while ((currLine = reader.readLine()) != null && !currLine.equals(SnapshotLogger.END_FLAG)) {
       cnt++;
     }
     return cnt;
@@ -93,7 +88,13 @@ public class SnapshotLogAnalyzer {
       return false;
     }
     reader.mark((int) fileLength);
-    reader.read(endFlagInChar, (int) (fileLength - endFlagLength), endFlagLength);
+    reader.skip(
+        (int)
+            (fileLength - endFlagLength - snapshotId.getBytes(StandardCharsets.UTF_8).length - 1));
+    int offset = 0;
+    do {
+      offset += reader.read(endFlagInChar, offset, endFlagLength - offset);
+    } while (offset < endFlagLength);
     String fileEndStr = new String(endFlagInChar);
     return fileEndStr.equals(SnapshotLogger.END_FLAG);
   }
