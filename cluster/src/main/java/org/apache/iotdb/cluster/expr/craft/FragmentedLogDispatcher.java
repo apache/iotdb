@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.expr.craft;
 
-import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
+import org.apache.iotdb.cluster.log.LogDispatcher;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -61,8 +62,6 @@ public class FragmentedLogDispatcher extends LogDispatcher {
             "Log queue[{}] of {} is full, ignore the request to this node",
             entry.left,
             member.getName());
-      } else {
-        request.setEnqueueTime(System.nanoTime());
       }
     }
     Statistic.LOG_DISPATCHER_LOG_ENQUEUE.calOperationCostTimeFromStart(startTime);
@@ -80,7 +79,7 @@ public class FragmentedLogDispatcher extends LogDispatcher {
 
   class DispatcherThread extends LogDispatcher.DispatcherThread {
 
-    DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
+    protected DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       super(receiver, logBlockingDeque);
     }
 

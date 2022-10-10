@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.appender.BlockingLogAppender;
-import org.apache.iotdb.cluster.log.appender.SlidingWindowLogAppender;
+import org.apache.iotdb.cluster.expr.nbraft.SlidingWindowLogAppender;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;

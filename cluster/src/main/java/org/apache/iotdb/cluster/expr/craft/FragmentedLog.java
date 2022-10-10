@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log.logtypes;
+package org.apache.iotdb.cluster.expr.craft;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.utils.encode.rs.ReedSolomon;

@@ -19,6 +19,22 @@
 
 package org.apache.iotdb.cluster.log;
 
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.LOG_DISPATCHER_LOG_ENQUEUE_SINGLE;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -32,7 +48,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
-import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -42,27 +57,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.LOG_DISPATCHER_LOG_ENQUEUE_SINGLE;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -74,13 +72,12 @@ import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.LOG_DISPAT
 public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
-  RaftMember member;
+  protected RaftMember member;
   private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   protected boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueueMap = new HashMap<>();
-  List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
-  Map<Node, Boolean> nodesEnabled;
-  Map<Node, ExecutorService> executorServices = new HashMap<>();
+  protected List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
+  protected Map<Node, Boolean> nodesEnabled;
+  protected Map<Node, ExecutorService> executorServices = new HashMap<>();
   protected boolean queueOrdered =
       !(clusterConfig.isUseFollowerSlidingWindow() && clusterConfig.isEnableWeakAcceptance());
 
@@ -120,15 +117,17 @@ public class LogDispatcher {
   @TestOnly
   public void close() throws InterruptedException {
     for (Entry<Node, ExecutorService> entry : executorServices.entrySet()) {
-      ExecutorService value = entry.getValue();
-      value.shutdownNow();
-      value.awaitTermination(10, TimeUnit.SECONDS);
+      ExecutorService pool = entry.getValue();
+      pool.shutdownNow();
+      boolean closeSucceeded = pool.awaitTermination(10, TimeUnit.SECONDS);
+      if (!closeSucceeded) {
+        logger.warn("Cannot shut down dispatcher pool of {}-{}", member.getName(), entry.getKey());
+      }
     }
   }
 
   protected SendLogRequest transformRequest(Node node, SendLogRequest request) {
-    SendLogRequest newRequest = new SendLogRequest(request);
-    return newRequest;
+    return new SendLogRequest(request);
   }
 
   protected boolean addToQueue(BlockingQueue<SendLogRequest> nodeLogQueue, SendLogRequest request) {
@@ -162,7 +161,8 @@ public class LogDispatcher {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
-    List<Node> verifiers = null;
+
+    List<Node> verifiers = Collections.emptyList();
     if (clusterConfig.isUseVGRaft()) {
       verifiers = member.getTrustValueHolder().chooseVerifiers();
     }
@@ -186,8 +186,6 @@ public class LogDispatcher {
               "Log queue[{}] of {} is full, ignore the request to this node",
               entry.left,
               member.getName());
-        } else {
-          request.setEnqueueTime(System.nanoTime());
         }
       } catch (IllegalStateException e) {
         logger.debug(
@@ -212,7 +210,6 @@ public class LogDispatcher {
 
     private VotingLog votingLog;
     private AppendEntryRequest appendEntryRequest;
-    private long enqueueTime;
     private Future<ByteBuffer> serializedLogFuture;
     private int quorumSize;
     private boolean isVerifier;
@@ -227,7 +224,6 @@ public class LogDispatcher {
       this.setVotingLog(request.votingLog);
       this.setAppendEntryRequest(request.appendEntryRequest);
       this.setQuorumSize(request.quorumSize);
-      this.setEnqueueTime(request.enqueueTime);
       this.serializedLogFuture = request.serializedLogFuture;
     }
 
@@ -237,14 +233,6 @@ public class LogDispatcher {
 
     public void setVotingLog(VotingLog votingLog) {
       this.votingLog = votingLog;
-    }
-
-    public long getEnqueueTime() {
-      return enqueueTime;
-    }
-
-    public void setEnqueueTime(long enqueueTime) {
-      this.enqueueTime = enqueueTime;
     }
 
     public AppendEntryRequest getAppendEntryRequest() {
@@ -268,29 +256,22 @@ public class LogDispatcher {
       return "SendLogRequest{" + "log=" + votingLog + '}';
     }
 
-    public boolean isVerifier() {
-      return isVerifier;
-    }
-
     public void setVerifier(boolean verifier) {
       isVerifier = verifier;
     }
   }
 
-  class DispatcherThread implements Runnable {
+  protected class DispatcherThread implements Runnable {
 
     Node receiver;
-    private BlockingQueue<SendLogRequest> logBlockingDeque;
+    private final BlockingQueue<SendLogRequest> logBlockingDeque;
     protected List<SendLogRequest> currBatch = new ArrayList<>();
-    private PeerInfo peerInfo;
     private Client syncClient;
-    AsyncClient asyncClient;
-    private String baseName;
+    private final String baseName;
 
-    DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
+    protected DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
-      this.peerInfo = member.getPeer(receiver);
       baseName = "LogDispatcher-" + member.getName() + "-" + receiver;
     }
 
