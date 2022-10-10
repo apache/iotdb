@@ -63,7 +63,7 @@ public interface IPartitionFetcher {
    */
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
-  /** get schema partition and matched nodes according to path pattern tree. */
+  /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
       PathPatternTree patternTree) {
     return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
