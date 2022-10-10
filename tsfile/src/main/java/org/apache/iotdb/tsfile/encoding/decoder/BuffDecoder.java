@@ -71,12 +71,12 @@ public class BuffDecoder extends Decoder {
 
   private void loadBlock(ByteBuffer buffer) {
     BitReader reader = new BitReader(buffer);
-    // 读取元数据
+    // Meta
     int n = (int) reader.next(32);
     int p = (int) reader.next(32);
     int min = (int) reader.next(32);
     int max = (int) reader.next(32);
-    // 读取子列
+    // Subcolumns
     long[] fixed = new long[n];
     int totalWidth = getValueWidth(max - min) + p;
     for (int i = totalWidth; i > 0; i -= 8) {
@@ -87,7 +87,7 @@ public class BuffDecoder extends Decoder {
       }
     }
     reader.skip();
-    // 定点数转换为浮点数
+    // Fiexed point to floating point
     data = new double[n];
     double eps1 = Math.pow(2, -p);
     for (int i = 0; i < n; i++) {
@@ -117,13 +117,13 @@ public class BuffDecoder extends Decoder {
   }
 
   private byte[] decodeSparseSubColumn(BitReader reader, int n, int len) {
-    // 读取众数
+    // Mode
     byte frequentValue = (byte) reader.next(len);
-    // 读取RLE比特向量
+    // RLE
     reader.skip();
     int rleByteSize = (int) reader.next(32);
     boolean vector[] = decodeRLEVector(reader.nextBytes(rleByteSize), n);
-    // 读取离群点
+    // Outliers
     int cnt = (int) reader.next(32);
     byte[] bytes = new byte[n];
     for (int i = 0; i < n; i++) {

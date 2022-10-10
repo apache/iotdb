@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
@@ -33,13 +33,13 @@ import java.util.NoSuchElementException;
 /** Util for computing median, MAD, percentile */
 public class ExactOrderStatistics {
 
-  private final TSDataType dataType;
+  private final Type dataType;
   private FloatArrayList floatArrayList;
   private DoubleArrayList doubleArrayList;
   private IntArrayList intArrayList;
   private LongArrayList longArrayList;
 
-  public ExactOrderStatistics(TSDataType type) throws UDFInputSeriesDataTypeNotValidException {
+  public ExactOrderStatistics(Type type) throws UDFInputSeriesDataTypeNotValidException {
     this.dataType = type;
     switch (dataType) {
       case INT32:
@@ -57,7 +57,7 @@ public class ExactOrderStatistics {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0, dataType, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
   }
 
@@ -84,7 +84,7 @@ public class ExactOrderStatistics {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0, dataType, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
   }
 
@@ -101,7 +101,7 @@ public class ExactOrderStatistics {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0, dataType, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
   }
 
@@ -118,7 +118,7 @@ public class ExactOrderStatistics {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0, dataType, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
   }
 
@@ -135,7 +135,7 @@ public class ExactOrderStatistics {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0, dataType, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
   }
 

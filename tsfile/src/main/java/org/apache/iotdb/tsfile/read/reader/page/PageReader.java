@@ -43,6 +43,8 @@ import java.util.List;
 
 public class PageReader implements IPageReader {
 
+  public static long decodeTimeCost = 0;
+
   private PageHeader pageHeader;
 
   protected TSDataType dataType;
@@ -139,7 +141,10 @@ public class PageReader implements IPageReader {
             }
             break;
           case DOUBLE:
+            long before = System.nanoTime();
             double aDouble = valueDecoder.readDouble(valueBuffer);
+            long after = System.nanoTime();
+            decodeTimeCost += after - before;
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
               pageData.putDouble(timestamp, aDouble);
             }

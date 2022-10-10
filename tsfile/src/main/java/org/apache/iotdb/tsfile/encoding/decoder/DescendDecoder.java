@@ -73,10 +73,9 @@ public class DescendDecoder extends Decoder {
     BitReader reader = new BitReader(buffer);
     // Block size with 32 bits
     this.readTotalCount = (int) reader.next(32);
-    //        System.out.println("Decoder N:" + this.readTotalCount);
     // Number of nonzero values with 32 bits
     int m = (int) reader.next(32);
-    //        System.out.println("Decoder M:"+ m);
+    // Quantization level
     int beta = (int) reader.next(32);
     // Decode index sequence
     int[] index = decodeIndex(m, reader);

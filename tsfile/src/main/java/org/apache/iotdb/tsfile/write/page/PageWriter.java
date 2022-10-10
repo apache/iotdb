@@ -42,6 +42,7 @@ import java.nio.channels.WritableByteChannel;
  * encoder and respective OutputStream.
  */
 public class PageWriter {
+  public static long encodeTimeCost = 0;
 
   private static final Logger logger = LoggerFactory.getLogger(PageWriter.class);
 
@@ -115,7 +116,10 @@ public class PageWriter {
   /** write a time value pair into encoder */
   public void write(long time, double value) {
     timeEncoder.encode(time, timeOut);
+    long before = System.nanoTime();
     valueEncoder.encode(value, valueOut);
+    long after = System.nanoTime();
+    encodeTimeCost += after - before;
     statistics.update(time, value);
   }
 

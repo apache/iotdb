@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.library.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.eclipse.collections.api.tuple.primitive.LongIntPair;
@@ -115,8 +115,7 @@ public class Util {
    * @param t timestamp
    * @param o value in Object type
    */
-  public static void putValue(PointCollector pc, TSDataType type, long t, Object o)
-      throws Exception {
+  public static void putValue(PointCollector pc, Type type, long t, Object o) throws Exception {
     switch (type) {
       case INT32:
         pc.putInt(t, (Integer) o);

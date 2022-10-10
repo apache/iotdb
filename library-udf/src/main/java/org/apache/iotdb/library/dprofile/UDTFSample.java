@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -46,7 +46,7 @@ public class UDTFSample implements UDTF {
   private Pair<Long, Object>[] samples; // sampled data
   private int num = 0; // number of points already sampled
   private Random random;
-  private TSDataType dataType;
+  private Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {

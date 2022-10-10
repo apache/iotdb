@@ -15,9 +15,9 @@
  */
 package org.apache.iotdb.library.series.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
 
 import org.apache.commons.lang3.tuple.Pair;
 

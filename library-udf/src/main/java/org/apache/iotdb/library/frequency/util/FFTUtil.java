@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.library.frequency.util;
 
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.collector.PointCollector;
 
 /** Util for UDFFFT */
 public class FFTUtil {

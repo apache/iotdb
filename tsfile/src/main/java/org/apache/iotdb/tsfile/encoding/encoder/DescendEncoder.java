@@ -117,19 +117,17 @@ public class DescendEncoder extends Encoder {
       value[i] = array[i].quantize(beta);
     }
     BitConstructor constructor = new BitConstructor();
-    // 32位数据点个数
+    // Number of data points
     constructor.add(writeIndex, 32);
-    //    System.out.println("N:" + writeIndex);
-    // 32位有效数据点个数
+    // Number of reserved data points
     constructor.add(m, 32);
-    //    System.out.println("M:" + m);
+    // Quantization level
     constructor.add(beta, 32);
-    // 分组位压缩编码index序列
+    // Group bit-backing
     encodeIndex(index, constructor);
-    // 降序位压缩编码value序列
+    // Descend bit-packing
     encodeValue(value, constructor);
     constructor.pad();
-    //        System.out.println("Encoder Size:" + constructor.sizeInBytes());
     return constructor.toByteArray();
   }
 
@@ -151,10 +149,10 @@ public class DescendEncoder extends Encoder {
     if (value.length == 0) {
       return;
     }
-    // 8位，第一个数的位数
+    // Bit width of the first value
     int bits = getValueWidth(Math.abs(value[0]));
     constructor.add(bits, 8);
-    // 存储所有数据
+    // Encode all values
     for (int i = 0; i < value.length; i++) {
       constructor.add(value[i], bits);
       bits = getValueWidth(value[i]);

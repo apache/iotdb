@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.library.util.NoNumberException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /**
  * This function is used to calculate the spread of time series, that is, the maximum value minus
@@ -39,14 +39,13 @@ public class UDAFSpread implements UDTF {
   long longMin = Long.MAX_VALUE, longMax = Long.MIN_VALUE;
   float floatMin = Float.MAX_VALUE, floatMax = -Float.MAX_VALUE;
   double doubleMin = Double.MAX_VALUE, doubleMax = -Double.MAX_VALUE;
-  TSDataType dataType;
+  Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
   }
 
   @Override

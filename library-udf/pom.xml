@@ -40,20 +40,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>${project.parent.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.parent.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-session</artifactId>
-            <version>${project.parent.version}</version>
+            <artifactId>udf-api</artifactId>
+            <version>0.14.0-preview2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -64,18 +52,6 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.9</version>
-        </dependency>
-        <!-- TimeStampRepair -->
-        <dependency>
-            <groupId>gov.nist.math</groupId>
-            <artifactId>jama</artifactId>
-            <version>1.0.3</version>
-        </dependency>
-        <!-- LOF -->
-        <dependency>
-            <groupId>com.github.chen0040</groupId>
-            <artifactId>java-local-outlier-factor</artifactId>
-            <version>1.0.4</version>
         </dependency>
         <!-- FFT, IFFT, LowPass, HighPass -->
         <dependency>
@@ -103,7 +79,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>integration</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
+            <version>0.14.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>

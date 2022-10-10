@@ -90,25 +90,25 @@ public class BuffEncoder extends Encoder {
   }
 
   public void encodeBlock(ByteArrayOutputStream out) throws IOException {
-    // 获取整数部分的范围
+    // Get the range of integer part
     int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
     for (int i = 0; i < writeIndex; i++) {
       min = Math.min(min, (int) Math.floor(dataBuffer[i]));
       max = Math.max(max, (int) Math.floor(dataBuffer[i]));
     }
-    // 保存元数据
+    // Meta
     BitConstructor constructor = new BitConstructor();
     constructor.add(writeIndex, 32);
     constructor.add(this.precision, 32);
     constructor.add(min, 32);
     constructor.add(max, 32);
-    // 浮点数转定点数
+    // Floating point to fixed point
     long[] fixed = new long[writeIndex];
     double eps = Math.pow(2, -precision);
     for (int i = 0; i < fixed.length; i++) {
       fixed[i] = (long) (Math.round((dataBuffer[i] - min) / eps));
     }
-    // 按照子列分别进行存储
+    // Store by subcolumns
     int[] masks = {0, 0x0001, 0x0003, 0x0007, 0x000f, 0x001f, 0x003f, 0x007f, 0x00ff};
     int totalWidth = getValueWidth(max - min) + precision;
     for (int i = totalWidth; i > 0; i -= 8) {
@@ -124,7 +124,7 @@ public class BuffEncoder extends Encoder {
   }
 
   private void encodeSubColumn(BitConstructor constructor, byte[] bytes, int len) {
-    // 统计各种数值出现的次数，判断是否采用稀疏表示
+    // Count and decide whether sparse
     Byte frequentValue = count(bytes, new HashMap<>());
     if (frequentValue == null) {
       constructor.add(0, 8);
@@ -136,7 +136,6 @@ public class BuffEncoder extends Encoder {
   }
 
   private void encodeDenseSubColumn(BitConstructor constructor, byte[] bytes, int len) {
-    // 存储数据
     for (byte b : bytes) {
       constructor.add(b, len);
     }
@@ -144,16 +143,16 @@ public class BuffEncoder extends Encoder {
 
   private void encodeSparseSubColumn(
       BitConstructor constructor, byte[] bytes, byte frequentValue, int len) {
-    // 存储众数
+    // Mode
     constructor.add(frequentValue, len);
-    // 存储RLE压缩的比特向量
+    // RLE
     BitConstructor rle = new BitConstructor();
     int cnt = encodeRLEVector(rle, bytes, frequentValue);
     byte[] rleBytes = rle.toByteArray();
     constructor.pad();
     constructor.add(rleBytes.length, 32);
     constructor.add(rleBytes);
-    // 存储离群点
+    // Outliers
     constructor.add(cnt, 32);
     for (byte b : bytes) {
       if (b != frequentValue) {
@@ -215,10 +214,10 @@ public class BuffEncoder extends Encoder {
   }
 
   /**
-   * 计算x的数据宽度
+   * Get the valid bit width of x
    *
    * @param x
-   * @return 数据宽度
+   * @return valid bit width
    */
   public int getValueWidth(long x) {
     return 64 - Long.numberOfLeadingZeros(x);
