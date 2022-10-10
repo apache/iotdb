@@ -34,21 +34,21 @@ public interface IPartitionFetcher {
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if schemaPartition does not exist, then
-   * automatically create.
+   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
+   * schemaPartition does not exist, then automatically create.
    */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * get data partition, used in query scenarios.
+   * Get data partition, used in query scenarios.
    *
    * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * get or create data partition, used in standalone write scenarios. if storage group not exists,
-   * then automatically create.
+   * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is
+   * true and storage group/series/time slots not exists, then automatically create.
    *
    * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
    */
@@ -56,8 +56,8 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * get or create data partition, used in cluster write scenarios. if storage group not exists,
-   * then automatically create.
+   * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
+   * true and storage group/series/time slots not exists, then automatically create.
    *
    * @param dataPartitionQueryParams the list of DataPartitionQueryParams
    */
@@ -69,13 +69,13 @@ public interface IPartitionFetcher {
     return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
   }
 
-  /** get schema partition and matched nodes according to path pattern tree and node level. */
+  /** Get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level);
 
-  /** update region cache in partition cache when receive request from config node */
+  /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
 
-  /** invalid all partition cache */
+  /** Invalid all partition cache */
   void invalidAllCache();
 }
