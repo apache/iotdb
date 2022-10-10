@@ -242,7 +242,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCO
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
@@ -1338,43 +1337,30 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(
           String.format("File path '%s' doesn't exists.", file.getPath()));
     }
-    if (file.isDirectory()) {
-      loadDir(file, plan);
-    } else {
-      loadFile(file, plan);
+
+    List<File> tsFiles = new ArrayList<>();
+    findAllTsFiles(file, tsFiles);
+    tsFiles.sort(
+        (o1, o2) -> {
+          String file1Name = o1.getName();
+          String file2Name = o2.getName();
+          try {
+            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
+          } catch (IOException e) {
+            return file1Name.compareTo(file2Name);
+          }
+        });
+    for (File tsFile : tsFiles) {
+      loadFile(tsFile, plan);
     }
   }
 
-  private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
-    File[] files = curFile.listFiles();
-    long[] establishTime = new long[files.length];
-    List<Integer> tsfiles = new ArrayList<>();
-
-    for (int i = 0; i < files.length; i++) {
-      File file = files[i];
-      if (!file.isDirectory()) {
-        String fileName = file.getName();
-        if (fileName.endsWith(TSFILE_SUFFIX)) {
-          establishTime[i] = Long.parseLong(fileName.split(FILE_NAME_SEPARATOR)[0]);
-          tsfiles.add(i);
-        }
-      }
-    }
-    Collections.sort(
-        tsfiles,
-        (o1, o2) -> {
-          if (establishTime[o1] == establishTime[o2]) {
-            return 0;
-          }
-          return establishTime[o1] < establishTime[o2] ? -1 : 1;
-        });
-    for (Integer i : tsfiles) {
-      loadFile(files[i], plan);
-    }
-
-    for (File file : files) {
-      if (file.isDirectory()) {
-        loadDir(file, plan);
+  private void findAllTsFiles(File curFile, List<File> files) {
+    if (curFile.isFile() && curFile.getName().endsWith(TSFILE_SUFFIX)) {
+      files.add(curFile);
+    } else {
+      for (File file : curFile.listFiles()) {
+        findAllTsFiles(file, files);
       }
     }
   }
