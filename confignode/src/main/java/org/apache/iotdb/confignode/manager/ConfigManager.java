@@ -736,8 +736,18 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    consensusManager.createPeerForConsensusGroup(configNodeLocations);
-    return StatusUtils.OK;
+    for (int i = 0; i < 30; i++) {
+      try {
+        if (consensusManager == null) {
+          Thread.sleep(1000);
+        } else {
+          consensusManager.createPeerForConsensusGroup(configNodeLocations);
+          return StatusUtils.OK;
+        }
+      } catch (Exception ignored) {
+      }
+    }
+    return StatusUtils.INTERNAL_ERROR;
   }
 
   @Override

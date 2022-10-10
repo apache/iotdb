@@ -91,7 +91,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
-        initConsensusManager();
+        configManager.initConsensusManager();
 
         SystemPropertiesUtils.storeSystemParameters();
         SystemPropertiesUtils.storeConfigNodeId(0);
@@ -169,10 +169,6 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  private void initConsensusManager() throws IOException {
-    configManager.initConsensusManager();
-  }
-
   private void setUpInternalServices() throws StartupException, IOException {
     // Setup JMXService
     registerManager.register(new JMXService());
@@ -216,17 +212,25 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     for (int retry = 0; retry < 3; retry++) {
-      TConfigNodeRegisterResp resp =
-          (TConfigNodeRegisterResp)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
-      TSStatus status = resp.getStatus();
+      TSStatus status;
+      TConfigNodeRegisterResp resp = null;
+      Object obj =
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+
+      if (obj instanceof TConfigNodeRegisterResp) {
+        resp = (TConfigNodeRegisterResp) obj;
+        status = resp.getStatus();
+      } else {
+        status = (TSStatus) obj;
+      }
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
         CONF.setConfigNodeId(resp.getConfigNodeId());
 
-        initConsensusManager();
+        configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
