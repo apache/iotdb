@@ -2,51 +2,35 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 
-public class FastCompactionPerformerSubTask implements Callable<Void> {
+public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
@@ -56,59 +40,43 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         throws WriteProcessException, IOException, IllegalPathException;
   }
 
-  private final PriorityQueue<ChunkMetadataElement> chunkMetadataQueue;
+  // sorted source files by the start time of device
+  protected List<FileElement> fileList;
 
-  private final PriorityQueue<PageElement> pageQueue;
+  protected final PriorityQueue<ChunkMetadataElement> chunkMetadataQueue;
 
-  private NewFastCrossCompactionWriter compactionWriter;
+  protected final PriorityQueue<PageElement> pageQueue;
 
-  private FastCompactionPerformer fastCompactionPerformer;
+  protected NewFastCrossCompactionWriter compactionWriter;
 
-  private int subTaskId;
+  protected FastCompactionPerformer fastCompactionPerformer;
 
-  // the indexs of the timseries to be compacted to which the current sub thread is assigned
-  private List<Integer> pathsIndex;
-
-  // chunk metadata list of all timeseries of this device in this seq file
-  private List<List<IChunkMetadata>> allSensorMetadatas;
-
-  private List<AlignedChunkMetadata> alignedSensorMetadatas;
-
-  private List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-
-  private Map<String, IMeasurementSchema> measurementSchemaMap = new LinkedHashMap<>();
-
-  private List<String> allMeasurements = new ArrayList<>();
+  protected int subTaskId;
 
   // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
-  Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
-
-  Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
-      timeseriesSchemaAndMetadataOffsetMap;
+  protected Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
-  // sorted source files by the start time of device
-  private List<FileElement> fileList = new ArrayList<>();
-
-
   private boolean isAligned;
 
-  private String deviceId;
+  protected String deviceId;
 
-  private int currentSensorIndex = 0;
-
-  boolean hasStartMeasurement = false;
-
-  private FastCompactionPerformerSubTask(
-      List<IMeasurementSchema> measurementSchemas,
+  public FastCompactionPerformerSubTask(
+      NewFastCrossCompactionWriter compactionWriter,
+      FastCompactionPerformer fastCompactionPerformer,
+      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
+      String deviceId,
       boolean isAligned,
-      NewFastCrossCompactionWriter compactionWriter,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
+    this.fastCompactionPerformer = fastCompactionPerformer;
     this.subTaskId = subTaskId;
-    this.measurementSchemas = measurementSchemas;
+    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.isAligned = isAligned;
+    this.deviceId = deviceId;
+
+    this.fileList = new ArrayList<>();
     chunkMetadataQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -124,90 +92,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
             });
   }
 
-  /** Used for constructing nonAligned timeseries compaction. */
-  public FastCompactionPerformerSubTask(
-      NewFastCrossCompactionWriter compactionWriter,
-      String deviceId,
-      List<Integer> pathsIndex,
-      List<String> allMeasurements,
-      FastCompactionPerformer fastCompactionPerformer,
-      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      int subTaskId) {
-    this.compactionWriter = compactionWriter;
-    this.fastCompactionPerformer = fastCompactionPerformer;
-    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
-    this.pathsIndex = pathsIndex;
-    this.deviceId = deviceId;
-    this.subTaskId = subTaskId;
-    this.allMeasurements = allMeasurements;
-    chunkMetadataQueue =
-        new PriorityQueue<>(
-            (o1, o2) -> {
-              int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
-            });
-
-    pageQueue =
-        new PriorityQueue<>(
-            (o1, o2) -> {
-              int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
-            });
-  }
-
-  /** Used for constructing aligned timeseries compaction. */
-  public FastCompactionPerformerSubTask(
-      NewFastCrossCompactionWriter compactionWriter,
-      FastCompactionPerformer fastCompactionPerformer,
-      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      List<IMeasurementSchema> measurementSchemas,
-      String deviceId,
-      int subTaskId) {
-    this(null, true, compactionWriter, subTaskId);
-    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
-    this.measurementSchemas = measurementSchemas;
-    this.fastCompactionPerformer = fastCompactionPerformer;
-    this.deviceId = deviceId;
-  }
-
-  @Override
-  public Void call()
-      throws IOException, PageException, WriteProcessException, IllegalPathException {
-    if (isAligned) {
-      int chunkMetadataPriority = 0;
-      // put aligned chunk metadatas into queue
-      // for (AlignedChunkMetadata alignedChunkMetadata : alignedSensorMetadatas) {
-      //        chunkMetadataQueue.add(
-      //            new ChunkMetadataElement(alignedChunkMetadata, chunkMetadataPriority++));
-      // }
-      fastCompactionPerformer
-          .getSortedSourceFilesAndFirstMeasurementNodeOfCurrentDevice()
-          .forEach(x -> fileList.add(new FileElement(x.left, x.right)));
-
-      compactionWriter.startMeasurement(measurementSchemas, subTaskId);
-      compactFiles();
-      compactionWriter.endMeasurement(subTaskId);
-
-    } else {
-      for (Integer index : pathsIndex) {
-        fastCompactionPerformer
-            .getSortedSourceFiles()
-            .forEach(x -> fileList.add(new FileElement(x)));
-
-        currentSensorIndex = index;
-        hasStartMeasurement = false;
-
-        compactFiles();
-        if (hasStartMeasurement) {
-          compactionWriter.endMeasurement(subTaskId);
-        }
-      }
-    }
-    return null;
-
-  }
-
-  private void compactFiles()
+  protected void compactFiles()
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     while (!fileList.isEmpty()) {
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
@@ -223,20 +108,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-  private void startMeasurement() throws IOException {
-
-      if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
-        ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
-      MeasurementSchema measurementSchema =
-          fastCompactionPerformer
-              .getReaderFromCache(firstChunkMetadataElement.fileElement.resource)
-              .getMeasurementSchema(
-                  Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
-        compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
-        hasStartMeasurement = true;
-      }
-
-  }
+  protected abstract void startMeasurement() throws IOException;
 
   /**
    * Compact chunks in chunk metadata queue.
@@ -287,400 +159,13 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-  private void deserializeFileIntoQueue(List<FileElement> fileElements)
-      throws IOException, IllegalPathException {
-    int chunkMetadataPriority = 0;
-    if (!isAligned) {
-      for (FileElement fileElement : fileElements) {
-        TsFileResource resource = fileElement.resource;
-        Pair<Long, Long> timeseriesMetadataOffset =
-            timeseriesMetadataOffsetMap.get(allMeasurements.get(currentSensorIndex)).get(resource);
-        if (timeseriesMetadataOffset == null) {
-          // tsfile does not contain this timeseries
-          removeFile(fileElement);
-          continue;
-        }
-        List<IChunkMetadata> iChunkMetadataList =
-            fastCompactionPerformer
-                .getReaderFromCache(resource)
-                .getChunkMetadataListByTimeseriesMetadataOffset(
-                    timeseriesMetadataOffset.left, timeseriesMetadataOffset.right);
+  abstract void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
+      throws IOException;
 
-        if (iChunkMetadataList.size() > 0) {
-          // modify chunk metadatas
-          QueryUtils.modifyChunkMetaData(
-              iChunkMetadataList,
-              fastCompactionPerformer.getModifications(
-                  resource,
-                  new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
-          if (iChunkMetadataList.size() == 0) {
-            // all chunks has been deleted in this file, just remove it
-            removeFile(fileElement);
-          }
-        }
+  abstract void deserializeFileIntoQueue(List<FileElement> fileElements)
+      throws IOException, IllegalPathException;
 
-        for (int i = 0; i < iChunkMetadataList.size(); i++) {
-          IChunkMetadata chunkMetadata = iChunkMetadataList.get(i);
-          // set file path
-          chunkMetadata.setFilePath(resource.getTsFilePath());
-
-          // add into queue
-          chunkMetadataQueue.add(
-              new ChunkMetadataElement(
-                  chunkMetadata,
-                  (int) resource.getVersion(),
-                  i == iChunkMetadataList.size() - 1,
-                  fileElement));
-        }
-      }
-    } else {
-      for (FileElement fileElement : fileElements) {
-        TsFileResource resource = fileElement.resource;
-        TsFileSequenceReader reader = fastCompactionPerformer.getReaderFromCache(resource);
-
-        // read time chunk metadatas and value chunk metadatas in the current file
-        List<IChunkMetadata> timeChunkMetadatas = new ArrayList<>();
-        List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
-        for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
-            timeseriesMetadataOffsetMap.entrySet()) {
-          String measurementID = entry.getKey();
-          Pair<Long, Long> timeseriesOffsetInCurrentFile = entry.getValue().get(resource);
-          if (measurementID.equals("")) {
-            // read time chunk metadatas
-            timeChunkMetadatas =
-                reader.getChunkMetadataListByTimeseriesMetadataOffset(
-                    timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
-          } else {
-            // read value chunk metadatas
-            if (timeseriesOffsetInCurrentFile == null) {
-              // current file does not contain this aligned timeseries
-              valueChunkMetadatas.add(null);
-            } else {
-              // current file contains this aligned timeseries
-              valueChunkMetadatas.add(
-                  reader.getChunkMetadataListByTimeseriesMetadataOffset(
-                      timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
-            }
-          }
-        }
-
-        // construct aligned chunk metadatas
-        List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
-        for (int i = 0; i < timeChunkMetadatas.size(); i++) {
-          List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
-          for (List<IChunkMetadata> chunkMetadata : valueChunkMetadatas) {
-            if (chunkMetadata == null) {
-              valueChunkMetadataList.add(null);
-            } else {
-              valueChunkMetadataList.add(chunkMetadata.get(i));
-            }
-          }
-          AlignedChunkMetadata alignedChunkMetadata =
-              new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
-
-          // set file path
-          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
-          alignedChunkMetadataList.add(alignedChunkMetadata);
-        }
-
-        // get value modifications of this file
-        List<List<Modification>> valueModifications = new ArrayList<>();
-        alignedChunkMetadataList
-            .get(0)
-            .getValueChunkMetadataList()
-            .forEach(
-                x -> {
-                  try {
-                    if (x == null) {
-                      valueModifications.add(null);
-                    } else {
-                      valueModifications.add(
-                          fastCompactionPerformer.getModifications(
-                              resource, new PartialPath(deviceId, x.getMeasurementUid())));
-                    }
-                  } catch (IllegalPathException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
-
-        // modify aligned chunk metadatas
-        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
-
-        if (alignedChunkMetadataList.size() == 0) {
-          // all chunks has been deleted in this file, just remove it
-          removeFile(fileElement);
-        }
-
-        // put aligned chunk metadatas into queue
-        for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
-          chunkMetadataQueue.add(
-              new ChunkMetadataElement(
-                  alignedChunkMetadataList.get(i),
-                  (int) resource.getVersion(),
-                  i == alignedChunkMetadataList.size() - 1,
-                  fileElement));
-        }
-      }
-
-      //      for (FileElement fileElement : fileElements) {
-      //        TsFileResource resource = fileElement.resource;
-      //        List<ITimeSeriesMetadata> iTimeseriesMetadataList = new ArrayList<>();
-      //        TsFileSequenceReader reader =
-      // newFastCompactionPerformer.getReaderFromCache(resource);
-      //        reader.getDeviceTimeseriesMetadata(
-      //            iTimeseriesMetadataList,
-      //            fileElement.firstMeasurementNode,
-      //            Collections.emptySet(),
-      //            true);
-      //        AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
-      //            (AlignedTimeSeriesMetadata) iTimeseriesMetadataList.get(0);
-      //
-      //
-      //        // get value modifications of this file
-      //        List<List<Modification>> valueModifications = new ArrayList<>();
-      //        alignedTimeSeriesMetadata
-      //            .getValueTimeseriesMetadataList()
-      //            .forEach(
-      //                x -> {
-      //                  try {
-      //                    valueModifications.add(
-      //                        newFastCompactionPerformer.getModifications(
-      //                            resource, new PartialPath(deviceId, x.getMeasurementId())));
-      //                  } catch (IllegalPathException e) {
-      //                    throw new RuntimeException(e);
-      //                  }
-      //                });
-      //
-      //        List<AlignedChunkMetadata> alignedChunkMetadataList =
-      //            alignedTimeSeriesMetadata.getChunkMetadataList();
-      //        // modify aligned chunk metadatas
-      //        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
-      //
-      //        if (alignedChunkMetadataList.size() == 0) {
-      //          // all chunks has been deleted in this file, just remove it
-      //          removeFile(fileElement);
-      //        }
-      //
-      //        Map<String, IChunkMetadata> valueChunkMetadataMap = new LinkedHashMap<>();
-      //        for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
-      //          AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
-      //          List<IChunkMetadata> valueChunkMetadataList =
-      //              alignedChunkMetadata.getValueChunkMetadataList();
-      //          int valueIndex = 0;
-      //          for (int i = 0; i < allMeasruements.size(); i++) {
-      //            if (allMeasruements.get(i) <= valueChunkMetadataList.get(valueIndex))
-      //              valueChunkMetadataList.add();
-      //          }
-      //          alignedChunkMetadata
-      //              .getValueChunkMetadataList()
-      //              .forEach(
-      //                  x -> {
-      //                    if (!measurementSchemaMap.containsKey(x.getMeasurementUid())) {
-      //                      try {
-      //                        measurementSchemaMap.put(
-      //                            x.getMeasurementUid(),
-      //                            reader.getMeasurementSchema(Collections.singletonList(x)));
-      //                      } catch (IOException e) {
-      //                        throw new RuntimeException(e);
-      //                      }
-      //                    }
-      //                  });
-      //          // set file path
-      //          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
-      //
-      //          // add into queue
-      //          chunkMetadataQueue.add(
-      //              new ChunkMetadataElement(
-      //                  alignedChunkMetadata,
-      //                  (int) resource.getVersion(),
-      //                  i == alignedChunkMetadataList.size() - 1,
-      //                  fileElement));
-      //        }
-      //      }
-    }
-  }
-
-  /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  private void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
-      throws IOException {
-    if (chunkMetadataElement.chunkMetadata instanceof ChunkMetadata) {
-      Chunk chunk =
-          ChunkCache.getInstance().get((ChunkMetadata) chunkMetadataElement.chunkMetadata);
-      ChunkReader chunkReader = new ChunkReader(chunk);
-      ByteBuffer chunkDataBuffer = chunk.getData();
-      ChunkHeader chunkHeader = chunk.getHeader();
-      while (chunkDataBuffer.remaining() > 0) {
-        // deserialize a PageHeader from chunkDataBuffer
-        PageHeader pageHeader;
-        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
-        } else {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-        }
-        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-
-        boolean isLastPage = chunkDataBuffer.remaining() <= 0;
-        pageQueue.add(
-            new PageElement(
-                pageHeader,
-                compressedPageData,
-                chunkReader,
-                chunkMetadataElement,
-                isLastPage,
-                chunkMetadataElement.priority));
-      }
-    } else {
-      AlignedChunkMetadata alignedChunkMetadata =
-          (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-
-      List<PageHeader> timePageHeaders = new ArrayList<>();
-      List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
-      List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
-      List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
-
-      // deserialize time chunk
-      ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-      Chunk timeChunk = ChunkCache.getInstance().get(chunkMetadata);
-      ChunkReader chunkReader = new ChunkReader(timeChunk);
-      ByteBuffer chunkDataBuffer = timeChunk.getData();
-      ChunkHeader chunkHeader = timeChunk.getHeader();
-      while (chunkDataBuffer.remaining() > 0) {
-        // deserialize a PageHeader from chunkDataBuffer
-        PageHeader pageHeader;
-        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
-        } else {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-        }
-        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-        timePageHeaders.add(pageHeader);
-        compressedTimePageDatas.add(compressedPageData);
-      }
-
-      // deserialize value chunks
-      List<Chunk> valueChunks = new ArrayList<>(measurementSchemaMap.size());
-      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-        chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getValueChunkMetadataList().get(i);
-        if (chunkMetadata == null) {
-          // value chunk has been deleted completely
-          valuePageHeaders.add(null);
-          compressedValuePageDatas.add(null);
-          valueChunks.add(null);
-          continue;
-        }
-        Chunk valueChunk = ChunkCache.getInstance().get(chunkMetadata);
-        chunkReader = new ChunkReader(valueChunk);
-        chunkDataBuffer = valueChunk.getData();
-        chunkHeader = valueChunk.getHeader();
-        valueChunks.add(valueChunk);
-
-        valuePageHeaders.add(new ArrayList<>());
-        compressedValuePageDatas.add(new ArrayList<>());
-        while (chunkDataBuffer.remaining() > 0) {
-          // deserialize a PageHeader from chunkDataBuffer
-
-          PageHeader pageHeader;
-          if (((byte) (chunkHeader.getChunkType() & 0x3F))
-              == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-            pageHeader =
-                PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
-          } else {
-            pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-          }
-          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-          valuePageHeaders.get(i).add(pageHeader);
-          compressedValuePageDatas.get(i).add(compressedPageData);
-        }
-      }
-
-      // add aligned pages into page queue
-      for (int i = 0; i < timePageHeaders.size(); i++) {
-        List<PageHeader> alignedPageHeaders = new ArrayList<>();
-        List<ByteBuffer> alignedPageDatas = new ArrayList<>();
-        for (int j = 0; j < valuePageHeaders.size(); j++) {
-          if (valuePageHeaders.get(j) == null) {
-            alignedPageHeaders.add(null);
-            alignedPageDatas.add(null);
-            continue;
-          }
-          alignedPageHeaders.add(valuePageHeaders.get(j).get(i));
-          alignedPageDatas.add(compressedValuePageDatas.get(j).get(i));
-        }
-        pageQueue.add(
-            new PageElement(
-                timePageHeaders.get(i),
-                alignedPageHeaders,
-                compressedTimePageDatas.get(i),
-                alignedPageDatas,
-                new AlignedChunkReader(timeChunk, valueChunks, null),
-                chunkMetadataElement,
-                i == timePageHeaders.size() - 1,
-                chunkMetadataElement.priority));
-      }
-
-      //      // deserialize value chunks
-      //      List<Chunk> valueChunks = new ArrayList<>();
-      //      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-      //        chunkMetadata = (ChunkMetadata)
-      // alignedChunkMetadata.getValueChunkMetadataList().get(i);
-      //        if (chunkMetadata == null) {
-      //          // value chunk has been deleted completely
-      //          valuePageHeaders.;
-      //          compressedValuePageDatas.add(null);
-      //          continue;
-      //        }
-      //        Chunk valueChunk = ChunkCache.getInstance().get(chunkMetadata);
-      //        chunkReader = new ChunkReader(valueChunk);
-      //        chunkDataBuffer = valueChunk.getData();
-      //        chunkHeader = valueChunk.getHeader();
-      //        valueChunks.add(valueChunk);
-      //        int pageIndex = 0;
-      //        while (chunkDataBuffer.remaining() > 0) {
-      //          // deserialize a PageHeader from chunkDataBuffer
-      //          if (valuePageHeaders.size() <= pageIndex) {
-      //            valuePageHeaders.add(new ArrayList<>());
-      //          }
-      //          if (compressedValuePageDatas.size() <= pageIndex) {
-      //            compressedValuePageDatas.add(new ArrayList<>());
-      //          }
-      //          PageHeader pageHeader;
-      //          if (((byte) (chunkHeader.getChunkType() & 0x3F))
-      //              == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-      //            pageHeader =
-      //                PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
-      //          } else {
-      //            pageHeader = PageHeader.deserializeFrom(chunkDataBuffer,
-      // chunkHeader.getDataType());
-      //          }
-      //          ByteBuffer compressedPageData =
-      // chunkReader.readPageDataWithoutUncompressing(pageHeader);
-      //          valuePageHeaders.get(pageIndex).add(pageHeader);
-      //          compressedValuePageDatas.get(pageIndex++).add(compressedPageData);
-      //        }
-      //      }
-      //
-      //      // add aligned pages into page queue
-      //      for (int i = 0; i < timePageHeaders.size(); i++) {
-      //        pageQueue.add(
-      //            new PageElement(
-      //                timePageHeaders.get(i),
-      //                valuePageHeaders.get(i),
-      //                compressedTimePageDatas.get(i),
-      //                compressedValuePageDatas.get(i),
-      //                new AlignedChunkReader(timeChunk, valueChunks, null),
-      //                chunkMetadataElement,
-      //                i == timePageHeaders.size() - 1,
-      //                chunkMetadataElement.priority));
-      //      }
-    }
-  }
-
-  /**
-   * Compact pages in page queue.
-   *
-   * @throws IOException
-   * @throws PageException
-   */
+  /** Compact pages in page queue. */
   private void compactPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
@@ -892,20 +377,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
    * <p>Notice: if is aligned chunk, return true if any of value chunk has data been deleted. Return
    * false if and only if all value chunks has no data been deleted.
    */
-  private boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
-    if (isAligned) {
-      AlignedChunkMetadata alignedChunkMetadata =
-          (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-      boolean isAlignedChunkModified = alignedChunkMetadata.isModified();
-      if (!isAlignedChunkModified) {
-        // check if one of the value chunk has been deleted completely
-        isAlignedChunkModified = alignedChunkMetadata.getValueChunkMetadataList().contains(null);
-      }
-      return isAlignedChunkModified;
-    } else {
-      return chunkMetadataElement.chunkMetadata.isModified();
-    }
-  }
+  protected abstract boolean isChunkModified(ChunkMetadataElement chunkMetadataElement);
 
   /**
    * -1 means that no data on this page has been deleted. <br>
@@ -915,40 +387,9 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
    * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
    * if and only if no data exists on all value pages is deleted
    */
-  private int isPageModified(PageElement pageElement) {
-    long startTime = pageElement.startTime;
-    long endTime = pageElement.pageHeader.getEndTime();
-    if (isAligned) {
-      AlignedChunkMetadata alignedChunkMetadata =
-          (AlignedChunkMetadata) pageElement.chunkMetadataElement.chunkMetadata;
-      int lastPageStatus = Integer.MIN_VALUE;
-      for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-        int currentPageStatus =
-            valueChunkMetadata == null
-                ? 1
-                : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
-        if (currentPageStatus == 0) {
-          return 0;
-        }
-        if (lastPageStatus == Integer.MIN_VALUE) {
-          // first page
-          lastPageStatus = currentPageStatus;
-          continue;
-        }
-        if (currentPageStatus != lastPageStatus) {
-          return 0;
-        }
-      }
-      return lastPageStatus;
-    } else {
-      return checkIsModified(
-          startTime,
-          endTime,
-          pageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList());
-    }
-  }
+  protected abstract int isPageModified(PageElement pageElement);
 
-  private int checkIsModified(long startTime, long endTime, Collection<TimeRange> deletions) {
+  protected int checkIsModified(long startTime, long endTime, Collection<TimeRange> deletions) {
     int status = -1;
     if (deletions != null) {
       for (TimeRange range : deletions) {
@@ -1006,37 +447,14 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         deserializeChunkIntoQueue(newOverlappedChunkMetadata);
       }
     }
-
-    //    // Todo?
-    //    // check is first chunk or not
-    //    boolean isFirstChunk = chunkMetadataQueue.peek().equals(chunkMetadataElement);
-    //    if (isFirstChunk && !chunkMetadataQueue.isEmpty()) {
-    //      if (!pageQueue.isEmpty()) {
-    //        // find new overlapped chunks and deserialize them into page queue
-    //        for (ChunkMetadataElement newOverlappedChunkMetadata :
-    //            findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
-    //          deserializeChunkIntoQueue(newOverlappedChunkMetadata);
-    //        }
-    //      }
-    //    }
   }
 
-  private void removeFile(FileElement fileElement) throws IllegalPathException, IOException {
+  protected void removeFile(FileElement fileElement) throws IllegalPathException, IOException {
     boolean isFirstFile = fileList.get(0).equals(fileElement);
     fileList.remove(fileElement);
     if (isFirstFile && !fileList.isEmpty()) {
       // find new overlapped files and deserialize them into chunk metadata queue
       deserializeFileIntoQueue(findOverlapFiles(fileList.get(0)));
     }
-  }
-
-  private List<Collection<TimeRange>> getAlignedChunkDeletions(
-      AlignedChunkMetadata alignedChunkMetadata) {
-    List<Collection<TimeRange>> deletions = new ArrayList<>();
-    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      Collection<TimeRange> valueDeletions = valueChunkMetadata.getDeleteIntervalList();
-      deletions.add(valueDeletions);
-    }
-    return deletions;
   }
 }

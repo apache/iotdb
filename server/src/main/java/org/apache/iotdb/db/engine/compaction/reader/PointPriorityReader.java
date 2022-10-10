@@ -29,7 +29,6 @@ public class PointPriorityReader {
 
   private boolean isNewPoint = true;
 
-
   private List<PageElement> newOverlappedPages;
 
   public PointPriorityReader(FastCompactionPerformerSubTask.RemovePage removePage) {
@@ -121,10 +120,9 @@ public class PointPriorityReader {
 
   /** Add a new overlapped page. */
   public void addNewPage(PageElement pageElement) throws IOException {
-      pageElement.deserializePage();
-      pointQueue.add(new PointElement(pageElement));
-      isNewPoint = true;
-
+    pageElement.deserializePage();
+    pointQueue.add(new PointElement(pageElement));
+    isNewPoint = true;
   }
 
   public void setNewOverlappedPages(List<PageElement> newOverlappedPages) {

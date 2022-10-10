@@ -170,7 +170,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return schemaMap;
   }
 
-
   public Map<String, Map<TsFileResource, Pair<Long, Long>>>
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =

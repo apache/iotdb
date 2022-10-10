@@ -307,7 +307,6 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
   }
 
-
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     timeChunkWriter.writeToFileWriter(tsfileWriter);

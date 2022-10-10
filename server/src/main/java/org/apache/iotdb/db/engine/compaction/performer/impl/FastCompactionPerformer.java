@@ -7,7 +7,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.AlignedFastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NonAlignedFastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,7 +172,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
-    new FastCompactionPerformerSubTask(
+    new AlignedFastCompactionPerformerSubTask(
             newFastCrossCompactionWriter,
             this,
             timeseriesMetadataOffsetMap,
@@ -219,7 +221,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       futures.add(
           CompactionTaskManager.getInstance()
               .submitSubTask(
-                  new FastCompactionPerformerSubTask(
+                  new NonAlignedFastCompactionPerformerSubTask(
                       newFastCrossCompactionWriter,
                       deviceID,
                       measurementsForEachSubTask[i],
@@ -239,7 +241,6 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       }
     }
   }
-
 
   private List<AlignedChunkMetadata> getModifiedAlignedChunkMetadatasByDevice(String device)
       throws IOException, IllegalPathException {
