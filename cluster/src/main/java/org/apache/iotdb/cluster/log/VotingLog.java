@@ -22,27 +22,31 @@ package org.apache.iotdb.cluster.log;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 
 public class VotingLog {
   protected Log log;
+  // for NB-Raft
   protected Set<Integer> weaklyAcceptedNodeIds;
   protected Set<Integer> failedNodeIds;
+  // for VGRaft
   protected Set<byte[]> signatures;
-  public AtomicLong acceptedTime;
   private boolean hasFailed;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;
-    weaklyAcceptedNodeIds = new HashSet<>(groupSize);
-    acceptedTime = new AtomicLong();
     failedNodeIds = new HashSet<>(groupSize);
-    signatures = new HashSet<>(groupSize);
+    if (ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()) {
+      weaklyAcceptedNodeIds = new HashSet<>(groupSize);
+    }
+    if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft()) {
+      signatures = new HashSet<>(groupSize);
+    }
   }
 
   public VotingLog(VotingLog another) {
     this.log = another.log;
     this.weaklyAcceptedNodeIds = another.weaklyAcceptedNodeIds;
-    this.acceptedTime = another.acceptedTime;
     this.failedNodeIds = another.failedNodeIds;
     this.signatures = another.signatures;
   }

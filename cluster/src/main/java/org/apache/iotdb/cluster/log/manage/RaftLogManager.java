@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_COMMIT_LOG_IN_MANAGER;
+
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
@@ -37,6 +39,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
 
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -589,25 +592,45 @@ public abstract class RaftLogManager {
     return entries;
   }
 
-  /**
-   * Used by MaybeCommit or MaybeAppend or follower to commit newly committed entries.
-   *
-   * @param newCommitIndex request commitIndex
-   */
-  public void commitTo(long newCommitIndex) throws LogExecutionException {
-    if (commitIndex >= newCommitIndex) {
-      return;
-    }
-    long startTime = Statistic.RAFT_SENDER_COMMIT_GET_LOGS.getOperationStartTime();
-    long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
-    long hi = newCommitIndex + 1;
-    List<Log> entries = new ArrayList<>(getUnCommittedEntryManager().getEntries(lo, hi));
-    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calOperationCostTimeFromStart(startTime);
-
-    if (entries.isEmpty()) {
-      return;
+  private void checkCompaction(List<Log> entries) {
+    boolean needToCompactLog = false;
+    // calculate the number of old committed entries to be reserved by entry number
+    int numToReserveForNew = minNumOfLogsInMem;
+    if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+      needToCompactLog = true;
+      numToReserveForNew = maxNumOfLogsInMem - entries.size();
     }
 
+    // calculate the number of old committed entries to be reserved by entry size
+    long newEntryMemSize = 0;
+    for (Log entry : entries) {
+      if (entry.getByteSize() == 0) {
+        logger.debug(
+            "{} should not go here, must be send to the follower, "
+                + "so the log has been serialized exclude single node mode",
+            entry);
+        entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
+      }
+      newEntryMemSize += entry.getByteSize();
+    }
+    int sizeToReserveForNew = minNumOfLogsInMem;
+    if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
+      needToCompactLog = true;
+      sizeToReserveForNew =
+          committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
+    }
+
+    // reserve old committed entries with the minimum number
+    if (needToCompactLog) {
+      int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
+      int sizeToReserveForConfig = minNumOfLogsInMem;
+      long startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
+      innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
+      Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
+    }
+  }
+
+  private void removedCommitted(List<Log> entries) {
     long commitLogIndex = getCommitLogIndex();
     long firstLogIndex = entries.get(0).getCurrLogIndex();
     if (commitLogIndex >= firstLogIndex) {
@@ -619,43 +642,11 @@ public abstract class RaftLogManager {
           .subList(0, (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
           .clear();
     }
+  }
 
-    boolean needToCompactLog = false;
-    int numToReserveForNew = minNumOfLogsInMem;
-    if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
-      needToCompactLog = true;
-      numToReserveForNew = maxNumOfLogsInMem - entries.size();
-    }
+  private void commitEntries(List<Log> entries) throws LogExecutionException {
+    long startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
 
-    long newEntryMemSize = 0;
-    for (Log entry : entries) {
-      if (entry.getByteSize() == 0) {
-        logger.debug(
-            "{} should not go here, must be send to the follower, "
-                + "so the log has been serialized exclude single node mode",
-            entry);
-        // entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
-      }
-      newEntryMemSize += entry.getByteSize();
-    }
-    int sizeToReserveForNew = minNumOfLogsInMem;
-    if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
-      needToCompactLog = true;
-      sizeToReserveForNew =
-          committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
-    }
-
-    if (needToCompactLog) {
-      int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
-      int sizeToReserveForConfig = minNumOfLogsInMem;
-      startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
-      synchronized (this) {
-        innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
-      }
-      Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
-    }
-
-    startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
     for (Log entry : entries) {
       Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.calOperationCostTimeFromStart(
           entry.getCreateTime());
@@ -685,31 +676,43 @@ public abstract class RaftLogManager {
       logger.error("{}: persistent raft log error:", name, e);
       throw new LogExecutionException(e);
     } finally {
-      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(
+          startTime);
+    }
+  }
+
+  /**
+   * Used by MaybeCommit or MaybeAppend or follower to commit newly committed entries.
+   *
+   * @param newCommitIndex request commitIndex
+   */
+  public void commitTo(long newCommitIndex) throws LogExecutionException {
+    long start = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
+    if (commitIndex >= newCommitIndex) {
+      return;
     }
 
-    startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
-    applyEntries(entries);
-    Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
+    synchronized (this) {
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
+          start);
+      long operationStartTime = RAFT_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
 
-    long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
-    if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
-      logger.info(
-          "There are too many unapplied logs [{}], wait for a while to avoid memory overflow",
-          unappliedLogSize);
-      try {
-        synchronized (changeApplyCommitIndexCond) {
-          changeApplyCommitIndexCond.wait(
-              Math.min(
-                  (unappliedLogSize
-                              - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem())
-                          / 10
-                      + 1,
-                  1000));
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+      long startTime = Statistic.RAFT_SENDER_COMMIT_GET_LOGS.getOperationStartTime();
+      long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
+      long hi = newCommitIndex + 1;
+      List<Log> entries = new ArrayList<>(getUnCommittedEntryManager().getEntries(lo, hi));
+      Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calOperationCostTimeFromStart(startTime);
+
+      if (entries.isEmpty()) {
+        return;
       }
+
+      removedCommitted(entries);
+      checkCompaction(entries);
+      commitEntries(entries);
+      applyEntries(entries);
+
+      RAFT_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(operationStartTime);
     }
   }
 
@@ -736,8 +739,30 @@ public abstract class RaftLogManager {
    * @param entries applying entries
    */
   void applyEntries(List<Log> entries) {
+    long startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
     for (Log entry : entries) {
       applyEntry(entry);
+    }
+    Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
+
+    long unappliedLogSize = getCommitLogIndex() - maxHaveAppliedCommitIndex;
+    if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
+      logger.info(
+          "There are too many unapplied logs [{}], wait for a while to avoid memory overflow",
+          unappliedLogSize);
+      try {
+        synchronized (changeApplyCommitIndexCond) {
+          changeApplyCommitIndexCond.wait(
+              Math.min(
+                  (unappliedLogSize
+                      - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem())
+                      / 10
+                      + 1,
+                  1000));
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 

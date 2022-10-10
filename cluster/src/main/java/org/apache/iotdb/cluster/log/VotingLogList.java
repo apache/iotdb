@@ -23,14 +23,12 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -38,8 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER;
 
 public class VotingLogList {
 
@@ -74,23 +70,14 @@ public class VotingLogList {
   private boolean tryCommit() {
     RaftLogManager logManager = member.getLogManager();
 
-    List<Log> entries = Collections.emptyList();
     if (computeNewCommitIndex()
         && logManager != null
         && newCommitIndex.get() > logManager.getCommitLogIndex()) {
-      long start = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
-      synchronized (logManager) {
-        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
-            start);
-        long operationStartTime = RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
-        try {
-          logManager.commitTo(newCommitIndex.get());
-        } catch (LogExecutionException e) {
-          logger.error("Fail to commit {}", newCommitIndex, e);
-        }
-        RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(operationStartTime);
+      try {
+        logManager.commitTo(newCommitIndex.get());
+      } catch (LogExecutionException e) {
+        logger.error("Fail to commit {}", newCommitIndex, e);
       }
-
       return true;
     } else {
       return false;

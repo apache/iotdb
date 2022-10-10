@@ -1747,14 +1747,12 @@ public abstract class RaftMember implements RaftMemberMBean {
           logger.info(
               "Still not receive enough votes for {}, weakly "
                   + "accepted {}, wait {}ms, wait to sequence {}ms, wait to enqueue "
-                  + "{}ms, wait to accept "
                   + "{}ms",
               log,
               log.getWeaklyAcceptedNodeIds(),
               alreadyWait,
               (log.getLog().getSequenceStartTime() - waitStart) / 1000000,
-              (log.getLog().getEnqueueTime() - waitStart) / 1000000,
-              (log.acceptedTime.get() - waitStart) / 1000000);
+              (log.getLog().getEnqueueTime() - waitStart) / 1000000);
           nextTimeToPrint *= 2;
         }
         totalAccepted = votingLogList.totalAcceptedNodeNum(log);
@@ -1801,9 +1799,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
     stronglyAccepted = totalAccepted - weaklyAccepted;
 
-    if (log.acceptedTime.get() != 0) {
-      Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime.get());
-    }
     Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calOperationCostTimeFromStart(startTime);
 
     // a node has a larger term than the local node, so this node is no longer a valid leader

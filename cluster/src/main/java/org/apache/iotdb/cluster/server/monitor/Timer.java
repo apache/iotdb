@@ -192,7 +192,7 @@ public class Timer {
         TIME_SCALE,
         true,
         RAFT_SENDER_COMMIT_LOG),
-    RAFT_SENDER_COMMIT_LOG_IN_MANAGER(
+    RAFT_COMMIT_LOG_IN_MANAGER(
         RAFT_MEMBER_SENDER,
         "commit log in log manager",
         TIME_SCALE,
@@ -209,25 +209,25 @@ public class Timer {
         "get logs to be committed",
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
-        RAFT_SENDER_COMMIT_LOG_IN_MANAGER),
+        RAFT_COMMIT_LOG_IN_MANAGER),
     RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS(
         RAFT_MEMBER_SENDER,
         "delete logs exceeding capacity",
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
-        RAFT_SENDER_COMMIT_LOG_IN_MANAGER),
+        RAFT_COMMIT_LOG_IN_MANAGER),
     RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS(
         RAFT_MEMBER_SENDER,
         "append and stable committed logs",
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
-        RAFT_SENDER_COMMIT_LOG_IN_MANAGER),
+        RAFT_COMMIT_LOG_IN_MANAGER),
     RAFT_SENDER_COMMIT_APPLY_LOGS(
         RAFT_MEMBER_SENDER,
         "apply after committing logs",
         TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER,
-        RAFT_SENDER_COMMIT_LOG_IN_MANAGER),
+        RAFT_COMMIT_LOG_IN_MANAGER),
     RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS(
         RAFT_MEMBER_SENDER,
         "provide log to consumer",
@@ -363,7 +363,6 @@ public class Timer {
     RAFT_SENT_ENTRY_SIZE(RAFT_MEMBER_SENDER, "sent entry size", 1, true, ROOT),
     RAFT_RELAYED_LEVEL1_NUM(RAFT_MEMBER_SENDER, "level 1 relay node number", 1, true, ROOT),
     RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
-    RAFT_WAIT_AFTER_ACCEPTED(RAFT_MEMBER_SENDER, "wait after accepted", TIME_SCALE, true, ROOT),
     RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
     RAFT_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "weak accept", 1, true, ROOT),
     RAFT_CONCURRENT_SENDER(RAFT_MEMBER_SENDER, "concurrent sender", 1, true, ROOT);
