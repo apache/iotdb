@@ -67,13 +67,13 @@ public class StandaloneEnvConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
     return this;
   }
 
   @Override
   public long getPartitionInterval() {
-    return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
   @Override

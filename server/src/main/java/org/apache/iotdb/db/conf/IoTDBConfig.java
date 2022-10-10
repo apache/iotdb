@@ -127,13 +127,16 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the mtree */
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
+
+  /** Memory allocated for the consensus layer */
+  private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -758,12 +761,6 @@ public class IoTDBConfig {
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
 
-  /**
-   * Time range for partitioning data inside each storage group, the unit is second. Default time is
-   * a day.
-   */
-  private long partitionInterval = 86400;
-
   /** Time partition interval for storage in milliseconds */
   private long timePartitionIntervalForStorage = 86400000;
 
@@ -1110,14 +1107,6 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
-  }
-
-  public long getPartitionInterval() {
-    return partitionInterval;
-  }
-
-  public void setPartitionInterval(long partitionInterval) {
-    this.partitionInterval = partitionInterval;
   }
 
   public long getTimePartitionIntervalForStorage() {
@@ -1813,8 +1802,16 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+  }
+
+  public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
   }
 
   public long getAllocateMemoryForRead() {

@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
@@ -121,6 +122,11 @@ public class TriggerInformation {
     return triggerInformation;
   }
 
+  public static TriggerInformation deserialize(InputStream inputStream) throws IOException {
+    return deserialize(
+        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -134,7 +140,7 @@ public class TriggerInformation {
         && Objects.equals(attributes, that.attributes)
         && event == that.event
         && triggerState == that.triggerState
-        && (isStateful() ? Objects.equals(dataNodeLocation, that.dataNodeLocation) : true)
+        && (!isStateful() || Objects.equals(dataNodeLocation, that.dataNodeLocation))
         && Objects.equals(jarFileMD5, that.jarFileMD5);
   }
 
