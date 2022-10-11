@@ -26,12 +26,15 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SnapshotLogAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLogAnalyzer.class);
   private final File snapshotLogFile;
   private final BufferedReader reader;
   private final String snapshotId;
+  private Set<String> fileInfoSet = new HashSet<>();
 
   public SnapshotLogAnalyzer(File snapshotLogFile) throws IOException {
     this.snapshotLogFile = snapshotLogFile;
@@ -69,9 +72,13 @@ public class SnapshotLogAnalyzer {
     String currLine;
     int cnt = 0;
     while ((currLine = reader.readLine()) != null && !currLine.equals(SnapshotLogger.END_FLAG)) {
-      cnt++;
+      fileInfoSet.add(currLine);
     }
     return cnt;
+  }
+
+  public Set<String> getFileInfoSet() {
+    return fileInfoSet;
   }
 
   /**
@@ -90,7 +97,10 @@ public class SnapshotLogAnalyzer {
     reader.mark((int) fileLength);
     reader.skip(
         (int)
-            (fileLength - endFlagLength - snapshotId.getBytes(StandardCharsets.UTF_8).length - 1));
+            (fileLength
+                - endFlagLength
+                - snapshotId.getBytes(StandardCharsets.UTF_8).length
+                - "\n".getBytes(StandardCharsets.UTF_8).length));
     int offset = 0;
     do {
       offset += reader.read(endFlagInChar, offset, endFlagLength - offset);

@@ -31,8 +31,6 @@ public class SnapshotLogger implements AutoCloseable {
   public static final String END_FLAG = "END";
   public static final int FILE_NAME_OFFSET = 1;
   public static final int TIME_PARTITION_OFFSET = 2;
-  public static final int DATA_REGION_OFFSET = 3;
-  public static final int STORAGE_GROUP_OFFSET = 4;
   public static final int SEQUENCE_OFFSET = 5;
 
   private File logFile;
@@ -67,16 +65,10 @@ public class SnapshotLogger implements AutoCloseable {
     int length = splitInfo.length;
     String fileName = splitInfo[length - FILE_NAME_OFFSET];
     String timePartition = splitInfo[length - TIME_PARTITION_OFFSET];
-    String dataRegion = splitInfo[length - DATA_REGION_OFFSET];
-    String storageGroup = splitInfo[length - STORAGE_GROUP_OFFSET];
     String sequence = splitInfo[length - SEQUENCE_OFFSET];
     os.write(fileName.getBytes(StandardCharsets.UTF_8));
     os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
     os.write(timePartition.getBytes(StandardCharsets.UTF_8));
-    os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
-    os.write(dataRegion.getBytes(StandardCharsets.UTF_8));
-    os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
-    os.write(storageGroup.getBytes(StandardCharsets.UTF_8));
     os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
     os.write(sequence.getBytes(StandardCharsets.UTF_8));
     os.write("\n".getBytes(StandardCharsets.UTF_8));

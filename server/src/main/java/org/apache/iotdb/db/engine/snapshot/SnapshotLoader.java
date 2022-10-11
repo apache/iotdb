@@ -33,12 +33,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
+import java.util.Set;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
@@ -46,13 +50,11 @@ public class SnapshotLoader {
   private String snapshotPath;
   private String dataRegionId;
   private SnapshotLogAnalyzer logAnalyzer;
-  private FolderManager folderManager;
 
   public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
-    this.folderManager = null;
   }
 
   private DataRegion loadSnapshot() {
@@ -246,7 +248,7 @@ public class SnapshotLoader {
               "Cannot find %s or %s",
               seqFileDir.getAbsolutePath(), unseqFileDir.getAbsolutePath()));
     }
-    folderManager =
+    FolderManager folderManager =
         new FolderManager(
             Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()),
             DirectoryStrategyType.SEQUENCE_STRATEGY);
@@ -265,7 +267,7 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files);
+        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
       }
     }
 
@@ -284,12 +286,13 @@ public class SnapshotLoader {
                 + dataRegionId
                 + File.separator
                 + timePartitionFolder.getName();
-        createLinksFromSnapshotToSourceDir(targetSuffix, files);
+        createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
       }
     }
   }
 
-  private void createLinksFromSnapshotToSourceDir(String targetSuffix, File[] files)
+  private void createLinksFromSnapshotToSourceDir(
+      String targetSuffix, File[] files, FolderManager folderManager)
       throws DiskSpaceInsufficientException, IOException {
     for (File file : files) {
       String dataDir = folderManager.getNextFolder();
@@ -313,7 +316,8 @@ public class SnapshotLoader {
 
   private void createLinksFromSnapshotDirToDataDirWithLog() throws IOException {
     String snapshotId = logAnalyzer.getSnapshotId();
-    int fileNum = logAnalyzer.getTotalFileCountInSnapshot();
+    int loggedFileNum = logAnalyzer.getTotalFileCountInSnapshot();
+    Set<String> fileInfoSet = logAnalyzer.getFileInfoSet();
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     int fileCnt = 0;
     for (String dataDir : dataDirs) {
@@ -323,17 +327,17 @@ public class SnapshotLoader {
               + IoTDBConstant.SNAPSHOT_FOLDER_NAME
               + File.separator
               + snapshotId;
-      fileCnt += takeHardLinksFromSnapshotToDataDir(dataDir, new File(snapshotDir));
+      fileCnt += takeHardLinksFromSnapshotToDataDir(dataDir, new File(snapshotDir), fileInfoSet);
     }
-    if (fileCnt != fileNum) {
+    if (fileCnt != loggedFileNum) {
       throw new IOException(
           String.format(
-              "The file num in log is %d, while file num in disk is %d", fileNum, fileCnt));
+              "The file num in log is %d, while file num in disk is %d", loggedFileNum, fileCnt));
     }
   }
 
-  private int takeHardLinksFromSnapshotToDataDir(String dataDir, File snapshotFolder)
-      throws IOException {
+  private int takeHardLinksFromSnapshotToDataDir(
+      String dataDir, File snapshotFolder, Set<String> fileInfoSet) throws IOException {
     int cnt = 0;
     File sequenceTimePartitionFolders =
         new File(
@@ -363,7 +367,7 @@ public class SnapshotLoader {
                     + dataRegionId
                     + File.separator
                     + timePartition);
-        createLinksFromSourceToTarget(targetDir, sourceFiles);
+        createLinksFromSourceToTarget(targetDir, sourceFiles, fileInfoSet);
         cnt += sourceFiles.length;
       }
     }
@@ -396,7 +400,7 @@ public class SnapshotLoader {
                     + dataRegionId
                     + File.separator
                     + timePartition);
-        createLinksFromSourceToTarget(targetDir, sourceFiles);
+        createLinksFromSourceToTarget(targetDir, sourceFiles, fileInfoSet);
         cnt += sourceFiles.length;
       }
     }
@@ -404,8 +408,14 @@ public class SnapshotLoader {
     return cnt;
   }
 
-  private void createLinksFromSourceToTarget(File targetDir, File[] files) throws IOException {
+  private void createLinksFromSourceToTarget(File targetDir, File[] files, Set<String> fileInfoSet)
+      throws IOException {
     for (File file : files) {
+      String infoStr = getFileInfoString(file);
+      if (!fileInfoSet.contains(infoStr)) {
+        throw new IOException(
+            String.format("File %s is not in the log file list", file.getAbsolutePath()));
+      }
       File targetFile = new File(targetDir, file.getName());
       if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
         throw new IOException(
@@ -414,6 +424,16 @@ public class SnapshotLoader {
       }
       Files.createLink(targetFile.toPath(), file.toPath());
     }
+  }
+
+  private String getFileInfoString(File file) {
+    String[] splittedStr = file.getAbsolutePath().split(File.separator.equals("\\") ? "\\\\" : "/");
+    int length = splittedStr.length;
+    return splittedStr[length - SnapshotLogger.FILE_NAME_OFFSET]
+        + SnapshotLogger.SPLIT_CHAR
+        + splittedStr[length - SnapshotLogger.TIME_PARTITION_OFFSET]
+        + SnapshotLogger.SPLIT_CHAR
+        + splittedStr[length - SnapshotLogger.SEQUENCE_OFFSET];
   }
 
   public List<File> getSnapshotFileInfo() throws IOException {
@@ -452,21 +472,36 @@ public class SnapshotLoader {
    *
    * @return
    */
-  private List<File> searchDataFilesRecursively(String dir) {
+  private List<File> searchDataFilesRecursively(String dir) throws IOException {
     LinkedList<File> fileList = new LinkedList<>();
-    Queue<File> queueToSearch = new LinkedList<>();
-    queueToSearch.add(new File(dir));
-    while (!queueToSearch.isEmpty()) {
-      File f = queueToSearch.poll();
-      if (f.isDirectory()) {
-        File[] files = f.listFiles();
-        if (files != null && files.length != 0) {
-          queueToSearch.addAll(Arrays.asList(files));
-        }
-      } else if (SnapshotFileSet.isDataFile(f)) {
-        fileList.add(f);
-      }
-    }
+    Files.walkFileTree(
+        new File(dir).toPath(),
+        new FileVisitor<Path>() {
+          @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+              throws IOException {
+            return null;
+          }
+
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            if (SnapshotFileSet.isDataFile(file.toFile())) {
+              fileList.add(file.toFile());
+            }
+            return null;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            return null;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            return null;
+          }
+        });
     return fileList;
   }
 }
