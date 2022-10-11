@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -4874,7 +4875,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new MeasurementSchema("s" + j, TSDataType.TEXT));
+                new MeasurementSchema("s" + j, tsDataType));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -4957,10 +4958,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(3, targetResources.size());
@@ -5012,34 +5010,45 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
                 Collections.singletonList("s" + j),
                 schemas);
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                TSDataType.TEXT,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j)
-                >= iterator.currentTime()) {
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)
+                        + PATH_SEPARATOR
+                        + "s"
+                        + j)
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j,
-                iterator.currentTime());
+                COMPACTION_TEST_SG
+                    + PATH_SEPARATOR
+                    + "d"
+                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)
+                    + PATH_SEPARATOR
+                    + "s"
+                    + j,
+                batchData.currentTime());
             count++;
-            System.out.println(iterator.currentTime());
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (i == 1 || i == 3) {
           assertEquals(400, count);
         } else if (i == 2) {
