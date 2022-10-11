@@ -83,7 +83,7 @@ public class ShowPipeSinkTask implements IConfigTask {
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (TPipeSinkInfo pipeSinkInfo : pipeSinkInfoList) {
-      PipeSink pipeSink = SyncPipeUtil.parsePipeInfoAsPipe(pipeSinkInfo);
+      PipeSink pipeSink = SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(pipeSinkInfo);
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(pipeSink.getPipeSinkName()));
       builder.getColumnBuilder(1).writeBinary(new Binary(pipeSink.getType().name()));

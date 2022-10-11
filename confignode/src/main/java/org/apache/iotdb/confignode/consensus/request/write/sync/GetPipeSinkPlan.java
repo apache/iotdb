@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class GetPipeSinkPlan extends ConfigPhysicalPlan {
+  /** empty pipeSinkName means get all PIPESINK */
   private String pipeSinkName;
 
   public GetPipeSinkPlan() {

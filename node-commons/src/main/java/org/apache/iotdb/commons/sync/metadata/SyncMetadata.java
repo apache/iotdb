@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync.metadata;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
@@ -145,35 +146,30 @@ public class SyncMetadata implements SnapshotProcessor {
   // region Implement of Pipe
   // ======================================================
 
-  public void addPipe(PipeInfo pipeInfo, PipeSink pipeSink) throws PipeException {
-    // common check
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+    // check PipeSink exists
+    if (!isPipeSinkExist(pipeInfo.getPipeSinkName())) {
+      throw new PipeException(
+          String.format("can not find PIPESINK %s.", pipeInfo.getPipeSinkName()));
+    }
+    // check Pipe does not exist
     if (runningPipe != null && runningPipe.getStatus() != PipeStatus.DROP) {
       throw new PipeException(
           String.format(
-              "Pipe %s is %s, please retry after drop it.",
+              "PIPE %s is %s, please retry after drop it.",
               runningPipe.getPipeName(), runningPipe.getStatus().name()));
     }
+  }
+
+  public void addPipe(PipeInfo pipeInfo) {
     runningPipe = pipeInfo;
     pipes
         .computeIfAbsent(runningPipe.getPipeName(), i -> new ConcurrentHashMap<>())
         .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
   }
 
-  public void operatePipe(String pipeName, SyncOperation syncOperation) throws PipeException {
-    checkIfPipeExistAndRunning(pipeName);
-    switch (syncOperation) {
-      case START_PIPE:
-        runningPipe.start();
-        break;
-      case STOP_PIPE:
-        runningPipe.stop();
-        break;
-      case DROP_PIPE:
-        runningPipe.drop();
-        break;
-      default:
-        throw new PipeException("Unknown operatorType " + syncOperation);
-    }
+  public void setPipeStatus(String pipeName, PipeStatus status) throws PipeException {
+    runningPipe.setStatus(status);
   }
 
   public PipeInfo getPipeInfo(String pipeName, long createTime) {
@@ -193,14 +189,14 @@ public class SyncMetadata implements SnapshotProcessor {
     return runningPipe;
   }
 
-  private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
+  public void checkIfPipeExist(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
-      throw new PipeException("There is no existing pipe.");
+      throw new PipeNotExistException(pipeName);
     }
     if (!runningPipe.getPipeName().equals(pipeName)) {
       throw new PipeException(
           String.format(
-              "Pipe %s is %s, please retry after drop it.",
+              "PIPE %s is %s, please retry after drop it.",
               runningPipe.getPipeName(), runningPipe.getStatus()));
     }
   }
