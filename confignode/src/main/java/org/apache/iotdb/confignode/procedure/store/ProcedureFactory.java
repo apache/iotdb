@@ -20,12 +20,15 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;

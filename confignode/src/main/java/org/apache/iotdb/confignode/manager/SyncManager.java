@@ -27,7 +27,8 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -158,9 +160,10 @@ public class SyncManager {
     final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
 
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            request, dataNodeLocationMap, DataNodeRequestType.OPERATE_PIPE, dataNodeResponseStatus);
+    AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
+            new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+
     return dataNodeResponseStatus;
   }
 
@@ -179,12 +182,10 @@ public class SyncManager {
     final TCreatePipeOnDataNodeReq request =
         new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
 
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.PRE_CREATE_PIPE,
-            dataNodeResponseStatus);
+
+    AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
+            new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return dataNodeResponseStatus;
   }
 
