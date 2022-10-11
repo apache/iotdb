@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
@@ -39,6 +40,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -240,6 +243,21 @@ public class TriggerManagementService {
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
   }
+
+  // region only for test
+
+  @TestOnly
+  public List<TriggerInformation> getAllTriggerInformationInTriggerTable() {
+    return triggerTable.getAllTriggerInformation();
+  }
+
+  @TestOnly
+  public List<TriggerExecutor> getAllTriggerExecutors() {
+    return new ArrayList<>(executorMap.values());
+  }
+
+  // end region
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////

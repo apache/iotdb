@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -68,6 +69,7 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -432,17 +434,27 @@ public class DataNode implements DataNodeMBean {
         curList.add(triggerNeedJarList.get(index + offset));
         offset++;
       }
-      index += offset + 1;
+      index += (offset + 1);
       getJarOfTriggers(curList);
     }
 
-    // create instances of stateless trigger and do registration
+    // create instances of triggers and do registration
     try {
       for (TriggerInformation triggerInformation : triggerInformationList) {
         TriggerManagementService.getInstance().doRegister(triggerInformation);
       }
     } catch (Exception e) {
       throw new StartupException(e);
+    }
+    logger.debug("successfully registered all the triggers");
+    for (TriggerInformation triggerInformation :
+        TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
+      logger.debug("get trigger: {}", triggerInformation.getTriggerName());
+    }
+    for (TriggerExecutor triggerExecutor :
+        TriggerManagementService.getInstance().getAllTriggerExecutors()) {
+      logger.debug(
+          "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
     }
   }
 
@@ -453,9 +465,11 @@ public class DataNode implements DataNodeMBean {
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)
               .collect(Collectors.toList());
-      List<ByteBuffer> jarList =
-          configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList)).getJarList();
-      // TODO getTriggerJar maybe error
+      TGetTriggerJarResp resp = configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList));
+      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+        throw new StartupException("Failed to get trigger jar from config node.");
+      }
+      List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0, n = triggerInformationList.size(); i < n; i++) {
         TriggerExecutableManager.getInstance()
             .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
@@ -472,13 +486,13 @@ public class DataNode implements DataNodeMBean {
         // jar of stateful trigger is not needed
         continue;
       }
-      // jar does not exist, add current triggerName to list
+      // jar does not exist, add current triggerInformation to list
       if (!TriggerExecutableManager.getInstance()
           .hasFileUnderLibRoot(triggerInformation.getJarName())) {
         res.add(triggerInformation);
       } else {
         try {
-          // local jar has conflicts with jar on config node, add current triggerName to list
+          // local jar has conflicts with jar on config node, add current triggerInformation to list
           if (!TriggerManagementService.getInstance().isLocalJarCorrect(triggerInformation)) {
             res.add(triggerInformation);
           }
