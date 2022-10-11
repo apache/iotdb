@@ -166,7 +166,9 @@ public class NodeInfo implements SnapshotProcessor {
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
-    LOGGER.info("there are {} data node in cluster before remove some", registeredDataNodes.size());
+    LOGGER.info(
+        "there are {} data node in cluster before executed remove-datanode.sh",
+        registeredDataNodes.size());
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
@@ -178,7 +180,9 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
-    LOGGER.info("there are {} data node in cluster after remove some", registeredDataNodes.size());
+    LOGGER.info(
+        "there are {} data node in cluster after executed remove-datanode.sh",
+        registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

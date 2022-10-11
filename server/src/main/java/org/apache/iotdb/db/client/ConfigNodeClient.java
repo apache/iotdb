@@ -262,7 +262,7 @@ public class ConfigNodeClient
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {},because the current node is not leader,try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
           configNode,
           config.getAddressAndPort());
       return true;
