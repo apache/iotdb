@@ -44,7 +44,7 @@ public class IoTDBLargePatternNameIT {
   public void testLargePattern() throws Exception {
     StringBuilder sb = new StringBuilder();
     sb.append("insert into root.ln.wf01.wt01(timestamp,status,s) values(1509465780000,false,'");
-    for (int i = 0; i < 1e6; ++i) {
+    for (int i = 0; i < 1024; ++i) {
       sb.append('a');
     }
     sb.append("b');");
