@@ -216,7 +216,7 @@ public class ArchivingManager {
             && archivingTask.getTargetDir().equals(targetDir)
             && archivingTask.getTTL() == ttl
             && archivingTask.getStartTime() == startTime) {
-          logger.info("archiving task already equals archiving task {}", archivingTask.getTaskId());
+          logger.warn("archiving task already equals archiving task {}", archivingTask.getTaskId());
           return false;
         }
       }
@@ -332,12 +332,16 @@ public class ArchivingManager {
         // can cancel/pause only when status=READY/RUNNING
         if (!(task.getStatus() == ArchivingTask.ArchivingTaskStatus.READY
             || task.getStatus() == ArchivingTask.ArchivingTaskStatus.RUNNING)) {
+          logger.warn(
+              "Cannot cancel or pause archiving task when it's in the {} status.",
+              task.getStatus());
           return false;
         }
         break;
       case RESUME:
         // can resume only when status=PAUSED
         if (!(task.getStatus() == ArchivingTask.ArchivingTaskStatus.PAUSED)) {
+          logger.warn("Cannot resume archiving task when it's in the {} status.", task.getStatus());
           return false;
         }
         break;
@@ -367,7 +371,6 @@ public class ArchivingManager {
     try {
       lock.lock();
 
-      logger.info("checking archivingTasks");
       for (ArchivingTask task : archivingTasks) {
 
         if (task.getStartTime() - DatetimeUtils.currentTime() <= 0
@@ -398,7 +401,6 @@ public class ArchivingManager {
                     .getProcessorMap()
                     .get(task.getStorageGroup())
                     .checkArchivingTask(task);
-                logger.info("check archiving task successfully.");
 
                 // set state and remove
                 try {

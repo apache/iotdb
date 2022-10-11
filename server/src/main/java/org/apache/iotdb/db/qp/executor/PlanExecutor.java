@@ -1699,11 +1699,15 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateSetArchiving(SetArchivingPlan plan) throws QueryProcessException {
     if (plan.getTargetDir() == null) {
       // is cancel plan
-      StorageEngine.getInstance()
-          .operateArchiving(
-              ArchivingOperate.ArchivingOperateType.CANCEL,
-              plan.getTaskId(),
-              plan.getStorageGroup());
+      boolean success =
+          StorageEngine.getInstance()
+              .operateArchiving(
+                  ArchivingOperate.ArchivingOperateType.CANCEL,
+                  plan.getTaskId(),
+                  plan.getStorageGroup());
+      if (!success) {
+        throw new QueryProcessException("Fail to cancel archiving task.");
+      }
     } else {
       try {
         List<PartialPath> storageGroupPaths =
@@ -1718,19 +1722,25 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operatePauseArchiving(PauseArchivingPlan plan) {
+  private void operatePauseArchiving(PauseArchivingPlan plan) throws QueryProcessException {
+    boolean success;
     if (plan.isPause()) {
-      StorageEngine.getInstance()
-          .operateArchiving(
-              ArchivingOperate.ArchivingOperateType.PAUSE,
-              plan.getTaskId(),
-              plan.getStorageGroup());
+      success =
+          StorageEngine.getInstance()
+              .operateArchiving(
+                  ArchivingOperate.ArchivingOperateType.PAUSE,
+                  plan.getTaskId(),
+                  plan.getStorageGroup());
     } else {
-      StorageEngine.getInstance()
-          .operateArchiving(
-              ArchivingOperate.ArchivingOperateType.RESUME,
-              plan.getTaskId(),
-              plan.getStorageGroup());
+      success =
+          StorageEngine.getInstance()
+              .operateArchiving(
+                  ArchivingOperate.ArchivingOperateType.RESUME,
+                  plan.getTaskId(),
+                  plan.getStorageGroup());
+    }
+    if (!success) {
+      throw new QueryProcessException("Fail to operate archiving task.");
     }
   }
 

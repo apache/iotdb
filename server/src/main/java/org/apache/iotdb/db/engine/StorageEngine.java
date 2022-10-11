@@ -1337,14 +1337,15 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void operateArchiving(
+  public boolean operateArchiving(
       ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
     if (taskId >= 0) {
-      archivingManager.operate(operateType, taskId);
+      return archivingManager.operate(operateType, taskId);
     } else if (storageGroup != null) {
-      archivingManager.operate(operateType, storageGroup);
+      return archivingManager.operate(operateType, storageGroup);
     } else {
-      logger.error("{} archiving cannot recognize taskId or storagegroup", operateType.name());
+      logger.error("{} archiving cannot recognize taskId or storage group", operateType.name());
+      return false;
     }
   }
 
