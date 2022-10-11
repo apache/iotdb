@@ -1311,6 +1311,10 @@ public class PlanExecutor implements IPlanExecutor {
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
       }
+      // show inactive tasks only when show all
+      if (!showArchivingPlan.isShowAll() && !task.isActive()) {
+        continue;
+      }
       RowRecord rowRecord = new RowRecord(timestamp++);
       Field taskId = new Field(TSDataType.INT64);
       Field submitTime = new Field(TSDataType.TEXT);

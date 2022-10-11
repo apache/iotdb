@@ -334,7 +334,7 @@ public class ArchivingTest {
     ArchivingManager archivingManager = ArchivingManager.getInstance();
     archivingManager.setArchiving(new PartialPath(sg1), targetDir, ttl, startTime);
 
-    ShowArchivingPlan plan = new ShowArchivingPlan(Collections.emptyList());
+    ShowArchivingPlan plan = new ShowArchivingPlan(Collections.emptyList(), true);
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 

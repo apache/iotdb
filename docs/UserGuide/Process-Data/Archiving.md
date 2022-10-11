@@ -35,12 +35,11 @@ Show the data archiving tasks.
 #### Syntax
 
 ```sql
-SHOW ALL ARCHIVING
-SHOW ARCHIVING ON <storage_group>
+SHOW (ALL) ARCHIVING (ON <storage_group>)
 ```
 
 - `<storage_group>` specifies the storage group to show archiving task on.
-
+- `all` By default, only tasks in the READY, RUNNING, and PAUSED states are returned. You can view tasks in other states by adding the all parameter.
 #### Example Result
 
 ```sql

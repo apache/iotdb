@@ -28,11 +28,14 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import java.util.List;
 
 public class ShowArchivingOperator extends ShowOperator {
-  private List<PartialPath> storageGroups;
+  private final List<PartialPath> storageGroups;
 
-  public ShowArchivingOperator(List<PartialPath> storageGroups) {
+  private final boolean showAll;
+
+  public ShowArchivingOperator(List<PartialPath> storageGroups, boolean showAll) {
     super(SQLConstant.TOK_SHOW, OperatorType.SHOW_ARCHIVING);
     this.storageGroups = storageGroups;
+    this.showAll = showAll;
   }
 
   public List<PartialPath> getStorageGroups() {
@@ -41,6 +44,6 @@ public class ShowArchivingOperator extends ShowOperator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new ShowArchivingPlan(storageGroups);
+    return new ShowArchivingPlan(storageGroups, showAll);
   }
 }
