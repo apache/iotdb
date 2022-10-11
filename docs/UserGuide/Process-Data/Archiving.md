@@ -35,7 +35,10 @@ Show the data archiving tasks.
 #### Syntax
 
 ```sql
-SHOW (ALL) ARCHIVING (ON <storage_group>)
+SHOW ARCHIVING
+SHOW ALL ARCHIVING
+SHOW ARCHIVING ON <storage_group>
+SHOW ALL ARCHIVING ON <storage_group>
 ```
 
 - `<storage_group>` specifies the storage group to show archiving task on.

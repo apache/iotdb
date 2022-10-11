@@ -33,7 +33,10 @@
 #### 语法
 
 ```sql
-SHOW (ALL) ARCHIVING (ON <storage_group>)
+SHOW ARCHIVING
+SHOW ALL ARCHIVING
+SHOW ARCHIVING ON <storage_group>
+SHOW ALL ARCHIVING ON <storage_group>
 ```
 
 - `<storage_group>` 返回指定存储组上的任务参数以及状态。
