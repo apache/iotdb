@@ -64,6 +64,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -277,6 +280,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetPipeSink:
           req = new GetPipeSinkPlan();
+          break;
+        case PreCreatePipe:
+          req = new PreCreatePipePlan();
+          break;
+        case SetPipeStatus:
+          req = new SetPipeStatusPlan();
+          break;
+        case ShowPipe:
+          req = new ShowPipePlan();
           break;
         case GetRouting:
           req = new GetRoutingPlan();

@@ -448,13 +448,20 @@ struct TGetPathsSetTemplatesResp {
 }
 
 // SYNC
-struct TPipeInfo {
+struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
   3: required string role
   4: required string remote
   5: required string status
   6: required string message
+}
+
+struct TPipeInfo {
+    1: required string pipeName
+    2: required string pipeSinkName
+    3: required i64 startTime
+    4: optional map<string, string> attributes
 }
 
 struct TPipeSinkInfo {
@@ -476,9 +483,13 @@ struct TGetPipeSinkResp {
   2: required list<TPipeSinkInfo> pipeSinkInfoList
 }
 
+struct TShowPipeReq {
+  1: optional string pipeName
+}
+
 struct TShowPipeResp {
   1: required common.TSStatus status
-  2: optional list<TPipeInfo> pipeInfoList
+  2: optional list<TShowPipeInfo> pipeInfoList
 }
 
 struct TDeleteTimeSeriesReq{
@@ -843,6 +854,21 @@ service IConfigNodeRPCService {
 
   /** Get PipeSink by name, if name is empty, get all PipeSink */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
+
+  /** Create Pipe */
+  common.TSStatus createPipe(TPipeInfo req)
+
+  /** Start Pipe */
+  common.TSStatus startPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipe(string pipeName)
+
+  /** Drop Pipe */
+  common.TSStatus dropPipe(string pipeName)
+
+  /** Show Pipe by name, if name is empty, show all Pipe */
+  TShowPipeResp showPipe(TShowPipeReq req)
 
   // ======================================================
   // TestTools

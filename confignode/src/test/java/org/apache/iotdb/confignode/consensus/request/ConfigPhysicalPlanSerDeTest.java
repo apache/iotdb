@@ -35,6 +35,9 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
@@ -75,6 +78,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -897,6 +903,42 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         getPipeSinkPlanWithNullName.getPipeSinkName(),
         getPipeSinkPlanWithNullName1.getPipeSinkName());
+  }
+
+  @Test
+  public void PreCreatePipePlanTest() throws IOException {
+    PipeInfo pipeInfo =
+        new TsFilePipeInfo(
+            "name", "demo", PipeStatus.PREPARE_CREATE, System.currentTimeMillis(), 999, false);
+    PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
+    PreCreatePipePlan PreCreatePipePlan1 =
+        (PreCreatePipePlan)
+            ConfigPhysicalPlan.Factory.create(PreCreatePipePlan.serializeToByteBuffer());
+    Assert.assertEquals(PreCreatePipePlan.getPipeInfo(), PreCreatePipePlan1.getPipeInfo());
+  }
+
+  @Test
+  public void SetPipeStatusPlan() throws IOException {
+    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PREPARE_CREATE);
+    SetPipeStatusPlan setPipeStatusPlan1 =
+        (SetPipeStatusPlan)
+            ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());
+    Assert.assertEquals(setPipeStatusPlan.getPipeName(), setPipeStatusPlan1.getPipeName());
+    Assert.assertEquals(setPipeStatusPlan.getPipeStatus(), setPipeStatusPlan1.getPipeStatus());
+  }
+
+  @Test
+  public void ShowPipePlanTest() throws IOException {
+    ShowPipePlan showPipePlan = new ShowPipePlan("demo");
+    ShowPipePlan showPipePlan1 =
+        (ShowPipePlan) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
+    Assert.assertEquals(showPipePlan.getPipeName(), showPipePlan1.getPipeName());
+    ShowPipePlan showPipePlanWithNullName = new ShowPipePlan();
+    ShowPipePlan showPipePlanWithNullName1 =
+        (ShowPipePlan)
+            ConfigPhysicalPlan.Factory.create(showPipePlanWithNullName.serializeToByteBuffer());
+    Assert.assertEquals(
+        showPipePlanWithNullName.getPipeName(), showPipePlanWithNullName1.getPipeName());
   }
 
   @Test

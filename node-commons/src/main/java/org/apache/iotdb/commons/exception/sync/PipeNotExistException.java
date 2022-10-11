@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.exception.sync;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  DROP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+public class PipeNotExistException extends PipeException {
+  public PipeNotExistException(String pipeName, int errorCode) {
+    super(String.format("PIPE [%s] does not exist", pipeName), errorCode);
+  }
+
+  public PipeNotExistException(String pipeName) {
+    super(String.format("PIPE [%s] does not exist", pipeName));
+  }
 }

@@ -55,7 +55,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1337,7 +1338,7 @@ public class LocalConfigNode {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public List<PipeSink> showPipeSink(String pipeSinkName) {
+  public List<PipeSink> showPipeSink(String pipeSinkName) throws PipeSinkException {
     boolean showAll = StringUtils.isEmpty(pipeSinkName);
     if (showAll) {
       return syncService.getAllPipeSink();
@@ -1348,7 +1349,9 @@ public class LocalConfigNode {
 
   public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
     try {
-      syncService.addPipe(createPipeStatement);
+      syncService.addPipe(
+          SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
+              createPipeStatement, System.currentTimeMillis()));
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
@@ -1383,7 +1386,7 @@ public class LocalConfigNode {
   }
 
   public TShowPipeResp showPipe(String pipeName) {
-    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    List<TShowPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
     return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }

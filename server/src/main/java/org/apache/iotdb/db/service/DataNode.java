@@ -449,12 +449,12 @@ public class DataNode implements DataNodeMBean {
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
       throws StartupException {
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-      List<String> triggerNameList =
+      List<String> jarNameList =
           triggerInformationList.stream()
-              .map(TriggerInformation::getTriggerName)
+              .map(TriggerInformation::getJarName)
               .collect(Collectors.toList());
       List<ByteBuffer> jarList =
-          configNodeClient.getTriggerJar(new TGetTriggerJarReq(triggerNameList)).getJarList();
+          configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList)).getJarList();
       // TODO getTriggerJar maybe error
       for (int i = 0, n = triggerInformationList.size(); i < n; i++) {
         TriggerExecutableManager.getInstance()
