@@ -5035,6 +5035,144 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
   }
 
+  /**
+   * Different source files have different aligned devices and measurements with different schemas.
+   */
+  @Test
+  public void testAlignedCrossSpaceCompactionWithDifferentDevicesAndMeasurements()
+      throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, true);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, true, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, true, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
+
+    // generate mods file
+    List<String> seriesPaths = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003" + PATH_SEPARATOR + "s" + i);
+    }
+    generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
+    setDataType(TSDataType.TEXT);
+    registerTimeseriesInMManger(2, 7, true);
+    List<Integer> deviceIndex = new ArrayList<>();
+    deviceIndex.add(1);
+    deviceIndex.add(3);
+    List<Integer> measurementIndex = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      measurementIndex.add(i);
+    }
+
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1450, 0, true, true);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1350, 0, true, false);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    targetResources.removeIf(resource -> resource == null);
+    Assert.assertEquals(3, targetResources.size());
+
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003");
+    for (int i = 0; i < 3; i++) {
+      if (i < 2) {
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
+      } else {
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
+      }
+      check(targetResources.get(i), deviceIdList);
+    }
+
+    Map<String, Long> measurementMaxTime = new HashMap<>();
+
+    for (int i = 0; i < 4; i++) {
+      TSDataType tsDataType = i < 2 ? TSDataType.TEXT : TSDataType.INT64;
+      for (int j = 0; j < 7; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        TSDataType dataType = i == 1 || i == 3 ? TSDataType.TEXT : TSDataType.INT64;
+        schemas.add(new MeasurementSchema("s" + j, dataType));
+        AlignedPath path =
+            new AlignedPath(
+                COMPACTION_TEST_SG
+                    + PATH_SEPARATOR
+                    + "d"
+                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
+                Collections.singletonList("s" + j),
+                schemas);
+        IDataBlockReader tsBlockReader =
+            new SeriesDataBlockReader(
+                path,
+                TSDataType.TEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                targetResources,
+                new ArrayList<>(),
+                true);
+        int count = 0;
+        while (tsBlockReader.hasNextBatch()) {
+          TsBlock block = tsBlockReader.nextBatch();
+          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
+          while (iterator.hasNext()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j)
+                >= iterator.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j,
+                iterator.currentTime());
+            count++;
+            System.out.println(iterator.currentTime());
+            iterator.next();
+          }
+        }
+        tsBlockReader.close();
+        if (i == 1 || i == 3) {
+          assertEquals(400, count);
+        } else if (i == 2) {
+          if (j < 4) {
+            assertEquals(1200, count);
+          } else if (j < 5) {
+            assertEquals(600, count);
+          } else {
+            assertEquals(0, count);
+          }
+        } else {
+          assertEquals(0, count);
+        }
+      }
+    }
+  }
+
   @Test
   public void testCrossSpaceCompactionWithNewDeviceInUnseqFile() throws ExecutionException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
