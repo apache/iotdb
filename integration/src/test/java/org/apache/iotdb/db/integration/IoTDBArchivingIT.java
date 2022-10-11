@@ -81,17 +81,17 @@ public class IoTDBArchivingIT {
       try {
         statement.execute("CANCEL ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("PAUSE ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("RESUME ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
@@ -229,7 +229,7 @@ public class IoTDBArchivingIT {
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
 
       statement.execute(
-          "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVING TO root.ARCHIVING_SG1 3000-01-01 0 '" + testTargetDir.getPath() + "'");
       statement.execute("CANCEL ARCHIVING ON root.ARCHIVING_SG1");
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
