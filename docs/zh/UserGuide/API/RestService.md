@@ -835,7 +835,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 | dataTypes | array | 是  | 数据类型  |
 |  values | array | 是  | 值列，每一列中的值可以为 `null` |
 |  isAligned | boolean | 是  | 是否是对齐时间序列 |
-|  deviceId | boolean | 是  | 设备名称 |
+|  deviceId | string | 是  | 设备名称 |
 
 请求示例：
 ```shell
