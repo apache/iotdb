@@ -127,13 +127,16 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the mtree */
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
+
+  /** Memory allocated for the consensus layer */
+  private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -396,9 +399,6 @@ public class IoTDBConfig {
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
-
-  /** When a chunk in memtable reaches this threshold, flush the memtable to disk */
-  private long maxChunkRawSizeThreshold = 1024 * 1024 * 20L;
 
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = false;
@@ -761,12 +761,6 @@ public class IoTDBConfig {
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = true;
 
-  /**
-   * Time range for partitioning data inside each storage group, the unit is second. Default time is
-   * a day.
-   */
-  private long partitionInterval = 86400;
-
   /** Time partition interval for storage in milliseconds */
   private long timePartitionIntervalForStorage = 10000;
 
@@ -1113,14 +1107,6 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
-  }
-
-  public long getPartitionInterval() {
-    return partitionInterval;
-  }
-
-  public void setPartitionInterval(long partitionInterval) {
-    this.partitionInterval = partitionInterval;
   }
 
   public long getTimePartitionIntervalForStorage() {
@@ -1816,8 +1802,16 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+  }
+
+  public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
   }
 
   public long getAllocateMemoryForRead() {
@@ -2003,14 +1997,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-  public long getMaxChunkRawSizeThreshold() {
-    return maxChunkRawSizeThreshold;
-  }
-
-  public void setMaxChunkRawSizeThreshold(long maxChunkRawSizeThreshold) {
-    this.maxChunkRawSizeThreshold = maxChunkRawSizeThreshold;
   }
 
   public long getCrossCompactionFileSelectionTimeBudget() {

@@ -2362,8 +2362,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     LoadFilesOperator loadFilesOperator =
         new LoadFilesOperator(
             new File(parseFilePath(ctx.fileName.getText())),
-            true,
+            IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled(),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true,
             true);
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
@@ -2380,17 +2381,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    */
   private void parseLoadFiles(
       LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
-    if (ctx.AUTOREGISTER() != null) {
-      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else if (ctx.SGLEVEL() != null) {
+    if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else {
-      throw new SQLParserException(
-          String.format(
-              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
-              ctx.getText()));
+    } else if (ctx.ONSUCCESS() != null) {
+      operator.setDeleteAfterLoad(ctx.DELETE() != null);
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());

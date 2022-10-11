@@ -24,9 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -36,8 +41,12 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
@@ -46,8 +55,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -117,6 +128,8 @@ public class IoTDBConfigNodeSnapshotIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
 
+      List<TCreateTriggerReq> createTriggerReqs = createTrigger(client);
+
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
         TSetStorageGroupReq setStorageGroupReq =
@@ -181,6 +194,86 @@ public class IoTDBConfigNodeSnapshotIT {
           }
         }
       }
+
+      assertTriggerInformation(createTriggerReqs, client.getTriggerTable());
+    }
+  }
+
+  private List<TCreateTriggerReq> createTrigger(SyncConfigNodeIServiceClient client)
+      throws IllegalPathException, TException, IOException {
+    final String triggerPath =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "trigger-example.jar";
+    ByteBuffer jarFile = TriggerExecutableManager.transferToBytebuffer(triggerPath);
+    String jarMD5 = DigestUtils.md5Hex(jarFile.array());
+
+    TCreateTriggerReq createTriggerReq1 =
+        new TCreateTriggerReq(
+                "test1",
+                "org.apache.iotdb.trigger.SimpleTrigger",
+                "trigger-example.jar",
+                false,
+                TriggerEvent.AFTER_INSERT.getId(),
+                TriggerType.STATELESS.getId(),
+                new PartialPath("root.test1.**").serialize(),
+                Collections.emptyMap(),
+                FailureStrategy.OPTIMISTIC.getId())
+            .setJarMD5(jarMD5)
+            .setJarFile(jarFile);
+
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("test-key", "test-value");
+    TCreateTriggerReq createTriggerReq2 =
+        new TCreateTriggerReq(
+                "test2",
+                "org.apache.iotdb.trigger.SimpleTrigger",
+                "trigger-example.jar",
+                false,
+                TriggerEvent.BEFORE_INSERT.getId(),
+                TriggerType.STATEFUL.getId(),
+                new PartialPath("root.test2.**").serialize(),
+                attributes,
+                FailureStrategy.OPTIMISTIC.getId())
+            .setJarMD5(jarMD5)
+            .setJarFile(jarFile);
+
+    Assert.assertEquals(
+        client.createTrigger(createTriggerReq1).getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Assert.assertEquals(
+        client.createTrigger(createTriggerReq2).getCode(),
+        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    List<TCreateTriggerReq> result = new ArrayList<>();
+    result.add(createTriggerReq2);
+    result.add(createTriggerReq1);
+    return result;
+  }
+
+  private void assertTriggerInformation(List<TCreateTriggerReq> req, TGetTriggerTableResp resp) {
+    for (int i = 0; i < req.size(); i++) {
+      TCreateTriggerReq createTriggerReq = req.get(i);
+      TriggerInformation triggerInformation =
+          TriggerInformation.deserialize(resp.getAllTriggerInformation().get(i));
+
+      Assert.assertEquals(createTriggerReq.getTriggerName(), triggerInformation.getTriggerName());
+      Assert.assertEquals(createTriggerReq.getClassName(), triggerInformation.getClassName());
+      Assert.assertEquals(createTriggerReq.getJarPath(), triggerInformation.getJarName());
+      Assert.assertEquals(
+          createTriggerReq.getTriggerEvent(), triggerInformation.getEvent().getId());
+      Assert.assertEquals(
+          createTriggerReq.getTriggerType(),
+          triggerInformation.isStateful()
+              ? TriggerType.STATEFUL.getId()
+              : TriggerType.STATELESS.getId());
+      Assert.assertEquals(
+          PathDeserializeUtil.deserialize(ByteBuffer.wrap(createTriggerReq.getPathPattern())),
+          triggerInformation.getPathPattern());
     }
   }
 }

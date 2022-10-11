@@ -749,7 +749,10 @@ public class StorageEngineV2 implements IService {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(String.format("No uuid %s recorded.", uuid));
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
           }
           break;
         case ROLLBACK:
@@ -757,7 +760,10 @@ public class StorageEngineV2 implements IService {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(String.format("No uuid %s recorded.", uuid));
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
           }
           break;
         default:
