@@ -37,7 +37,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByLevelQueryIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -98,6 +97,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void countFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{39, 20}};
@@ -134,6 +134,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void sumFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{131111, 510}};
@@ -167,6 +168,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void avgFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
@@ -200,7 +202,8 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void timeFuncGroupByLevelTest() throws ClassNotFoundException {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
       "min_time(root.*.d1.s3)",
@@ -213,7 +216,8 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void valueFuncGroupByLevelTest() throws ClassNotFoundException {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
       "last_value(root.*.d1.s3)",
@@ -225,5 +229,59 @@ public class IoTDBGroupByLevelQueryIT {
         "select last_value(s3),max_value(s3) from root.*.* group by level=2",
         retArray1,
         columnNames1);
+  }
+
+  @Test
+  @Category({ClusterIT.class})
+  public void nestedQueryTest1() {
+    // level = 1
+    double[][] retArray1 = new double[][] {{40.0, 21.0}};
+    String[] columnNames1 = {"count(root.sg1.*.s1 + 1) + 1", "count(root.sg2.*.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=1", retArray1, columnNames1);
+
+    // level = 2
+    double[][] retArray2 = new double[][] {{41.0, 20.0}};
+    String[] columnNames2 = {"count(root.*.d1.s1 + 1) + 1", "count(root.*.d2.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=2", retArray2, columnNames2);
+
+    // level = 3
+    double[][] retArray3 = new double[][] {{60.0}};
+    String[] columnNames3 = {"count(root.*.*.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=3", retArray3, columnNames3);
+  }
+
+  @Test
+  @Category({ClusterIT.class})
+  public void nestedQueryTest2() {
+    // level = 1
+    double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
+    String[] columnNames1 = {
+      "count(root.sg1.*.s1) + sum(root.sg1.*.s1)",
+      "count(root.sg1.*.s1) + sum(root.sg2.*.s1)",
+      "count(root.sg2.*.s1) + sum(root.sg1.*.s1)",
+      "count(root.sg2.*.s1) + sum(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=1", retArray1, columnNames1);
+
+    // level = 2
+    double[][] retArray2 = new double[][] {{390634.0, 240.0, 390613.0, 219.0}};
+    String[] columnNames2 = {
+      "count(root.*.d1.s1) + sum(root.*.d1.s1)",
+      "count(root.*.d1.s1) + sum(root.*.d2.s1)",
+      "count(root.*.d2.s1) + sum(root.*.d1.s1)",
+      "count(root.*.d2.s1) + sum(root.*.d2.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=2", retArray2, columnNames2);
+
+    // level = 3
+    double[][] retArray3 = new double[][] {{390853.0}};
+    String[] columnNames3 = {"count(root.*.*.s1) + sum(root.*.*.s1)"};
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=3", retArray3, columnNames3);
   }
 }

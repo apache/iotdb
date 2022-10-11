@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -39,7 +40,10 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -87,7 +91,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -151,7 +161,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
+  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
     TDataNodeRegisterResp resp =
         ((DataNodeRegisterResp)
                 configManager.registerDataNode(
@@ -165,7 +175,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
+  public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) {
     LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
     RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
     DataNodeToStatusResp removeResp =
@@ -177,7 +187,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeID) throws TException {
+  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeID) {
     GetDataNodeConfigurationPlan queryReq = new GetDataNodeConfigurationPlan(dataNodeID);
     DataNodeConfigurationResp queryResp =
         (DataNodeConfigurationResp) configManager.getDataNodeConfiguration(queryReq);
@@ -188,12 +198,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
+  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
     return configManager.reportRegionMigrateResult(req);
   }
 
   @Override
-  public TShowClusterResp showCluster() throws TException {
+  public TShowClusterResp showCluster() {
     return configManager.showCluster();
   }
 
@@ -232,13 +242,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) throws TException {
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) {
     String prefixPath = tDeleteReq.getPrefixPath();
     return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) throws TException {
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
     return configManager.deleteStorageGroups(prefixList);
   }
@@ -268,8 +278,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
-      throws TException {
+  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern) {
     CountStorageGroupResp countStorageGroupResp =
         (CountStorageGroupResp)
             configManager.countMatchedStorageGroups(
@@ -281,8 +290,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
-      throws TException {
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(
+      List<String> storageGroupPathPattern) {
     StorageGroupSchemaResp storageGroupSchemaResp =
         (StorageGroupSchemaResp)
             configManager.getMatchedStorageGroupSchemas(
@@ -292,24 +301,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-      throws TException {
+  public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getSchemaPartition(patternTree);
   }
 
   @Override
-  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
-      throws TException {
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return configManager.getOrCreateSchemaPartition(patternTree);
   }
 
   @Override
-  public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
-      throws TException {
+  public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
@@ -317,7 +323,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req) throws TException {
+  public TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req) {
     GetDataPartitionPlan getDataPartitionPlan =
         GetDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
     return configManager.getDataPartition(getDataPartitionPlan);
@@ -332,7 +338,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus operatePermission(TAuthorizerReq req) throws TException {
+  public TSStatus operatePermission(TAuthorizerReq req) {
     if (req.getAuthorType() < 0
         || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
@@ -356,7 +362,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) {
     if (req.getAuthorType() < 0
         || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
@@ -383,18 +389,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TPermissionInfoResp login(TLoginReq req) throws TException {
+  public TPermissionInfoResp login(TLoginReq req) {
     return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   @Override
-  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
     return configManager.checkUserPrivileges(
         req.getUsername(), req.getPaths(), req.getPermission());
   }
 
   @Override
-  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) {
     TSStatus status = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
@@ -409,7 +415,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus notifyRegisterSuccess() throws TException {
+  public TSStatus notifyRegisterSuccess() {
     try {
       SystemPropertiesUtils.storeSystemParameters();
     } catch (IOException e) {
@@ -435,7 +441,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) throws TException {
+  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage(
@@ -478,21 +484,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus dropFunction(TDropFunctionReq req) throws TException {
+  public TSStatus dropFunction(TDropFunctionReq req) {
     return configManager.dropFunction(req.getUdfName());
   }
 
   @Override
-  public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
+  public TSStatus createTrigger(TCreateTriggerReq req) {
     return configManager.createTrigger(req);
   }
 
   @Override
-  public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
+  public TSStatus dropTrigger(TDropTriggerReq req) {
     return configManager.dropTrigger(req);
   }
 
-  public TGetTriggerTableResp getTriggerTable() throws TException {
+  public TGetTriggerTableResp getTriggerTable() {
     return configManager.getTriggerTable();
   }
 
@@ -518,7 +524,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache() {
     return configManager.clearCache();
   }
 
@@ -533,7 +539,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
+  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) {
     GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
     RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();
@@ -543,7 +549,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
+  public TRegionRouteMapResp getLatestRegionRouteMap() {
     TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LoadManager.printRegionRouteMap(resp.getTimestamp(), resp.getRegionRouteMap());
@@ -552,17 +558,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public long getConfigNodeHeartBeat(long timestamp) throws TException {
+  public long getConfigNodeHeartBeat(long timestamp) {
     return timestamp;
   }
 
   @Override
-  public TShowDataNodesResp showDataNodes() throws TException {
+  public TShowDataNodesResp showDataNodes() {
     return configManager.showDataNodes();
   }
 
   @Override
-  public TShowConfigNodesResp showConfigNodes() throws TException {
+  public TShowConfigNodesResp showConfigNodes() {
     return configManager.showConfigNodes();
   }
 
@@ -573,47 +579,47 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     return configManager.createSchemaTemplate(req);
   }
 
   @Override
-  public TGetAllTemplatesResp getAllTemplates() throws TException {
+  public TGetAllTemplatesResp getAllTemplates() {
     return configManager.getAllTemplates();
   }
 
   @Override
-  public TGetTemplateResp getTemplate(String req) throws TException {
+  public TGetTemplateResp getTemplate(String req) {
     return configManager.getTemplate(req);
   }
 
   @Override
-  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) throws TException {
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     return configManager.setSchemaTemplate(req);
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
     return configManager.getPathsSetTemplate(req);
   }
 
   @Override
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     return configManager.deleteTimeSeries(req);
   }
 
   @Override
-  public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
+  public TSStatus createPipeSink(TPipeSinkInfo req) {
     return configManager.createPipeSink(new CreatePipeSinkPlan(req));
   }
 
   @Override
-  public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
+  public TSStatus dropPipeSink(TDropPipeSinkReq req) {
     return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
   }
 
   @Override
-  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) throws TException {
+  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
     return configManager.getPipeSink(req);
   }
 
@@ -640,5 +646,32 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) throws TException {
     return configManager.showPipe(req);
+  }
+
+  @Override
+  @TestOnly
+  public TGetRoutingResp getRouting(TGetRoutingReq req) {
+    GetRoutingPlan plan =
+        new GetRoutingPlan(req.getStorageGroup(), req.getSeriesSlotId(), req.getTimeSlotId());
+    return configManager.getRouting(plan);
+  }
+
+  @Override
+  @TestOnly
+  public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
+    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+    GetTimeSlotListPlan plan =
+        new GetTimeSlotListPlan(req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime);
+    return configManager.getTimeSlotList(plan);
+  }
+
+  @Override
+  @TestOnly
+  public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+    TConsensusGroupType type =
+        req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getStorageGroup(), type);
+    return configManager.getSeriesSlotList(plan);
   }
 }
