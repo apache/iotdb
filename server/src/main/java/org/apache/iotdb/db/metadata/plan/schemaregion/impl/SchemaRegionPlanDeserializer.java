@@ -150,7 +150,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       byte[] bytes = new byte[length];
       buffer.get(bytes);
       try {
-        createAlignedTimeSeriesPlan.setPrefixPath(new PartialPath(new String(bytes)));
+        createAlignedTimeSeriesPlan.setDevicePath(new PartialPath(new String(bytes)));
       } catch (IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }

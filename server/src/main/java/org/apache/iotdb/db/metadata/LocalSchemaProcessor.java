@@ -340,7 +340,7 @@ public class LocalSchemaProcessor {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    getBelongedSchemaRegionWithAutoCreate(plan.getPrefixPath()).createAlignedTimeSeries(plan);
+    getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath()).createAlignedTimeSeries(plan);
   }
 
   /**

@@ -48,7 +48,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
   private static final Logger logger = LoggerFactory.getLogger(CreateAlignedTimeSeriesPlan.class);
   private static final int PLAN_SINCE_0_14 = -1;
 
-  private PartialPath prefixPath;
+  private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
@@ -64,7 +64,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
   }
 
   public CreateAlignedTimeSeriesPlan(
-      PartialPath prefixPath,
+      PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -73,7 +73,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList) {
     super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
-    this.prefixPath = prefixPath;
+    this.devicePath = devicePath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
@@ -85,9 +85,9 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
   }
 
   public CreateAlignedTimeSeriesPlan(
-      PartialPath prefixPath, String measurement, MeasurementSchema schema) {
+      PartialPath devicePath, String measurement, MeasurementSchema schema) {
     super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
-    this.prefixPath = prefixPath;
+    this.devicePath = devicePath;
     this.measurements = Collections.singletonList(measurement);
     this.dataTypes = Collections.singletonList(schema.getType());
     this.encodings = Collections.singletonList(schema.getEncodingType());
@@ -95,12 +95,12 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     this.canBeSplit = false;
   }
 
-  public PartialPath getPrefixPath() {
-    return prefixPath;
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 
   public List<String> getMeasurements() {
@@ -177,7 +177,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
   public String toString() {
     return String.format(
         "devicePath: %s, measurements: %s, dataTypes: %s, encodings: %s, compressions: %s, tagOffsets: %s",
-        prefixPath, measurements, dataTypes, encodings, compressors, tagOffsets);
+        devicePath, measurements, dataTypes, encodings, compressors, tagOffsets);
   }
 
   @Override
@@ -185,7 +185,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     List<PartialPath> paths = new ArrayList<>();
     for (String measurement : measurements) {
       try {
-        paths.add(new PartialPath(prefixPath.getFullPath(), measurement));
+        paths.add(new PartialPath(devicePath.getFullPath(), measurement));
       } catch (IllegalPathException e) {
         logger.error("Failed to get paths of CreateAlignedTimeSeriesPlan. ", e);
       }
@@ -200,7 +200,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     // distinguish the plan from that of old versions
     stream.writeInt(PLAN_SINCE_0_14);
 
-    byte[] bytes = prefixPath.getFullPath().getBytes();
+    byte[] bytes = devicePath.getFullPath().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
 
@@ -267,7 +267,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     // distinguish the plan from that of old versions
     buffer.putInt(PLAN_SINCE_0_14);
 
-    byte[] bytes = prefixPath.getFullPath().getBytes();
+    byte[] bytes = devicePath.getFullPath().getBytes();
     buffer.putInt(bytes.length);
     buffer.put(bytes);
 
@@ -324,7 +324,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
   public void formerSerialize(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
 
-    byte[] bytes = prefixPath.getFullPath().getBytes();
+    byte[] bytes = devicePath.getFullPath().getBytes();
     buffer.putInt(bytes.length);
     buffer.put(bytes);
 
@@ -367,7 +367,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     byte[] bytes = new byte[length];
     buffer.get(bytes);
 
-    prefixPath = new PartialPath(new String(bytes));
+    devicePath = new PartialPath(new String(bytes));
     int size = ReadWriteIOUtils.readInt(buffer);
     measurements = new ArrayList<>();
     for (int i = 0; i < size; i++) {
@@ -431,7 +431,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     }
     CreateAlignedTimeSeriesPlan that = (CreateAlignedTimeSeriesPlan) o;
 
-    return Objects.equals(prefixPath, that.prefixPath)
+    return Objects.equals(devicePath, that.devicePath)
         && Objects.equals(measurements, that.measurements)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
@@ -441,6 +441,6 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
 
   @Override
   public int hashCode() {
-    return Objects.hash(prefixPath, measurements, dataTypes, encodings, compressors, tagOffsets);
+    return Objects.hash(devicePath, measurements, dataTypes, encodings, compressors, tagOffsets);
   }
 }

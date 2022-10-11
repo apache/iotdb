@@ -95,11 +95,11 @@ public class IDTableHashmapImpl implements IDTable {
   @Override
   public synchronized void createAlignedTimeseries(ICreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath().toString(), true);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getDevicePath().toString(), true);
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       PartialPath fullPath =
-          new PartialPath(plan.getPrefixPath().toString(), plan.getMeasurements().get(i));
+          new PartialPath(plan.getDevicePath().toString(), plan.getMeasurements().get(i));
       SchemaEntry schemaEntry =
           new SchemaEntry(
               plan.getDataTypes().get(i),

@@ -42,9 +42,9 @@ public interface ICreateAlignedTimeSeriesPlan extends ISchemaRegionPlan {
     return visitor.visitCreateAlignedTimeSeries(this, context);
   }
 
-  PartialPath getPrefixPath();
+  PartialPath getDevicePath();
 
-  void setPrefixPath(PartialPath prefixPath);
+  void setDevicePath(PartialPath devicePath);
 
   List<String> getMeasurements();
 

@@ -167,7 +167,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         // serialize a int to keep compatible with old version
         dataOutputStream.writeInt(-1);
 
-        byte[] bytes = createAlignedTimeSeriesPlan.getPrefixPath().getFullPath().getBytes();
+        byte[] bytes = createAlignedTimeSeriesPlan.getDevicePath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
 

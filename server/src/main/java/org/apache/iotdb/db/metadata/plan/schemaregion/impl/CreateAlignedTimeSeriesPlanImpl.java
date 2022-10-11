@@ -33,7 +33,7 @@ import java.util.Map;
 
 public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeriesPlan {
 
-  private PartialPath prefixPath;
+  private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
@@ -46,7 +46,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   public CreateAlignedTimeSeriesPlanImpl() {}
 
   public CreateAlignedTimeSeriesPlanImpl(
-      PartialPath prefixPath,
+      PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -54,7 +54,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
       List<String> aliasList,
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList) {
-    this.prefixPath = prefixPath;
+    this.devicePath = devicePath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
@@ -65,8 +65,8 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   public CreateAlignedTimeSeriesPlanImpl(
-      PartialPath prefixPath, String measurement, MeasurementSchema schema) {
-    this.prefixPath = prefixPath;
+      PartialPath devicePath, String measurement, MeasurementSchema schema) {
+    this.devicePath = devicePath;
     this.measurements = Collections.singletonList(measurement);
     this.dataTypes = Collections.singletonList(schema.getType());
     this.encodings = Collections.singletonList(schema.getEncodingType());
@@ -74,13 +74,13 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   }
 
   @Override
-  public PartialPath getPrefixPath() {
-    return prefixPath;
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
   @Override
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 
   @Override

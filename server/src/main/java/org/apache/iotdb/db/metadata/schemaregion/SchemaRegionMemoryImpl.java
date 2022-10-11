@@ -646,7 +646,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     try {
-      PartialPath prefixPath = plan.getPrefixPath();
+      PartialPath prefixPath = plan.getDevicePath();
       List<String> measurements = plan.getMeasurements();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
@@ -730,7 +730,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     // update id table if not in recovering or disable id table log file
     if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
-      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getDevicePath());
       idTable.createAlignedTimeseries(plan);
     }
   }
