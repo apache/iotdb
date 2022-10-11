@@ -85,6 +85,8 @@ public class DataRegionConsensusImpl {
                               .setReplication(
                                   MultiLeaderConfig.Replication.newBuilder()
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
+                                      .setAllocateMemoryForConsensus(
+                                          conf.getAllocateMemoryForConsensus())
                                       .build())
                               .build())
                       .setRatisConfig(
@@ -96,37 +98,39 @@ public class DataRegionConsensusImpl {
                                   Snapshot.newBuilder()
                                       .setCreationGap(1)
                                       .setAutoTriggerThreshold(
-                                          conf.getRatisConsensusSnapshotTriggerThreshold())
+                                          conf.getDataRatisConsensusSnapshotTriggerThreshold())
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
-                                          conf.isRatisConsensusLogUnsafeFlushEnable())
-                                      .setSegmentCacheSizeMax(
+                                          conf.isDataRatisConsensusLogUnsafeFlushEnable())
+                                      .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
-                                              conf.getRatisConsensusLogSegmentSizeMax()))
+                                              conf.getDataRatisConsensusLogSegmentSizeMax()))
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
-                                              conf.getRatisConsensusGrpcFlowControlWindow()))
+                                              conf.getDataRatisConsensusGrpcFlowControlWindow()))
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
                                       .setTimeoutMin(
                                           TimeDuration.valueOf(
-                                              conf.getRatisConsensusLeaderElectionTimeoutMinMs(),
+                                              conf
+                                                  .getDataRatisConsensusLeaderElectionTimeoutMinMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setTimeoutMax(
                                           TimeDuration.valueOf(
-                                              conf.getRatisConsensusLeaderElectionTimeoutMaxMs(),
+                                              conf
+                                                  .getDataRatisConsensusLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
-                                          conf.getRatisConsensusLogAppenderBufferSizeMax())
+                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .build())
                       .build(),

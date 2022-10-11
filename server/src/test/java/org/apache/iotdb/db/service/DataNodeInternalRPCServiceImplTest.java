@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
@@ -76,6 +77,7 @@ public class DataNodeInternalRPCServiceImplTest {
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     DataRegionConsensusImpl.setupAndGetInstance().start();
     SchemaRegionConsensusImpl.setupAndGetInstance().start();
+    DataNodeRegionManager.getInstance().init();
   }
 
   @Before
@@ -99,6 +101,7 @@ public class DataNodeInternalRPCServiceImplTest {
 
   @AfterClass
   public static void tearDownAfterClass() throws IOException, StorageEngineException {
+    DataNodeRegionManager.getInstance().clear();
     DataRegionConsensusImpl.getInstance().stop();
     SchemaRegionConsensusImpl.getInstance().stop();
     IoTDB.configManager.clear();

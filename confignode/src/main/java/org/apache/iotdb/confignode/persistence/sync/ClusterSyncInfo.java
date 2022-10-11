@@ -101,17 +101,20 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return resp;
   }
 
+  // endregion
+
+  // ======================================================
+  // region Implement of Snapshot
+  // ======================================================
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
-    // TODO: add ClusterSyncInfoTest later
-    return true;
+    return syncMetadata.processTakeSnapshot(snapshotDir);
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
-    // TODO: add ClusterSyncInfoTest later
+    syncMetadata.processLoadSnapshot(snapshotDir);
   }
 
   // endregion

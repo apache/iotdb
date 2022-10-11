@@ -532,6 +532,12 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    throw new UnsupportedOperationException();
+  }
+
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
@@ -693,7 +699,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
@@ -1838,19 +1844,15 @@ public class RSchemaRegion implements ISchemaRegion {
     // check insert non-aligned InsertPlan for aligned timeseries
     if (deviceMNode.isEntity()) {
       if (plan.isAligned() && !deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is not aligned , please set"
-                    + " InsertPlan.isAligned() = false",
-                plan.getDevicePath()));
+        throw new AlignedTimeseriesException(
+            "timeseries under this device are not aligned, " + "please use non-aligned interface",
+            devicePath.getFullPath());
       }
 
       if (!plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is aligned , please set"
-                    + " InsertPlan.isAligned() = true",
-                plan.getDevicePath()));
+        throw new AlignedTimeseriesException(
+            "timeseries under this device are aligned, " + "please use aligned interface",
+            devicePath.getFullPath());
       }
     }
 

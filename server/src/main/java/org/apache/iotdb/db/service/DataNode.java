@@ -63,6 +63,7 @@ import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -170,7 +171,7 @@ public class DataNode implements DataNodeMBean {
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
-      logger.info("start registering to the cluster.");
+      logger.info("Start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
@@ -212,6 +213,14 @@ public class DataNode implements DataNodeMBean {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
+
+          // In current implementation, only MultiLeader need separated memory from Consensus
+          if (!config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            IoTDBDescriptor.getInstance().reclaimConsensusMemory();
+          }
+
           IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
@@ -247,7 +256,7 @@ public class DataNode implements DataNodeMBean {
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
-      logger.error("meet error while starting up.", e);
+      logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
@@ -268,12 +277,11 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    logger.info("recover the schema...");
+    logger.info("Recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
     // close wal when using ratis consensus
@@ -304,6 +312,9 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
+    // must init after SchemaEngine and StorageEngine prepared well
+    DataNodeRegionManager.getInstance().init();
+
     registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
@@ -316,6 +327,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(MetricService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
   }
 
   /** set up RPC and protocols after DataNode is available */
@@ -389,7 +401,7 @@ public class DataNode implements DataNodeMBean {
     long time = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
-    logger.info("spend {}ms to recover schema.", end);
+    logger.info("Spent {}ms to recover schema.", end);
     logger.info(
         "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
         config.getSeqTsFileSize(),
@@ -404,7 +416,7 @@ public class DataNode implements DataNodeMBean {
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {
-      logger.error("stop data node error", e);
+      logger.error("Stop data node error", e);
     }
   }
 

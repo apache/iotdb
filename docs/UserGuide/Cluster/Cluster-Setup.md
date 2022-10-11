@@ -172,12 +172,12 @@ Execute the remove-confignode shell on an active ConfigNode.
 
 Remove on Linux:
 ```
-./confignode/sbin/remove-confignode.sh -r <internal_address>:<internal_port>
+./confignode/sbin/remove-confignode.sh <id>/<internal_address>:<internal_port>
 ```
 
 Remove on Windows:
 ```
-confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
+confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
 ```
 
 ### Remove DataNode
@@ -185,27 +185,13 @@ confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
 Execute the remove-datanode shell on an active DataNode.
 
 Remove on Linux:
-
-+ Remove a DataNode:
 ```
-./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
-```
-
-+ Remove multiple DataNodes:
-```
-./datanode/sbin/remove-datanode.sh <rpc_address_0>:<rpc_port_0>,...,<rpc_address_n>:<rpc_port_n>
+./datanode/sbin/remove-datanode.sh <id>/<rpc_address>:<rpc_port>
 ```
 
 Remove on Windows:
-
-+ Remove a DataNode:
 ```
-datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
-```
-
-+ Remove multiple DataNodes:
-```
-datanode\sbin\remove-datanode.bat <rpc_address_0>:<rpc_port_0>,...,<rpc_address_n>:<rpc_port_n>
+datanode\sbin\remove-datanode.bat <id>/<rpc_address>:<rpc_port>
 ```
 
 ## Quick Start

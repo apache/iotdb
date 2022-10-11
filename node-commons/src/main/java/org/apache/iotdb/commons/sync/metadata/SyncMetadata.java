@@ -20,18 +20,31 @@ package org.apache.iotdb.commons.sync.metadata;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
+import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SyncMetadata {
+public class SyncMetadata implements SnapshotProcessor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncMetadata.class);
 
   // <PipeSinkName, PipeSink>
   private Map<String, PipeSink> pipeSinks;
@@ -205,6 +218,56 @@ public class SyncMetadata {
     if (messageType.compareTo(pipes.get(pipeName).get(createTime).getMessageType()) > 0) {
       pipes.get(pipeName).get(createTime).setMessageType(messageType);
     }
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, SyncConstant.SYNC_LOG_NAME);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    try (SyncLogWriter writer = new SyncLogWriter(snapshotDir, tmpFile.getName())) {
+      for (PipeSink pipeSink : pipeSinks.values()) {
+        writer.addPipeSink(pipeSink);
+      }
+      for (Map<Long, PipeInfo> map : pipes.values()) {
+        for (PipeInfo pipeInfo : map.values()) {
+          writer.addPipe(pipeInfo);
+          switch (pipeInfo.getStatus()) {
+            case RUNNING:
+              writer.operatePipe(pipeInfo.getPipeName(), SyncOperation.START_PIPE);
+              break;
+            case STOP:
+              writer.operatePipe(pipeInfo.getPipeName(), SyncOperation.STOP_PIPE);
+              break;
+            case DROP:
+              writer.operatePipe(pipeInfo.getPipeName(), SyncOperation.DROP_PIPE);
+              break;
+          }
+        }
+      }
+    }
+    return tmpFile.renameTo(snapshotFile);
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, SyncConstant.SYNC_LOG_NAME);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    SyncLogReader reader = new SyncLogReader(snapshotDir);
+    reader.recover();
+    setPipes(reader.getAllPipeInfos());
+    setPipeSinks(reader.getAllPipeSinks());
+    setRunningPipe(reader.getRunningPipeInfo());
   }
 
   // endregion

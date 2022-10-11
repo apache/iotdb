@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
@@ -28,8 +29,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 
 /** This Class used to save the specific information of one Trigger. */
 public class TriggerInformation {
@@ -101,7 +104,7 @@ public class TriggerInformation {
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
     TriggerInformation triggerInformation = new TriggerInformation();
-    triggerInformation.pathPattern = PartialPath.deserialize(byteBuffer);
+    triggerInformation.pathPattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
@@ -117,6 +120,33 @@ public class TriggerInformation {
     }
     triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
+  }
+
+  public static TriggerInformation deserialize(InputStream inputStream) throws IOException {
+    return deserialize(
+        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TriggerInformation that = (TriggerInformation) o;
+    return Objects.equals(triggerName, that.triggerName)
+        && Objects.equals(pathPattern, that.pathPattern)
+        && isStateful == that.isStateful
+        && Objects.equals(className, that.className)
+        && Objects.equals(jarName, that.jarName)
+        && Objects.equals(attributes, that.attributes)
+        && event == that.event
+        && triggerState == that.triggerState
+        && (!isStateful() || Objects.equals(dataNodeLocation, that.dataNodeLocation))
+        && Objects.equals(jarFileMD5, that.jarFileMD5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(triggerName);
   }
 
   public PartialPath getPathPattern() {

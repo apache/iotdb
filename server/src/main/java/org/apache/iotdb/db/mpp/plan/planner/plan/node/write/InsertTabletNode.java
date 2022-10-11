@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -172,17 +174,22 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
+  public void validateAndSetSchema(ISchemaTree schemaTree) throws MetadataException {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
-      return false;
+      throw new AlignedTimeseriesException(
+          String.format(
+              "timeseries under this device are%s aligned, " + "please use %s interface",
+              deviceSchemaInfo.isAligned() ? "" : " not",
+              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
+          devicePath.getFullPath());
     }
     measurementSchemas =
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // validate whether data types are matched
-    return selfCheckDataTypes();
+    selfCheckDataTypes();
   }
 
   @Override

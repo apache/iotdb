@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -61,11 +64,15 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -105,6 +112,7 @@ public class ConfigPlanExecutor {
 
   private final UDFInfo udfInfo;
 
+  private final TriggerInfo triggerInfo;
   private final ClusterSyncInfo syncInfo;
 
   public ConfigPlanExecutor(
@@ -114,6 +122,7 @@ public class ConfigPlanExecutor {
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
+      TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
@@ -121,6 +130,7 @@ public class ConfigPlanExecutor {
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
+    this.triggerInfo = triggerInfo;
     this.syncInfo = syncInfo;
   }
 
@@ -163,6 +173,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetPipeSink:
         return syncInfo.getPipeSink((GetPipeSinkPlan) req);
+      case GetTriggerTable:
+        return triggerInfo.getTriggerTable();
+      case GetRouting:
+        return partitionInfo.getRouting((GetRoutingPlan) req);
+      case GetTimeSlotList:
+        return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
+      case GetSeriesSlotList:
+        return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -234,6 +252,12 @@ public class ConfigPlanExecutor {
         return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
+      case AddTriggerInTable:
+        return triggerInfo.addTriggerInTable((AddTriggerInTablePlan) physicalPlan);
+      case DeleteTriggerInTable:
+        return triggerInfo.deleteTriggerInTable((DeleteTriggerInTablePlan) physicalPlan);
+      case UpdateTriggerStateInTable:
+        return triggerInfo.updateTriggerStateInTable((UpdateTriggerStateInTablePlan) physicalPlan);
       case CreateSchemaTemplate:
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
       case UpdateRegionLocation:

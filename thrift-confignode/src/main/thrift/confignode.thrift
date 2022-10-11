@@ -49,13 +49,26 @@ struct TGlobalConfig {
 }
 
 struct TRatisConfig {
-  1: optional i64 appenderBufferSize
-  2: optional i64 snapshotTriggerThreshold
-  3: optional bool logUnsafeFlushEnable
-  4: optional i64 logSegmentSizeMax
-  5: optional i64 grpcFlowControlWindow
-  6: optional i64 leaderElectionTimeoutMin
-  7: optional i64 leaderElectionTimeoutMax
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
+
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
+
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
+
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
+
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
+
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
+
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -164,6 +177,39 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TGetRoutingReq {
+    1: required string storageGroup
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: required common.TTimePartitionSlot timeSlotId
+}
+
+struct TGetRoutingResp {
+    1: required common.TSStatus status
+    2: optional list<common.TConsensusGroupId> dataRegionIdList
+}
+
+struct TGetTimeSlotListReq {
+    1: required string storageGroup
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: optional i64 startTime
+    4: optional i64 endTime
+}
+
+struct TGetTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TTimePartitionSlot> timeSlotList
+}
+
+struct TGetSeriesSlotListReq {
+    1: required string storageGroup
+    2: optional common.TConsensusGroupType type
+}
+
+struct TGetSeriesSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TSeriesPartitionSlot> seriesSlotList
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -247,9 +293,7 @@ struct TDropFunctionReq {
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
@@ -276,7 +320,7 @@ struct TDropTriggerReq {
 // Get trigger table from config node
 struct TGetTriggerTableResp {
   1: required common.TSStatus status
-  2: required binary triggerTable
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster
@@ -386,6 +430,7 @@ struct TSetSchemaTemplateReq {
   1: required string name
   2: required string path
 }
+
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
@@ -782,5 +827,19 @@ service IConfigNodeRPCService {
 
   /** Get PipeSink by name, if name is empty, get all PipeSink */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
+
+  // ======================================================
+  // TestTools
+  // ======================================================
+
+  /** Get a particular DataPartition's corresponding Regions */
+  TGetRoutingResp getRouting(TGetRoutingReq req)
+
+  /** Get a specific SeriesSlot's TimeSlots by start time and end time */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  /** Get the given storage group's assigned SeriesSlots */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
 }
 

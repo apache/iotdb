@@ -49,6 +49,11 @@ public class StandaloneOnMppEnv extends AbstractEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void initBeforeTest() {
     logger.debug("=======start init test=======");
     initEnvironment();

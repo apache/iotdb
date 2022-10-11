@@ -67,7 +67,6 @@ public enum ConfigPhysicalPlanType {
   CreateFunction,
   DropFunction,
   GetRegionInfoList,
-  GetDataNodesInfoList,
   GetNodePathsPartition,
   CreateSchemaTemplate,
   GetAllSchemaTemplate,
@@ -81,5 +80,12 @@ public enum ConfigPhysicalPlanType {
   PollRegionMaintainTask,
   CreatePipeSink,
   DropPipeSink,
-  GetPipeSink
+  GetPipeSink,
+  AddTriggerInTable,
+  DeleteTriggerInTable,
+  GetTriggerTable,
+  UpdateTriggerStateInTable,
+  GetRouting,
+  GetSeriesSlotList,
+  GetTimeSlotList
 }

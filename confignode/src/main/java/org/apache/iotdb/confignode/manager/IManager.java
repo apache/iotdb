@@ -29,7 +29,10 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -45,13 +48,19 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -71,13 +80,6 @@ import java.util.List;
  * services.
  */
 public interface IManager {
-
-  /**
-   * if a service stop
-   *
-   * @return true if service stopped
-   */
-  boolean isStopped();
 
   /**
    * Get DataManager
@@ -120,6 +122,13 @@ public interface IManager {
    * @return UDFManager instance
    */
   UDFManager getUDFManager();
+
+  /**
+   * Get TriggerManager
+   *
+   * @return TriggerManager instance
+   */
+  TriggerManager getTriggerManager();
 
   /**
    * Get ProcedureManager
@@ -278,6 +287,15 @@ public interface IManager {
 
   TSStatus dropFunction(String udfName);
 
+  /** Create trigger */
+  TSStatus createTrigger(TCreateTriggerReq req);
+
+  /** Drop trigger */
+  TSStatus dropTrigger(TDropTriggerReq req);
+
+  /** Show trigger & DataNode start */
+  TGetTriggerTableResp getTriggerTable();
+
   /** Merge on all DataNodes */
   TSStatus merge();
 
@@ -387,4 +405,10 @@ public interface IManager {
    * @return TGetPipeSinkResp contains the PipeSink
    */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
+
+  TGetRoutingResp getRouting(GetRoutingPlan plan);
+
+  TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
+
+  TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
 }

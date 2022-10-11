@@ -18,25 +18,26 @@
  */
 package org.apache.iotdb.db.sync.common;
 
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
+import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
+import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -49,15 +50,15 @@ public class LocalSyncInfo {
   private final SyncMetadata syncMetadata;
 
   public LocalSyncInfo() {
-    syncLogWriter = SyncLogWriter.getInstance();
+    syncLogWriter = new SyncLogWriter(new File(SyncPathUtil.getSysDir()));
     syncMetadata = new SyncMetadata();
-    SyncLogReader logReader = new SyncLogReader();
+    SyncLogReader logReader = new SyncLogReader(new File(SyncPathUtil.getSysDir()));
     try {
       logReader.recover();
       syncMetadata.setPipes(logReader.getAllPipeInfos());
       syncMetadata.setPipeSinks(logReader.getAllPipeSinks());
       syncMetadata.setRunningPipe(logReader.getRunningPipeInfo());
-    } catch (StartupException e) {
+    } catch (IOException e) {
       LOGGER.error(
           "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
     }
@@ -75,7 +76,7 @@ public class LocalSyncInfo {
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkPlan(plan);
     // should guarantee the adding pipesink is not exist.
     syncMetadata.addPipeSink(pipeSink);
-    syncLogWriter.addPipeSink(plan);
+    syncLogWriter.addPipeSink(pipeSink);
   }
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
@@ -84,7 +85,7 @@ public class LocalSyncInfo {
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkStatement(createPipeSinkStatement);
     // should guarantee the adding pipesink is not exist.
     syncMetadata.addPipeSink(pipeSink);
-    syncLogWriter.addPipeSink(createPipeSinkStatement);
+    syncLogWriter.addPipeSink(pipeSink);
   }
 
   public void dropPipeSink(String name) throws PipeSinkException, IOException {
@@ -112,7 +113,7 @@ public class LocalSyncInfo {
     PipeSink pipeSink = getPipeSink(plan.getPipeSinkName());
     PipeInfo pipeInfo = SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, pipeSink, createTime);
     syncMetadata.addPipe(pipeInfo, pipeSink);
-    syncLogWriter.addPipe(plan, createTime);
+    syncLogWriter.addPipe(pipeInfo);
   }
 
   public void addPipe(CreatePipeStatement createPipeStatement, long createTime)
@@ -125,7 +126,7 @@ public class LocalSyncInfo {
     PipeInfo pipeInfo =
         SyncPipeUtil.parseCreatePipePlanAsPipeInfo(createPipeStatement, pipeSink, createTime);
     syncMetadata.addPipe(pipeInfo, pipeSink);
-    syncLogWriter.addPipe(createPipeStatement, createTime);
+    syncLogWriter.addPipe(pipeInfo);
   }
 
   public void operatePipe(String pipeName, SyncOperation syncOperation)
