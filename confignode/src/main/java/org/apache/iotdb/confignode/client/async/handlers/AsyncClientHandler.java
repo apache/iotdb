@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteTimeSeriesRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
 import java.util.ArrayList;

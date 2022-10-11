@@ -248,15 +248,15 @@ public class AsyncDataNodeClientPool {
           break;
         case PRE_CREATE_PIPE:
           client.createPipeOnDataNode(
-                  (TCreatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
-                  (AsyncTSStatusRPCHandler)
-                          clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case OPERATE_PIPE:
           client.operatePipeOnDataNode(
-                  (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
-                  (AsyncTSStatusRPCHandler)
-                          clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         default:
           LOGGER.error(

@@ -45,9 +45,6 @@ import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroup
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;

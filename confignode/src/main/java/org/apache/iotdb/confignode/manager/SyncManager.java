@@ -42,7 +42,6 @@ import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -161,7 +160,7 @@ public class SyncManager {
         new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
 
     AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     return dataNodeResponseStatus;
@@ -182,9 +181,8 @@ public class SyncManager {
     final TCreatePipeOnDataNodeReq request =
         new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
 
-
     AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return dataNodeResponseStatus;
   }
