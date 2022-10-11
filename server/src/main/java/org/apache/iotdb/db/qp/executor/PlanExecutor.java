@@ -1356,8 +1356,10 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void findAllTsFiles(File curFile, List<File> files) {
-    if (curFile.isFile() && curFile.getName().endsWith(TSFILE_SUFFIX)) {
-      files.add(curFile);
+    if (curFile.isFile()) {
+      if (curFile.getName().endsWith(TSFILE_SUFFIX)) {
+        files.add(curFile);
+      }
     } else {
       for (File file : curFile.listFiles()) {
         findAllTsFiles(file, files);
