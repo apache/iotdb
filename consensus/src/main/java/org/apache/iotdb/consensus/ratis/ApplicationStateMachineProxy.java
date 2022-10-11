@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
@@ -221,7 +220,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     try {
       Files.move(snapshotTmpDir.toPath(), snapshotDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
     } catch (IOException e) {
-      logger.error("{} atomic rename {} to {} failed with exception {}", this, snapshotTmpDir, snapshotDir, e);
+      logger.error(
+          "{} atomic rename {} to {} failed with exception {}",
+          this,
+          snapshotTmpDir,
+          snapshotDir,
+          e);
       deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }

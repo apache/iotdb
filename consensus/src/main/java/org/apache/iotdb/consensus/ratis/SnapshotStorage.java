@@ -169,6 +169,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getSnapshotTmpDir(String snapshotMetadata) {
-    return new File(stateMachineDir.getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
+    return new File(
+        stateMachineDir.getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
   }
 }
