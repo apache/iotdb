@@ -46,6 +46,9 @@ public class TagAggregationOperator implements ProcessOperator {
   private final List<Operator> children;
   private final TsBlock[] inputTsBlocks;
 
+  // Indicate whether a child operator's next() is called
+  private final boolean[] hasCalledNext;
+
   // These fields record the to be consumed index of each tsBlock.
   private final int[] consumedIndices;
   private final TsBlockBuilder tsBlockBuilder;
@@ -81,6 +84,7 @@ public class TagAggregationOperator implements ProcessOperator {
     this.tsBlockBuilder = new TsBlockBuilder(actualOutputColumnTypes);
     // Initialize input tsblocks for each aggregator group.
     this.inputTsBlocks = new TsBlock[children.size()];
+    this.hasCalledNext = new boolean[children.size()];
     this.consumedIndices = new int[children.size()];
     this.maxRetainedSize = children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
     this.childrenRetainedSize =
@@ -95,6 +99,7 @@ public class TagAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    Arrays.fill(hasCalledNext, false);
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
     boolean successful = true;
@@ -112,9 +117,10 @@ public class TagAggregationOperator implements ProcessOperator {
   private boolean processOneRow() {
     for (int i = 0; i < children.size(); i++) {
       // If the data is unavailable first, try to find next tsblock of the child.
-      if (dataUnavailable(i)) {
+      if (dataUnavailable(i) && !hasCalledNext[i]) {
         inputTsBlocks[i] = children.get(i).next();
         consumedIndices[i] = 0;
+        hasCalledNext[i] = true;
       }
 
       // If it's still unavailable, then blocked by children i.
@@ -188,9 +194,11 @@ public class TagAggregationOperator implements ProcessOperator {
   public ListenableFuture<?> isBlocked() {
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < children.size(); i++) {
-      ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone() && dataUnavailable(i)) {
-        listenableFutures.add(blocked);
+      if (dataUnavailable(i)) {
+        ListenableFuture<?> blocked = children.get(i).isBlocked();
+        if (!blocked.isDone()) {
+          listenableFutures.add(blocked);
+        }
       }
     }
     return listenableFutures.isEmpty() ? NOT_BLOCKED : Futures.successfulAsList(listenableFutures);
