@@ -29,6 +29,10 @@ import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroup
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +81,18 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_TRIGGER_PROCEDURE:
         procedure = new DropTriggerProcedure();
         break;
+      case CREATE_PIPE_PROCEDURE:
+        procedure = new CreatePipeProcedure();
+        break;
+      case START_PIPE_PROCEDURE:
+        procedure = new StartPipeProcedure();
+        break;
+      case STOP_PIPE_PROCEDURE:
+        procedure = new StopPipeProcedure();
+        break;
+      case DROP_PIPE_PROCEDURE:
+        procedure = new DropPipeProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -104,6 +120,14 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {
       return ProcedureType.DROP_TRIGGER_PROCEDURE;
+    } else if (procedure instanceof CreatePipeProcedure) {
+      return ProcedureType.CREATE_PIPE_PROCEDURE;
+    } else if (procedure instanceof StartPipeProcedure) {
+      return ProcedureType.START_PIPE_PROCEDURE;
+    } else if (procedure instanceof StopPipeProcedure) {
+      return ProcedureType.STOP_PIPE_PROCEDURE;
+    } else if (procedure instanceof DropPipeProcedure) {
+      return ProcedureType.DROP_PIPE_PROCEDURE;
     }
     return null;
   }
@@ -117,7 +141,11 @@ public class ProcedureFactory implements IProcedureFactory {
     CREATE_REGION_GROUPS,
     DELETE_TIMESERIES_PROCEDURE,
     CREATE_TRIGGER_PROCEDURE,
-    DROP_TRIGGER_PROCEDURE
+    DROP_TRIGGER_PROCEDURE,
+    CREATE_PIPE_PROCEDURE,
+    START_PIPE_PROCEDURE,
+    STOP_PIPE_PROCEDURE,
+    DROP_PIPE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

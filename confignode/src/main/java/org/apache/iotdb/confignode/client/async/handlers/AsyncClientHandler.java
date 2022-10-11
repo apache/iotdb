@@ -188,6 +188,8 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_REGION_ROUTE_MAP:
       case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
+      case PRE_CREATE_PIPE:
+      case OPERATE_PIPE:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

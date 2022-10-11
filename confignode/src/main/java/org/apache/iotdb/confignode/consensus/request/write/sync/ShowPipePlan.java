@@ -26,31 +26,31 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetPipeSinkPlan extends ConfigPhysicalPlan {
-  /** empty pipeSinkName means get all PIPESINK */
-  private String pipeSinkName;
+public class ShowPipePlan extends ConfigPhysicalPlan {
+  /** empty pipeName means show all PIPE */
+  private String pipeName;
 
-  public GetPipeSinkPlan() {
-    super(ConfigPhysicalPlanType.GetPipeSink);
+  public ShowPipePlan() {
+    super(ConfigPhysicalPlanType.ShowPipe);
   }
 
-  public GetPipeSinkPlan(String pipeSinkName) {
+  public ShowPipePlan(String pipeName) {
     this();
-    this.pipeSinkName = pipeSinkName;
+    this.pipeName = pipeName;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public String getPipeName() {
+    return pipeName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetPipeSink.ordinal());
-    BasicStructureSerDeUtil.write(pipeSinkName, stream);
+    stream.writeInt(ConfigPhysicalPlanType.ShowPipe.ordinal());
+    BasicStructureSerDeUtil.write(pipeName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
+    pipeName = BasicStructureSerDeUtil.readString(buffer);
   }
 }

@@ -102,6 +102,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -110,6 +111,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -610,6 +613,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public SyncManager getSyncManager() {
+    return syncManager;
+  }
+
+  @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1005,6 +1013,57 @@ public class ConfigManager implements IManager {
     TGetPipeSinkResp resp = new TGetPipeSinkResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return syncManager.getPipeSink(req.getPipeSinkName());
+    } else {
+      return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TSStatus createPipe(TPipeInfo pipeInfo) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.createPipe(pipeInfo);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus startPipe(String pipeName) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.startPipe(pipeName);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus stopPipe(String pipeName) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.stopPipe(pipeName);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus dropPipe(String pipeName) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.dropPipe(pipeName);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TShowPipeResp showPipe(TShowPipeReq req) {
+    TSStatus status = confirmLeader();
+    TShowPipeResp resp = new TShowPipeResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.showPipe(req.getPipeName());
     } else {
       return resp.setStatus(status);
     }

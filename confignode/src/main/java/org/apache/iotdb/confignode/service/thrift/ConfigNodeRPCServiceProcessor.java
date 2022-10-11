@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -116,6 +117,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
@@ -618,6 +621,31 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
     return configManager.getPipeSink(req);
+  }
+
+  @Override
+  public TSStatus createPipe(TPipeInfo req) {
+    return configManager.createPipe(req);
+  }
+
+  @Override
+  public TSStatus startPipe(String pipeName) {
+    return configManager.startPipe(pipeName);
+  }
+
+  @Override
+  public TSStatus stopPipe(String pipeName) {
+    return configManager.stopPipe(pipeName);
+  }
+
+  @Override
+  public TSStatus dropPipe(String pipeName) {
+    return configManager.dropPipe(pipeName);
+  }
+
+  @Override
+  public TShowPipeResp showPipe(TShowPipeReq req) {
+    return configManager.showPipe(req);
   }
 
   @Override

@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync.persistence;
 
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
@@ -98,17 +99,17 @@ public class SyncLogReader {
         case STOP_PIPE:
           // TODO: support multiple pipe
           ReadWriteIOUtils.readString(inputStream);
-          runningPipe.stop();
+          runningPipe.setStatus(PipeStatus.STOP);
           break;
         case START_PIPE:
           // TODO: support multiple pipe
           ReadWriteIOUtils.readString(inputStream);
-          runningPipe.start();
+          runningPipe.setStatus(PipeStatus.RUNNING);
           break;
         case DROP_PIPE:
           // TODO: support multiple pipe
           ReadWriteIOUtils.readString(inputStream);
-          runningPipe.drop();
+          runningPipe.setStatus(PipeStatus.DROP);
           break;
         default:
           throw new UnsupportedOperationException(
