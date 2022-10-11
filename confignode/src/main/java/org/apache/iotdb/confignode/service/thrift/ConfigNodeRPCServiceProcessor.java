@@ -624,27 +624,27 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createPipe(TPipeInfo req) throws TException {
+  public TSStatus createPipe(TPipeInfo req) {
     return configManager.createPipe(req);
   }
 
   @Override
-  public TSStatus startPipe(String pipeName) throws TException {
+  public TSStatus startPipe(String pipeName) {
     return configManager.startPipe(pipeName);
   }
 
   @Override
-  public TSStatus stopPipe(String pipeName) throws TException {
+  public TSStatus stopPipe(String pipeName) {
     return configManager.stopPipe(pipeName);
   }
 
   @Override
-  public TSStatus dropPipe(String pipeName) throws TException {
+  public TSStatus dropPipe(String pipeName) {
     return configManager.dropPipe(pipeName);
   }
 
   @Override
-  public TShowPipeResp showPipe(TShowPipeReq req) throws TException {
+  public TShowPipeResp showPipe(TShowPipeReq req) {
     return configManager.showPipe(req);
   }
 
