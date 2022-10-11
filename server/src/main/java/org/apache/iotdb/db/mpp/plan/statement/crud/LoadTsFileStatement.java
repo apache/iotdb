@@ -25,15 +25,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
   private File file;
@@ -59,7 +57,7 @@ public class LoadTsFileStatement extends Statement {
     } else {
       if (file.listFiles() == null) {
         throw new FileNotFoundException(
-            "Can not find %s on this machine, note that load can only handle files on this machine.");
+            "Can not find %s on this machine, notice that load can only handle files on this machine.");
       }
       findAllTsFile(file);
     }
@@ -77,22 +75,15 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private void sortTsFiles(List<File> files) {
-    Map<File, Long> file2Timestamp = new HashMap<>();
-    Map<File, Long> file2Version = new HashMap<>();
-    for (File file : files) {
-      String[] splitStrings = file.getName().split(FilePathUtils.FILE_NAME_SEPARATOR);
-      file2Timestamp.put(file, Long.parseLong(splitStrings[0]));
-      file2Version.put(file, Long.parseLong(splitStrings[1]));
-    }
-
-    Collections.sort(
-        files,
+    files.sort(
         (o1, o2) -> {
-          long timestampDiff = file2Timestamp.get(o1) - file2Timestamp.get(o2);
-          if (timestampDiff != 0) {
-            return (int) (timestampDiff);
+          String file1Name = o1.getName();
+          String file2Name = o2.getName();
+          try {
+            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
+          } catch (IOException e) {
+            return file1Name.compareTo(file2Name);
           }
-          return (int) (file2Version.get(o1) - file2Version.get(o2));
         });
   }
 
