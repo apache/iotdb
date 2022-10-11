@@ -7,7 +7,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 
-
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     super(targetFileResource);

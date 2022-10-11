@@ -109,8 +109,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
     long curCheckIndex = ++measurementPointCountArray[subTaskId] / checkPoint;
     writeDataPoint(
         timestamp,

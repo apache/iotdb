@@ -16,8 +16,6 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     super(targetResources, seqFileResources);
   }
 
-
-
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {

@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -462,7 +463,6 @@ public class IoTDBConfig {
    * default is 100
    */
   private long chunkPointNumLowerBoundInCompaction = 100;
-
 
   /**
    * If compaction thread cannot acquire the write lock within this timeout, the compaction task

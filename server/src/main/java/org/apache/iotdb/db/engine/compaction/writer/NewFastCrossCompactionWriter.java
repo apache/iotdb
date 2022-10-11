@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-
 public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
   public NewFastCrossCompactionWriter(
@@ -27,12 +26,9 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     super(targetResources, seqSourceResources);
   }
 
-
-
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {}
-
 
   public boolean flushChunkToFileWriter(IChunkMetadata iChunkMetadata, int subTaskId)
       throws IOException {
@@ -159,6 +155,4 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     isEmptyFile[fileIndex] = false;
     return true;
   }
-
-
 }
