@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -91,7 +93,8 @@ public class CreateRegionGroupsProcedureTest {
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionGroupsProcedure procedure0 =
-        new CreateRegionGroupsProcedure(createRegionGroupsPlan, failedRegions0);
+        new CreateRegionGroupsProcedure(
+            TConsensusGroupType.DataRegion, createRegionGroupsPlan, failedRegions0);
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
