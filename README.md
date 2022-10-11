@@ -9,7 +9,9 @@ To simplify the reproducing, the minimum artifact bypasses the IoTDB server, wri
 + JDK >= 1.8
 + Maven >= 3.6
 
+
 ### Example Invocation
+
 
 1. [Download](https://cloud.tsinghua.edu.cn/f/4602e518f32a4ceda877/) the datasets and put all CSV files into the directory `artifact/dataset`;
 

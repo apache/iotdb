@@ -74,6 +74,7 @@ public class SchemaUtils {
     intSet.add(TSEncoding.SIMPLE8B);
     intSet.add(TSEncoding.SIMPLE8B_SPARSE);
     intSet.add(TSEncoding.BUFF);
+
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 

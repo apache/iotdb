@@ -704,9 +704,11 @@ SIMPLE8B_SPARSE
 	: S I M P L E '8' B '_' S P A R S E
 	;
 
+
 BUFF
 	: B U F F
 	;
+
 
 
 // Compressor Type Keywords
