@@ -62,6 +62,8 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+
 /**
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
  * information 2. ConfigNode information
@@ -167,7 +169,8 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
     LOGGER.info(
-        "there are {} data node in cluster before executed remove-datanode.sh",
+        "{}, There are {} data node in cluster before executed remove-datanode.sh",
+        REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
@@ -181,7 +184,8 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
-        "there are {} data node in cluster after executed remove-datanode.sh",
+        "{}, There are {} data node in cluster after executed remove-datanode.sh",
+        REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

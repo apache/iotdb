@@ -39,6 +39,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** region migrate procedure */
@@ -92,8 +93,7 @@ public class RegionMigrateProcedure
         case ADD_REGION_PEER:
           tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for ADD_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("Failed to add region peer");
           }
@@ -108,8 +108,7 @@ public class RegionMigrateProcedure
               env.getDataNodeRemoveHandler()
                   .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait REMOVE_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("Failed to remove region peer");
           }
@@ -120,8 +119,7 @@ public class RegionMigrateProcedure
               env.getDataNodeRemoveHandler()
                   .deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for DELETE_OLD_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           }
           // remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
@@ -134,15 +132,18 @@ public class RegionMigrateProcedure
       }
     } catch (Exception e) {
       LOG.error(
-          "Meets error in region migrate state, please do the rollback operation yourself manually according to the error message!!! "
+          "{}, Meets error in region migrate state, "
+              + "please do the rollback operation yourself manually according to the error message!!! "
               + "error state: {}, migrateResult: {}",
+          REMOVE_DATANODE_PROCESS,
           state,
           migrateResult);
       if (isRollbackSupported(state)) {
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "Failed state is not support rollback, filed state {}, originalDataNode: {}",
+            "{}, Failed state is not support rollback, filed state {}, originalDataNode: {}",
+            REMOVE_DATANODE_PROCESS,
             state,
             originalDataNode);
         if (getCycles() > RETRY_THRESHOLD) {
@@ -249,8 +250,15 @@ public class RegionMigrateProcedure
     return false;
   }
 
-  public TSStatus waitForOneMigrationStepFinished(TConsensusGroupId consensusGroupId)
-      throws Exception {
+  public TSStatus waitForOneMigrationStepFinished(
+      TConsensusGroupId consensusGroupId, RegionTransitionState state) throws Exception {
+
+    LOG.info(
+        "{}, Wait for state {} finished, regionId: {}",
+        REMOVE_DATANODE_PROCESS,
+        state,
+        consensusGroupId);
+
     TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
     synchronized (regionMigrateLock) {
       try {
@@ -262,7 +270,7 @@ public class RegionMigrateProcedure
               String.format("Region migrate failed, regionId: %s", consensusGroupId));
         }
       } catch (InterruptedException e) {
-        LOG.error("region migrate {} interrupt", consensusGroupId, e);
+        LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage("wait region migrate interrupt," + e.getMessage());
@@ -274,14 +282,20 @@ public class RegionMigrateProcedure
   /** DataNode report region migrate result to ConfigNode, and continue */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
-    LOG.info("ConfigNode received DataNode reported region migrate result: {} ", req);
+    LOG.info(
+        "{}, ConfigNode received DataNode reported region migrate result: {}",
+        REMOVE_DATANODE_PROCESS,
+        req);
 
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       TSStatus migrateStatus = req.getMigrateResult();
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOG.info("Region migrate executed failed in DataNode, migrateStatus: {}", migrateStatus);
+        LOG.info(
+            "{}, Region migrate executed failed in DataNode, migrateStatus: {}",
+            REMOVE_DATANODE_PROCESS,
+            migrateStatus);
         migrateSuccess = false;
         migrateResult = migrateStatus.toString();
       }

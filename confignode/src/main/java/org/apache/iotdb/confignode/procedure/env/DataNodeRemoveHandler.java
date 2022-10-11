@@ -69,6 +69,12 @@ public class DataNodeRemoveHandler {
     this.configManager = configManager;
   }
 
+  public static String getIdWithRpcEndpoint(TDataNodeLocation location) {
+    return String.format(
+        "[dataNodeId: %s, clientRpcEndPoint: %s]",
+        location.getDataNodeId(), location.getClientRpcEndPoint());
+  }
+
   /**
    * Get all consensus group id in this node
    *
@@ -120,7 +126,8 @@ public class DataNodeRemoveHandler {
     }
 
     LOGGER.info(
-        "DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
+        "{}, DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
+        REMOVE_DATANODE_PROCESS,
         getIdWithRpcEndpoint(disabledDataNode));
   }
 
@@ -187,16 +194,16 @@ public class DataNodeRemoveHandler {
                 DataNodeRequestType.CREATE_NEW_REGION_PEER);
 
     LOGGER.info(
-        "{}, Send action createNewRegionPeer finished, regionId: {}, destDataNode: {}",
+        "{}, Send action createNewRegionPeer finished, regionId: {}, newPeerDataNodeId: {}",
         REMOVE_DATANODE_PROCESS,
         regionId,
-        destDataNode);
+        getIdWithRpcEndpoint(destDataNode));
     if (isFailed(status)) {
       LOGGER.error(
-          "{}, Send action createNewRegionPeer error, regionId: {}, destDataNode: {}, result: {}",
+          "{}, Send action createNewRegionPeer error, regionId: {}, newPeerDataNodeId: {}, result: {}",
           REMOVE_DATANODE_PROCESS,
           regionId,
-          destDataNode,
+          getIdWithRpcEndpoint(destDataNode),
           status);
     }
     return status;
@@ -223,13 +230,13 @@ public class DataNodeRemoveHandler {
     if (!selectedDataNode.isPresent()) {
       LOGGER.warn(
           "{}, There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check RegionGroup: {} by SQL: show regions",
+              + "please check RegionGroup: {} by show regions sql command",
           REMOVE_DATANODE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
           "There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check by show regions command");
+              + "please check by show regions sql command");
       return status;
     }
 
@@ -305,19 +312,6 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus deleteOldRegionPeer(
       TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
-
-    // when SchemaReplicationFactor==1, execute deleteOldRegionPeer method will cause error
-    // user must delete the related data manually
-    if (CONF.getSchemaReplicationFactor() == 1
-        && TConsensusGroupType.SchemaRegion.equals(regionId.getType())) {
-      String errorMessage =
-          "deleteOldRegionPeer is not supported for schemaRegion when SchemaReplicationFactor equals 1, "
-              + "you are supposed to delete the region data of datanode manually";
-      LOGGER.info("{}, {}", REMOVE_DATANODE_PROCESS, errorMessage);
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(errorMessage);
-      return status;
-    }
 
     // when DataReplicationFactor==1, execute deleteOldRegionPeer method will cause error
     // user must delete the related data manually
@@ -421,14 +415,14 @@ public class DataNodeRemoveHandler {
    * @throws ProcedureException procedure exception
    */
   public TSStatus stopDataNode(TDataNodeLocation dataNode) throws ProcedureException {
-    LOGGER.info("Begin to stop Data Node {}", dataNode);
+    LOGGER.info("{}, Begin to stop Data Node {}", REMOVE_DATANODE_PROCESS, dataNode);
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
     configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info("stop Data Node {} result: {}", dataNode, status);
+    LOGGER.info("{}, Stop Data Node {} result: {}", REMOVE_DATANODE_PROCESS, dataNode, status);
     return status;
   }
 
@@ -547,15 +541,16 @@ public class DataNodeRemoveHandler {
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 
-  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation tDataNodeLocation) {
+  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
-        filterDataNodeWithOtherRegionReplica(regionId, tDataNodeLocation);
+        filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
     if (newLeaderNode.isPresent()) {
       SyncDataNodeClientPool.getInstance()
           .changeRegionLeader(
-              regionId, tDataNodeLocation.getInternalEndPoint(), newLeaderNode.get());
+              regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
-          "Change region leader finished, region is {}, newLeaderNode is {}",
+          "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
+          REMOVE_DATANODE_PROCESS,
           regionId,
           newLeaderNode);
     }
@@ -582,16 +577,24 @@ public class DataNodeRemoveHandler {
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
 
-    // TODO replace findAny() by select the low load node.
-    return regionReplicaNodes.stream()
-        .filter(e -> aliveDataNodes.contains(e) && !e.equals(filterLocation))
-        .findAny();
-  }
+    // filter the RUNNING datanode firstly
+    // if all the datanodes are not in RUNNING status, choose the REMOVING datanode
+    // because REMOVING datanode is also alive, it can execute rpc request
+    if (aliveDataNodes.isEmpty()) {
+      aliveDataNodes =
+          configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Removing).stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .collect(Collectors.toList());
+    }
 
-  private String getIdWithRpcEndpoint(TDataNodeLocation location) {
-    return String.format(
-        "dataNodeId: %s, clientRpcEndPoint: %s",
-        location.getDataNodeId(), location.getClientRpcEndPoint());
+    // TODO return the node which has lowest load.
+    for (TDataNodeLocation regionReplicaNode : regionReplicaNodes) {
+      if (aliveDataNodes.contains(regionReplicaNode) && !regionReplicaNode.equals(filterLocation)) {
+        return Optional.of(regionReplicaNode);
+      }
+    }
+
+    return Optional.empty();
   }
 
   /**
