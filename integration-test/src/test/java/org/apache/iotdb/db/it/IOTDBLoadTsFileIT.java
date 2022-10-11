@@ -301,21 +301,21 @@ public class IOTDBLoadTsFileIT {
     // device 0, device 1, sg 0
     try (TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_0),
+          SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
               SchemaConfig.MEASUREMENT_03));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_1),
+          SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
               SchemaConfig.MEASUREMENT_13));
-      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
@@ -323,14 +323,14 @@ public class IOTDBLoadTsFileIT {
     // device 2, device 3, device4, sg 1
     try (TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 
@@ -403,21 +403,21 @@ public class IOTDBLoadTsFileIT {
     // device 0, device 1, sg 0
     try (TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_0),
+          SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
               SchemaConfig.MEASUREMENT_03));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_1),
+          SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
               SchemaConfig.MEASUREMENT_13));
-      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
@@ -425,14 +425,14 @@ public class IOTDBLoadTsFileIT {
     // device 2, device 3, device4, sg 1
     try (TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 
@@ -445,7 +445,7 @@ public class IOTDBLoadTsFileIT {
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
           String lastTime = resultSet.getString("Time");
-          Assert.assertEquals("9999", lastTime);
+          Assert.assertEquals("10000", lastTime);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
@@ -461,21 +461,21 @@ public class IOTDBLoadTsFileIT {
     // device 0, device 1, sg 0
     try (TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_0),
+          SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
               SchemaConfig.MEASUREMENT_03));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_1),
+          SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
               SchemaConfig.MEASUREMENT_13));
-      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
@@ -483,14 +483,14 @@ public class IOTDBLoadTsFileIT {
     // device 2, device 3, device4, sg 1
     try (TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
-      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 

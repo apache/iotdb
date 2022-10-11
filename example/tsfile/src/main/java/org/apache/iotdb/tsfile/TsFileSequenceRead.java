@@ -56,7 +56,8 @@ public class TsFileSequenceRead {
     //    String filename =
     //
     // "E:\\IoTDB\\data\\load\\mpp_load\\test_dataset\\data\\data\\sequence\\root.sg.test_0\\1\\9\\1664888359266-6-0-0.tsfile";
-    String filename = "E:\\IoTDB\\code\\iotdb\\data\\data\\sequence\\root.sg\\0\\0\\1665132595840-12-0-0.tsfile";
+    String filename =
+        "E:\\IoTDB\\code\\iotdb\\data\\data\\sequence\\root.sg\\0\\0\\1665132595840-12-0-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }

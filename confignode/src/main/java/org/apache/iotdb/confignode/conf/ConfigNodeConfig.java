@@ -109,7 +109,7 @@ public class ConfigNodeConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 10000;
+  private long timePartitionInterval = 86400000;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;

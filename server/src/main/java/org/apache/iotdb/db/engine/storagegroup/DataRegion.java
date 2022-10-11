@@ -91,7 +91,6 @@ import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.node.IWALNode;
@@ -2707,13 +2706,6 @@ public class DataRegion {
    */
   public void loadNewTsFile(TsFileResource newTsFileResource, boolean deleteOriginFile)
       throws LoadFileException {
-    logger.info(
-        String.format(
-            "ConfigNode TimePartition %d.",
-            TimePartitionUtils.getTimePartitionIntervalForRouting()));
-    logger.info(
-        String.format(
-            "DataNode TimePartition %d.", StorageEngineV2.getTimePartitionIntervalForStorage()));
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
