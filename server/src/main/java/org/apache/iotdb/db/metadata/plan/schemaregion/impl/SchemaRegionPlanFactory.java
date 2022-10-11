@@ -31,7 +31,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -102,7 +101,8 @@ public class SchemaRegionPlanFactory {
       Map<String, String> tags,
       Map<String, String> attributes,
       String alias) {
-    return new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null);
+    return new CreateTimeSeriesPlanImpl(
+        path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   public static ICreateAlignedTimeSeriesPlan getCreateAlignedTimeSeriesPlan(
@@ -115,7 +115,14 @@ public class SchemaRegionPlanFactory {
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList) {
     return new CreateAlignedTimeSeriesPlanImpl(
-        prefixPath, measurements, dataTypes, encodings, compressors, null, null, null);
+        prefixPath,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        aliasList,
+        tagsList,
+        attributesList);
   }
 
   public static IDeleteTimeSeriesPlan getDeleteTimeSeriesPlan(List<PartialPath> pathList) {
