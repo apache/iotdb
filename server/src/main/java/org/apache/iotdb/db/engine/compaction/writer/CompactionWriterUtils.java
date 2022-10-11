@@ -6,8 +6,8 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -18,10 +18,25 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import java.io.IOException;
 
 public class CompactionWriterUtils {
-  private static final long targetChunkSize =
+  public static final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
-  // When num of points writing into target files reaches, then check chunk size
+  public static final long targetChunkPointNum =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+
+  public static final long chunkSizeLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+
+  public static final long chunkPointNumLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
+  public static final long pageSizeLowerBoundInCompaction =
+      TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+
+  public static final long pagePointNumLowerBoundInCompaction =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+  // When num of points writing into target files reaches check point, then check chunk size
   public static final long checkPoint =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
 
@@ -91,44 +106,6 @@ public class CompactionWriterUtils {
         }
       }
       chunkWriter.write(timestamp);
-    }
-
-    // check chunk size and may open a new chunk
-    if (tsFileIOWriter != null) {
-      checkChunkSizeAndMayOpenANewChunk(tsFileIOWriter, iChunkWriter, isCrossSpace);
-    }
-  }
-
-  public static void writeTVPair(
-      TimeValuePair timeValuePair,
-      IChunkWriter iChunkWriter,
-      TsFileIOWriter tsFileIOWriter,
-      boolean isCrossSpace)
-      throws IOException {
-    ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      case VECTOR:
-        // chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector());
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
 
     // check chunk size and may open a new chunk

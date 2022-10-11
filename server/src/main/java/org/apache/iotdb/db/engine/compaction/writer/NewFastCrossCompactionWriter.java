@@ -7,7 +7,6 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -19,6 +18,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.chunkPointNumLowerBoundInCompaction;
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.chunkSizeLowerBoundInCompaction;
+
 public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
   public NewFastCrossCompactionWriter(
@@ -29,30 +32,37 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
+    int fileIndex = seqFileIndexArray[subTaskId];
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
-    CompactionWriterUtils.writeDataPoint(timestamp, value, chunkWriters[subTaskId], null, true);
-    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
-    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+    CompactionWriterUtils.writeDataPoint(
+        timestamp,
+        value,
+        chunkWriters[subTaskId],
+        ++measurementPointCountArray[subTaskId] % checkPoint == 0
+            ? targetFileWriters.get(fileIndex)
+            : null,
+        true);
+    isDeviceExistedInTargetFiles[fileIndex] = true;
+    isEmptyFile[fileIndex] = false;
   }
 
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {}
 
-  public void writeTimeValue(TimeValuePair timeValuePair, int subTaskId) throws IOException {
-    checkTimeAndMayFlushChunkToCurrentFile(timeValuePair.getTimestamp(), subTaskId);
-    CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId], null, true);
-    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
-    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
-  }
 
   public boolean flushChunkToFileWriter(IChunkMetadata iChunkMetadata, int subTaskId)
       throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(iChunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    if (iChunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
-        && fileIndex != targetFileWriters.size() - 1) {
-      // chunk.endTime > file.endTime, then deserialize the chunk
+    boolean isChunkLargeEnough =
+        chunkWriters[subTaskId].getSerializedChunkSize() >= chunkSizeLowerBoundInCompaction
+            || chunkWriters[subTaskId].getPointNum() >= chunkPointNumLowerBoundInCompaction;
+    if (!isChunkLargeEnough
+        || (iChunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
+            && fileIndex != targetFileWriters.size() - 1)) {
+      // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
+      // chunk
       return false;
     }
 
@@ -60,7 +70,6 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
 
     synchronized (tsFileIOWriter) {
       // seal last chunk to file writer
-      // Todo: may cause small chunk
       chunkWriters[subTaskId].writeToFileWriter(tsFileIOWriter);
       if (iChunkMetadata instanceof AlignedChunkMetadata) {
         AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) iChunkMetadata;
@@ -106,8 +115,10 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    if (timePageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-        && fileIndex != targetFileWriters.size() - 1) {
+    boolean isPageLargeEnough = chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold();
+    if (!isPageLargeEnough
+        || (timePageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
+            && fileIndex != targetFileWriters.size() - 1)) {
       // page.endTime > file.endTime, then deserialize the page
       return false;
     }
@@ -116,7 +127,6 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     // seal current page
     alignedChunkWriter.sealCurrentPage();
     // flush new time page to chunk writer directly
-    // Todo: may cause small page
     alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(compressedTimePageData, timePageHeader);
 
     // flush new value pages to chunk writer directly
@@ -129,6 +139,8 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
       alignedChunkWriter.writePageHeaderAndDataIntoValueBuff(
           compressedValuePageDatas.get(i), valuePageHeaders.get(i), i);
     }
+
+    measurementPointCountArray[subTaskId] += timePageHeader.getStatistics().getCount();
 
     // check chunk size and may open a new chunk
     CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
@@ -143,8 +155,10 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    if (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-        && fileIndex != targetFileWriters.size() - 1) {
+    boolean isPageLargeEnough = chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold();
+    if (!isPageLargeEnough
+        || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
+            && fileIndex != targetFileWriters.size() - 1)) {
       // page.endTime > file.endTime, then deserialize the page
       return false;
     }
@@ -153,8 +167,9 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     // seal current page
     chunkWriter.sealCurrentPage();
     // flush new page to chunk writer directly
-    // Todo: may cause small page
     chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
+
+    measurementPointCountArray[subTaskId] += pageHeader.getStatistics().getCount();
 
     // check chunk size and may open a new chunk
     CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
@@ -163,4 +178,6 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     isEmptyFile[fileIndex] = false;
     return true;
   }
+
+
 }

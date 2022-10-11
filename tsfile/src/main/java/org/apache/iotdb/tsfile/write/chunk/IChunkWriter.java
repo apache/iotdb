@@ -45,4 +45,10 @@ public interface IChunkWriter {
 
   /** set the current pageWriter to null, friendly for gc */
   void clearPageWriter();
+
+  /** get point num of this chunk */
+  long getPointNum();
+
+  /** check whether the unsealed page is over threshold or not. */
+  boolean checkIsUnsealedPageOverThreshold();
 }

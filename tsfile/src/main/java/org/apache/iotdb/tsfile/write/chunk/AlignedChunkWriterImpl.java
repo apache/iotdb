@@ -348,6 +348,24 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
+  @Override
+  public long getPointNum() {
+    return timeChunkWriter.getPointNum();
+  }
+
+  @Override
+  public boolean checkIsUnsealedPageOverThreshold() {
+    if (timeChunkWriter.checkIsUnsealedPageOverThreshold()) {
+      return true;
+    }
+    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
+      if (valueChunkWriter.checkIsUnsealedPageOverThreshold()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Used for compaction to control the target chunk size. */
   public boolean checkIsChunkSizeOverThreshold(long threshold) {
     if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {

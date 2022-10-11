@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -266,6 +265,10 @@ public class TimeChunkWriter {
     return TSDataType.VECTOR;
   }
 
+  public long getPointNum() {
+    return statistics.getCount();
+  }
+
   /**
    * write the page to specified IOWriter.
    *
@@ -313,5 +316,9 @@ public class TimeChunkWriter {
 
   public TimePageWriter getPageWriter() {
     return pageWriter;
+  }
+
+  public boolean checkIsUnsealedPageOverThreshold() {
+    return pageWriter.getPointNumber() >= maxNumberOfPointsInPage;
   }
 }
