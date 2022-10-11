@@ -412,4 +412,6 @@ public interface IManager {
   TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
 
   TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+
+  TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 }

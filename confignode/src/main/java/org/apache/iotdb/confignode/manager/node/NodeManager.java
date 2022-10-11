@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
@@ -59,6 +60,8 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
@@ -99,6 +102,9 @@ public class NodeManager {
 
   public static final TEndPoint CURRENT_NODE =
       new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort());
+
+  // when fail to register a new node, set node id to -1
+  private static final int ERROR_STATUS_NODE_ID = -1;
 
   private final IManager configManager;
   private final NodeInfo nodeInfo;
@@ -245,6 +251,28 @@ public class NodeManager {
 
     LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
     return dataSet;
+  }
+
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    // Check global configuration
+    TSStatus status = configManager.getConsensusManager().confirmLeader();
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TSStatus errorStatus = configManager.checkConfigNodeGlobalConfig(req);
+      if (errorStatus != null) {
+        return new TConfigNodeRegisterResp()
+            .setStatus(errorStatus)
+            .setConfigNodeId(ERROR_STATUS_NODE_ID);
+      }
+
+      int nodeId = generateNodeId();
+      req.getConfigNodeLocation().setConfigNodeId(nodeId);
+
+      configManager.getProcedureManager().addConfigNode(req);
+      return new TConfigNodeRegisterResp().setStatus(StatusUtils.OK).setConfigNodeId(nodeId);
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
   }
 
   /**

@@ -120,7 +120,7 @@ class RatisConsensus implements IConsensus {
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
     myself =
-        Utils.fromTEndPointAndPriorityToRaftPeer(
+        Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
 
     System.setProperty(
@@ -269,7 +269,7 @@ class RatisConsensus implements IConsensus {
     }
 
     if (suggestedLeader != null) {
-      TEndPoint leaderEndPoint = Utils.formRaftPeerAddressToTEndPoint(suggestedLeader.getAddress());
+      TEndPoint leaderEndPoint = Utils.fromRaftPeerAddressToTEndPoint(suggestedLeader.getAddress());
       writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
 
@@ -384,7 +384,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
-    RaftPeer peerToAdd = Utils.fromTEndPointAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
+    RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -419,7 +419,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
-    RaftPeer peerToRemove = Utils.fromTEndPointAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
+    RaftPeer peerToRemove = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
@@ -489,7 +489,7 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    RaftPeer newRaftLeader = Utils.fromTEndPointAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
+    RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
 
     ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
     for (RaftPeer raftPeer : raftGroup.getPeers()) {
@@ -498,9 +498,9 @@ class RatisConsensus implements IConsensus {
       } else {
         // degrade every other peer to default priority
         newConfiguration.add(
-            Utils.fromTEndPointAndPriorityToRaftPeer(
-                Utils.frommRaftPeerIdToNodeId(raftPeer.getId()),
-                Utils.formRaftPeerAddressToTEndPoint(raftPeer.getAddress()),
+            Utils.fromNodeInfoAndPriorityToRaftPeer(
+                Utils.fromRaftPeerIdToNodeId(raftPeer.getId()),
+                Utils.fromRaftPeerAddressToTEndPoint(raftPeer.getAddress()),
                 DEFAULT_PRIORITY));
       }
     }
@@ -607,7 +607,7 @@ class RatisConsensus implements IConsensus {
     if (leaderId == null) {
       return null;
     }
-    int nodeId = Utils.frommRaftPeerIdToNodeId(leaderId);
+    int nodeId = Utils.fromRaftPeerIdToNodeId(leaderId);
     return new Peer(groupId, nodeId, null);
   }
 

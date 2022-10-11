@@ -204,9 +204,6 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
-
-    // ConsensusManager doesn't initialize until the ConfigNode knows its own nodeId
-    this.consensusManager = null;
   }
 
   public void initConsensusManager() throws IOException {
@@ -664,26 +661,10 @@ public class ConfigManager implements IManager {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    // Check global configuration
-    TSStatus status = confirmLeader();
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TSStatus errorStatus = checkConfigNodeGlobalConfig(req);
-      if (errorStatus != null) {
-        return new TConfigNodeRegisterResp().setStatus(errorStatus).setConfigNodeId(-1);
-      }
-
-      int nodeId = nodeManager.generateNodeId();
-      req.getConfigNodeLocation().setConfigNodeId(nodeId);
-
-      procedureManager.addConfigNode(req);
-      return new TConfigNodeRegisterResp().setStatus(StatusUtils.OK).setConfigNodeId(nodeId);
-    }
-
-    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(-1);
+    return nodeManager.registerConfigNode(req);
   }
 
-  private TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
+  public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
     final String errorPrefix = "Reject register, please ensure that the parameter ";
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
@@ -744,7 +725,12 @@ public class ConfigManager implements IManager {
           consensusManager.createPeerForConsensusGroup(configNodeLocations);
           return StatusUtils.OK;
         }
-      } catch (Exception ignored) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
+      } catch (Exception e) {
+        LOGGER.error("Failed to create peer for consensus group", e);
+        break;
       }
     }
     return StatusUtils.INTERNAL_ERROR;
@@ -1122,5 +1108,15 @@ public class ConfigManager implements IManager {
       }
     }
     return filteredRegionReplicaSets;
+  }
+
+  public TConfigNodeLocation getConfigNodeLocation(int nodeId) {
+    List<TConfigNodeLocation> configNodeLocations = this.nodeManager.getRegisteredConfigNodes();
+    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
+      if (configNodeLocation.getConfigNodeId() == nodeId) {
+        return configNodeLocation;
+      }
+    }
+    return null;
   }
 }

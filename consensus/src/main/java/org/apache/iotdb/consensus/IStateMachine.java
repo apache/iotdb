@@ -131,9 +131,9 @@ public interface IStateMachine {
      * can possibly be this server.
      *
      * @param groupId The id of this consensus group.
-     * @param newLeader The id of the new leader node.
+     * @param newLeaderId The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeader) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {}
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a

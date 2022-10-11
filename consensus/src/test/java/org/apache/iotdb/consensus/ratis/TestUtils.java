@@ -132,11 +132,11 @@ public class TestUtils {
     }
 
     @Override
-    public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeader) {
-      this.leaderId = newLeader;
+    public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
-      System.out.println(newLeader);
+      System.out.println(newLeaderId);
       System.out.println("----------------------");
     }
 

@@ -109,11 +109,6 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setConfigNodeId(
-          Integer.parseInt(
-              properties.getProperty(
-                  IoTDBConstant.CONFIG_NODE_ID, String.valueOf(conf.getConfigNodeId()))));
-
       conf.setInternalAddress(
           properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 

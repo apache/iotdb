@@ -257,7 +257,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         .event()
         .notifyLeaderChanged(
             Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId()),
-            Utils.frommRaftPeerIdToNodeId(newLeaderId));
+            Utils.fromRaftPeerIdToNodeId(newLeaderId));
   }
 
   @Override

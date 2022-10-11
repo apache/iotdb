@@ -66,20 +66,16 @@ public class Utils {
     return groupCode;
   }
 
-  public static RaftPeerId fromTEndPointToRaftPeerId(TEndPoint endpoint) {
-    return RaftPeerId.valueOf(fromTEndPointToString(endpoint));
-  }
-
   public static RaftPeerId fromNodeIdToRaftPeerId(int nodeId) {
     return RaftPeerId.valueOf(String.valueOf(nodeId));
   }
 
-  public static TEndPoint formRaftPeerAddressToTEndPoint(String address) {
+  public static TEndPoint fromRaftPeerAddressToTEndPoint(String address) {
     String[] items = address.split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
-  public static int frommRaftPeerIdToNodeId(RaftPeerId id) {
+  public static int fromRaftPeerIdToNodeId(RaftPeerId id) {
     return Integer.parseInt(id.toString());
   }
 
@@ -89,7 +85,7 @@ public class Utils {
   }
 
   // priority is used as ordinal of leader election
-  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(
+  public static RaftPeer fromNodeInfoAndPriorityToRaftPeer(
       int nodeId, TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
         .setId(fromNodeIdToRaftPeerId(nodeId))
@@ -98,13 +94,13 @@ public class Utils {
         .build();
   }
 
-  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
-    return fromTEndPointAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
+  public static RaftPeer fromPeerAndPriorityToRaftPeer(Peer peer, int priority) {
+    return fromNodeInfoAndPriorityToRaftPeer(peer.getNodeId(), peer.getEndpoint(), priority);
   }
 
   public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
     return peers.stream()
-        .map(peer -> Utils.fromTEndPointAndPriorityToRaftPeer(peer, priority))
+        .map(peer -> Utils.fromPeerAndPriorityToRaftPeer(peer, priority))
         .collect(Collectors.toList());
   }
 

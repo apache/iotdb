@@ -56,6 +56,10 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
 
+  private static final int SEED_CONFIG_NODE_ID = 0;
+
+  private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
+
   private final String mbeanName =
       String.format(
           "%s:%s=%s",
@@ -94,13 +98,13 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager.initConsensusManager();
 
         SystemPropertiesUtils.storeSystemParameters();
-        SystemPropertiesUtils.storeConfigNodeId(0);
+        SystemPropertiesUtils.storeConfigNodeId(SEED_CONFIG_NODE_ID);
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
             .applyConfigNode(
                 new TConfigNodeLocation(
-                    0,
+                    SEED_CONFIG_NODE_ID,
                     new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                     new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
@@ -189,7 +193,7 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
-                -1,
+                INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
             CONF.getDataRegionConsensusProtocolClass(),

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -46,14 +47,14 @@ public class PartitionRegionStateMachine
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
-  private final TEndPoint currentNode;
+  private final TEndPoint currentNodeTEndPoint;
   private final int currentNodeId;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
     this.currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
-    this.currentNode =
+    this.currentNodeTEndPoint =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
             .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
@@ -147,18 +148,25 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeader) {
-    if (currentNodeId == newLeader) {
-      LOGGER.info("Current node {} becomes Leader", newLeader);
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    TConfigNodeLocation newLeaderConfigNodeLocation =
+        configManager.getConfigNodeLocation(currentNodeId);
+    if (currentNodeId == newLeaderId) {
+      LOGGER.info(
+          "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+          newLeaderId,
+          currentNodeTEndPoint);
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node {} is not longer the leader, the new leader is {}",
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}, ip:port: {}]",
           currentNodeId,
-          newLeader);
+          currentNodeTEndPoint,
+          newLeaderId,
+          newLeaderConfigNodeLocation.getInternalEndPoint());
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
