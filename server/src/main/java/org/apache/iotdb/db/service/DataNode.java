@@ -455,6 +455,7 @@ public class DataNode implements DataNodeMBean {
               .collect(Collectors.toList());
       List<ByteBuffer> jarList =
           configNodeClient.getTriggerJar(new TGetTriggerJarReq(triggerNameList)).getJarList();
+      // TODO getTriggerJar maybe error
       for (int i = 0, n = triggerInformationList.size(); i < n; i++) {
         TriggerExecutableManager.getInstance()
             .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());

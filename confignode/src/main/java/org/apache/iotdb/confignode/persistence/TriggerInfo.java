@@ -27,9 +27,11 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -45,7 +47,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
@@ -166,6 +171,24 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TriggerTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         triggerTable.getAllTriggerInformation());
+  }
+
+  public TriggerJarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
+    List<ByteBuffer> jarList = new ArrayList<>();
+    try {
+      for (String jarName : physicalPlan.getJarNames()) {
+        jarList.add(
+            triggerExecutableManager.transferToBytebuffer(
+                TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarName)));
+      }
+    } catch (Exception e) {
+      LOGGER.error("Get TriggerJar failed", e);
+      return new TriggerJarResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Get TriggerJar failed, because " + e.getMessage()),
+          Collections.emptyList());
+    }
+    return new TriggerJarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
   /** only used in Test */

@@ -220,8 +220,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
-      dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+      triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      try {
+        dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
+        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+        dataSet.setTriggerInformation(triggerManager.getTriggerTable().getAllTriggerInformation());
+      } finally {
+        triggerManager.getTriggerInfo().releaseTriggerTableLock();
+      }
     } else {
       dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
@@ -789,8 +795,10 @@ public class ConfigManager implements IManager {
 
   @Override
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
-    // todo: implementation
-    return null;
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.getTriggerJar(req)
+        : new TGetTriggerJarResp().setStatus(status);
   }
 
   @Override

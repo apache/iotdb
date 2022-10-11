@@ -334,7 +334,7 @@ struct TShowClusterResp {
 
 // Get jars of the corresponding trigger
 struct TGetTriggerJarReq {
-  1: required list<string> triggerNameList
+  1: required list<string> jarNameList
 }
 
 struct TGetTriggerJarResp {
