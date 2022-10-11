@@ -108,7 +108,7 @@ CANCEL ARCHIVING ON root.ln
 
 ### Pause Archiving Task
 
-Suspend the data migration task, run the `RESUME` command to resume the task.
+Suspend the data migration task.
 
 #### Syntax
 
