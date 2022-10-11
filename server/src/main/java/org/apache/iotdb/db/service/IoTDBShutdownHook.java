@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -64,6 +65,9 @@ public class IoTDBShutdownHook extends Thread {
           .getAllConsensusGroupIds()
           .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
     }
+
+    // clear lock file
+    DirectoryChecker.getInstance().deregisterAll();
 
     if (logger.isInfoEnabled()) {
       logger.info(
