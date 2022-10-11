@@ -18,9 +18,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
-import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.chunkPointNumLowerBoundInCompaction;
-import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.chunkSizeLowerBoundInCompaction;
 
 public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
@@ -30,21 +27,7 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     super(targetResources, seqSourceResources);
   }
 
-  @Override
-  public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
-    CompactionWriterUtils.writeDataPoint(
-        timestamp,
-        value,
-        chunkWriters[subTaskId],
-        ++measurementPointCountArray[subTaskId] % checkPoint == 0
-            ? targetFileWriters.get(fileIndex)
-            : null,
-        true);
-    isDeviceExistedInTargetFiles[fileIndex] = true;
-    isEmptyFile[fileIndex] = false;
-  }
+
 
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
@@ -143,8 +126,7 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     measurementPointCountArray[subTaskId] += timePageHeader.getStatistics().getCount();
 
     // check chunk size and may open a new chunk
-    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(fileIndex), alignedChunkWriter, true);
+    checkChunkSizeAndMayOpenANewChunk(targetFileWriters.get(fileIndex), alignedChunkWriter, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     return true;
@@ -172,8 +154,7 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     measurementPointCountArray[subTaskId] += pageHeader.getStatistics().getCount();
 
     // check chunk size and may open a new chunk
-    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(fileIndex), chunkWriter, true);
+    checkChunkSizeAndMayOpenANewChunk(targetFileWriters.get(fileIndex), chunkWriter, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     return true;

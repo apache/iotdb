@@ -368,7 +368,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
 
   /** Used for compaction to control the target chunk size. */
   public boolean checkIsChunkSizeOverThreshold(long threshold) {
-    if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+    if (timeChunkWriter.estimateMaxSeriesMemSize() >= threshold) {
       return true;
     }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {

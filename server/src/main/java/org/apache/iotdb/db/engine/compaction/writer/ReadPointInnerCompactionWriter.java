@@ -7,7 +7,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -16,7 +15,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    CompactionWriterUtils.writeDataPoint(
+    writeDataPoint(
         timestamp,
         value,
         chunkWriters[subTaskId],
@@ -35,7 +34,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       targetResource.updateStartTime(deviceId, timestamps.getStartTime());
       targetResource.updateEndTime(deviceId, timestamps.getEndTime());
     }
-    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, false);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, false);
     isEmptyFile = false;
   }
 }

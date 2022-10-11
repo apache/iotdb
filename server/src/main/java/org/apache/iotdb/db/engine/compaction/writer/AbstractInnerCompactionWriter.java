@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class AbstractInnerCompactionWriter implements ICompactionWriter {
+public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
   protected TsFileIOWriter fileWriter;
 
   protected boolean isEmptyFile;
@@ -53,7 +53,7 @@ public abstract class AbstractInnerCompactionWriter implements ICompactionWriter
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    CompactionWriterUtils.flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId]);
+    flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId]);
   }
 
   @Override

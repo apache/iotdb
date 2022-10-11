@@ -21,12 +21,11 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
-import org.apache.iotdb.db.engine.compaction.writer.ICompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   private final List<String> measurementList;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final QueryDataSource queryDataSource;
-  private final ICompactionWriter compactionWriter;
+  private final AbstractCompactionWriter compactionWriter;
   private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
 
@@ -57,7 +56,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       List<String> measurementList,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
-      ICompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       Map<String, MeasurementSchema> schemaMap,
       int taskId) {
     this.device = device;

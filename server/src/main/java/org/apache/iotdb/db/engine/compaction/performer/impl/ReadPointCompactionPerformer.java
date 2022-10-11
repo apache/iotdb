@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer
 import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.ICompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.ReadPointCrossCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.ReadPointInnerCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +103,7 @@ public class ReadPointCompactionPerformer
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
     sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
-    try (ICompactionWriter compactionWriter =
+    try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
@@ -146,7 +145,7 @@ public class ReadPointCompactionPerformer
   private void compactAlignedSeries(
       String device,
       MultiTsFileDeviceIterator deviceIterator,
-      ICompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
@@ -184,7 +183,7 @@ public class ReadPointCompactionPerformer
   private void compactNonAlignedSeries(
       String device,
       MultiTsFileDeviceIterator deviceIterator,
-      ICompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, InterruptedException, ExecutionException {
@@ -251,7 +250,7 @@ public class ReadPointCompactionPerformer
   }
 
   public static void writeWithReader(
-      ICompactionWriter writer,
+      AbstractCompactionWriter writer,
       IDataBlockReader reader,
       String device,
       int subTaskId,
@@ -277,7 +276,7 @@ public class ReadPointCompactionPerformer
     }
   }
 
-  private ICompactionWriter getCompactionWriter(
+  private AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)

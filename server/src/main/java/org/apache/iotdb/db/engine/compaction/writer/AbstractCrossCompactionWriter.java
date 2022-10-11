@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractCrossCompactionWriter implements ICompactionWriter {
+public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWriter {
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
   protected int[] measurementPointCountArray = new int[subTaskNum];
@@ -47,6 +47,8 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
   private int chunkGroupHeaderSize;
 
   protected List<TsFileResource> targetResources;
+
+  private long lastCheckIndex = 0;
 
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -100,13 +102,26 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    CompactionWriterUtils.flushChunkToFileWriter(
+    flushChunkToFileWriter(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
     seqFileIndexArray[subTaskId] = 0;
   }
 
   @Override
-  public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
+  public void write(long timestamp, Object value, int subTaskId) throws IOException {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
+    long curCheckIndex = ++measurementPointCountArray[subTaskId] / checkPoint;
+    writeDataPoint(
+        timestamp,
+        value,
+        chunkWriters[subTaskId],
+        curCheckIndex > lastCheckIndex ? targetFileWriters.get(fileIndex) : null,
+        true);
+    isDeviceExistedInTargetFiles[fileIndex] = true;
+    isEmptyFile[fileIndex] = false;
+    lastCheckIndex = curCheckIndex;
+  }
 
   @Override
   public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
@@ -152,8 +167,7 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
         && fileIndex != seqTsFileResources.size() - 1) {
       if (!hasFlushedCurrentChunk) {
         // flush chunk to current file before moving target file index
-        CompactionWriterUtils.flushChunkToFileWriter(
-            targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
+        flushChunkToFileWriter(targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
         hasFlushedCurrentChunk = true;
       }
       seqFileIndexArray[subTaskId] = ++fileIndex;
