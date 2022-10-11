@@ -413,13 +413,25 @@ public class LogicalPlanBuilder {
 
         if (crossGroupByExpressions != null) {
           curStep = AggregationStep.FINAL;
-          this.root =
-              createGroupByTLevelNode(
-                  Collections.singletonList(this.getRoot()),
-                  crossGroupByExpressions,
-                  curStep,
-                  groupByTimeParameter,
-                  scanOrder);
+          if (tagKeys != null) {
+            this.root =
+                createGroupByTagNode(
+                    tagKeys,
+                    tagValuesToGroupedTimeseriesOperands,
+                    crossGroupByExpressions.keySet(),
+                    Collections.singletonList(this.getRoot()),
+                    curStep,
+                    groupByTimeParameter,
+                    scanOrder);
+          } else {
+            this.root =
+                createGroupByTLevelNode(
+                    Collections.singletonList(this.getRoot()),
+                    crossGroupByExpressions,
+                    curStep,
+                    groupByTimeParameter,
+                    scanOrder);
+          }
         }
       } else {
         if (tagKeys != null) {

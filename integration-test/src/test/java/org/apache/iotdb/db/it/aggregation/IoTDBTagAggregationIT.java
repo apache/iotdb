@@ -44,29 +44,32 @@ import static org.junit.Assert.fail;
 public class IoTDBTagAggregationIT {
   private static final String[] DATASET =
       new String[] {
-        "create timeseries root.sg.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
-        "create timeseries root.sg.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
-        "create timeseries root.sg.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",
-        "create timeseries root.sg.d4.t with datatype=FLOAT tags(k1=k1v2, k2=k2v2);",
-        "create timeseries root.sg.d5.t with datatype=FLOAT tags(k1=k1v1);",
-        "create timeseries root.sg.d6.t with datatype=FLOAT tags(k2=k2v1);",
-        "create timeseries root.sg.d7.t with datatype=FLOAT;",
-        "create timeseries root.sg2.d8.t with datatype=TEXT tags(k3=k3v1);",
-        "insert into root.sg.d1(time, t) values(1, 1.1);",
-        "insert into root.sg.d2(time, t) values(1, 1.2);",
-        "insert into root.sg.d3(time, t) values(1, 1.3);",
-        "insert into root.sg.d4(time, t) values(1, 1.4);",
-        "insert into root.sg.d5(time, t) values(1, 1.5);",
-        "insert into root.sg.d6(time, t) values(1, 1.6);",
-        "insert into root.sg.d7(time, t) values(1, 1.7);",
-        "insert into root.sg2.d8(time, t) values(1, 'abc');",
-        "insert into root.sg.d1(time, t) values(10, 2.1);",
-        "insert into root.sg.d2(time, t) values(10, 3.2);",
-        "insert into root.sg.d3(time, t) values(10, 4.3);",
-        "insert into root.sg.d4(time, t) values(10, 5.4);",
-        "insert into root.sg.d5(time, t) values(10, 6.5);",
-        "insert into root.sg.d6(time, t) values(10, 7.6);",
-        "insert into root.sg.d7(time, t) values(10, 8.7);"
+        "set storage group to root.sg.a;",
+        "set storage group to root.sg.b;",
+        "set storage group to root.sg2.c;",
+        "create timeseries root.sg.a.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
+        "create timeseries root.sg.b.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
+        "create timeseries root.sg.a.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",
+        "create timeseries root.sg.b.d4.t with datatype=FLOAT tags(k1=k1v2, k2=k2v2);",
+        "create timeseries root.sg.a.d5.t with datatype=FLOAT tags(k1=k1v1);",
+        "create timeseries root.sg.b.d6.t with datatype=FLOAT tags(k2=k2v1);",
+        "create timeseries root.sg.a.d7.t with datatype=FLOAT;",
+        "create timeseries root.sg2.c.d8.t with datatype=TEXT tags(k3=k3v1);",
+        "insert into root.sg.a.d1(time, t) values(1, 1.1);",
+        "insert into root.sg.b.d2(time, t) values(1, 1.2);",
+        "insert into root.sg.a.d3(time, t) values(1, 1.3);",
+        "insert into root.sg.b.d4(time, t) values(1, 1.4);",
+        "insert into root.sg.a.d5(time, t) values(1, 1.5);",
+        "insert into root.sg.b.d6(time, t) values(1, 1.6);",
+        "insert into root.sg.a.d7(time, t) values(1, 1.7);",
+        "insert into root.sg2.c.d8(time, t) values(1, 'abc');",
+        "insert into root.sg.a.d1(time, t) values(10, 2.1);",
+        "insert into root.sg.b.d2(time, t) values(10, 3.2);",
+        "insert into root.sg.a.d3(time, t) values(10, 4.3);",
+        "insert into root.sg.b.d4(time, t) values(10, 5.4);",
+        "insert into root.sg.a.d5(time, t) values(10, 6.5);",
+        "insert into root.sg.b.d6(time, t) values(10, 7.6);",
+        "insert into root.sg.a.d7(time, t) values(10, 8.7);"
       };
 
   private static final double DELTA = 0.001D;
@@ -330,10 +333,73 @@ public class IoTDBTagAggregationIT {
   }
 
   @Test
+  public void testAlongWithSlidingWindow() {
+    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
+    // Expected result set:
+    // +-----------------------------+----+--------+
+    // |                         Time|  k1|count(t)|
+    // +-----------------------------+----+--------+
+    // |1970-01-01T08:00:00.000+08:00|k1v2|       4|
+    // |1970-01-01T08:00:00.000+08:00|k1v1|       6|
+    // |1970-01-01T08:00:00.000+08:00|NULL|       4|
+    // |1970-01-01T08:00:00.005+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.005+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.005+08:00|NULL|       2|
+    // |1970-01-01T08:00:00.010+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.010+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.010+08:00|NULL|       2|
+    // |1970-01-01T08:00:00.015+08:00|k1v2|       0|
+    // |1970-01-01T08:00:00.015+08:00|k1v1|       0|
+    // |1970-01-01T08:00:00.015+08:00|NULL|       0|
+    // +-----------------------------+----+--------+
+    long[][] expectedValue = new long[][] {{4L, 6L, 4L}, {2L, 3L, 2L}, {2L, 3L, 2L}, {0L, 0L, 0L}};
+    long[] expectedTime = new long[] {0L, 5L, 10L, 15L};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(query)) {
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        for (int i = 0; i < 4; i++) {
+          for (int j = 0; j < 3; j++) {
+            Assert.assertTrue(resultSet.next());
+            String tagValue = resultSet.getString("k1");
+            switch (tagValue) {
+              case "k1v2":
+                Assert.assertEquals(expectedTime[i], resultSet.getLong("Time"));
+                Assert.assertEquals(expectedValue[i][0], resultSet.getLong("count(t)"));
+                break;
+              case "k1v1":
+                Assert.assertEquals(expectedValue[i][1], resultSet.getLong("count(t)"));
+                break;
+              case "NULL":
+                Assert.assertEquals(expectedValue[i][2], resultSet.getLong("count(t)"));
+                break;
+              default:
+                fail("Unexpected tag value: " + tagValue);
+            }
+          }
+        }
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testAlongWithTimeAggregationAndOrdering() {
     String query =
         "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
     // Expected result set:
+    // +-----------------------------+----+--------+
+    // |                         Time|  k1|count(t)|
+    // +-----------------------------+----+--------+
+    // |1970-01-01T08:00:00.010+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.010+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.010+08:00|NULL|       2|
+    // |1970-01-01T08:00:00.000+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.000+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.000+08:00|NULL|       2|
+    // +-----------------------------+----+--------+
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(query)) {
