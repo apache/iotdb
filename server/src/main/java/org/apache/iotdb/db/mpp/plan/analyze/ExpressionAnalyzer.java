@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -52,7 +51,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -580,7 +578,8 @@ public class ExpressionAnalyzer {
   }
 
   public static Expression replaceRawPathWithGroupedPath(
-      Expression expression, Map<NodeRef<PartialPath>, PartialPath> rawPathToGroupedPathMap) {
+      Expression expression,
+      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
     if (expression instanceof TernaryExpression) {
       Expression firstExpression =
           replaceRawPathWithGroupedPath(
@@ -615,8 +614,8 @@ public class ExpressionAnalyzer {
       }
       return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath groupedPath =
-          rawPathToGroupedPathMap.get(NodeRef.of(((TimeSeriesOperand) expression).getPath()));
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+      PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
       return reconstructTimeSeriesOperand(groupedPath);
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return expression;

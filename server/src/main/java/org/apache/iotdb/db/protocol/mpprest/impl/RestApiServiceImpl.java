@@ -101,7 +101,8 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || result.status.code == TSStatusCode.NEED_REDIRECTION.getStatusCode())
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
@@ -137,7 +138,8 @@ public class RestApiServiceImpl extends RestApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -185,7 +187,8 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || result.status.code == TSStatusCode.NEED_REDIRECTION.getStatusCode())
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
