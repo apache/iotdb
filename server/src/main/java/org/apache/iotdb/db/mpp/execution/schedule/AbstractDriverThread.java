@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,12 +59,21 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         Thread.currentThread().interrupt();
         break;
       }
+
+      if (next == null) {
+        logger.error("DriverTask should never be null");
+        continue;
+      }
+
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
         execute(next);
       } catch (Throwable t) {
-        logger.error("execute failed", t);
-        if (next != null) {
+        // try-with-resource syntax will call close once after try block is done, so we need to
+        // reset the thread name here
+        try (SetThreadName fragmentInstanceName =
+            new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+          logger.error("[ExecuteFailed]", t);
           next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
           scheduler.toAborted(next);
         }

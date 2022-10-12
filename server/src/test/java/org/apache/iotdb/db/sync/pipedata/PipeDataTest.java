@@ -70,19 +70,19 @@ public class PipeDataTest {
       pipeData1.serialize(outputStream);
       outputStream.flush();
       DataInputStream inputStream = new DataInputStream(new FileInputStream(f1));
-      Assert.assertEquals(pipeData1, PipeData.deserialize(inputStream));
+      Assert.assertEquals(pipeData1, PipeData.createPipeData(inputStream));
       pipeData2.serialize(outputStream);
       outputStream.flush();
-      Assert.assertEquals(pipeData2, PipeData.deserialize(inputStream));
+      Assert.assertEquals(pipeData2, PipeData.createPipeData(inputStream));
       pipeData3.serialize(outputStream);
       outputStream.flush();
-      Assert.assertEquals(pipeData3, PipeData.deserialize(inputStream));
+      Assert.assertEquals(pipeData3, PipeData.createPipeData(inputStream));
       inputStream.close();
       outputStream.close();
 
-      Assert.assertEquals(pipeData1, PipeData.deserialize(pipeData1.serialize()));
-      Assert.assertEquals(pipeData2, PipeData.deserialize(pipeData2.serialize()));
-      Assert.assertEquals(pipeData3, PipeData.deserialize(pipeData3.serialize()));
+      Assert.assertEquals(pipeData1, PipeData.createPipeData(pipeData1.serialize()));
+      Assert.assertEquals(pipeData2, PipeData.createPipeData(pipeData2.serialize()));
+      Assert.assertEquals(pipeData3, PipeData.createPipeData(pipeData3.serialize()));
     } catch (Exception e) {
       logger.error(e.getMessage());
       Assert.fail();

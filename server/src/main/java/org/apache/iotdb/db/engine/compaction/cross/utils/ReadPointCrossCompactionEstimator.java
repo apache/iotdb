@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -25,12 +26,18 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimator {
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   // the max cost of reading source seq file among all source seq files of this cross compaction
   // task
   private long maxCostOfReadingSeqFile;
@@ -77,6 +84,12 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     // it means the max size of a timeseries in this file when reading all of its chunk into memory.
     // Not only reading chunk into chunk cache, but also need to deserialize data point into merge
     // reader, so we have to double the cost here.
+    if (fileInfo[0] == 0) { // If totalChunkNum ==0, i.e. this unSeq tsFile has no chunk.
+      logger.warn(
+          "calculateReadingUnseqFile(), find 1 empty unSeq tsFile: {}.",
+          unseqResource.getTsFilePath());
+      return 0;
+    }
     return 2 * concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
   }
 
@@ -93,8 +106,17 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
       // it is max aligned series num of one device when tsfile contains aligned series,
       // else is sub compaction task num.
       int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
-      long seqFileCost =
-          concurrentSeriesNum * (seqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
+      long seqFileCost = 0;
+      if (fileInfo[0] == 0) { // If totalChunkNum ==0, i.e. this seq tsFile has no chunk.
+        logger.warn(
+            "calculateReadingSeqFiles(), find 1 empty seq tsFile: {}.",
+            seqResource.getTsFilePath());
+        seqFileCost = 0;
+      } else {
+        seqFileCost =
+            concurrentSeriesNum * (seqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
+      }
+
       if (seqFileCost > maxCostOfReadingSeqFile) {
         // Only one seq file will be read at the same time.
         // not only reading chunk into chunk cache, but also need to deserialize data point into
@@ -121,16 +143,18 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
       // add seq file metadata size
       cost += reader.getFileMetadataSize();
       // add max chunk group size of this seq tsfile
-      cost +=
-          seqResource.getTsFileSize()
-              * maxSeqChunkNumInDeviceList.get(0).left
-              / maxSeqChunkNumInDeviceList.get(0).right;
+      int totalSeqChunkNum = maxSeqChunkNumInDeviceList.get(0).right;
+      if (totalSeqChunkNum > 0) {
+        cost +=
+            seqResource.getTsFileSize() * maxSeqChunkNumInDeviceList.get(0).left / totalSeqChunkNum;
+      }
     }
     // add max chunk group size of overlapped unseq tsfile
-    cost +=
-        unseqResource.getTsFileSize()
-            * maxUnseqChunkNumInDevice.left
-            / maxUnseqChunkNumInDevice.right;
+    int totalUnSeqChunkNum = maxUnseqChunkNumInDevice.right;
+    if (totalUnSeqChunkNum > 0) {
+      cost += unseqResource.getTsFileSize() * maxUnseqChunkNumInDevice.left / totalUnSeqChunkNum;
+    }
+
     return cost;
   }
 

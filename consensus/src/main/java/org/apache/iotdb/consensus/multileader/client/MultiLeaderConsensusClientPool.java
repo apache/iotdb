@@ -33,10 +33,36 @@ public class MultiLeaderConsensusClientPool {
 
   private MultiLeaderConsensusClientPool() {}
 
+  public static class SyncMultiLeaderServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, SyncMultiLeaderServiceClient> {
+    private final MultiLeaderConfig config;
+
+    public SyncMultiLeaderServiceClientPoolFactory(MultiLeaderConfig config) {
+      this.config = config;
+    }
+
+    @Override
+    public KeyedObjectPool<TEndPoint, SyncMultiLeaderServiceClient> createClientPool(
+        ClientManager<TEndPoint, SyncMultiLeaderServiceClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new SyncMultiLeaderServiceClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                  .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(
+                      config.getRpc().getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<SyncMultiLeaderServiceClient>().build().getConfig());
+    }
+  }
+
   public static class AsyncMultiLeaderServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncMultiLeaderServiceClient> {
 
     private final MultiLeaderConfig config;
+    private static final String MULTI_LEADER_CONSENSUS_CLIENT_POOL_THREAD_NAME =
+        "MultiLeaderConsensusClientPool";
 
     public AsyncMultiLeaderServiceClientPoolFactory(MultiLeaderConfig config) {
       this.config = config;
@@ -53,7 +79,8 @@ public class MultiLeaderConsensusClientPool {
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(
                       config.getRpc().getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              MULTI_LEADER_CONSENSUS_CLIENT_POOL_THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncMultiLeaderServiceClient>().build().getConfig());
     }
   }

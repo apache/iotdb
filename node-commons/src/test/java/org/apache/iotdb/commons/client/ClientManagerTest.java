@@ -447,7 +447,9 @@ public class ClientManagerTest {
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new AsyncDataNodeInternalServiceClient.Factory(
-              manager, new ClientFactoryProperty.Builder().build()),
+              manager,
+              new ClientFactoryProperty.Builder().build(),
+              "AsyncDataNodeInternalServiceClientPool"),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }

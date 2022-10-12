@@ -20,8 +20,10 @@ package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
@@ -149,7 +151,9 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         serialize();
       } finally {
-        serializeThread.submit(new SerializeTask());
+        if (!isClosed) {
+          serializeThread.submit(new SerializeTask());
+        }
       }
     }
 
@@ -230,12 +234,14 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       // update search index
       long searchIndex = DEFAULT_SEARCH_INDEX;
-      if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
-          || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
-        InsertNode insertNode = (InsertNode) walEntry.getValue();
-        if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
-          searchIndex = insertNode.getSearchIndex();
-          currentSearchIndex = insertNode.getSearchIndex();
+      if (walEntry.getType().needSearch()) {
+        if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
+          searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
+        } else {
+          searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
+        }
+        if (searchIndex != DEFAULT_SEARCH_INDEX) {
+          currentSearchIndex = searchIndex;
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
         }
       }
@@ -418,8 +424,8 @@ public class WALBuffer extends AbstractWALBuffer {
         currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(
-            "Fail to sync wal node-{}'s buffer, change system mode to read-only.", identifier, e);
-        config.setReadOnly(true);
+            "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -436,13 +442,11 @@ public class WALBuffer extends AbstractWALBuffer {
           }
         } catch (IOException e) {
           logger.error(
-              "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
-              identifier,
-              e);
+              "Fail to roll wal node-{}'s log writer, change system mode to error.", identifier, e);
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          config.setReadOnly(true);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -451,13 +455,13 @@ public class WALBuffer extends AbstractWALBuffer {
           forceSuccess = true;
         } catch (IOException e) {
           logger.error(
-              "Fail to fsync wal node-{}'s log writer, change system mode to read-only.",
+              "Fail to fsync wal node-{}'s log writer, change system mode to error.",
               identifier,
               e);
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          config.setReadOnly(true);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
 
@@ -555,6 +559,11 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @Override
   public boolean isAllWALEntriesConsumed() {
-    return walEntries.isEmpty();
+    buffersLock.lock();
+    try {
+      return walEntries.isEmpty() && workingBuffer.position() == 0 && syncingBuffer == null;
+    } finally {
+      buffersLock.unlock();
+    }
   }
 }

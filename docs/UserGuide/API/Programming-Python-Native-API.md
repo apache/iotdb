@@ -165,6 +165,7 @@ With less memory footprint and time cost of serialization, the insert performanc
    (if not, the default dtypes are also ok).
 
 ```python
+import numpy as np
 data_types_ = [
     TSDataType.BOOLEAN,
     TSDataType.INT32,
@@ -179,7 +180,7 @@ np_values_ = [
     np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
     np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
     np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
-    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"]),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(

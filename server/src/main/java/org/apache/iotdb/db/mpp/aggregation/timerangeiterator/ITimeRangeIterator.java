@@ -55,4 +55,6 @@ public interface ITimeRangeIterator {
    * @return minTime if leftCloseRightOpen, else maxTime.
    */
   long currentOutputTime();
+
+  long getTotalIntervalNum();
 }

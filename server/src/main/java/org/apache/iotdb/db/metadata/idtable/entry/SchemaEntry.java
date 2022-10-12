@@ -110,6 +110,15 @@ public class SchemaEntry implements ILastCacheContainer {
   }
 
   /**
+   * get disk pointer of ts from long value of schema
+   *
+   * @return disk pointer
+   */
+  public long getDiskPointer() {
+    return schema >> 25;
+  }
+
+  /**
    * get ts data type from long value of schema
    *
    * @return ts data type

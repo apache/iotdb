@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.plan.node.metadata.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -30,7 +31,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class DeleteTimeSeriesNodeSerdeTest {
@@ -38,10 +38,11 @@ public class DeleteTimeSeriesNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("DeleteTimeSeriesNode");
-    List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath("root.sg.d1.s1"));
-    pathList.add(new PartialPath("root.sg.d2.*"));
-    DeleteTimeSeriesNode deleteTimeSeriesNode = new DeleteTimeSeriesNode(planNodeId, pathList);
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.constructTree();
+    DeleteTimeSeriesNode deleteTimeSeriesNode = new DeleteTimeSeriesNode(planNodeId, patternTree);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deleteTimeSeriesNode.serialize(byteBuffer);
@@ -52,7 +53,9 @@ public class DeleteTimeSeriesNodeSerdeTest {
     Assert.assertEquals(planNodeId, deserializedNode.getPlanNodeId());
 
     deleteTimeSeriesNode = (DeleteTimeSeriesNode) deserializedNode;
-    List<PartialPath> deserializedPathList = deleteTimeSeriesNode.getPathList();
+    PathPatternTree deserializedPatternTree = deleteTimeSeriesNode.getPatternTree();
+    List<PartialPath> pathList = patternTree.getAllPathPatterns();
+    List<PartialPath> deserializedPathList = deserializedPatternTree.getAllPathPatterns();
     Assert.assertEquals(pathList.size(), deserializedPathList.size());
     for (int i = 0; i < pathList.size(); i++) {
       Assert.assertEquals(pathList.get(i), deserializedPathList.get(i));

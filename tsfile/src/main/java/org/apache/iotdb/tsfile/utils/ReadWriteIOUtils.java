@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -681,6 +682,38 @@ public class ReadWriteIOUtils {
       return null;
     }
     Map<String, String> map = new HashMap<>(length);
+    for (int i = 0; i < length; i++) {
+      // key
+      String key = readString(buffer);
+      // value
+      String value = readString(buffer);
+      map.put(key, value);
+    }
+    return map;
+  }
+
+  public static Map<String, String> readMap(InputStream inputStream) throws IOException {
+    int length = readInt(inputStream);
+    if (length == NO_BYTE_TO_READ) {
+      return null;
+    }
+    Map<String, String> map = new HashMap<>(length);
+    for (int i = 0; i < length; i++) {
+      // key
+      String key = readString(inputStream);
+      // value
+      String value = readString(inputStream);
+      map.put(key, value);
+    }
+    return map;
+  }
+
+  public static LinkedHashMap<String, String> readLinkedHashMap(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    if (length == NO_BYTE_TO_READ) {
+      return null;
+    }
+    LinkedHashMap<String, String> map = new LinkedHashMap<>(length);
     for (int i = 0; i < length; i++) {
       // key
       String key = readString(buffer);

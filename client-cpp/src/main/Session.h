@@ -42,6 +42,8 @@
 #include <thrift/transport/TBufferTransports.h>
 #include "IClientRPCService.h"
 
+using namespace std;
+
 using ::apache::thrift::protocol::TBinaryProtocol;
 using ::apache::thrift::protocol::TCompactProtocol;
 using ::apache::thrift::transport::TSocket;
@@ -51,54 +53,76 @@ using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
-class IoTDBConnectionException : public std::exception {
+
+enum LogLevelType {
+    LEVEL_DEBUG = 0,
+    LEVEL_INFO,
+    LEVEL_WARN,
+    LEVEL_ERROR
+};
+extern LogLevelType LOG_LEVEL;
+
+#define log_debug(fmt,...) do {if(LOG_LEVEL <= LEVEL_DEBUG) {string s=string("[DEBUG] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
+#define log_info(fmt,...)  do {if(LOG_LEVEL <= LEVEL_INFO)  {string s=string("[INFO]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
+#define log_warn(fmt,...)  do {if(LOG_LEVEL <= LEVEL_WARN)  {string s=string("[WARN]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
+#define log_error(fmt,...) do {if(LOG_LEVEL <= LEVEL_ERROR) {string s=string("[ERROR] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
+
+
+class IoTDBException : public std::exception {
 public:
-    IoTDBConnectionException() : message() {}
+    IoTDBException() {}
 
-    explicit IoTDBConnectionException(const char *m) : message(m) {}
+    explicit IoTDBException(const std::string &m) : message(m) {}
 
-    explicit IoTDBConnectionException(std::string m) : message(std::move(m)) {}
+    explicit IoTDBException(const char *m) : message(m) {}
 
-    const char *what() const noexcept override {
+    virtual const char *what() const noexcept override {
         return message.c_str();
     }
-
 private:
     std::string message;
 };
 
-class BatchExecutionException : public std::exception {
+class IoTDBConnectionException : public IoTDBException {
 public:
-    BatchExecutionException() : message() {}
+    IoTDBConnectionException() {}
 
-    explicit BatchExecutionException(const char *m) : message(m) {}
+    explicit IoTDBConnectionException(const char *m) : IoTDBException(m) {}
 
-    BatchExecutionException(std::string m) : message(std::move(m)) {}
+    explicit IoTDBConnectionException(const std::string &m) : IoTDBException(m) {}
+};
 
-    BatchExecutionException(std::vector<TSStatus> statusList) : statusList(std::move(statusList)) {}
+class ExecutionException : public IoTDBException {
+public:
+    ExecutionException() {}
 
-    BatchExecutionException(std::vector<TSStatus> statusList, std::string m) : statusList(std::move(statusList)),
-                                                                               message(std::move(m)) {}
+    explicit ExecutionException(const char *m) : IoTDBException(m) {}
 
-    const char *what() const noexcept override {
-        return message.c_str();
-    }
+    explicit ExecutionException(const std::string &m) : IoTDBException(m) {}
+};
+
+class BatchExecutionException : public IoTDBException {
+public:
+    BatchExecutionException() {}
+
+    explicit BatchExecutionException(const char *m) : IoTDBException(m) {}
+
+    explicit BatchExecutionException(const std::string &m) : IoTDBException(m) {}
+
+    explicit BatchExecutionException(const std::vector <TSStatus> &statusList) : statusList(statusList) {}
+
+    BatchExecutionException(const std::string &m, const std::vector <TSStatus> &statusList) : IoTDBException(m), statusList(statusList) {}
 
     std::vector<TSStatus> statusList;
-private:
-    std::string message;
-
 };
 
-class UnSupportedDataTypeException : public std::exception {
-private:
-    std::string message;
+class UnSupportedDataTypeException : public IoTDBException {
 public:
-    UnSupportedDataTypeException() : message() {}
+    UnSupportedDataTypeException() {}
 
-    UnSupportedDataTypeException(const char *m) : message(m) {}
+    explicit UnSupportedDataTypeException(const char *m) : IoTDBException(m) {}
 
-    explicit UnSupportedDataTypeException(const std::string &m) : message("UnSupported dataType: " + m) {}
+    explicit UnSupportedDataTypeException(const std::string &m) : IoTDBException("UnSupported dataType: " + m) {}
 };
 
 namespace Version {
@@ -248,8 +272,17 @@ public:
         checkBigEndian();
     }
 
-    explicit MyStringBuffer(std::string str) : str(std::move(str)), pos(0) {
+    explicit MyStringBuffer(const std::string& str) : str(str), pos(0) {
         checkBigEndian();
+    }
+
+    void reserve(size_t n) {
+        str.reserve(n);
+    }
+
+    void clear() {
+        str.clear();
+        pos = 0;
     }
 
     bool hasRemaining() {
@@ -260,7 +293,7 @@ public:
         return *(int *) getOrderedByte(4);
     }
 
-    int64_t getLong() {
+    int64_t getInt64() {
         return *(int64_t *) getOrderedByte(8);
     }
 
@@ -291,7 +324,7 @@ public:
         putOrderedByte((char *) &ins, 4);
     }
 
-    void putLong(int64_t ins) {
+    void putInt64(int64_t ins) {
         putOrderedByte((char *) &ins, 8);
     }
 
@@ -313,7 +346,7 @@ public:
     }
 
     void putString(const std::string &ins) {
-        putInt(ins.size());
+        putInt((int)(ins.size()));
         str += ins;
     }
 
@@ -364,20 +397,33 @@ private:
 class BitMap {
 public:
     /** Initialize a BitMap with given size. */
-    explicit BitMap(size_t size) {
+    explicit BitMap(size_t size = 0) {
+        resize(size);
+    }
+
+    /** change the size  */
+    void resize(size_t size) {
         this->size = size;
         this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
-        std::fill(bits.begin(), bits.end(), (char) 0);
+        reset();
     }
 
     /** mark as 1 at the given bit position. */
-    void mark(int position) {
-        bits[position >> 3] |= BIT_UTIL[position % 8];
+    bool mark(size_t position) {
+        if (position >= size)
+            return false;
+
+        bits[position >> 3] |= (char) 1 << (position % 8);
+        return true;
     }
 
     /** mark as 0 at the given bit position. */
-    void unmark(int position) {
-        bits[position >> 3] &= UNMARK_BIT_UTIL[position % 8];
+    bool unmark(size_t position) {
+        if (position >= size)
+            return false;
+
+        bits[position >> 3] &= ~((char) 1 << (position % 8));
+        return true;
     }
 
     /** mark as 1 at all positions. */
@@ -391,20 +437,23 @@ public:
     }
 
     /** returns the value of the bit with the specified index. */
-    bool isMarked(int position) {
-        return (bits[position >> 3] & BIT_UTIL[position % 8]) != 0;
+    bool isMarked(size_t position) const {
+        if (position >= size)
+            return false;
+
+        return (bits[position >> 3] & ((char) 1 << (position % 8))) != 0;
     }
 
     /** whether all bits are zero, i.e., no Null value */
-    bool isAllUnmarked() {
-        int j;
+    bool isAllUnmarked() const {
+        size_t j;
         for (j = 0; j < size >> 3; j++) {
             if (bits[j] != (char) 0) {
                 return false;
             }
         }
         for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & BIT_UTIL[j]) != 0) {
+            if ((bits[size >> 3] & ((char) 1 << j)) != 0) {
                 return false;
             }
         }
@@ -412,46 +461,32 @@ public:
     }
 
     /** whether all bits are one, i.e., all are Null */
-    bool isAllMarked() {
-        int j;
+    bool isAllMarked() const {
+        size_t j;
         for (j = 0; j < size >> 3; j++) {
             if (bits[j] != (char) 0XFF) {
                 return false;
             }
         }
         for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & BIT_UTIL[j]) == 0) {
+            if ((bits[size >> 3] & ((char) 1 << j)) == 0) {
                 return false;
             }
         }
         return true;
     }
 
-    std::vector<char> getByteArray() {
+    const std::vector<char>& getByteArray() const {
         return this->bits;
     }
 
-    size_t getSize() {
+    size_t getSize() const {
         return this->size;
     }
 
 private:
-    std::vector<char> BIT_UTIL = {
-            (char) 1, (char) 2, (char) 4, (char) 8, (char) 16, (char) 32, (char) 64, (char) -128
-    };
-    std::vector<char> UNMARK_BIT_UTIL = {
-            (char) 0XFE, // 11111110
-            (char) 0XFD, // 11111101
-            (char) 0XFB, // 11111011
-            (char) 0XF7, // 11110111
-            (char) 0XEF, // 11101111
-            (char) 0XDF, // 11011111
-            (char) 0XBF, // 10111111
-            (char) 0X7F // 01111111
-    };
-
-    std::vector<char> bits;
     size_t size;
+    std::vector<char> bits;
 };
 
 class Field {
@@ -487,29 +522,33 @@ public:
  */
 class Tablet {
 private:
-    static const int DEFAULT_SIZE = 1024;
+    static const int DEFAULT_ROW_SIZE = 1024;
+
+    void createColumns();
+    void deleteColumns();
+
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
     std::vector<int64_t> timestamps;   // timestamps in this tablet
-    std::vector<std::vector<std::string>> values; // each object is a primitive type array, which represents values of one measurement
-    std::vector<std::unique_ptr<BitMap>> bitMaps; // each bitmap represents the existence of each value in the current column
-    int rowSize;    //the number of rows to include in this tablet
-    int maxRowNumber;   // the maximum number of rows for this tablet
+    std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
+    std::vector<BitMap> bitMaps; // each bitmap represents the existence of each value in the current column
+    size_t rowSize;    //the number of rows to include in this tablet
+    size_t maxRowNumber;   // the maximum number of rows for this tablet
     bool isAligned;   // whether this tablet store data of aligned timeseries or not
 
     Tablet() = default;
 
     /**
-   * Return a tablet with default specified row number. This is the standard
-   * constructor (all Tablet should be the same size).
-   *
-   * @param deviceId   the name of the device specified to be written in
-   * @param timeseries the list of measurement schemas for creating the tablet
-   */
+    * Return a tablet with default specified row number. This is the standard
+    * constructor (all Tablet should be the same size).
+    *
+    * @param deviceId   the name of the device specified to be written in
+    * @param timeseries the list of measurement schemas for creating the tablet
+    */
     Tablet(const std::string &deviceId,
            const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
-        Tablet(deviceId, timeseries, DEFAULT_SIZE);
+        Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE);
     }
 
     /**
@@ -523,27 +562,36 @@ public:
      * @param maxRowNumber the maximum number of rows for this tablet
      */
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
+           size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
                                                         maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
-        // create value columns and bitMaps
+        // create value columns
         values.resize(schemas.size());
+        createColumns();
+        // create bitMaps
         bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
-            values[i].resize(maxRowNumber);
-            bitMaps[i] = std::unique_ptr<BitMap>(new BitMap(maxRowNumber));
+            bitMaps[i].resize(maxRowNumber);
         }
         this->rowSize = 0;
     }
 
+    ~Tablet() {
+        try {
+            deleteColumns();
+        } catch (exception &e) {
+            log_debug(string("Tablet::~Tablet(), ") + e.what());
+        }
+    }
+
+    void addValue(size_t schemaId, size_t rowIndex, void *value);
+
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
 
-    void createColumns();
+    size_t getTimeBytesSize();
 
-    int getTimeBytesSize();
-
-    int getValueByteSize(); // total byte size that values occupies
+    size_t getValueByteSize(); // total byte size that values occupies
 
     void setAligned(bool isAligned);
 };
@@ -560,7 +608,7 @@ public:
     int64_t timestamp;
     std::vector<Field> fields;
 
-    RowRecord(int64_t timestamp) {
+    explicit RowRecord(int64_t timestamp) {
         this->timestamp = timestamp;
     }
 
@@ -592,34 +640,29 @@ public:
             }
             TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType) {
-                case TSDataType::BOOLEAN: {
-                    std::string field = fields[i].boolV ? "true" : "false";
-                    ret.append(field);
+                case TSDataType::BOOLEAN:
+                    ret.append(fields[i].boolV ? "true" : "false");
                     break;
-                }
-                case TSDataType::INT32: {
+                case TSDataType::INT32:
                     ret.append(std::to_string(fields[i].intV));
                     break;
-                }
-                case TSDataType::INT64: {
+                case TSDataType::INT64:
                     ret.append(std::to_string(fields[i].longV));
                     break;
-                }
-                case TSDataType::FLOAT: {
+                case TSDataType::FLOAT:
                     ret.append(std::to_string(fields[i].floatV));
                     break;
-                }
-                case TSDataType::DOUBLE: {
+                case TSDataType::DOUBLE:
                     ret.append(std::to_string(fields[i].doubleV));
                     break;
-                }
-                case TSDataType::TEXT: {
+                case TSDataType::TEXT:
                     ret.append(fields[i].stringV);
                     break;
-                }
-                case TSDataType::NULLTYPE: {
+                case TSDataType::NULLTYPE:
                     ret.append("NULL");
-                }
+                    break;
+                default:
+                    break;
             }
         }
         ret.append("\n");
@@ -655,9 +698,9 @@ private:
     char *currentBitmap = nullptr; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
-public:
-    SessionDataSet() {}
+    bool operationIsOpen = false;
 
+public:
     SessionDataSet(const std::string &sql,
                    const std::vector<std::string> &columnNameList,
                    const std::vector<std::string> &columnTypeList,
@@ -673,11 +716,11 @@ public:
         this->client = client;
         this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
-        this->columnSize = columnNameList.size();
+        this->columnSize = (int)columnNameList.size();
         this->isIgnoreTimeStamp = isIgnoreTimeStamp;
 
         // column name -> column location
-        for (size_t i = 0; i < columnNameList.size(); i++) {
+        for (int i = 0; i < (int) columnNameList.size(); i++) {
             std::string name = columnNameList[i];
             if (this->columnMap.find(name) != this->columnMap.end()) {
                 duplicateLocation[i] = columnMap[name];
@@ -700,9 +743,17 @@ public:
             }
         }
         this->tsQueryDataSet = queryDataSet;
+
+        operationIsOpen = true;
     }
 
     ~SessionDataSet() {
+        try {
+            closeOperationHandle();
+        } catch (exception &e) {
+            log_debug(string("SessionDataSet::~SessionDataSet(), ") + e.what());
+        }
+
         if (currentBitmap != nullptr) {
             delete[] currentBitmap;
             currentBitmap = nullptr;
@@ -723,26 +774,12 @@ public:
 
     RowRecord *next();
 
-    void closeOperationHandle();
+    void closeOperationHandle(bool forceClose = false);
 };
-
-template<typename T>
-std::vector<T> sortList(const std::vector<T> &valueList, const int *index, int indexLength) {
-    std::vector<T> sortedValues(valueList.size());
-    for (int i = 0; i < indexLength; i++) {
-        sortedValues[i] = valueList[index[i]];
-    }
-    return sortedValues;
-}
 
 class TemplateNode {
 public:
-
-    TemplateNode() = default;
-
-    explicit TemplateNode(std::string name_) {
-        this->name_ = std::move(name_);
-    }
+    explicit TemplateNode(const std::string &name) : name_(name) {}
 
     const std::string &getName() const {
         return name_;
@@ -769,8 +806,8 @@ private:
 class MeasurementNode : public TemplateNode {
 public:
 
-    MeasurementNode(std::string name_, TSDataType::TSDataType data_type_, TSEncoding::TSEncoding encoding_,
-                    CompressionType::CompressionType compression_type_) : TemplateNode(std::move(name_)) {
+    MeasurementNode(const std::string &name_, TSDataType::TSDataType data_type_, TSEncoding::TSEncoding encoding_,
+                    CompressionType::CompressionType compression_type_) : TemplateNode(name_) {
         this->data_type_ = data_type_;
         this->encoding_ = encoding_;
         this->compression_type_ = compression_type_;
@@ -803,9 +840,7 @@ private:
 class InternalNode : public TemplateNode {
 public:
 
-    InternalNode(std::string name_, bool is_aligned_) : TemplateNode(std::move(name_)) {
-        this->is_aligned_ = is_aligned_;
-    }
+    InternalNode(const std::string &name, bool is_aligned) : TemplateNode(name), is_aligned_(is_aligned) {}
 
     void addChild(const InternalNode &node) {
         if (this->children_.count(node.getName())) {
@@ -851,10 +886,7 @@ namespace TemplateQueryType {
 class Template {
 public:
 
-    Template(std::string name_, bool is_aligned_) {
-        this->name_ = std::move(name_);
-        this->is_aligned_ = is_aligned_;
-    }
+    Template(const std::string &name, bool is_aligned) : name_(name), is_aligned_(is_aligned) {}
 
     const std::string &getName() const {
         return name_;
@@ -904,13 +936,13 @@ private:
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
 
-    bool checkSorted(const Tablet &tablet);
+    static bool checkSorted(const Tablet &tablet);
 
-    bool checkSorted(const std::vector<int64_t> &times);
+    static bool checkSorted(const std::vector<int64_t> &times);
 
-    void sortTablet(Tablet &tablet);
+    static void sortTablet(Tablet &tablet);
 
-    void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
+    static void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
 
     std::string getTimeZone();
 
@@ -973,6 +1005,8 @@ public:
     }
 
     ~Session();
+
+    int64_t getSessionId();
 
     void open();
 
@@ -1046,6 +1080,10 @@ public:
 
     void insertTablet(Tablet &tablet, bool sorted);
 
+    static void buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted);
+
+    void insertTablet(const TSInsertTabletReq &request);
+
     void insertAlignedTablet(Tablet &tablet);
 
     void insertAlignedTablet(Tablet &tablet, bool sorted);
@@ -1054,9 +1092,7 @@ public:
 
     void insertTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
 
-    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets);
-
-    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
+    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted = false);
 
     void testInsertRecord(const std::string &deviceId, int64_t time,
                           const std::vector<std::string> &measurements,
@@ -1154,6 +1190,8 @@ public:
     std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name);
 
     std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name, const std::string &pattern);
+
+    bool checkTemplateExists(const std::string &template_name);
 };
 
 #endif // IOTDB_SESSION_H

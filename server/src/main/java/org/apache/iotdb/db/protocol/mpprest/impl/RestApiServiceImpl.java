@@ -42,9 +42,8 @@ import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.mpprest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.mpprest.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import io.airlift.concurrent.SetThreadName;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
@@ -102,13 +101,14 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || result.status.code == TSStatusCode.NEED_REDIRECTION.getStatusCode())
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
-                      .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                      .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                      .code(result.status.getCode())
+                      .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -138,12 +138,13 @@ public class RestApiServiceImpl extends RestApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                    .code(result.status.getCode())
+                    .message(result.status.getMessage()))
             .build();
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -186,13 +187,14 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || result.status.code == TSStatusCode.NEED_REDIRECTION.getStatusCode())
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
-                      .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                      .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+                      .code(result.status.getCode())
+                      .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

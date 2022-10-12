@@ -20,14 +20,18 @@ package org.apache.iotdb.commons.cluster;
 
 /** Node status for showing cluster */
 public enum NodeStatus {
-  // Node registered
-  Registered("Registered"),
-  // Node online ,right now Online is Running
-  Online("Online"),
-  // Node running properly
+  /** Node running properly */
   Running("Running"),
-  // Node connection failure
-  Unknown("Unknown");
+
+  /** Node connection failure */
+  Unknown("Unknown"),
+
+  /** Node is in removing */
+  Removing("Removing"),
+
+  /** Only query statements are permitted */
+  ReadOnly("ReadOnly");
+  public static final String DISK_FULL = "DiskFull";
 
   private final String status;
 
@@ -37,5 +41,19 @@ public enum NodeStatus {
 
   public String getStatus() {
     return status;
+  }
+
+  public static NodeStatus parse(String status) {
+    for (NodeStatus nodeStatus : NodeStatus.values()) {
+      if (nodeStatus.status.equals(status)) {
+        return nodeStatus;
+      }
+    }
+    throw new RuntimeException(String.format("NodeStatus %s doesn't exist.", status));
+  }
+
+  public static boolean isNormalStatus(NodeStatus status) {
+    // Currently, the only normal status is Running
+    return status.equals(NodeStatus.Running);
   }
 }

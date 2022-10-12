@@ -185,7 +185,7 @@ public class IoTDBFlushQueryMergeIT {
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
         String expectedMsg =
-            "Storage group is not set for current seriesPath: [root.notExistGroup1,root.notExistGroup2]";
+            "Storage group is not set for current seriesPath: [root.notExistGroup2,root.notExistGroup1]";
         sqe.printStackTrace();
         Assert.assertTrue(sqe.getMessage().contains(expectedMsg));
       }

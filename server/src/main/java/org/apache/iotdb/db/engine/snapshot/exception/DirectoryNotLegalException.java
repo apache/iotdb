@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.engine.snapshot.exception;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class DirectoryNotLegalException extends IoTDBException {
+public class DirectoryNotLegalException extends Exception {
   public DirectoryNotLegalException(String message) {
-    super(message, TSStatusCode.SNAPSHOT_DIR_NOT_LEGAL.getStatusCode());
+    super(message);
   }
 }

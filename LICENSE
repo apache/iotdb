@@ -207,7 +207,7 @@
 The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
 which is under Apache License 2.0:
 
-./.mvn/wrapper/MavenWrapperDownloader.java
+mvnw files from https://github.com/apache/maven-wrapper Apache 2.0
 
 --------------------------------------------------------------------------------
 

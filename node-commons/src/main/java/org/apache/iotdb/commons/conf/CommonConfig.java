@@ -18,11 +18,18 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
+  private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
   private String openIdProviderUrl = "";
@@ -63,6 +70,15 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
+  /** WAL directories */
+  private String[] walDirs = {
+    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
+  };
+
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
@@ -74,12 +90,43 @@ public class CommonConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
+  /** whether to use thrift compression. */
+  private boolean isRpcThriftCompressionEnabled = false;
+
+  /** What will the system do when unrecoverable error occurs. */
+  private HandleSystemErrorStrategy handleSystemErrorStrategy =
+      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
+
+  /** Status of current system. */
+  private volatile NodeStatus status = NodeStatus.Running;
+
+  private volatile String statusReason = null;
+
+  /** Disk Monitor */
+  private double diskSpaceWarningThreshold = 5.0;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
+    syncFolder = addHomeDir(syncFolder, homeDir);
+    for (int i = 0; i < walDirs.length; i++) {
+      walDirs[i] = addHomeDir(walDirs[i], homeDir);
+    }
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -165,6 +212,22 @@ public class CommonConfig {
     this.procedureWalFolder = procedureWalFolder;
   }
 
+  public String getSyncFolder() {
+    return syncFolder;
+  }
+
+  public void setSyncFolder(String syncFolder) {
+    this.syncFolder = syncFolder;
+  }
+
+  public String[] getWalDirs() {
+    return walDirs;
+  }
+
+  public void setWalDirs(String[] walDirs) {
+    this.walDirs = walDirs;
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -179,5 +242,87 @@ public class CommonConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  }
+
+  HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
+    return handleSystemErrorStrategy;
+  }
+
+  void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
+    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
+  }
+
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
+  }
+
+  public double getDiskSpaceWarningThreshold() {
+    return diskSpaceWarningThreshold;
+  }
+
+  public void setDiskSpaceWarningThreshold(double diskSpaceWarningThreshold) {
+    this.diskSpaceWarningThreshold = diskSpaceWarningThreshold;
+  }
+
+  public boolean isReadOnly() {
+    return status == NodeStatus.ReadOnly;
+  }
+
+  public NodeStatus getNodeStatus() {
+    return status;
+  }
+
+  public void setNodeStatusToShutdown() {
+    logger.info("System will reject write operations when shutting down.");
+    this.status = NodeStatus.ReadOnly;
+  }
+
+  public void setNodeStatus(NodeStatus newStatus) {
+    logger.info("Set system mode from {} to {}.", status, newStatus);
+    this.status = newStatus;
+
+    switch (newStatus) {
+      case ReadOnly:
+        logger.error(
+            "Change system status to ReadOnly! Only query statements are permitted!",
+            new RuntimeException("System mode is set to READ_ONLY"));
+        break;
+      case Removing:
+        logger.info(
+            "Change system status to Removing! The current Node is being removed from cluster!");
+        break;
+    }
+  }
+
+  public String getStatusReason() {
+    return statusReason;
+  }
+
+  public void setStatusReason(String statusReason) {
+    this.statusReason = statusReason;
   }
 }

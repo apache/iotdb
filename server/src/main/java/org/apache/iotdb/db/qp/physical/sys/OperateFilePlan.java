@@ -33,6 +33,7 @@ public class OperateFilePlan extends PhysicalPlan {
   private boolean autoCreateSchema;
   private int sgLevel;
   private boolean verifyMetadata;
+  private boolean deleteAfterLoad;
 
   public OperateFilePlan(File file, OperatorType operatorType) {
     super(operatorType);
@@ -53,12 +54,14 @@ public class OperateFilePlan extends PhysicalPlan {
       OperatorType operatorType,
       boolean autoCreateSchema,
       int sgLevel,
-      boolean verifyMetadata) {
+      boolean verifyMetadata,
+      boolean deleteAfterLoad) {
     super(operatorType);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
     this.verifyMetadata = verifyMetadata;
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
   public OperateFilePlan(File file, File targetDir, OperatorType operatorType) {
@@ -90,6 +93,10 @@ public class OperateFilePlan extends PhysicalPlan {
 
   public boolean getVerifyMetadata() {
     return verifyMetadata;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return deleteAfterLoad;
   }
 
   @Override

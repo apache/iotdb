@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
@@ -44,17 +46,23 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private static long memorySizeForWrite = config.getAllocateMemoryForWrite();
+  private long memorySizeForWrite;
+  private long memorySizeForCompaction;
   private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
+  private AtomicLong compactionMemoryCost = new AtomicLong(0L);
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-  private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  private double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+  private double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
+
+  private SystemInfo() {
+    allocateWriteMemory();
+  }
 
   /**
    * Report current mem cost of storage group to system. Called when the memory of storage group
@@ -92,7 +100,7 @@ public class SystemInfo {
     } else {
       logger.info(
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}).",
-          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       rejected = true;
@@ -132,13 +140,13 @@ public class SystemInfo {
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
-          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-            dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
+                dataRegionInfo.getDataRegion().getStorageGroupName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -147,7 +155,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
+              dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -155,7 +163,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
+              dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -169,6 +177,35 @@ public class SystemInfo {
 
   public synchronized void resetFlushingMemTableCost(long flushingMemTableCost) {
     this.flushingMemTablesCost -= flushingMemTableCost;
+  }
+
+  public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
+    long originSize = this.compactionMemoryCost.get();
+    while (originSize + memoryCost > memorySizeForCompaction
+        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+      Thread.sleep(100);
+      originSize = this.compactionMemoryCost.get();
+    }
+  }
+
+  public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
+    this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
+  }
+
+  public long getMemorySizeForCompaction() {
+    return memorySizeForCompaction;
+  }
+
+  public void allocateWriteMemory() {
+    memorySizeForWrite =
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
+    memorySizeForCompaction =
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+  }
+
+  @TestOnly
+  public void setMemorySizeForCompaction(long size) {
+    memorySizeForCompaction = size;
   }
 
   private void logCurrentTotalSGMemory() {

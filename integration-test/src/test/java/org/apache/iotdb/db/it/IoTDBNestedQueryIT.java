@@ -108,7 +108,7 @@ public class IoTDBNestedQueryIT {
                 "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%d,%d,%s)", i, i, i, i));
         statement.execute(
             (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i, i)));
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -371,6 +371,7 @@ public class IoTDBNestedQueryIT {
         statement.executeQuery(query);
       } catch (SQLException e) {
         Assert.assertTrue(
+            e.getMessage(),
             e.getMessage()
                 .contains("The argument of the aggregation function must be a time series."));
       }

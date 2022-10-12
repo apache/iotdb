@@ -43,10 +43,10 @@ import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.mpprest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.mpprest.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.base.Joiner;
-import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.ws.rs.core.Response;
@@ -124,7 +124,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -186,7 +187,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -242,7 +244,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
-        if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return Response.ok()
               .entity(
                   new ExecutionStatus()

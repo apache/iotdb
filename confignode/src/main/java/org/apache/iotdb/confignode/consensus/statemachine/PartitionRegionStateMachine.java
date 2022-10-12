@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -37,10 +38,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 
-/** Statemachine for PartitionRegion */
-public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
+/** StateMachine for PartitionRegion */
+public class PartitionRegionStateMachine
+    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
   private final ConfigPlanExecutor executor;
@@ -70,14 +71,21 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
-        LOGGER.error("Deserialization error for write plan : {}", request, e);
+      } catch (Throwable e) {
+        LOGGER.error(
+            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            request,
+            request.serializeToByteBuffer(),
+            e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
     } else {
-      LOGGER.error("Unexpected write plan : {}", request);
+      LOGGER.error(
+          "Unexpected write plan, request: {}, bytebuffer: {}",
+          request,
+          request.serializeToByteBuffer());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return write(plan);
@@ -101,7 +109,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
+      } catch (Throwable e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }
@@ -141,13 +149,15 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (currentNode.equals(newLeader)) {
       LOGGER.info("Current node {} becomes Leader", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().start();
+      configManager.getLoadManager().startLoadBalancingService();
+      configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
           "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stop();
+      configManager.getLoadManager().stopLoadBalancingService();
+      configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
     }
   }
@@ -160,5 +170,28 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return RetryPolicy.super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return RetryPolicy.super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return RetryPolicy.super.getSleepTime();
   }
 }

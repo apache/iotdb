@@ -244,14 +244,15 @@ The global configuration of cluster is in ConfigNode.
 |Default| Infinity |
 |Effective|After restarting system|
 
-* time\_partition\_interval
+* time\_partition\_interval\_for\_routing
 
-|Name| time\_partition\_interval |
-|:---:|:---|
+|Name| time\_partition\_interval\_for\_routing                       |
+|:---:|:--------------------------------------------------------------|
 |Description| Time partition interval of data when ConfigNode allocate data |
-|Type| Long |
-|Default| 604800 |
-|Effective|Only allowed to be modified in first start up|
+|Type| Long                                                          |
+|Unit| ms |
+|Default| 86400000                                                      |
+|Effective| Only allowed to be modified in first start up                 |
 
 
 ### Data Directory

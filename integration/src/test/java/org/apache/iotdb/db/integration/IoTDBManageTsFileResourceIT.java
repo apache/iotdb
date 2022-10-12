@@ -54,8 +54,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  private double prevTimeIndexMemoryProportion;
-  private double prevTimeIndexMemoryThreshold;
+  private long prevTimeIndexMemoryThreshold;
   private int prevCompactionThreadNum;
 
   private static String[] unSeqSQLs =
@@ -89,7 +88,7 @@ public class IoTDBManageTsFileResourceIT {
   @Before
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
-    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
     prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -97,8 +96,6 @@ public class IoTDBManageTsFileResourceIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    prevTimeIndexMemoryThreshold =
-        prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     CONFIG.setConcurrentCompactionThread(prevCompactionThreadNum);
   }

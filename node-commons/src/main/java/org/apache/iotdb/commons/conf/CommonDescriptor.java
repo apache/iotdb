@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,5 +80,40 @@ public class CommonDescriptor {
     config.setDefaultTTL(
         Long.parseLong(
             properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
+    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
+
+    config.setWalDirs(properties.getProperty("wal_dirs", config.getWalDirs()[0]).split(","));
+
+    config.setRpcThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "rpc_thrift_compression_enable",
+                String.valueOf(config.isRpcThriftCompressionEnabled()))));
+
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config.setSelectorNumOfClientManager(
+        Integer.parseInt(
+            properties.getProperty(
+                "selector_thread_nums_of_client_manager",
+                String.valueOf(config.getSelectorNumOfClientManager()))));
+
+    config.setHandleSystemErrorStrategy(
+        HandleSystemErrorStrategy.valueOf(
+            properties.getProperty(
+                "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
+
+    config.setDiskSpaceWarningThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold()))));
+  }
+
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
 }

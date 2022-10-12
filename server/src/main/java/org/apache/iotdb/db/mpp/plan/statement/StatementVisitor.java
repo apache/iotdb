@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -39,9 +40,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -55,6 +58,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -67,8 +71,19 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 /**
  * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
@@ -163,6 +178,19 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showFunctionsStatement, context);
   }
 
+  // Trigger
+  public R visitCreateTrigger(CreateTriggerStatement createTriggerStatement, C context) {
+    return visitStatement(createTriggerStatement, context);
+  }
+
+  public R visitDropTrigger(DropTriggerStatement dropTriggerStatement, C context) {
+    return visitStatement(dropTriggerStatement, context);
+  }
+
+  public R visitShowTriggers(ShowTriggersStatement showTriggersStatement, C context) {
+    return visitStatement(showTriggersStatement, context);
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement
@@ -177,6 +205,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
+    return visitStatement(loadTsFileStatement, context);
   }
 
   /** Data Control Language (DCL) */
@@ -267,6 +299,15 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(clearCacheStatement, context);
   }
 
+  public R visitLoadConfiguration(
+      LoadConfigurationStatement loadConfigurationStatement, C context) {
+    return visitStatement(loadConfigurationStatement, context);
+  }
+
+  public R visitSetSystemStatus(SetSystemStatusStatement setSystemStatusStatement, C context) {
+    return visitStatement(setSystemStatusStatement, context);
+  }
+
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
     return visitStatement(showRegionStatement, context);
   }
@@ -315,5 +356,41 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
     return visitStatement(showPathsUsingTemplateStatement, context);
+  }
+
+  public R visitShowPipeSink(ShowPipeSinkStatement showPipeSinkStatement, C context) {
+    return visitStatement(showPipeSinkStatement, context);
+  }
+
+  public R visitShowPipeSinkType(ShowPipeSinkTypeStatement showPipeSinkTypeStatement, C context) {
+    return visitStatement(showPipeSinkTypeStatement, context);
+  }
+
+  public R visitShowPipe(ShowPipeStatement showPipeStatement, C context) {
+    return visitStatement(showPipeStatement, context);
+  }
+
+  public R visitCreatePipe(CreatePipeStatement createPipeStatement, C context) {
+    return visitStatement(createPipeStatement, context);
+  }
+
+  public R visitCreatePipeSink(CreatePipeSinkStatement createPipeSinkStatement, C context) {
+    return visitStatement(createPipeSinkStatement, context);
+  }
+
+  public R visitDropPipeSink(DropPipeSinkStatement dropPipeSinkStatement, C context) {
+    return visitStatement(dropPipeSinkStatement, context);
+  }
+
+  public R visitDropPipe(DropPipeStatement dropPipeStatement, C context) {
+    return visitStatement(dropPipeStatement, context);
+  }
+
+  public R visitStartPipe(StartPipeStatement startPipeStatement, C context) {
+    return visitStatement(startPipeStatement, context);
+  }
+
+  public R visitStopPipe(StopPipeStatement stopPipeStatement, C context) {
+    return visitStatement(stopPipeStatement, context);
   }
 }

@@ -33,6 +33,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -88,6 +90,26 @@ public class TsFilePlanRedoer {
     }
   }
 
+  void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
+    List<PartialPath> paths = deleteDataNode.getPathList();
+    for (PartialPath path : paths) {
+      // path here is device path pattern
+      recoveryMemTable.delete(
+          path,
+          path.getDevicePath(),
+          deleteDataNode.getDeleteStartTime(),
+          deleteDataNode.getDeleteEndTime());
+      tsFileResource
+          .getModFile()
+          .write(
+              new Deletion(
+                  path,
+                  tsFileResource.getTsFileSize(),
+                  deleteDataNode.getDeleteStartTime(),
+                  deleteDataNode.getDeleteEndTime()));
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
     if (!plan.hasValidMeasurements()) {
@@ -138,7 +160,7 @@ public class TsFilePlanRedoer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  void redoInsert(InsertNode node) throws WriteProcessException, QueryProcessException {
+  void redoInsert(InsertNode node) throws WriteProcessException {
     if (!node.hasValidMeasurements()) {
       return;
     }
@@ -165,6 +187,9 @@ public class TsFilePlanRedoer {
       // TODO get device id by idTable
       // idTable.getSeriesSchemas(node);
     } else {
+      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        SchemaValidator.validate(node);
+      }
       node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(node.getDevicePath()));
     }
 

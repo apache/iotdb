@@ -126,6 +126,21 @@ public class LastQueryMergeOperatorTest {
           public boolean isFinished() {
             return !hasNext();
           }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -174,6 +189,21 @@ public class LastQueryMergeOperatorTest {
           @Override
           public boolean isFinished() {
             return !hasNext();
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
           }
         };
 
@@ -292,6 +322,21 @@ public class LastQueryMergeOperatorTest {
           public boolean isFinished() {
             return !hasNext();
           }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -340,6 +385,21 @@ public class LastQueryMergeOperatorTest {
           @Override
           public boolean isFinished() {
             return !hasNext();
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
           }
         };
 

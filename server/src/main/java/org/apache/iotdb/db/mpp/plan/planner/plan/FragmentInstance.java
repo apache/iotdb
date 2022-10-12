@@ -20,11 +20,11 @@ package org.apache.iotdb.db.mpp.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -63,6 +63,8 @@ public class FragmentInstance implements IConsensusRequest {
 
   private final long timeOut;
 
+  private boolean isRoot;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -77,6 +79,18 @@ public class FragmentInstance implements IConsensusRequest {
     this.id = id;
     this.type = type;
     this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
+    this.isRoot = false;
+  }
+
+  public FragmentInstance(
+      PlanFragment fragment,
+      FragmentInstanceId id,
+      Filter timeFilter,
+      QueryType type,
+      long timeOut,
+      boolean isRoot) {
+    this(fragment, id, timeFilter, type, timeOut);
+    this.isRoot = isRoot;
   }
 
   public TRegionReplicaSet getDataRegionId() {
@@ -84,6 +98,9 @@ public class FragmentInstance implements IConsensusRequest {
   }
 
   public void setDataRegionAndHost(TRegionReplicaSet regionReplicaSet) {
+    if (regionReplicaSet == null) {
+      return;
+    }
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
@@ -119,8 +136,12 @@ public class FragmentInstance implements IConsensusRequest {
     return id;
   }
 
+  public boolean isRoot() {
+    return isRoot;
+  }
+
   public String getDownstreamInfo() {
-    PlanNode root = getFragment().getRoot();
+    PlanNode root = getFragment().getPlanNodeTree();
     if (root instanceof FragmentSinkNode) {
       FragmentSinkNode sink = (FragmentSinkNode) root;
       return String.format(
@@ -158,7 +179,7 @@ public class FragmentInstance implements IConsensusRequest {
             "Region: %s ",
             getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getRegionId()));
     ret.append("\n---- Plan Node Tree ----\n");
-    ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
+    ret.append(PlanNodeUtil.nodeToString(getFragment().getPlanNodeTree()));
     ret.append(String.format("timeOut-%s:", getTimeOut()));
     return ret.toString();
   }

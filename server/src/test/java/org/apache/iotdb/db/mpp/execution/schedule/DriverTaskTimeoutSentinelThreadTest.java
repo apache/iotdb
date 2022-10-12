@@ -36,6 +36,7 @@ import org.mockito.Mockito;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 public class DriverTaskTimeoutSentinelThreadTest {
 
@@ -218,6 +219,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToBlocked(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
+    TimeUnit.MILLISECONDS.sleep(500);
     Mockito.verify(mockScheduler, Mockito.times(1)).blockedToReady(Mockito.any());
   }
 

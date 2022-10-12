@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -73,8 +72,6 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
   private final long chunkPointNumLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-  private final boolean enableMetrics =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   public SingleSeriesCompactionExecutor(
       PartialPath series,
@@ -154,6 +151,7 @@ public class SingleSeriesCompactionExecutor {
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
     }
+    fileWriter.checkMetadataSizeAndMayFlush();
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
   }

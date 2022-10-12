@@ -61,14 +61,19 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public boolean isEnablePartition() {
+    return IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  }
+
+  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
     return this;
   }
 
   @Override
   public long getPartitionInterval() {
-    return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
   @Override
@@ -241,5 +246,29 @@ public class StandaloneEnvConfig implements BaseConfig {
   public BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     return this;
+  }
+
+  @Override
+  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setConcurrentCompactionThread(concurrentCompactionThread);
+    return this;
+  }
+
+  @Override
+  public int getConcurrentCompactionThread() {
+    return IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+  }
+
+  @Override
+  public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+    return this;
+  }
+
+  @Override
+  public int getMaxDegreeOfIndexNode() {
+    return TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
   }
 }

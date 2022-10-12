@@ -27,10 +27,9 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -39,6 +38,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -115,14 +117,19 @@ public class MemTableFlushTask {
     long sortTime = 0;
 
     // for map do not use get(key) to iterate
-    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> memTableEntry :
-        memTable.getMemTableMap().entrySet()) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey().toStringID()));
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
+    // sort the IDeviceID in lexicographical order
+    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
+    for (IDeviceID deviceID : deviceIDList) {
+      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
 
-      final Map<String, IWritableMemChunk> value = memTableEntry.getValue().getMemChunkMap();
-      for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
+      final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      List<String> seriesInOrder = new ArrayList<>(value.keySet());
+      seriesInOrder.sort((String::compareTo));
+      for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
-        IWritableMemChunk series = iWritableMemChunkEntry.getValue();
+        IWritableMemChunk series = value.get(seriesId);
         /*
          * sort task (first task of flush pipeline)
          */
@@ -162,17 +169,14 @@ public class MemTableFlushTask {
       SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
     }
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .timer(
-              System.currentTimeMillis() - start,
-              TimeUnit.MILLISECONDS,
-              Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "flush");
-    }
+    MetricService.getInstance()
+        .timer(
+            System.currentTimeMillis() - start,
+            TimeUnit.MILLISECONDS,
+            Metric.COST_TASK.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "flush");
 
     LOGGER.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
@@ -278,6 +282,7 @@ public class MemTableFlushTask {
               this.writer.endChunkGroup();
             } else {
               ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
+              writer.checkMetadataSizeAndMayFlush();
             }
           } catch (IOException e) {
             LOGGER.error(

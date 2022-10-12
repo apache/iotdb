@@ -28,7 +28,7 @@ The last query is to return the most recent data point of the given timeseries i
 The SQL syntax is defined as:
 
 ```sql
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause> [ORDER BY TIMESERIES (DESC | ASC)?]
 ```
 
 which means: Query and return the last data points of timeseries prefixPath.path.
@@ -65,6 +65,22 @@ IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017
 +-----------------------------+-----------------------------+---------+--------+
 |2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 |2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+## Order By timeseries
+
+**Example 3:** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the timeseries column desc
+
+```
+IoTDB> select last * from root.ln.wf01.wt01 order by timeseries desc;
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 +-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s

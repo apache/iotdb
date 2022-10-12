@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -33,6 +34,9 @@ import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import org.slf4j.Logger;
 
@@ -44,6 +48,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -57,9 +62,9 @@ public abstract class AbstractEnv implements BaseEnv {
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  private final Random rand = new Random();
   protected String testMethodName = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
@@ -185,10 +190,41 @@ public abstract class AbstractEnv implements BaseEnv {
     try {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
+      if (!configNodeWrapperList.isEmpty()) {
+        checkNodeHeartbeat();
+      }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       fail("After 30 times retry, the cluster can't work!");
     }
+  }
+
+  private void checkNodeHeartbeat() throws Exception {
+    TShowClusterResp showClusterResp;
+    Exception lastException = null;
+    boolean flag;
+    for (int i = 0; i < 30; i++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
+        flag = true;
+        showClusterResp = client.showCluster();
+        Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
+        for (String status : nodeStatus.values()) {
+          if (!status.equals("Running")) {
+            flag = false;
+            break;
+          }
+        }
+        int nodeNum = configNodeWrapperList.size() + dataNodeWrapperList.size();
+        if (flag && nodeStatus.size() == nodeNum) {
+          return;
+        }
+      } catch (Exception e) {
+        lastException = e;
+      }
+      TimeUnit.SECONDS.sleep(1L);
+    }
+    throw lastException;
   }
 
   @Override
@@ -202,8 +238,9 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection() throws SQLException {
-    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
+  public Connection getConnection(String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnection(null, username, password), getReadConnections(null, username, password));
   }
 
   private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
@@ -219,15 +256,28 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
+  public Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
-      return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+      return new ClusterTestConnection(
+          getWriteConnection(version, username, password),
+          getReadConnections(version, username, password));
     } else {
-      return getWriteConnection(version).getUnderlyingConnecton();
+      return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
   }
 
-  protected NodeConnection getWriteConnection(Constant.Version version) throws SQLException {
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
+  }
+
+  protected NodeConnection getWriteConnection(
+      Constant.Version version, String username, String password) throws SQLException {
     DataNodeWrapper dataNode;
 
     if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
@@ -241,8 +291,8 @@ public abstract class AbstractEnv implements BaseEnv {
     Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-            System.getProperty("User", "root"),
-            System.getProperty("Password", "root"));
+            System.getProperty("User", username),
+            System.getProperty("Password", password));
     return new NodeConnection(
         endpoint,
         NodeConnection.NodeRole.DATA_NODE,
@@ -250,7 +300,8 @@ public abstract class AbstractEnv implements BaseEnv {
         writeConnection);
   }
 
-  protected List<NodeConnection> getReadConnections(Constant.Version version) throws SQLException {
+  protected List<NodeConnection> getReadConnections(
+      Constant.Version version, String username, String password) throws SQLException {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
@@ -262,8 +313,8 @@ public abstract class AbstractEnv implements BaseEnv {
             Connection readConnection =
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-                    System.getProperty("User", "root"),
-                    System.getProperty("Password", "root"));
+                    System.getProperty("User", username),
+                    System.getProperty("Password", password));
             return new NodeConnection(
                 endpoint,
                 NodeConnection.NodeRole.DATA_NODE,
@@ -329,6 +380,7 @@ public abstract class AbstractEnv implements BaseEnv {
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
       try {
+        // Return ConfigNode connection of the Seed-ConfigNode
         return clientManager.borrowClient(
             new TEndPoint(
                 configNodeWrapperList.get(0).getIp(), configNodeWrapperList.get(0).getPort()));
@@ -336,5 +388,14 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     throw new IOException("Failed to get config node connection");
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    dataNodeWrapperList.get(index).start();
+  }
+
+  public void shutdownDataNode(int index) {
+    dataNodeWrapperList.get(index).stop();
   }
 }

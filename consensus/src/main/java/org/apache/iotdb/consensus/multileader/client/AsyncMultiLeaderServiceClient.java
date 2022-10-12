@@ -112,8 +112,9 @@ public class AsyncMultiLeaderServiceClient extends MultiLeaderConsensusIService.
 
     public Factory(
         ClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientFactoryProperty clientFactoryProperty,
+        String threadName) {
+      super(clientManager, clientFactoryProperty, threadName);
     }
 
     @Override

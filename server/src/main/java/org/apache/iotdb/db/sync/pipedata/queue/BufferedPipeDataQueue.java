@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.sync.pipedata.queue;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 
@@ -318,6 +318,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     commit(pullSerialNumber);
   }
 
+  @Override
   public void commit(long serialNumber) {
     deletePipeData(serialNumber);
     deletePipeLog();
@@ -434,7 +435,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     List<PipeData> pipeData = new ArrayList<>();
     try (DataInputStream inputStream = new DataInputStream(new FileInputStream(file))) {
       while (true) {
-        pipeData.add(PipeData.deserialize(inputStream));
+        pipeData.add(PipeData.createPipeData(inputStream));
       }
     } catch (EOFException e) {
     } catch (IllegalPathException e) {

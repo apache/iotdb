@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -59,15 +57,15 @@ public class SchemaLoader implements ILoader {
       planExecutor.processNonQuery(plan);
     } catch (QueryProcessException e) {
       if (e.getCause() instanceof StorageGroupAlreadySetException) {
-        throw new PipeDataLoadBearableException(
+        logger.warn(
             "Sync receiver try to set storage group "
                 + ((StorageGroupAlreadySetException) e.getCause()).getStorageGroupPath()
                 + " that has already been set");
       } else {
-        throw new PipeDataLoadUnbearableException(e.getMessage());
+        throw new PipeDataLoadException(e.getMessage());
       }
     } catch (StorageEngineException | StorageGroupNotSetException e) {
-      throw new PipeDataLoadUnbearableException(e.getMessage());
+      throw new PipeDataLoadException(e.getMessage());
     }
   }
 }

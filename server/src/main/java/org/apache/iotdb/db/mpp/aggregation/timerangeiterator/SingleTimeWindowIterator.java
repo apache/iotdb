@@ -71,4 +71,9 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   public long currentOutputTime() {
     return curTimeRange.getMin();
   }
+
+  @Override
+  public long getTotalIntervalNum() {
+    return 1;
+  }
 }

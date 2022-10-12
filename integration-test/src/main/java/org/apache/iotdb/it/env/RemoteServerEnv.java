@@ -22,6 +22,9 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -52,6 +55,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void cleanAfterClass() {}
 
   @Override
@@ -70,13 +78,13 @@ public class RemoteServerEnv implements BaseEnv {
   public void cleanAfterTest() {}
 
   @Override
-  public Connection getConnection() throws SQLException {
+  public Connection getConnection(String username, String password) throws SQLException {
     Connection connection = null;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
           DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, user, password);
+              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, this.user, this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
@@ -85,7 +93,8 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
+  public Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
     Connection connection = null;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
@@ -99,8 +108,8 @@ public class RemoteServerEnv implements BaseEnv {
                   + VERSION
                   + "="
                   + version.toString(),
-              user,
-              password);
+              this.user,
+              this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
@@ -140,5 +149,22 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
     return null;
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    Session session = new Session(ip_addr, Integer.parseInt(port));
+    session.open();
+    return session;
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    getDataNodeWrapperList().get(index).start();
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    getDataNodeWrapperList().get(index).stop();
   }
 }

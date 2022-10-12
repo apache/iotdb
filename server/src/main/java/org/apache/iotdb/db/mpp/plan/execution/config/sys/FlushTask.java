@@ -21,8 +21,6 @@ package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
@@ -35,7 +33,7 @@ import java.util.List;
 
 public class FlushTask implements IConfigTask {
 
-  private FlushStatement flushStatement;
+  private final FlushStatement flushStatement;
 
   public FlushTask(FlushStatement flushStatement) {
     this.flushStatement = flushStatement;
@@ -55,14 +53,8 @@ public class FlushTask implements IConfigTask {
     if (flushStatement.isSeq() != null) {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());
     }
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (flushStatement.isCluster()) {
-      tFlushReq.setDataNodeId(-1);
-    } else {
-      tFlushReq.setDataNodeId(config.getDataNodeId());
-    }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.flush(tFlushReq);
+    return configTaskExecutor.flush(tFlushReq, flushStatement.isOnCluster());
   }
 }

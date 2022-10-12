@@ -368,6 +368,7 @@ public class IoTDBJDBCDataSet {
   }
 
   public void constructOneRow() {
+    lastReadWasNull = false;
     tsQueryDataSet.time.get(time);
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);

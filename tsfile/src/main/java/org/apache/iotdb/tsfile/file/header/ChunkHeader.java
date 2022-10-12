@@ -121,7 +121,8 @@ public class ChunkHeader {
 
   /** the exact serialized size of chunk header */
   public static int getSerializedSize(String measurementID, int dataSize) {
-    int measurementIdLength = measurementID.getBytes(TSFileConfig.STRING_CHARSET).length;
+    int measurementIdLength =
+        measurementID == null ? 0 : measurementID.getBytes(TSFileConfig.STRING_CHARSET).length;
     return Byte.BYTES // chunkType
         + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
         + measurementIdLength // measurementID

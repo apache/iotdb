@@ -74,15 +74,14 @@ public class ResourceManagerTest {
   List<TsFileResource> unseqResources = new ArrayList<>();
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  private double prevTimeIndexMemoryProportion;
-  private double prevTimeIndexMemoryThreshold;
+  private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+  private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.configManager.init();
-    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
@@ -92,10 +91,7 @@ public class ResourceManagerTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    CONFIG.setTimeIndexMemoryProportion(prevTimeIndexMemoryProportion);
     CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
-    prevTimeIndexMemoryThreshold =
-        prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -360,7 +356,6 @@ public class ResourceManagerTest {
   @Test(expected = RuntimeException.class)
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
     long reducedMemory = 0;
-    CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
     double curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     try {
@@ -377,13 +372,12 @@ public class ResourceManagerTest {
                         + 0
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
-        tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-        tsFileResource.updatePlanIndexes((long) i);
-        seqResources.add(tsFileResource);
         assertEquals(
-            TimeIndexLevel.FILE_TIME_INDEX,
+            TimeIndexLevel.DEVICE_TIME_INDEX,
             TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+        seqResources.add(tsFileResource);
         long previousRamSize = tsFileResource.calculateRamSize();
+        System.out.println(previousRamSize);
         prepareFile(tsFileResource, i * ptNum, ptNum, 0);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         assertEquals(
@@ -392,7 +386,7 @@ public class ResourceManagerTest {
         reducedMemory = previousRamSize - tsFileResource.calculateRamSize();
       }
     } catch (RuntimeException e) {
-      assertEquals(0, reducedMemory);
+      assertEquals(1072, reducedMemory);
       assertEquals(7, seqResources.size());
       throw e;
     }

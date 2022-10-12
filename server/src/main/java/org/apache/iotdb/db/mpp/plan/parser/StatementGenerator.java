@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -89,6 +90,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -248,7 +250,10 @@ public class StatementGenerator {
       }
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
-
+      // skip empty tablet
+      if (insertTabletStatement.isEmpty()) {
+        continue;
+      }
       insertTabletStatementList.add(insertTabletStatement);
     }
 
@@ -268,6 +273,10 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -288,7 +297,10 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -308,7 +320,10 @@ public class StatementGenerator {
       statement.setTime(req.timestamps.get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -326,11 +341,16 @@ public class StatementGenerator {
       statement.setDevicePath(insertStatement.getDevicePath());
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
-      statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
+      TSDataType[] dataTypes = new TSDataType[statement.getMeasurements().length];
+      Arrays.fill(dataTypes, TSDataType.TEXT);
+      statement.setDataTypes(dataTypes);
       statement.setTime(req.timestamps.get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -416,7 +436,7 @@ public class StatementGenerator {
     return statement;
   }
 
-  public static Statement createStatement(List<String> storageGroups) {
+  public static Statement createStatement(List<String> storageGroups) throws IllegalPathException {
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
     statement.setPrefixPath(storageGroups);
     return statement;
@@ -603,5 +623,14 @@ public class StatementGenerator {
       throws IllegalPathException {
     return new SetSchemaTemplateStatement(
         req.getTemplateName(), new PartialPath(req.getPrefixPath()));
+  }
+
+  public static DeleteTimeSeriesStatement createDeleteTimeSeriesStatement(
+      List<String> pathPatternStringList) throws IllegalPathException {
+    List<PartialPath> pathPatternList = new ArrayList<>();
+    for (String pathPatternString : pathPatternStringList) {
+      pathPatternList.add(new PartialPath(pathPatternString));
+    }
+    return new DeleteTimeSeriesStatement(pathPatternList);
   }
 }

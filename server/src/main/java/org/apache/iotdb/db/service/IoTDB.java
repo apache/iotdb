@@ -47,9 +47,8 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
@@ -57,6 +56,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+
+import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
 
 public class IoTDB implements IoTDBMBean {
 
@@ -68,7 +69,6 @@ public class IoTDB implements IoTDBMBean {
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
-  private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -83,6 +83,9 @@ public class IoTDB implements IoTDBMBean {
       System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
+
+    loadExternLib(config);
+
     daemon.active();
   }
 
@@ -92,14 +95,6 @@ public class IoTDB implements IoTDBMBean {
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
     IoTDB.serviceProvider = serviceProvider;
-  }
-
-  public static void setClusterMode() {
-    IoTDB.clusterMode = true;
-  }
-
-  public static boolean isClusterMode() {
-    return IoTDB.clusterMode;
   }
 
   public void active() {
@@ -142,15 +137,13 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(SenderService.getInstance());
+    registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngine.getInstance());
@@ -165,7 +158,7 @@ public class IoTDB implements IoTDBMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
-    registerManager.register(ReceiverService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -175,7 +168,7 @@ public class IoTDB implements IoTDBMBean {
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
     // avoid wasting time.
-    if (!isClusterMode()
+    if (!config.isClusterMode()
         && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       initInfluxDBMManager();
     }
@@ -197,10 +190,9 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
+    registerManager.register(MetricService.getInstance());
 
-    // start reporter
-    MetricsService.getInstance().startAllReporter();
-
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
@@ -209,7 +201,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initServiceProvider() throws QueryProcessException {
-    if (!clusterMode) {
+    if (!config.isClusterMode()) {
       serviceProvider = new StandaloneServiceProvider();
     }
   }

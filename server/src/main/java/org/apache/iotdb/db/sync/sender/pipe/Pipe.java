@@ -19,17 +19,23 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.exception.sync.PipeException;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
+import org.apache.iotdb.db.sync.transport.client.SenderManager;
 
 /**
- * Pipe is the abstract of a sync task, and a data source for {@linkplain ITransportClient}. When
- * the pipe is started, it will collect history data and real time data from IoTDB continuously, and
- * record it. A {@linkplain ITransportClient} can take PipeData from a pipe, just like take data
- * from a BlockingQueue.
+ * Pipe is the abstract of a sync task, and a data source for {@linkplain ISyncClient}. When the
+ * pipe is started, it will collect history data and real time data from IoTDB continuously, and
+ * record it. A {@linkplain ISyncClient} can take PipeData from a pipe, just like take data from a
+ * BlockingQueue.
  */
 public interface Pipe {
   /**
@@ -55,7 +61,7 @@ public interface Pipe {
 
   /**
    * Close this pipe, stop collecting data from IoTDB, but do not delete information about this pipe
-   * on disk. Used for {@linkplain SenderService#shutdown(long)}. Do not change the status of this
+   * on disk. Used for {@linkplain SyncService#shutdown(long)}. Do not change the status of this
    * pipe.
    *
    * @throws PipeException Some inside error happens(such as IOException about disk).
@@ -85,7 +91,7 @@ public interface Pipe {
   long getCreateTime();
 
   /**
-   * Get the {@linkplain Pipe.PipeStatus} of this pipe. When a pipe is created, the status should be
+   * Get the {@linkplain PipeStatus} of this pipe. When a pipe is created, the status should be
    * {@linkplain PipeStatus#STOP}
    *
    * @return The Status of this pipe.
@@ -93,28 +99,36 @@ public interface Pipe {
   PipeStatus getStatus();
 
   /**
-   * Used for {@linkplain ITransportClient} to take one {@linkplain PipeData} from this pipe. If
-   * there is no new data in this pipe, the method will block the thread until there is a new one.
+   * Used for {@linkplain ISyncClient} to take one {@linkplain PipeData} from this pipe. If there is
+   * no new data in this pipe, the method will block the thread until there is a new one.
    *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
    * @return A {@linkplain PipeData}.
    * @throws InterruptedException Be Interrupted when waiting for new {@linkplain PipeData}.
    */
-  PipeData take() throws InterruptedException;
+  PipeData take(String dataRegionId) throws InterruptedException;
 
   /**
-   * Used for {@linkplain ITransportClient} to commit all {@linkplain PipeData}s which are taken but
-   * not be committed yet.
+   * Used for {@linkplain ISyncClient} to commit all {@linkplain PipeData}s which are taken but not
+   * be committed yet.
+   *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
    */
-  void commit();
+  void commit(String dataRegionId);
 
-  void setDisconnected(boolean disconnected);
+  /**
+   * Get {@linkplain ISyncManager} by dataRegionId. If ISyncManager does not exist, it will be
+   * created automatically.
+   *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
+   * @return ISyncManager
+   */
+  ISyncManager getOrCreateSyncManager(String dataRegionId);
 
-  boolean isDisconnected();
+  void unregisterDataRegion(String dataRegionId);
 
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
-  }
+  @TestOnly
+  SenderManager getSenderManager();
+
+  PipeInfo getPipeInfo();
 }

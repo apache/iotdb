@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +54,8 @@ public class TsFileManager {
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private Map<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
-  private Map<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
@@ -373,12 +373,12 @@ public class TsFileManager {
     return unsequenceRecoverTsFileResources;
   }
 
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
     readLock();
     try {
       List<File> historyTsFiles = new ArrayList<>();
-      collectTsFile(historyTsFiles, getTsFileList(true), dataStartTime);
-      collectTsFile(historyTsFiles, getTsFileList(false), dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(true), syncManager, dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(false), syncManager, dataStartTime);
       return historyTsFiles;
     } finally {
       readUnlock();
@@ -386,8 +386,10 @@ public class TsFileManager {
   }
 
   private void collectTsFile(
-      List<File> historyTsFiles, List<TsFileResource> tsFileResources, long dataStartTime) {
-    TsFileSyncManager syncManager = TsFileSyncManager.getInstance();
+      List<File> historyTsFiles,
+      List<TsFileResource> tsFileResources,
+      ISyncManager syncManager,
+      long dataStartTime) {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (tsFileResource.getFileEndTime() < dataStartTime) {
@@ -430,5 +432,15 @@ public class TsFileManager {
 
   public long getNextCompactionTaskId() {
     return currentCompactionTaskSerialId.getAndIncrement();
+  }
+
+  public boolean hasNextTimePartition(long timePartition, boolean sequence) {
+    try {
+      return sequence
+          ? sequenceFiles.higherKey(timePartition) != null
+          : unsequenceFiles.higherKey(timePartition) != null;
+    } catch (NullPointerException e) {
+      return false;
+    }
   }
 }

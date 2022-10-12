@@ -21,28 +21,32 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
-  private String key;
-  private String value;
-  private boolean isContains;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
-  private boolean orderByHeat;
+  private final boolean orderByHeat;
 
-  private Map<Integer, Template> templateMap;
+  private final Map<Integer, Template> templateMap;
+
+  private final List<TSDataType> outputDataTypes;
 
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
@@ -62,6 +66,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     this.value = value;
     this.orderByHeat = orderByHeat;
     this.templateMap = templateMap;
+    this.outputDataTypes =
+        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   public String getKey() {
@@ -81,19 +89,18 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected TsBlock createTsBlock() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
+  protected List<TsBlock> createTsBlockList() {
     try {
-      ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-          .getSchemaRegion()
-          .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
-          .left
-          .forEach(series -> setColumns(series, builder));
+      List<ShowTimeSeriesResult> schemaRegionResult =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
+              .left;
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    return builder.build();
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
@@ -106,23 +113,15 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(series.getLastTime());
-    writeValueColumn(builder, 0, series.getName());
-    writeValueColumn(builder, 1, series.getAlias());
-    writeValueColumn(builder, 2, series.getSgName());
-    writeValueColumn(builder, 3, series.getDataType().toString());
-    writeValueColumn(builder, 4, series.getEncoding().toString());
-    writeValueColumn(builder, 5, series.getCompressor().toString());
-    writeValueColumn(builder, 6, mapToString(series.getTag()));
-    writeValueColumn(builder, 7, mapToString(series.getAttribute()));
+    builder.writeNullableText(0, series.getName());
+    builder.writeNullableText(1, series.getAlias());
+    builder.writeNullableText(2, series.getSgName());
+    builder.writeNullableText(3, series.getDataType().toString());
+    builder.writeNullableText(4, series.getEncoding().toString());
+    builder.writeNullableText(5, series.getCompressor().toString());
+    builder.writeNullableText(6, mapToString(series.getTag()));
+    builder.writeNullableText(7, mapToString(series.getAttribute()));
     builder.declarePosition();
-  }
-
-  private void writeValueColumn(TsBlockBuilder builder, int columnIndex, String value) {
-    if (value == null) {
-      builder.getColumnBuilder(columnIndex).appendNull();
-    } else {
-      builder.getColumnBuilder(columnIndex).writeBinary(new Binary(value));
-    }
   }
 
   private String mapToString(Map<String, String> map) {

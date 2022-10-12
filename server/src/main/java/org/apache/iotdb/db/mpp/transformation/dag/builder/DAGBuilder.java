@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.builder;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.OldIntermediateLayerVisitor;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -87,18 +86,19 @@ public class DAGBuilder {
     return this;
   }
 
-  public DAGBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
+  public DAGBuilder buildResultColumnPointReaders() {
+    OldIntermediateLayerVisitor visitor = new OldIntermediateLayerVisitor();
+    OldIntermediateLayerVisitor.OldIntermediateLayerVisitorContext context =
+        new OldIntermediateLayerVisitor.OldIntermediateLayerVisitorContext(
+            queryId,
+            udtfPlan.getUdtfContext(),
+            rawTimeSeriesInputLayer,
+            expressionIntermediateLayerMap,
+            expressionDataTypeMap,
+            memoryAssigner);
     for (int i = 0; i < resultColumnExpressions.length; ++i) {
       resultColumnPointReaders[i] =
-          resultColumnExpressions[i]
-              .constructIntermediateLayer(
-                  queryId,
-                  udtfPlan.getUdtfContext(),
-                  rawTimeSeriesInputLayer,
-                  expressionIntermediateLayerMap,
-                  expressionDataTypeMap,
-                  memoryAssigner)
-              .constructPointReader();
+          visitor.process(resultColumnExpressions[i], context).constructPointReader();
     }
     return this;
   }

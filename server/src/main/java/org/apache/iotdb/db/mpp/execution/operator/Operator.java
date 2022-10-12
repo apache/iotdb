@@ -52,4 +52,26 @@ public interface Operator extends AutoCloseable {
    * Is this operator completely finished processing and no more output TsBlock will be produced.
    */
   boolean isFinished();
+
+  /**
+   * We should also consider the memory used by its children operator, so the calculation logic may
+   * be like: long estimatedOfCurrentOperator = XXXXX; return max(estimatedOfCurrentOperator,
+   * child1.calculateMaxPeekMemory(), child2.calculateMaxPeekMemory(), ....)
+   *
+   * <p>Each operator's MaxPeekMemory should also take retained size of each child operator into
+   * account.
+   *
+   * @return estimated max memory footprint that the Operator Tree(rooted from this operator) will
+   *     use while doing its own query processing
+   */
+  long calculateMaxPeekMemory();
+
+  /** @return estimated max memory footprint for returned TsBlock when calling operator.next() */
+  long calculateMaxReturnSize();
+
+  /**
+   * @return each operator's retained size(including all its children's retained size) after calling
+   *     its next() method
+   */
+  long calculateRetainedSizeAfterCallingNext();
 }

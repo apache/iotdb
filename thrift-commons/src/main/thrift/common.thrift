@@ -99,7 +99,6 @@ enum TRegionMigrateFailedType {
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
-   3: optional i32 dataNodeId
 }
 
 // for node management
@@ -111,4 +110,15 @@ struct TSchemaNode {
 struct TSetTTLReq {
   1: required list<string> storageGroupPathPattern
   2: required i64 TTL
+}
+
+// for File
+struct TFile {
+  1: required string fileName
+  2: required binary file
+}
+
+struct TFilesResp {
+  1: required TSStatus status
+  2: required list<TFile> files
 }

@@ -53,11 +53,13 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
                       leftTransformer.getType().getBoolean(leftColumn, i),
                       rightTransformer.getType().getBoolean(rightColumn, i)));
         } else {
-          flag =
-              transform(
-                  compare(
-                      leftTransformer.getType().getDouble(leftColumn, i),
-                      rightTransformer.getType().getDouble(rightColumn, i)));
+          double left = leftTransformer.getType().getDouble(leftColumn, i);
+          double right = rightTransformer.getType().getDouble(rightColumn, i);
+          if (Double.isNaN(left) || Double.isNaN(right)) {
+            flag = false;
+          } else {
+            flag = transform(compare(left, right));
+          }
         }
         returnType.writeBoolean(builder, flag);
       } else {

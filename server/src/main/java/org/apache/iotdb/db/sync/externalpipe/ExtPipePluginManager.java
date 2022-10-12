@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.sync.externalpipe;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.sync.datasource.PipeOpManager;
+import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
@@ -36,8 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -53,33 +54,24 @@ public class ExtPipePluginManager {
   // externalPipeTypeName => ExtPipePlugin
   private Map<String, ExtPipePlugin> extPipePluginMap = new HashMap<>();
 
-  private ExecutorService monitorService = Executors.newFixedThreadPool(1);
+  private ExecutorService monitorService =
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "ExtPipePluginManager-monitor");
+  boolean alive = false;
 
   private long lastPipeDataSerialNumber = Long.MIN_VALUE;
 
   // Writer method name -> (exception message -> count)
   private Map<String, Map<String, AtomicInteger>> writerInvocationFailures;
-  private final int timestampDivisor;
+
+  // condition-lock of commit and also record commit number
+  private byte[] commitTriggerLocker = new byte[0];
+  private long commitTriggerCounter = 0L;
 
   public ExtPipePluginManager(TsFilePipe tsFilePipe) {
     this.tsFilePipe = tsFilePipe;
-
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ms":
-        timestampDivisor = 1;
-        break;
-      case "us":
-        timestampDivisor = 1_000;
-        break;
-      case "ns":
-        timestampDivisor = 1_000_000;
-        break;
-      default:
-        throw new IllegalArgumentException("Unrecognized time precision: " + timePrecision);
-    }
-
     pipeOpManager = new PipeOpManager(tsFilePipe);
+
+    pipeOpManager.setNewDataEventHandler(this::newDataEventHandler);
   }
 
   @TestOnly
@@ -115,7 +107,7 @@ public class ExtPipePluginManager {
 
     ExtPipePlugin extPipePlugin =
         extPipePluginMap.computeIfAbsent(
-            pipeTypeName, k -> new ExtPipePlugin(pipeTypeName, sinkParams, pipeOpManager));
+            pipeTypeName, k -> new ExtPipePlugin(pipeTypeName, sinkParams, this, pipeOpManager));
 
     if (extPipePlugin.isAlive()) {
       String eMsg =
@@ -129,6 +121,7 @@ public class ExtPipePluginManager {
     extPipePlugin.start();
 
     // == Start monitor Pipe data thread
+    alive = true;
     ThreadPoolExecutor tpe = ((ThreadPoolExecutor) monitorService);
     if ((tpe.getActiveCount() <= 0) && (tpe.getQueue().size() <= 0)) {
       monitorService.submit(this::monitorPipeData);
@@ -137,8 +130,26 @@ public class ExtPipePluginManager {
     logger.info("startExtPipe() finish. pipeTypeName={} ", pipeTypeName);
   }
 
-  /** Summary all ExternalPipes' commit info, then do commit to pipeOpManager. */
-  public void checkCommitIndex() {
+  /**
+   * Notify ExtPipePluginManager to do new commit checking.
+   *
+   * @param sgName
+   * @param commitIndex
+   * @throws IOException
+   */
+  public void triggerCommit(String sgName, long commitIndex) throws IOException {
+    synchronized (commitTriggerLocker) {
+      commitTriggerCounter++;
+      commitTriggerLocker.notifyAll();
+    }
+  }
+
+  /**
+   * Summary all ExternalPipes' commit info, then do commit to pipeOpManager.
+   *
+   * @return the number of left, in-using(uncommitted) FilePipes/OpBlocks
+   */
+  public int checkCommitIndex() {
     Set<String> sgSet = pipeOpManager.getSgSet();
     for (String sgName : sgSet) {
       long finalCommitIndex = Long.MAX_VALUE;
@@ -156,6 +167,14 @@ public class ExtPipePluginManager {
       if ((finalCommitIndex < Long.MAX_VALUE) && (finalCommitIndex >= 0)) {
         pipeOpManager.commitData(sgName, finalCommitIndex);
       }
+    }
+
+    return pipeOpManager.getInUseOpBlockNum();
+  }
+
+  private void newDataEventHandler(String sgName, long newDataBeginIndex, long newDataCount) {
+    for (ExtPipePlugin extPipePlugin : extPipePluginMap.values()) {
+      extPipePlugin.notifyNewDataArrive(sgName, newDataBeginIndex, newDataCount);
     }
   }
 
@@ -176,44 +195,67 @@ public class ExtPipePluginManager {
       return;
     }
 
-    while (true) {
-      List<PipeData> pipeDataList = tsFilePipe.pull(Long.MAX_VALUE);
-      if ((pipeDataList != null)
-          && (!pipeDataList.isEmpty())
-          && (pipeDataList.get(pipeDataList.size() - 1).getSerialNumber()
-              > lastPipeDataSerialNumber)) {
-        for (PipeData pipeData : pipeDataList) {
-          long pipeDataSerialNumber = pipeData.getSerialNumber();
-          if (pipeDataSerialNumber <= lastPipeDataSerialNumber) {
-            continue;
-          }
-          lastPipeDataSerialNumber = pipeData.getSerialNumber();
+    while (alive) {
+      try {
+        // == pull Pipe src data and insert them to pipeOpManager
+        List<PipeData> pipeDataList = tsFilePipe.pull(Long.MAX_VALUE);
+        if ((pipeDataList != null)
+            && (!pipeDataList.isEmpty())
+            && (pipeDataList.get(pipeDataList.size() - 1).getSerialNumber()
+                > lastPipeDataSerialNumber)) {
+          for (PipeData pipeData : pipeDataList) {
+            long pipeDataSerialNumber = pipeData.getSerialNumber();
+            if (pipeDataSerialNumber <= lastPipeDataSerialNumber) {
+              continue;
+            }
 
-          // extract the Tsfile PipeData
-          if (pipeData instanceof TsFilePipeData) {
-            TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
+            // == extract the Tsfile PipeData
+            if (pipeData instanceof TsFilePipeData) {
+              TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
 
-            String sgName = tsFilePipeData.getStorageGroupName();
-            String tsFileFullName = tsFilePipeData.getTsFilePath();
-            try {
-              pipeOpManager.appendTsFile(sgName, tsFileFullName, pipeDataSerialNumber);
-            } catch (IOException e) {
-              logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
+              String sgName = tsFilePipeData.getStorageGroupName();
+              String tsFileFullName = tsFilePipeData.getTsFilePath();
+              String modsFileFullName = tsFilePipeData.getModsFilePath();
+              try {
+                pipeOpManager.appendTsFileOpBlock(
+                    sgName, tsFileFullName, modsFileFullName, pipeDataSerialNumber);
+                lastPipeDataSerialNumber = pipeDataSerialNumber;
+              } catch (IOException e) {
+                logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
+              }
+              continue;
+            } else if (pipeData instanceof DeletionPipeData) {
+              // == handle delete PipeData
+              if (pipeOpManager.isEmpty()) {
+                DeletionPipeData deletionPipeData = (DeletionPipeData) pipeData;
+                pipeOpManager.appendDeletionOpBlock(
+                    deletionPipeData.getStorageGroup(),
+                    deletionPipeData.getDeletion(),
+                    pipeDataSerialNumber);
+                lastPipeDataSerialNumber = pipeData.getSerialNumber();
+              }
+              break;
             }
           }
         }
-      }
 
-      checkCommitIndex();
+        synchronized (commitTriggerLocker) {
+          if (commitTriggerCounter <= 0L) {
+            try {
+              commitTriggerLocker.wait(2000); // 2 seconds
+            } catch (InterruptedException ignored) {
+            }
+          }
+          commitTriggerCounter = 0L;
+        }
+        checkCommitIndex();
 
-      try {
-        Thread.sleep(2_000); // 2 seconds
-      } catch (InterruptedException e) {
-        break;
+      } catch (Throwable t) {
+        logger.error("monitorPipeData() Exception: ", t);
       }
     }
 
-    logger.info("monitorPipeData exits. Thread={}", Thread.currentThread().getName());
+    logger.info("monitorPipeData() exits. Thread={}", Thread.currentThread().getName());
   }
 
   /**
@@ -231,6 +273,24 @@ public class ExtPipePluginManager {
     }
 
     extPipePlugin.stop();
+  }
+
+  private void stopAllThreadPool() {
+    alive = false;
+    monitorService.shutdown();
+
+    boolean isTerminated = false;
+    try {
+      isTerminated = monitorService.awaitTermination(2, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      logger.error("stopAllThreadPool(), Interrupted when terminating monitorService, ", e);
+    } finally {
+      if (!isTerminated) {
+        logger.warn(
+            "stopAllThreadPool(), for monitorService. Graceful shutdown timed out, so force shutdown.");
+        monitorService.shutdownNow();
+      }
+    }
   }
 
   /**
@@ -253,6 +313,8 @@ public class ExtPipePluginManager {
     extPipePluginMap.remove(pipeTypeName);
 
     if (extPipePluginMap.size() <= 0) {
+      stopAllThreadPool();
+
       if (pipeOpManager != null) {
         pipeOpManager.close();
         pipeOpManager = null;

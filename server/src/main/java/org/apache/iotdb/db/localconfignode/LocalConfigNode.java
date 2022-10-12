@@ -36,18 +36,27 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -61,6 +70,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -71,26 +81,26 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,14 +110,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
@@ -118,7 +127,7 @@ public class LocalConfigNode {
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
+  public static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
   private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -132,11 +141,13 @@ public class LocalConfigNode {
 
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private final LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+  private final LocalDataPartitionInfo dataPartitionInfo = LocalDataPartitionInfo.getInstance();
 
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+
+  private final SyncService syncService = SyncService.getInstance();
 
   private IAuthorizer iAuthorizer;
 
@@ -201,7 +212,7 @@ public class LocalConfigNode {
       if (config.isMppMode() && !config.isClusterMode()) {
         Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
             storageEngine.getLocalDataRegionInfo();
-        dataPartitionTable.init(recoveredLocalDataRegionInfo);
+        dataPartitionInfo.init(recoveredLocalDataRegionInfo);
       }
     } catch (MetadataException | IOException e) {
       logger.error(
@@ -228,7 +239,7 @@ public class LocalConfigNode {
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
-      dataPartitionTable.clear();
+      dataPartitionInfo.clear();
 
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigNode:", e);
@@ -263,10 +274,6 @@ public class LocalConfigNode {
       schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     }
 
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
-    }
-
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
@@ -276,25 +283,15 @@ public class LocalConfigNode {
 
     if (config.isMppMode() && !config.isClusterMode()) {
       deleteDataRegionsInStorageGroup(
-          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
-      dataPartitionTable.deleteStorageGroup(storageGroup);
+          dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup));
+      dataPartitionInfo.deleteStorageGroup(storageGroup);
     }
-
-    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        SchemaSyncManager.getInstance().isEnableSync()
-            ? SchemaSyncManager.getInstance()
-                .splitDeleteTimeseriesPlanByDevice(
-                    storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            : null;
 
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
-    }
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(deleteTimeSeriesPlan);
     }
 
     if (!config.isEnableMemControl()) {
@@ -370,8 +367,7 @@ public class LocalConfigNode {
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     if (config.isMppMode() && !config.isClusterMode()) {
-      storageEngine.setTTL(
-          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
+      storageEngine.setTTL(dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
     }
     storageGroupSchemaManager.setTTL(storageGroup, dataTTL);
   }
@@ -858,7 +854,7 @@ public class LocalConfigNode {
   public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    DataRegionId dataRegionId = dataPartitionInfo.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
       return null;
     }
@@ -873,13 +869,13 @@ public class LocalConfigNode {
   }
 
   // This interface involves storage group and data region auto creation
-  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath path)
+  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath devicePath)
       throws MetadataException, DataRegionException {
-    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(devicePath);
+    DataRegionId dataRegionId = dataPartitionInfo.getDataRegionId(storageGroup, devicePath);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup);
-      dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+      dataPartitionInfo.registerStorageGroup(storageGroup);
+      dataRegionId = dataPartitionInfo.allocateDataRegionForNewSlot(storageGroup, devicePath);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
@@ -887,14 +883,6 @@ public class LocalConfigNode {
     }
     return dataRegionId;
   }
-
-  public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup);
-  }
-
-  // endregion
-
-  // region Interfaces for StandaloneSchemaFetcher
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
       PathPatternTree patternTree) {
@@ -953,8 +941,6 @@ public class LocalConfigNode {
     return partitionSlotsMap;
   }
 
-  // endregion
-
   // region Interfaces for StandalonePartitionFetcher
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
@@ -975,8 +961,8 @@ public class LocalConfigNode {
         // use an empty dataPartitionMap to init DataPartition
         if (dataRegionId != null) {
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-              new HashMap<>();
-
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
               Collections.singletonList(
@@ -1026,21 +1012,22 @@ public class LocalConfigNode {
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         // for each device
         String deviceId = dataPartitionQueryParam.getDevicePath();
-        DataRegionId dataRegionId =
-            getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
-        for (TTimePartitionSlot timePartitionSlot :
-            dataPartitionQueryParam.getTimePartitionSlotList()) {
-          // for each time partition
+        List<TTimePartitionSlot> timePartitionSlotList =
+            dataPartitionQueryParam.getTimePartitionSlotList();
+        for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+          DataRegionId dataRegionId =
+              getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
+          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               timePartitionSlot,
               Collections.singletonList(
                   genStandaloneRegionReplicaSet(
                       TConsensusGroupType.DataRegion, dataRegionId.getId())));
+          deviceToRegionsMap.put(
+              executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
         }
-        deviceToRegionsMap.put(
-            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
       }
       dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
     }
@@ -1095,7 +1082,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
         iAuthorizer.grantRoleToUser(roleName, userName);
         break;
       case REVOKE_USER:
@@ -1112,7 +1099,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
@@ -1126,78 +1113,67 @@ public class LocalConfigNode {
         AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
-        return executeListUser();
+        return executeListRoleUsers(authorStatement);
       case LIST_ROLE:
-        return executeListRole();
+        return executeListRoles(authorStatement);
       case LIST_USER_PRIVILEGE:
         return executeListUserPrivileges(authorStatement);
       case LIST_ROLE_PRIVILEGE:
         return executeListRolePrivileges(authorStatement);
-      case LIST_USER_ROLES:
-        return executeListUserRoles(authorStatement);
-      case LIST_ROLE_USERS:
-        return executeListRoleUsers(authorStatement);
       default:
         throw new AuthException("Unsupported operation " + authorType);
     }
   }
 
-  public Map<String, List<String>> executeListRole() {
-    List<String> roleList = iAuthorizer.listAllRoles();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUser() {
+  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+      throws AuthException {
     List<String> userList = iAuthorizer.listAllUsers();
+    if (authorStatement.getRoleName() != null && !authorStatement.getRoleName().isEmpty()) {
+      Role role;
+      try {
+        role = iAuthorizer.getRole(authorStatement.getRoleName());
+        if (role == null) {
+          throw new AuthException("No such role : " + authorStatement.getRoleName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
+      }
+      Iterator<String> itr = userList.iterator();
+      while (itr.hasNext()) {
+        User userObj = iAuthorizer.getUser(itr.next());
+        if (userObj == null || !userObj.hasRole(authorStatement.getRoleName())) {
+          itr.remove();
+        }
+      }
+    }
+
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+  public Map<String, List<String>> executeListRoles(AuthorStatement authorStatement)
       throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = iAuthorizer.getRole(authorStatement.getRoleName());
-      if (role == null) {
-        throw new AuthException("No such role : " + authorStatement.getRoleName());
+    List<String> roleList = new ArrayList<>();
+    if (authorStatement.getUserName() == null || authorStatement.getUserName().isEmpty()) {
+      roleList.addAll(iAuthorizer.listAllRoles());
+    } else {
+      User user;
+      try {
+        user = iAuthorizer.getUser(authorStatement.getUserName());
+        if (user == null) {
+          throw new AuthException("No such user : " + authorStatement.getUserName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
       }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = iAuthorizer.listAllUsers();
-    for (String userN : userList) {
-      User userObj = iAuthorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(authorStatement.getRoleName())) {
-        roleUsersList.add(userN);
+      for (String roleN : user.getRoleList()) {
+        roleList.add(roleN);
       }
-    }
-    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUserRoles(AuthorStatement authorStatement)
-      throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = iAuthorizer.getUser(authorStatement.getUserName());
-      if (user == null) {
-        throw new AuthException("No such user : " + authorStatement.getUserName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> userRoleList = new ArrayList<>();
-    for (String roleN : user.getRoleList()) {
-      userRoleList.add(roleN);
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     return permissionInfo;
   }
 
@@ -1323,5 +1299,91 @@ public class LocalConfigNode {
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus executeLoadConfigurationOperation() {
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus executeSetSystemStatus(NodeStatus status) {
+    try {
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus createPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
+    try {
+      syncService.addPipeSink(createPipeSinkStatement);
+    } catch (PipeSinkException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus dropPipeSink(String pipeSinkName) {
+    try {
+      syncService.dropPipeSink(pipeSinkName);
+    } catch (PipeSinkException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public List<PipeSink> showPipeSink(String pipeSinkName) {
+    boolean showAll = StringUtils.isEmpty(pipeSinkName);
+    if (showAll) {
+      return syncService.getAllPipeSink();
+    } else {
+      return Collections.singletonList(syncService.getPipeSink(pipeSinkName));
+    }
+  }
+
+  public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
+    try {
+      syncService.addPipe(createPipeStatement);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus startPipe(String pipeName) {
+    try {
+      syncService.startPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus stopPipe(String pipeName) {
+    try {
+      syncService.stopPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus dropPipe(String pipeName) {
+    try {
+      syncService.dropPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TShowPipeResp showPipe(String pipeName) {
+    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }

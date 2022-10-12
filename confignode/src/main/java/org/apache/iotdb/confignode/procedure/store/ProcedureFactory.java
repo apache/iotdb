@@ -20,21 +20,31 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ProcedureFactory implements IProcedureFactory {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureFactory.class);
+
   @Override
   public Procedure create(ByteBuffer buffer) throws IOException {
     int typeNum = buffer.getInt();
     if (typeNum >= ProcedureType.values().length) {
+      LOGGER.error("unrecognized log type " + typeNum);
       throw new IOException("unrecognized log type " + typeNum);
     }
     ProcedureType type = ProcedureType.values()[typeNum];
@@ -55,7 +65,20 @@ public class ProcedureFactory implements IProcedureFactory {
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
         break;
+      case CREATE_REGION_GROUPS:
+        procedure = new CreateRegionGroupsProcedure();
+        break;
+      case DELETE_TIMESERIES_PROCEDURE:
+        procedure = new DeleteTimeSeriesProcedure();
+        break;
+      case CREATE_TRIGGER_PROCEDURE:
+        procedure = new CreateTriggerProcedure();
+        break;
+      case DROP_TRIGGER_PROCEDURE:
+        procedure = new DropTriggerProcedure();
+        break;
       default:
+        LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
     }
     procedure.deserialize(buffer);
@@ -73,6 +96,14 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof CreateRegionGroupsProcedure) {
+      return ProcedureType.CREATE_REGION_GROUPS;
+    } else if (procedure instanceof DeleteTimeSeriesProcedure) {
+      return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof CreateTriggerProcedure) {
+      return ProcedureType.CREATE_TRIGGER_PROCEDURE;
+    } else if (procedure instanceof DropTriggerProcedure) {
+      return ProcedureType.DROP_TRIGGER_PROCEDURE;
     }
     return null;
   }
@@ -82,7 +113,11 @@ public class ProcedureFactory implements IProcedureFactory {
     ADD_CONFIG_NODE_PROCEDURE,
     REMOVE_CONFIG_NODE_PROCEDURE,
     REMOVE_DATA_NODE_PROCEDURE,
-    REGION_MIGRATE_PROCEDURE
+    REGION_MIGRATE_PROCEDURE,
+    CREATE_REGION_GROUPS,
+    DELETE_TIMESERIES_PROCEDURE,
+    CREATE_TRIGGER_PROCEDURE,
+    DROP_TRIGGER_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

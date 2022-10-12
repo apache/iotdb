@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -37,6 +38,8 @@ public class SeriesScanOperator implements DataSourceOperator {
   private TsBlock tsBlock;
   private boolean hasCachedTsBlock = false;
   private boolean finished = false;
+
+  private final long maxReturnSize;
 
   public SeriesScanOperator(
       PlanNodeId sourceId,
@@ -58,6 +61,7 @@ public class SeriesScanOperator implements DataSourceOperator {
             timeFilter,
             valueFilter,
             ascending);
+    this.maxReturnSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   }
 
   @Override
@@ -69,7 +73,9 @@ public class SeriesScanOperator implements DataSourceOperator {
   public TsBlock next() {
     if (hasCachedTsBlock || hasNext()) {
       hasCachedTsBlock = false;
-      return tsBlock;
+      TsBlock res = tsBlock;
+      tsBlock = null;
+      return res;
     }
     throw new IllegalStateException("no next batch");
   }
@@ -116,6 +122,21 @@ public class SeriesScanOperator implements DataSourceOperator {
   @Override
   public boolean isFinished() {
     return finished || (finished = !hasNext());
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 
   private boolean readChunkData() throws IOException {

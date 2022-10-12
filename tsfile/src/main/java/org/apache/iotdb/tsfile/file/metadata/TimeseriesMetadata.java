@@ -32,6 +32,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
@@ -107,6 +108,42 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.dataType));
+    if (needChunkMetadata) {
+      ByteBuffer byteBuffer = buffer.slice();
+      byteBuffer.limit(chunkMetaDataListDataSize);
+      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      while (byteBuffer.hasRemaining()) {
+        timeseriesMetaData.chunkMetadataList.add(
+            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
+      }
+      // minimize the storage of an ArrayList instance.
+      timeseriesMetaData.chunkMetadataList.trimToSize();
+    }
+    buffer.position(buffer.position() + chunkMetaDataListDataSize);
+    return timeseriesMetaData;
+  }
+
+  /**
+   * Return null if excludedMeasurements contains the measurementId without deserializing chunk
+   * metadata.
+   */
+  public static TimeseriesMetadata deserializeFrom(
+      ByteBuffer buffer, Set<String> excludedMeasurements, boolean needChunkMetadata) {
+    byte timeseriesType = ReadWriteIOUtils.readByte(buffer);
+    String measurementID = ReadWriteIOUtils.readVarIntString(buffer);
+    TSDataType tsDataType = ReadWriteIOUtils.readDataType(buffer);
+    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, tsDataType);
+    if (excludedMeasurements.contains(measurementID)) {
+      buffer.position(buffer.position() + chunkMetaDataListDataSize);
+      return null;
+    }
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
+    timeseriesMetaData.setMeasurementId(measurementID);
+    timeseriesMetaData.setTSDataType(tsDataType);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
+    timeseriesMetaData.setStatistics(statistics);
     if (needChunkMetadata) {
       ByteBuffer byteBuffer = buffer.slice();
       byteBuffer.limit(chunkMetaDataListDataSize);

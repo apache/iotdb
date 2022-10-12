@@ -19,14 +19,20 @@
 package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
+import org.apache.iotdb.confignode.manager.load.balancer.router.LazyGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,31 +42,84 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
-  public static final String leaderPolicy = "leader";
-  public static final String greedyPolicy = "greedy";
+  public static final String LEADER_POLICY = "leader";
+  public static final String GREEDY_POLICY = "greedy";
 
   private final IManager configManager;
 
+  private final LazyGreedyRouter lazyGreedyRouter;
+
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
+    this.lazyGreedyRouter = new LazyGreedyRouter();
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> regionReplicaSets) {
-    return genRouter().genLatestRegionRouteMap(regionReplicaSets);
+    List<TRegionReplicaSet> schemaRegionGroups = new ArrayList<>();
+    List<TRegionReplicaSet> dataRegionGroups = new ArrayList<>();
+
+    regionReplicaSets.forEach(
+        regionReplicaSet -> {
+          switch (regionReplicaSet.getRegionId().getType()) {
+            case SchemaRegion:
+              schemaRegionGroups.add(regionReplicaSet);
+              break;
+            case DataRegion:
+              dataRegionGroups.add(regionReplicaSet);
+              break;
+          }
+        });
+
+    // Generate SchemaRegionRouteMap
+    Map<TConsensusGroupId, TRegionReplicaSet> result =
+        genRouter(TConsensusGroupType.SchemaRegion).genLatestRegionRouteMap(schemaRegionGroups);
+    // Generate DataRegionRouteMap
+    result.putAll(
+        genRouter(TConsensusGroupType.DataRegion).genLatestRegionRouteMap(dataRegionGroups));
+    return result;
   }
 
-  private IRouter genRouter() {
+  private IRouter genRouter(TConsensusGroupType groupType) {
     String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
-    if (policy.equals(leaderPolicy)) {
-      return new LeaderRouter(
-          getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
-    } else {
-      return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+    switch (groupType) {
+      case SchemaRegion:
+        if (LEADER_POLICY.equals(policy)) {
+          return new LeaderRouter(
+              getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
+        } else {
+          return new LoadScoreGreedyRouter(getNodeManager().getAllLoadScores());
+        }
+      case DataRegion:
+      default:
+        if (ConfigNodeDescriptor.getInstance()
+            .getConf()
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+          // Latent router for MultiLeader consensus protocol
+          lazyGreedyRouter.updateDisabledDataNodes(
+              getNodeManager()
+                  .filterDataNodeThroughStatus(
+                      NodeStatus.Unknown, NodeStatus.Removing, NodeStatus.ReadOnly));
+          return lazyGreedyRouter;
+        } else if (LEADER_POLICY.equals(policy)) {
+          return new LeaderRouter(
+              getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
+        } else {
+          return new LoadScoreGreedyRouter(getNodeManager().getAllLoadScores());
+        }
     }
   }
 
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
+  }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRouteMap() {
+    return lazyGreedyRouter.getRouteMap();
   }
 }

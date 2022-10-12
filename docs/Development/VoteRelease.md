@@ -100,7 +100,7 @@ Compared with the corresponding .sha512, the same is fine.
 * Verify compilation
 
 ```
-mvnw.sh install
+mvnw install
 
 Should end up all SUCCESS
 ```
@@ -161,7 +161,7 @@ The source release:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
-could compile from source: ./mvnw.sh clean install [ok]
+could compile from source: ./mvnw clean install [ok]
 
 The binary distribution:
 LICENSE and NOTICE [ok]

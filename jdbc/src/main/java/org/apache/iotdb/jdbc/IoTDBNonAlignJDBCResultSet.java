@@ -205,6 +205,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   @Override
   protected void constructOneRow() {
+    ioTDBRpcDataSet.lastReadWasNull = false;
     for (int i = 0; i < tsQueryNonAlignDataSet.timeList.size(); i++) {
       times[i] = null;
       ioTDBRpcDataSet.values[i] = null;

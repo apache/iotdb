@@ -166,6 +166,11 @@ public class TimeSelector {
     return smallerChildIndex;
   }
 
+  public void clear() {
+    heapSize = 0;
+    lastTime = Long.MIN_VALUE;
+  }
+
   @Override
   public String toString() {
     return Arrays.toString(this.timeHeap);

@@ -189,7 +189,7 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019.01.02T15:13:27" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      Assert.assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
+      Assert.assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -215,7 +215,7 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019.01.02T15:13:27.689" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
@@ -230,7 +230,7 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019-01-02", "2019/01/02", "2019.01.02",
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {

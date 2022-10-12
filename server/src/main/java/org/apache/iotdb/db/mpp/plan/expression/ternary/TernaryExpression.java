@@ -23,20 +23,11 @@ package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.TernaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -168,10 +159,10 @@ public abstract class TernaryExpression extends Expression {
   }
 
   @Override
-  public boolean isMappable(TypeProvider typeProvider) {
-    return firstExpression.isMappable(typeProvider)
-        && secondExpression.isMappable(typeProvider)
-        && thirdExpression.isMappable(typeProvider);
+  public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
+    return firstExpression.isMappable(expressionTypes)
+        && secondExpression.isMappable(expressionTypes)
+        && thirdExpression.isMappable(expressionTypes);
   }
 
   @Override
@@ -210,126 +201,6 @@ public abstract class TernaryExpression extends Expression {
     thirdExpression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);
   }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer firstParentIntermediateLayer =
-          firstExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      IntermediateLayer secondParentIntermediateLayer =
-          secondExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      IntermediateLayer thirdParentIntermediateLayer =
-          thirdExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          constructTransformer(
-              firstParentIntermediateLayer.constructPointReader(),
-              secondParentIntermediateLayer.constructPointReader(),
-              thirdParentIntermediateLayer.constructPointReader());
-      expressionDataTypeMap.put(this, transformer.getDataType());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer firstParentIntermediateLayer =
-          firstExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      IntermediateLayer secondParentIntermediateLayer =
-          secondExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      IntermediateLayer thirdParentIntermediateLayer =
-          thirdExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      Transformer transformer =
-          constructTransformer(
-              firstParentIntermediateLayer.constructPointReader(),
-              secondParentIntermediateLayer.constructPointReader(),
-              thirdParentIntermediateLayer.constructPointReader());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  protected abstract TernaryTransformer constructTransformer(
-      LayerPointReader firstParentLayerPointReader,
-      LayerPointReader secondParentLayerPointReader,
-      LayerPointReader thirdParentLayerPointReader);
 
   protected abstract String operator();
 

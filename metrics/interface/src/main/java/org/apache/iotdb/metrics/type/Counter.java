@@ -20,12 +20,13 @@
 package org.apache.iotdb.metrics.type;
 
 public interface Counter extends IMetric {
-  /** Counter add 1 */
+
+  /** counter add 1 */
   void inc();
 
-  /** Counter add n */
+  /** counter add n */
   void inc(long n);
 
-  /** Get value of counter */
+  /** get the value of counter */
   long count();
 }

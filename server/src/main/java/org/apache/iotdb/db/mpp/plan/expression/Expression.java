@@ -21,9 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
@@ -50,10 +48,8 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,7 +59,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -72,22 +67,19 @@ import java.util.Map;
 import java.util.Set;
 
 /** A skeleton class for expression */
-public abstract class Expression {
+public abstract class Expression extends StatementNode {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations that Class Expression is not responsible for should be done through a visitor ////
+  // Operations that Class Expression is not responsible for should be done through a visitor
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process(Expression)}
-   * instead.
-   */
+  /** Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process} instead. */
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitExpression(this, context);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Expression type inferring for execution plan generation //////////////////////////////////////
+  // Expression type inferring for execution plan generation
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public abstract ExpressionType getExpressionType();
@@ -108,7 +100,7 @@ public abstract class Expression {
     return false;
   }
 
-  public abstract boolean isMappable(TypeProvider typeProvider);
+  public abstract boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand
@@ -154,24 +146,6 @@ public abstract class Expression {
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // type inference
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  public abstract TSDataType inferTypes(TypeProvider typeProvider);
-
-  protected static void checkInputExpressionDataType(
-      String expressionString, TSDataType actual, TSDataType... expected) {
-    for (TSDataType type : expected) {
-      if (actual.equals(type)) {
-        return;
-      }
-    }
-    throw new SemanticException(
-        String.format(
-            "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
-            expressionString, actual.name(), Arrays.toString(expected)));
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
   // For expression evaluation DAG building
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -184,27 +158,11 @@ public abstract class Expression {
   public abstract void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations);
 
+  public Integer getInputColumnIndex() {
+    return inputColumnIndex;
+  }
+
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException;
-
-  public abstract IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // toString

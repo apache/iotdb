@@ -27,7 +27,7 @@
 
 ### 标识符限制增强
 
-在0.13及之前版本中，不使用反引号引用的标识符（包括路径结点）允许为纯数字（纯数字路径名在 `SELECT` 子句中需要用反引号括起），且允许包含部分特殊字符，**在0.14版本中，不使用反引号引用的标识符不允许为纯数字，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。**
+在0.13及之前版本中，不使用反引号引用的标识符（包括路径结点）允许为实数（实数路径名在 `SELECT` 子句中需要用反引号括起），且允许包含部分特殊字符，**在0.14版本中，不使用反引号引用的标识符不允许为实数，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。**
 
 ### 路径名使用的相关问题
 
@@ -243,11 +243,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 #### 如何在字符串内使用引号
 
 - 在单引号引起的字符串内，双引号无需特殊处理。同理，在双引号引起的字符串内，单引号无需特殊处理。
-
-- 在引号前使用转义符 (\\)。
-
 - 在单引号引起的字符串里，可以通过双写单引号来表示一个单引号，即单引号 ' 可以表示为 ''。
-
 - 在双引号引起的字符串里，可以通过双写双引号来表示一个双引号，即双引号 " 可以表示为 ""。
 
 字符串内使用引号的示例如下：
@@ -256,15 +252,11 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str\'ing'  // str'ing
-'\'string'  // 'string
 '''string'  // 'string
 
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str\"ing"  // str"ing
-"\"string"  // "string
 """string"  // "string
 ```
 
@@ -319,7 +311,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 **如果出现如下情况，标识符需要使用反引号进行引用：**
 
 - 标识符包含不允许的特殊字符。
-- 标识符为纯数字。
+- 标识符为实数。
 
 ### 如何在反引号引起的标识符中使用引号
 
@@ -358,14 +350,14 @@ create schema template `t1't"t`
 - UDF 名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 111 的 UDF，111 为纯数字，所以需要用反引号引用。
+  # 创建名为 111 的 UDF，111 为实数，所以需要用反引号引用。
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - 元数据模板名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 111 的元数据模板，111 为纯数字，需要用反引号引用。
+  # 创建名为 111 的元数据模板，111 为实数，需要用反引号引用。
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -464,7 +456,7 @@ select a*b from root.sg
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 ```
 
@@ -485,7 +477,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 # 路径结点名中包含特殊字符
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 insert into root.sg(timestamp, `111`) values (1, 2);
 ```
 
@@ -495,7 +487,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 # 路径结点名中包含特殊字符
 select a from root.sg.`www.``baidu.com`;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 select `111` from root.sg
 ```
 
@@ -645,7 +637,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","a.`\"b"]
 create timeseries root.sg.`a.``"b` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 ```
 
@@ -709,7 +701,7 @@ select a from root.sg
 # 路径结点名中包含特殊字符
 select `a.``"b` from root.sg;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 select `111` from root.sg
 ```
 
@@ -721,7 +713,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-## 了解更多
+## 词法与文法详细定义
 
 请阅读代码仓库中的词法和语法描述文件：
 

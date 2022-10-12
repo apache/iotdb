@@ -203,7 +203,6 @@ public class IoTDBRpcDataSet {
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
     if (hasCachedResults()) {
-      lastReadWasNull = false;
       constructOneRow();
       return true;
     }
@@ -256,6 +255,7 @@ public class IoTDBRpcDataSet {
   }
 
   public void constructOneRow() {
+    lastReadWasNull = false;
     tsQueryDataSet.time.get(time);
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
       ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);

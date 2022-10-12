@@ -23,32 +23,17 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
@@ -77,7 +62,7 @@ public class FunctionExpression extends Expression {
   private boolean isUserDefinedAggregationFunctionExpression;
 
   private final String functionName;
-  private final Map<String, String> functionAttributes;
+  private final LinkedHashMap<String, String> functionAttributes;
 
   /**
    * example: select udf(a, b, udf(c)) from root.sg.d;
@@ -101,7 +86,9 @@ public class FunctionExpression extends Expression {
   }
 
   public FunctionExpression(
-      String functionName, Map<String, String> functionAttributes, List<Expression> expressions) {
+      String functionName,
+      LinkedHashMap<String, String> functionAttributes,
+      List<Expression> expressions) {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
@@ -120,11 +107,7 @@ public class FunctionExpression extends Expression {
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
 
-    Map<String, String> deserializedFunctionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
-    functionAttributes =
-        deserializedFunctionAttributes != null
-            ? deserializedFunctionAttributes
-            : new LinkedHashMap<>();
+    functionAttributes = ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
 
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
     expressions = new ArrayList<>();
@@ -170,7 +153,11 @@ public class FunctionExpression extends Expression {
   }
 
   public boolean isCountStar() {
+    if (!isBuiltInAggregationFunctionExpression) {
+      return false;
+    }
     return getPaths().size() == 1
+        && paths.get(0) != null
         && (paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
             || paths.get(0).getTailNode().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
         && functionName.equals(IoTDBConstant.COLUMN_COUNT);
@@ -197,7 +184,7 @@ public class FunctionExpression extends Expression {
     return functionName;
   }
 
-  public Map<String, String> getFunctionAttributes() {
+  public LinkedHashMap<String, String> getFunctionAttributes() {
     return functionAttributes;
   }
 
@@ -258,42 +245,6 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      for (Expression expression : expressions) {
-        expression.inferTypes(typeProvider);
-      }
-
-      if (!isBuiltInAggregationFunctionExpression()) {
-        typeProvider.setType(
-            expressionString,
-            new UDTFInformationInferrer(functionName)
-                .inferOutputType(
-                    expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-                    expressions.stream()
-                        .map(f -> typeProvider.getType(f.toString()))
-                        .collect(Collectors.toList()),
-                    functionAttributes));
-      } else {
-        if (expressions.size() != 1) {
-          throw new SemanticException(
-              String.format(
-                  "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
-                  expressions.size()));
-        }
-        typeProvider.setType(
-            expressionString,
-            TypeInferenceUtils.getAggrDataType(
-                functionName, typeProvider.getType(expressions.get(0).toString())));
-      }
-    }
-
-    return typeProvider.getType(expressionString);
-  }
-
-  @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     for (Expression expression : expressions) {
       expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
@@ -323,237 +274,19 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-      Transformer transformer;
-      if (isBuiltInAggregationFunctionExpression) {
-        transformer =
-            new TransparentTransformer(
-                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
-      } else {
-        IntermediateLayer udfInputIntermediateLayer =
-            constructUdfInputIntermediateLayer(
-                queryId,
-                udtfContext,
-                rawTimeSeriesInputLayer,
-                expressionIntermediateLayerMap,
-                typeProvider,
-                memoryAssigner);
-        transformer =
-            constructUdfTransformer(
-                queryId, udtfContext, typeProvider, memoryAssigner, udfInputIntermediateLayer);
-      }
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
+  public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
+    if (isBuiltInAggregationFunctionExpression) {
+      return true;
     }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  private IntermediateLayer constructUdfInputIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
-    for (Expression expression : expressions) {
-      intermediateLayers.add(
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner));
-    }
-    return intermediateLayers.size() == 1
-        ? intermediateLayers.get(0)
-        : new MultiInputColumnIntermediateLayer(
-            this,
-            queryId,
-            memoryAssigner.assign(),
-            intermediateLayers.stream()
-                .map(IntermediateLayer::constructPointReader)
-                .collect(Collectors.toList()));
-  }
-
-  private UDFQueryTransformer constructUdfTransformer(
-      long queryId,
-      UDTFContext udtfContext,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner,
-      IntermediateLayer udfInputIntermediateLayer)
-      throws QueryProcessException, IOException {
-    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
-
-    executor.beforeStart(
-        queryId,
-        memoryAssigner.assign(),
-        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        expressions.stream()
-            .map(f -> typeProvider.getType(f.toString()))
-            .collect(Collectors.toList()),
-        functionAttributes);
-
-    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
-    switch (accessStrategy.getAccessStrategyType()) {
-      case MAPPABLE_ROW_BY_ROW:
-        return new MappableUDFQueryRowTransformer(
-            udfInputIntermediateLayer.constructRowReader(), executor);
-      case ROW_BY_ROW:
-        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
-      case SLIDING_SIZE_WINDOW:
-      case SLIDING_TIME_WINDOW:
-        return new UDFQueryRowWindowTransformer(
-            udfInputIntermediateLayer.constructRowWindowReader(
-                accessStrategy, memoryAssigner.assign()),
-            executor);
-      default:
-        throw new UnsupportedOperationException("Unsupported transformer access strategy");
-    }
-  }
-
-  @Override
-  public boolean isMappable(TypeProvider typeProvider) {
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
             expressions.stream().map(Expression::toString).collect(Collectors.toList()),
             expressions.stream()
-                .map(f -> typeProvider.getType(f.toString()))
+                .map(f -> expressionTypes.get(NodeRef.of(f)))
                 .collect(Collectors.toList()),
             functionAttributes)
         .getAccessStrategyType()
         .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW);
-  }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-      Transformer transformer;
-      if (isBuiltInAggregationFunctionExpression) {
-        transformer =
-            new TransparentTransformer(
-                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
-      } else {
-        IntermediateLayer udfInputIntermediateLayer =
-            constructUdfInputIntermediateLayer(
-                queryId,
-                udtfContext,
-                rawTimeSeriesInputLayer,
-                expressionIntermediateLayerMap,
-                expressionDataTypeMap,
-                memoryAssigner);
-        transformer =
-            constructUdfTransformer(
-                queryId,
-                udtfContext,
-                expressionDataTypeMap,
-                memoryAssigner,
-                udfInputIntermediateLayer);
-      }
-      expressionDataTypeMap.put(this, transformer.getDataType());
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  // TODO: remove it after MPP finished
-  @Deprecated
-  private IntermediateLayer constructUdfInputIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
-    for (Expression expression : expressions) {
-      intermediateLayers.add(
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner));
-    }
-    return intermediateLayers.size() == 1
-        ? intermediateLayers.get(0)
-        : new MultiInputColumnIntermediateLayer(
-            this,
-            queryId,
-            memoryAssigner.assign(),
-            intermediateLayers.stream()
-                .map(IntermediateLayer::constructPointReader)
-                .collect(Collectors.toList()));
-  }
-
-  // TODO: remove it after MPP finished
-  @Deprecated
-  private UDFQueryTransformer constructUdfTransformer(
-      long queryId,
-      UDTFContext udtfContext,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner,
-      IntermediateLayer udfInputIntermediateLayer)
-      throws QueryProcessException, IOException {
-    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
-
-    executor.beforeStart(
-        queryId,
-        memoryAssigner.assign(),
-        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        expressions.stream().map(expressionDataTypeMap::get).collect(Collectors.toList()),
-        functionAttributes);
-
-    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
-    switch (accessStrategy.getAccessStrategyType()) {
-      case MAPPABLE_ROW_BY_ROW:
-        return new MappableUDFQueryRowTransformer(
-            udfInputIntermediateLayer.constructRowReader(), executor);
-      case ROW_BY_ROW:
-        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
-      case SLIDING_SIZE_WINDOW:
-      case SLIDING_TIME_WINDOW:
-        return new UDFQueryRowWindowTransformer(
-            udfInputIntermediateLayer.constructRowWindowReader(
-                accessStrategy, memoryAssigner.assign()),
-            executor);
-      default:
-        throw new UnsupportedOperationException("Unsupported transformer access strategy");
-    }
   }
 
   public List<PartialPath> getPaths() {

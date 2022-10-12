@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -51,14 +51,14 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
+  private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
 
   private final String mbeanName =
       String.format(
           "%s:%s=%s",
           ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
-
-  private static final int scheduleWaitingRetryNum = 20;
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;
@@ -97,8 +97,8 @@ public class ConfigNode implements ConfigNodeMBean {
             .applyConfigNode(
                 new TConfigNodeLocation(
                     0,
-                    new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
-                    new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())));
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
@@ -120,7 +120,7 @@ public class ConfigNode implements ConfigNodeMBean {
           ConfigNodeConstant.GLOBAL_NAME);
 
       boolean isJoinedCluster = false;
-      for (int retry = 0; retry < scheduleWaitingRetryNum; retry++) {
+      for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
         if (configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().size()
             > 0) {
           isJoinedCluster = true;
@@ -139,7 +139,6 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -173,14 +172,11 @@ public class ConfigNode implements ConfigNodeMBean {
 
     // Setup UDFService
     registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(conf.getTemporaryLibDir(), conf.getUdfLibDir()));
-    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(conf.getUdfLibDir()));
-    registerManager.register(UDFRegistrationService.setupAndGetInstance(conf.getSystemUdfDir()));
+        UDFExecutableManager.setupAndGetInstance(CONF.getTemporaryLibDir(), CONF.getUdfLibDir()));
+    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
+    registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
-    // Setup MetricsService
-    registerManager.register(MetricsService.getInstance());
-    MetricsService.getInstance().startAllReporter();
-
+    registerManager.register(MetricService.getInstance());
     LOGGER.info("Successfully setup internal services.");
   }
 
@@ -190,21 +186,27 @@ public class ConfigNode implements ConfigNodeMBean {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 -1,
-                new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
-                new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())),
-            conf.getDataRegionConsensusProtocolClass(),
-            conf.getSchemaRegionConsensusProtocolClass(),
-            conf.getSeriesPartitionSlotNum(),
-            conf.getSeriesPartitionExecutorClass(),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
+            CONF.getDataRegionConsensusProtocolClass(),
+            CONF.getSchemaRegionConsensusProtocolClass(),
+            CONF.getSeriesPartitionSlotNum(),
+            CONF.getSeriesPartitionExecutorClass(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
-            conf.getTimePartitionInterval(),
-            conf.getSchemaReplicationFactor(),
-            conf.getSchemaRegionPerDataNode(),
-            conf.getDataReplicationFactor(),
-            conf.getDataRegionPerProcessor(),
-            conf.getReadConsistencyLevel());
+            CONF.getTimePartitionInterval(),
+            CONF.getSchemaReplicationFactor(),
+            CONF.getSchemaRegionPerDataNode(),
+            CONF.getDataReplicationFactor(),
+            CONF.getDataRegionPerProcessor(),
+            CONF.getReadConsistencyLevel(),
+            CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
 
-    TEndPoint targetConfigNode = conf.getTargetConfigNode();
+    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
+    if (targetConfigNode == null) {
+      LOGGER.error("The targetConfigNode setting in conf is empty");
+      throw new StartupException("The targetConfigNode setting in conf is empty");
+    }
+
     for (int retry = 0; retry < 3; retry++) {
       TSStatus status =
           (TSStatus)

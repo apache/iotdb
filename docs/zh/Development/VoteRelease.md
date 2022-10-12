@@ -100,7 +100,7 @@ shasum -a512 apache-iotdb-0.12.0-source-release.zip
 * 验证编译
 
 ```
-mvnw.sh install
+mvnw install
 
 应该最后全 SUCCESS
 ```
@@ -161,7 +161,7 @@ The source release:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
-could compile from source: ./mvnw.sh clean install [ok]
+could compile from source: ./mvnw clean install [ok]
 
 The binary distribution:
 LICENSE and NOTICE [ok]

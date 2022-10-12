@@ -22,19 +22,19 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 
 import java.util.List;
 import java.util.Map;
@@ -54,7 +54,7 @@ public class RegionBalancer {
   }
 
   /**
-   * Generate a Regions allocation plan(CreateRegionsPlan)
+   * Generate a Regions' allocation plan(CreateRegionsPlan)
    *
    * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of the new Regions
@@ -65,36 +65,44 @@ public class RegionBalancer {
   public CreateRegionGroupsPlan genRegionsAllocationPlan(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+
+    // The new Regions will occupy online DataNodes firstly
+    List<TDataNodeConfiguration> onlineDataNodes =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
+    // Some new Regions will have to occupy unknown DataNodes
+    // if the number of online DataNodes is insufficient
+    List<TDataNodeConfiguration> availableDataNodes =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
+
+    // Make sure the number of available DataNodes is enough for allocating new Regions
+    for (String storageGroup : allotmentMap.keySet()) {
+      int replicationFactor =
+          getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
+      if (availableDataNodes.size() < replicationFactor) {
+        throw new NotEnoughDataNodeException();
+      }
+    }
+
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
-
-    // TODO: After waiting for the IT framework to complete, change the following code to:
-    //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
-    List<TDataNodeConfiguration> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
+    // Only considering the specified ConsensusGroupType when doing allocation
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
+    allocatedRegions.removeIf(
+        allocateRegion -> allocateRegion.getRegionId().getType() != consensusGroupType);
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
       String storageGroup = entry.getKey();
       int allotment = entry.getValue();
-
-      // Get schema
-      TStorageGroupSchema storageGroupSchema =
-          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
       int replicationFactor =
-          consensusGroupType == TConsensusGroupType.SchemaRegion
-              ? storageGroupSchema.getSchemaReplicationFactor()
-              : storageGroupSchema.getDataReplicationFactor();
-
-      // Check validity
-      if (registeredDataNodes.size() < replicationFactor) {
-        throw new NotEnoughDataNodeException();
-      }
+          getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
+      List<TDataNodeConfiguration> targetDataNodes =
+          onlineDataNodes.size() >= replicationFactor ? onlineDataNodes : availableDataNodes;
 
       for (int i = 0; i < allotment; i++) {
         // Generate allocation plan
         TRegionReplicaSet newRegion =
             regionAllocator.allocateRegion(
-                registeredDataNodes,
+                targetDataNodes,
                 allocatedRegions,
                 replicationFactor,
                 new TConsensusGroupId(

@@ -78,6 +78,7 @@ public class DataPartition extends Partition {
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
+        .distinct()
         .collect(Collectors.toList());
   }
 
@@ -96,6 +97,14 @@ public class DataPartition extends Partition {
         .collect(Collectors.toList());
   }
 
+  public List<TRegionReplicaSet> getAllDataRegionReplicaSetForOneDevice(String deviceName) {
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
+  }
+
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
       String deviceName, TTimePartitionSlot timePartitionSlot) {
     // A list of data region replica sets will store data in a same time partition.
@@ -103,14 +112,19 @@ public class DataPartition extends Partition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    List<TRegionReplicaSet> regions =
-        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-            .filter(entry -> entry.getKey().equals(timePartitionSlot))
-            .flatMap(entry -> entry.getValue().stream())
-            .collect(Collectors.toList());
-    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
-    // more than 1 Regions for one timeSlot
-    return regions.get(0);
+    try {
+      List<TRegionReplicaSet> regions =
+          dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+              .filter(entry -> entry.getKey().equals(timePartitionSlot))
+              .flatMap(entry -> entry.getValue().stream())
+              .collect(Collectors.toList());
+      // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
+      // are more than 1 Regions for one timeSlot
+      return regions.get(0);
+    } catch (NullPointerException exception) {
+      throw new RuntimeException(
+          "Failed to auto create storage group because enable_auto_create_schema is FALSE.");
+    }
   }
 
   private String getStorageGroupByDevice(String deviceName) {

@@ -82,6 +82,7 @@ public class WALInfoEntry extends WALEntry {
       case INSERT_ROW_PLAN:
       case INSERT_ROW_NODE:
       case DELETE_PLAN:
+      case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
         value.serializeToWAL(buffer);
         break;

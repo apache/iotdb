@@ -21,9 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.LogicBinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.LogicOrTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -35,12 +32,6 @@ public class LogicOrExpression extends LogicBinaryExpression {
 
   public LogicOrExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
-  }
-
-  @Override
-  protected LogicBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new LogicOrTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override

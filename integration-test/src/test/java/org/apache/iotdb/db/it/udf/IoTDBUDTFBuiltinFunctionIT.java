@@ -1080,178 +1080,308 @@ public class IoTDBUDTFBuiltinFunctionIT {
       testTrim(statement);
       testStrCmp(statement);
     } catch (Exception e) {
-      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
-  private void testTrim(Statement statement) {
+  private void testTrim(Statement statement) throws SQLException {
     String s2;
-    try (ResultSet resultSet =
-        statement.executeQuery("select s2, trim(s2) " + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        s2 = resultSet.getString(3);
-        if (s2 == null) {
-          continue;
-        }
-        assertEquals(resultSet.getString(2).trim(), resultSet.getString(3));
+    ResultSet resultSet =
+        statement.executeQuery("select s2, trim(s2) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      s2 = resultSet.getString(3);
+      if (s2 == null) {
+        continue;
       }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      assertEquals(resultSet.getString(2).trim(), resultSet.getString(3));
     }
   }
 
-  private void testStrCmp(Statement statement) {
-    try (ResultSet resultSet =
+  private void testStrCmp(Statement statement) throws SQLException {
+
+    ResultSet resultSet =
         statement.executeQuery(
-            "select s1, s2, strcmp(s1, s2) " + "from root.testStringFunctions.d1")) {
-      String s1, s2;
-      while (resultSet.next()) {
-        s1 = resultSet.getString(2);
-        s2 = resultSet.getString(3);
-        if (s1 == null || s2 == null) {
-          continue;
-        }
-        assertEquals(s1.compareTo(s2), resultSet.getInt(4));
+            "select s1, s2, strcmp(s1, s2) " + "from root.testStringFunctions.d1");
+    String s1, s2;
+    while (resultSet.next()) {
+      s1 = resultSet.getString(2);
+      s2 = resultSet.getString(3);
+      if (s1 == null || s2 == null) {
+        continue;
       }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      assertEquals(s1.compareTo(s2), resultSet.getInt(4));
     }
   }
 
-  private void testLower(Statement statement) {
-    try (ResultSet resultSet =
-        statement.executeQuery("select s1, lower(s1) " + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).toLowerCase(), resultSet.getString(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+  private void testLower(Statement statement) throws SQLException {
+    ResultSet resultSet =
+        statement.executeQuery("select s1, lower(s1) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).toLowerCase(), resultSet.getString(3));
     }
   }
 
-  private void testUpper(Statement statement) {
-    try (ResultSet resultSet =
-        statement.executeQuery("select s1, upper(s1) " + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).toUpperCase(), resultSet.getString(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+  private void testUpper(Statement statement) throws SQLException {
+    ResultSet resultSet =
+        statement.executeQuery("select s1, upper(s1) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).toUpperCase(), resultSet.getString(3));
     }
   }
 
-  private void testSubStr(Statement statement) {
-    try (ResultSet resultSet =
+  private void testSubStr(Statement statement) throws SQLException {
+    ResultSet resultSet =
         statement.executeQuery(
             "select s1, substr(s1, \"start\"=\"3\", \"end\"=\"7\") "
-                + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).substring(3, 7), resultSet.getString(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+                + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).substring(3, 7), resultSet.getString(3));
     }
   }
 
-  private void testConcat(Statement statement) {
-    try (ResultSet resultSet =
+  private void testConcat(Statement statement) throws SQLException {
+    ResultSet resultSet =
         statement.executeQuery(
             "select s1, s2, "
                 + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\"), "
                 + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\", \"series_behind\"=\"true\") "
-                + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(
-            (resultSet.getString(2) + resultSet.getString(3) + "IoTDB").replace("null", ""),
-            resultSet.getString(4));
-        assertEquals(
-            ("IoTDB" + (resultSet.getString(2) + resultSet.getString(3))).replace("null", ""),
-            resultSet.getString(5));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+                + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(
+          (resultSet.getString(2) + resultSet.getString(3) + "IoTDB").replace("null", ""),
+          resultSet.getString(4));
+      assertEquals(
+          ("IoTDB" + (resultSet.getString(2) + resultSet.getString(3))).replace("null", ""),
+          resultSet.getString(5));
     }
   }
 
-  private void testEndsWith(Statement statement) {
-    try (ResultSet resultSet =
+  private void testEndsWith(Statement statement) throws SQLException {
+    ResultSet resultSet =
         statement.executeQuery(
-            "select s1, endsWith(s1, \"target\"=\"1111\") " + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).endsWith("1111"), resultSet.getBoolean(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+            "select s1, endsWith(s1, \"target\"=\"1111\") " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).endsWith("1111"), resultSet.getBoolean(3));
     }
   }
 
-  private void testStartsWith(Statement statement) {
-    try (ResultSet resultSet =
+  private void testStartsWith(Statement statement) throws SQLException {
+    ResultSet resultSet =
         statement.executeQuery(
-            "select s1, startsWith(s1, \"target\"=\"1111\") "
-                + "from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).startsWith("1111"), resultSet.getBoolean(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+            "select s1, startsWith(s1, \"target\"=\"1111\") " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).startsWith("1111"), resultSet.getBoolean(3));
     }
   }
 
-  private void testStrLocate(Statement statement) {
-    try (ResultSet resultSet =
+  private void testStrLocate(Statement statement) throws SQLException {
+    ResultSet resultSet =
         statement.executeQuery(
-            "select s1, locate(s1, \"target\"=\"1111\"), locate(s1, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).indexOf("1111"), resultSet.getInt(3));
-        assertEquals(resultSet.getString(2).lastIndexOf("1111"), resultSet.getInt(4));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+            "select s1, locate(s1, \"target\"=\"1111\"), locate(s1, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).indexOf("1111"), resultSet.getInt(3));
+      assertEquals(resultSet.getString(2).lastIndexOf("1111"), resultSet.getInt(4));
     }
   }
 
-  private void testStrLength(Statement statement) {
-    try (ResultSet resultSet =
-        statement.executeQuery("select s1, length(s1) from root.testStringFunctions.d1")) {
-      while (resultSet.next()) {
-        assertEquals(resultSet.getString(2).length(), resultSet.getInt(3));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+  private void testStrLength(Statement statement) throws SQLException {
+    ResultSet resultSet =
+        statement.executeQuery("select s1, length(s1) from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).length(), resultSet.getInt(3));
     }
   }
 
   @Test
-  public void testDeDup() {
+  public void testMasterRepair() {
+    // create time series with master data
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.testMasterRepair");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m3 with datatype=FLOAT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    String[] INSERT_SQL = {
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (1,1704,1154.55,0.195,1704,1154.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (2,1702,1152.30,0.193,1702,1152.30,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (3,1702,1148.65,0.192,1702,1148.65,0.192)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (4,1701,1145.20,0.194,1701,1145.20,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (7,1703,1150.55,0.195,1703,1150.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (8,1694,1151.55,0.193,1704,1151.55,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (9,1705,1153.55,0.194,1705,1153.55,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (10,1706,1152.30,0.190,1706,1152.30,0.190)",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : INSERT_SQL) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+
+      // test 1
+      double[] r1 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1702.0, 1705.0, 1706.0};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3) from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+          double expectedResult = r1[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 2
+      double[] r2 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1152.30, 1153.55, 1152.30};
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'output_column'='2') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r2[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 3
+      double[] r3 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'output_column'='3') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r3[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 4
+      double[] r4 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1704.0, 1705.0, 1706.0};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r4[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 5
+      double[] r5 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1151.55, 1153.55, 1152.30};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='2') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r5[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 6
+      double[] r6 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='3') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r6[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testChangePoints() {
     String[] createSQLs =
         new String[] {
-          "SET STORAGE GROUP TO root.testDeDup",
-          "CREATE TIMESERIES root.testDeDup.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "SET STORAGE GROUP TO root.testChangePoints",
+          "CREATE TIMESERIES root.testChangePoints.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         };
 
     String[] insertSQLs =
         new String[] {
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1268,12 +1398,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
       String[] expectedHeader =
           new String[] {
             TIMESTAMP_STR,
-            "deDup(root.testDeDup.d1.s1)",
-            "deDup(root.testDeDup.d1.s2)",
-            "deDup(root.testDeDup.d1.s3)",
-            "deDup(root.testDeDup.d1.s4)",
-            "deDup(root.testDeDup.d1.s5)",
-            "deDup(root.testDeDup.d1.s6)"
+            "change_points(root.testChangePoints.d1.s1)",
+            "change_points(root.testChangePoints.d1.s2)",
+            "change_points(root.testChangePoints.d1.s3)",
+            "change_points(root.testChangePoints.d1.s4)",
+            "change_points(root.testChangePoints.d1.s5)",
+            "change_points(root.testChangePoints.d1.s6)"
           };
 
       String[] retArray =
@@ -1285,7 +1415,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           };
 
       resultSetEqualTest(
-          "select deDup(s1), deDup(s2), deDup(s3), deDup(s4), deDup(s5), deDup(s6) from root.testDeDup.d1",
+          "select change_points(s1), change_points(s2), change_points(s3), change_points(s4), change_points(s5), change_points(s6) from root.testChangePoints.d1",
           expectedHeader,
           retArray);
     } catch (Exception e) {

@@ -21,18 +21,32 @@ package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Random;
 
 public class LRUCacheTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(LRUCacheTest.class);
 
   private static final int CACHE_SIZE = 3;
   private static final int DATA_SIZE = CACHE_SIZE << 3;
 
   private LRUCache cache;
 
+  private int PERFORMANCE_CACHE_SIZE = 60;
+  private LRUCache performance_cache;
+  private int LOOP_COUNT = 50;
+  private int PER_LOOP_NUM = 10000000;
+  private Random r = new Random();
+
   @Before
   public void setUp() {
     cache = new LRUCache(CACHE_SIZE);
+    performance_cache = new LRUCache(PERFORMANCE_CACHE_SIZE);
   }
 
   @Test
@@ -110,6 +124,71 @@ public class LRUCacheTest {
     }
     for (int i = 0; i < DATA_SIZE; ++i) {
       cache.set(i, i);
+    }
+  }
+
+  private double loopsForRandom(int data_size) {
+    long begin = 0, end;
+    double sum = 0;
+    int[] random_data = new int[data_size];
+    for (int i = 0; i < data_size; i++) {
+      random_data[i] = r.nextInt(data_size);
+    }
+    for (int i = 0; i < data_size; i++) {
+      performance_cache.set(i, i);
+    }
+    for (int i = 0; i < LOOP_COUNT; i++) {
+      for (int j = 0; j < PER_LOOP_NUM; j++) {
+        if (j == 1000) {
+          begin = System.currentTimeMillis();
+        }
+        int n = random_data[j % data_size];
+        int value = performance_cache.get(n);
+        performance_cache.set(n, value + 1);
+      }
+      end = System.currentTimeMillis();
+      sum += (end - begin) * 1.0 / 1000;
+    }
+    return sum;
+  }
+
+  @Test
+  @Ignore
+  public void testRandomPerformance() {
+    double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    for (int i = 0; i < rate.length; i++) {
+      double sum = loopsForRandom((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
+      logger.info("Random LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
+    }
+  }
+
+  private double loopsForScan(int data_size) {
+    long begin = 0, end;
+    double sum = 0;
+    for (int i = 0; i < data_size; i++) {
+      performance_cache.set(i, i);
+    }
+    for (int i = 0; i < LOOP_COUNT; i++) {
+      for (int j = 0; j < PER_LOOP_NUM; j++) {
+        if (j == 1000) {
+          begin = System.currentTimeMillis();
+        }
+        int value = performance_cache.get(j % data_size);
+        performance_cache.set(j % data_size, value + 1);
+      }
+      end = System.currentTimeMillis();
+      sum += (end - begin) * 1.0 / 1000;
+    }
+    return sum;
+  }
+
+  @Test
+  @Ignore
+  public void testScanPerformance() {
+    double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    for (int i = 0; i < rate.length; i++) {
+      double sum = loopsForScan((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
+      logger.info("Scan LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
     }
   }
 }

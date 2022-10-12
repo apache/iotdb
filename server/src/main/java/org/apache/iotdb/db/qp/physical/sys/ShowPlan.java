@@ -130,6 +130,5 @@ public class ShowPlan extends PhysicalPlan {
     PIPESINK,
     PIPESINKTYPE,
     PIPE,
-    PIPESERVER
   }
 }

@@ -23,10 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -97,8 +99,11 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowChildPaths(
       ShowChildPathsStatement showChildPathsStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     Set<TSchemaNode> matchedChildPaths = context.getAnalysis().getMatchedNodes();
 
     // sort by node type
@@ -128,13 +133,15 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowChildNodes(
       ShowChildNodesStatement showChildNodesStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showChildNodesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     Set<String> matchedChildNodes =
-        new TreeSet<>(
-            context.getAnalysis().getMatchedNodes().stream()
-                .map(node -> node.getNodeName())
-                .collect(Collectors.toSet()));
+        context.getAnalysis().getMatchedNodes().stream()
+            .map(TSchemaNode::getNodeName)
+            .collect(Collectors.toCollection(TreeSet::new));
     matchedChildNodes.forEach(
         node -> {
           try {
@@ -154,10 +161,14 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowVersion(
       ShowVersionStatement showVersionStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showVersionHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showVersionColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(IoTDBConstant.VERSION));
+    tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.BUILD_INFO));
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
@@ -166,11 +177,14 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitCountNodes(
       CountNodesStatement countStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.countNodesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     Set<String> matchedChildNodes =
         context.getAnalysis().getMatchedNodes().stream()
-            .map(node -> node.getNodeName())
+            .map(TSchemaNode::getNodeName)
             .collect(Collectors.toSet());
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
@@ -182,8 +196,11 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitCountDevices(
       CountDevicesStatement countStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.countDevicesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(0);
     tsBlockBuilder.declarePosition();
@@ -194,8 +211,11 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitCountTimeSeries(
       CountTimeSeriesStatement countStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countTimeSeriesHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(0);
     tsBlockBuilder.declarePosition();
@@ -207,8 +227,28 @@ public class StatementMemorySourceVisitor
   public StatementMemorySource visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
       StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showPathsUsingTemplate.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showPathsUsingTemplateHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitShowPipeSinkType(
+      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, StatementMemorySourceContext context) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showPipeSinkTypeColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(pipeSinkType.name()));
+      tsBlockBuilder.declarePosition();
+    }
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }

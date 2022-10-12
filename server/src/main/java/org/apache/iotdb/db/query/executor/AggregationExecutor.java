@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -27,8 +29,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -289,6 +289,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), true);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
@@ -303,6 +304,7 @@ public class AggregationExecutor {
       aggregateFromReader(seriesReader, ascAggregateResultList);
     }
     if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), false);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
@@ -341,6 +343,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (!isAggregateResultEmpty(ascAggregateResultList)) {
+      QueryUtils.fillOrderIndexes(queryDataSource, alignedPath.getDevice(), true);
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,
@@ -355,6 +358,7 @@ public class AggregationExecutor {
       aggregateFromAlignedReader(seriesReader, ascAggregateResultList);
     }
     if (!isAggregateResultEmpty(descAggregateResultList)) {
+      QueryUtils.fillOrderIndexes(queryDataSource, alignedPath.getDevice(), false);
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,

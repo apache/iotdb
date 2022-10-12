@@ -67,12 +67,13 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 ## 删除时间序列
 
-我们可以使用`DELETE TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
+我们可以使用`(DELETE | DROP) TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
+IoTDB> drop timeseries root.ln.wf02.*
 ```
 
 ## 查看时间序列
@@ -188,32 +189,32 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
 
 ```
 IoTDB> COUNT TIMESERIES root.** GROUP BY LEVEL=1
-+------------+-----+
-|      column|count|
-+------------+-----+
-|   root.sgcc|    2|
-|root.turbine|    1|
-|     root.ln|    4|
-+------------+-----+
++------------+-----------------+
+|      column|count(timeseries)|
++------------+-----------------+
+|   root.sgcc|                2|
+|root.turbine|                1|
+|     root.ln|                4|
++------------+-----------------+
 Total line number = 3
 It costs 0.002s
 
 IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
-+------------+-----+
-|      column|count|
-+------------+-----+
-|root.ln.wf02|    2|
-|root.ln.wf01|    2|
-+------------+-----+
++------------+-----------------+
+|      column|count(timeseries)|
++------------+-----------------+
+|root.ln.wf02|                2|
+|root.ln.wf01|                2|
++------------+-----------------+
 Total line number = 2
 It costs 0.002s
 
 IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
-+------------+-----+
-|      column|count|
-+------------+-----+
-|root.ln.wf01|    2|
-+------------+-----+
++------------+-----------------+
+|      column|count(timeseries)|
++------------+-----------------+
+|root.ln.wf01|                2|
++------------+-----------------+
 Total line number = 1
 It costs 0.002s
 ```

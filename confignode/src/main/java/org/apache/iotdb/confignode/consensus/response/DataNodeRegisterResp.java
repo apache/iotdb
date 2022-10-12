@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -33,6 +34,7 @@ public class DataNodeRegisterResp implements DataSet {
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
   private TGlobalConfig globalConfig;
+  private TRatisConfig ratisConfig;
   private byte[] templateInfo;
 
   public DataNodeRegisterResp() {
@@ -60,6 +62,10 @@ public class DataNodeRegisterResp implements DataSet {
     this.globalConfig = globalConfig;
   }
 
+  public void setRatisConfig(TRatisConfig ratisConfig) {
+    this.ratisConfig = ratisConfig;
+  }
+
   public void setTemplateInfo(byte[] templateInfo) {
     this.templateInfo = templateInfo;
   }
@@ -74,6 +80,7 @@ public class DataNodeRegisterResp implements DataSet {
       resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
       resp.setTemplateInfo(templateInfo);
+      resp.setRatisConfig(ratisConfig);
     }
 
     return resp;

@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -137,6 +140,10 @@ public abstract class InsertNode extends WritePlanNode {
     return dataTypes;
   }
 
+  public TSDataType getDataType(int index) {
+    return dataTypes[index];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
   }
@@ -177,7 +184,13 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
+      } else {
+        byteLen += ReadWriteIOUtils.sizeToWrite(measurements[i]);
+        // datatype size
+        byteLen++;
+      }
     }
     return byteLen;
   }
@@ -189,7 +202,14 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      WALWriteUtils.write(measurementSchemas[i], buffer);
+
+      // serialize measurementId only for standalone version for better write performance
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        WALWriteUtils.write(measurementSchemas[i], buffer);
+      } else {
+        WALWriteUtils.write(measurements[i], buffer);
+        WALWriteUtils.write(dataTypes[i], buffer);
+      }
     }
   }
 
@@ -199,8 +219,14 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+        dataTypes[i] = measurementSchemas[i].getType();
+      } else {
+        measurements[i] = ReadWriteIOUtils.readString(stream);
+        dataTypes[i] = TSDataType.deserialize(ReadWriteIOUtils.readByte(stream));
+      }
     }
   }
 
@@ -216,29 +242,40 @@ public abstract class InsertNode extends WritePlanNode {
     return dataRegionReplicaSet;
   }
 
-  public abstract boolean validateAndSetSchema(ISchemaTree schemaTree);
+  public abstract void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException;
 
   /** Check whether data types are matched with measurement schemas */
-  protected boolean selfCheckDataTypes() {
+  protected void selfCheckDataTypes() throws DataTypeMismatchException {
     for (int i = 0; i < measurementSchemas.length; i++) {
       if (dataTypes[i] != measurementSchemas[i].getType()) {
+        if (checkAndCastDataType(i, measurementSchemas[i].getType())) {
+          continue;
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
+          throw new DataTypeMismatchException(
+              devicePath.getFullPath(),
+              measurements[i],
+              dataTypes[i],
+              measurementSchemas[i].getType(),
+              getMinTime(),
+              getFirstValueOfIndex(i));
         } else {
           markFailedMeasurement(
               i,
               new DataTypeMismatchException(
                   devicePath.getFullPath(),
                   measurements[i],
-                  measurementSchemas[i].getType(),
                   dataTypes[i],
+                  measurementSchemas[i].getType(),
                   getMinTime(),
                   getFirstValueOfIndex(i)));
         }
       }
     }
-    return true;
   }
+
+  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
 
   public abstract long getMinTime();
 

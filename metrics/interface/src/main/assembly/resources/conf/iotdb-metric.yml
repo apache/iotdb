@@ -39,6 +39,9 @@ predefinedMetrics:
   - JVM
   - FILE
 
+# The period of the collection of some metrics in asynchronous way, such as tsfile size.
+asyncCollectPeriodInSecond: 5
+
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
 

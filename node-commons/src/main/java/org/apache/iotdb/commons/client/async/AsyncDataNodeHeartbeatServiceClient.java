@@ -107,8 +107,9 @@ public class AsyncDataNodeHeartbeatServiceClient extends IDataNodeRPCService.Asy
 
     public Factory(
         ClientManager<TEndPoint, AsyncDataNodeHeartbeatServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientFactoryProperty clientFactoryProperty,
+        String threadName) {
+      super(clientManager, clientFactoryProperty, threadName);
     }
 
     @Override

@@ -21,8 +21,10 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.dropwizard.MetricName;
+import org.apache.iotdb.metrics.dropwizard.DropwizardMetricNameTool;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -160,14 +162,14 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == gauge) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MetricInfo metricInfo = DropwizardMetricNameTool.transformFromString(MetricType.GAUGE, name);
     Object obj = gauge.getValue();
     double value;
     if (obj instanceof Number) {
       value = ((Number) obj).doubleValue();
-      updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
+      updateValue(prefixed(metricInfo.getName()), metricInfo.getTags(), value);
     } else if (obj instanceof Boolean) {
-      updateValue(prefixed(metricName.getName()), metricName.getTags(), obj);
+      updateValue(prefixed(metricInfo.getName()), metricInfo.getTags(), obj);
     }
   }
 
@@ -175,19 +177,20 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == counter) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MetricInfo metricInfo = DropwizardMetricNameTool.transformFromString(MetricType.COUNTER, name);
     double value = counter.getCount();
-    updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
+    updateValue(prefixed(metricInfo.getName()), metricInfo.getTags(), value);
   }
 
   private void sendHistogram(String name, Histogram histogram) {
     if (null == histogram) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MetricInfo metricInfo =
+        DropwizardMetricNameTool.transformFromString(MetricType.HISTOGRAM, name);
     writeSnapshotAndCount(
-        prefixed(metricName.getName()),
-        metricName.getTags(),
+        prefixed(metricInfo.getName()),
+        metricInfo.getTags(),
         histogram.getSnapshot(),
         histogram.getCount(),
         1.0);
@@ -197,19 +200,19 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == meter) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MetricInfo metricInfo = DropwizardMetricNameTool.transformFromString(MetricType.GAUGE, name);
     double value = meter.getCount();
-    updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
+    updateValue(prefixed(metricInfo.getName()), metricInfo.getTags(), value);
   }
 
   private void sendTimer(String name, Timer timer) {
     if (null == timer) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MetricInfo metricInfo = DropwizardMetricNameTool.transformFromString(MetricType.GAUGE, name);
     writeSnapshotAndCount(
-        prefixed(metricName.getName()),
-        metricName.getTags(),
+        prefixed(metricInfo.getName()),
+        metricInfo.getTags(),
         timer.getSnapshot(),
         timer.getCount(),
         1.0D / TimeUnit.SECONDS.toNanos(1L));

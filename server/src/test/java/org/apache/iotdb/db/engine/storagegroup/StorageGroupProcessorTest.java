@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,7 +44,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -384,11 +385,11 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(100);
+    config.setTimePartitionIntervalForStorage(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -462,7 +463,7 @@ public class StorageGroupProcessorTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 
@@ -470,11 +471,11 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(1200);
+    config.setTimePartitionIntervalForStorage(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -548,7 +549,7 @@ public class StorageGroupProcessorTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 
@@ -556,11 +557,11 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(1000);
+    config.setTimePartitionIntervalForStorage(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -634,7 +635,7 @@ public class StorageGroupProcessorTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 
@@ -751,7 +752,7 @@ public class StorageGroupProcessorTest {
                   + targetTsFileResource.getTsFile().getName()
                   + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
       Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertFalse(CommonDescriptor.getInstance().getConfig().isReadOnly());
       Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
     } finally {
       new CompactionConfigRestorer().restoreCompactionConfig();

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -128,18 +128,25 @@ public class ClusterSchemaTree implements ISchemaTree {
       return null;
     }
 
-    List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
+    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     SchemaNode node;
+    SchemaMeasurementNode measurementNode;
     for (String measurement : measurements) {
       node = cur.getChild(measurement);
       if (node == null) {
-        measurementNodeList.add(null);
+        measurementSchemaInfoList.add(null);
       } else {
-        measurementNodeList.add(node.getAsMeasurementNode());
+        measurementNode = node.getAsMeasurementNode();
+        measurementSchemaInfoList.add(
+            new MeasurementSchemaInfo(
+                measurementNode.getName(),
+                measurementNode.getSchema(),
+                measurementNode.getAlias()));
       }
     }
 
-    return new DeviceSchemaInfo(devicePath, cur.getAsEntityNode().isAligned(), measurementNodeList);
+    return new DeviceSchemaInfo(
+        devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {

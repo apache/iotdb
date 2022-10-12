@@ -365,6 +365,7 @@ public class CompactionTaskComparatorTest {
           selectedUnsequenceFiles,
           new ReadPointCompactionPerformer(),
           currentTaskNum,
+          0,
           serialId);
     }
 

@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -66,6 +69,8 @@ import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -81,10 +86,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -96,8 +100,6 @@ import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -120,6 +122,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -218,7 +221,7 @@ public class DataRegion {
   /** data region id */
   private String dataRegionId;
   /** logical storage group name */
-  private String logicalStorageGroupName;
+  private String storageGroupName;
   /** storage group system directory */
   private File storageGroupSysDir;
   /** manage seqFileList and unSeqFileList */
@@ -272,30 +275,27 @@ public class DataRegion {
 
   private IDTable idTable;
 
-  /** used to collect TsFiles in this virtual storage group */
-  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
-
   /**
    * constrcut a storage group processor
    *
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param logicalStorageGroupName logical storage group name e.g. root.sg1
+   * @param storageGroupName logical storage group name e.g. root.sg1
    */
   public DataRegion(
       String systemDir,
       String dataRegionId,
       TsFileFlushPolicy fileFlushPolicy,
-      String logicalStorageGroupName)
+      String storageGroupName)
       throws DataRegionException {
     this.dataRegionId = dataRegionId;
-    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.storageGroupName = storageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
-        new TsFileManager(logicalStorageGroupName, dataRegionId, storageGroupSysDir.getPath());
+        new TsFileManager(storageGroupName, dataRegionId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
           "Storage Group system Directory {} doesn't exist, create it",
@@ -306,7 +306,7 @@ public class DataRegion {
 
     // if use id table, we use id table flush time manager
     if (config.isEnableIDTable()) {
-      idTable = IDTableManager.getInstance().getIDTableDirectly(logicalStorageGroupName);
+      idTable = IDTableManager.getInstance().getIDTableDirectly(storageGroupName);
       lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
     } else {
       lastFlushTimeManager = new LastFlushTimeManager();
@@ -318,11 +318,11 @@ public class DataRegion {
         && !StorageEngineV2.getInstance().isAllSgReady()) {
       logger.debug(
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
-          logicalStorageGroupName,
+          storageGroupName,
           dataRegionId);
       for (String fileFolder : DirectoryManager.getInstance().getAllFilesFolders()) {
         File dataRegionFolder =
-            fsFactory.getFile(fileFolder, logicalStorageGroupName + File.separator + dataRegionId);
+            fsFactory.getFile(fileFolder, storageGroupName + File.separator + dataRegionId);
         if (dataRegionFolder.exists()) {
           File[] timePartitions = dataRegionFolder.listFiles();
           if (timePartitions != null) {
@@ -333,7 +333,7 @@ public class DataRegion {
                 logger.error(
                     "Exception occurs when deleting time partition directory {} for {}-{}",
                     timePartitions,
-                    logicalStorageGroupName,
+                    storageGroupName,
                     dataRegionId,
                     e);
               }
@@ -345,21 +345,20 @@ public class DataRegion {
       recover();
     }
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              dataRegionInfo,
-              DataRegionInfo::getMemCost,
-              Tag.NAME.toString(),
-              "storageGroup_" + getLogicalStorageGroupName());
-    }
+    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
   }
 
-  public String getLogicalStorageGroupName() {
-    return logicalStorageGroupName;
+  @TestOnly
+  public DataRegion(String storageGroupName, String id) {
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = id;
+    this.tsFileManager = new TsFileManager(storageGroupName, id, "");
+    this.partitionMaxFileVersions = new HashMap<>();
+    partitionMaxFileVersions.put(0L, 0L);
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
   public boolean isReady() {
@@ -417,7 +416,7 @@ public class DataRegion {
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
-              logicalStorageGroupName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
+              storageGroupName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -464,12 +463,15 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
             break;
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, true);
-            recoverListeners.add(recoverListener);
+            if (recoverListener != null) {
+              recoverListeners.add(recoverListener);
+            }
           }
         }
       }
@@ -478,12 +480,15 @@ public class DataRegion {
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
             break;
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, false);
-            recoverListeners.add(recoverListener);
+            if (recoverListener != null) {
+              recoverListeners.add(recoverListener);
+            }
           }
         }
       }
@@ -531,8 +536,22 @@ public class DataRegion {
       throw new DataRegionException(e);
     }
 
-    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
-    for (TsFileResource resource : seqTsFileResources) {
+    // recover and start timed compaction thread
+    initCompaction();
+
+    if (config.isMppMode()
+        ? StorageEngineV2.getInstance().isAllSgReady()
+        : StorageEngine.getInstance().isAllSgReady()) {
+      logger.info("The data region {}[{}] is created successfully", storageGroupName, dataRegionId);
+    } else {
+      logger.info(
+          "The data region {}[{}] is recovered successfully", storageGroupName, dataRegionId);
+    }
+  }
+
+  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
+    //  only update flush time when it is a seq file
+    if (isSeq) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
@@ -542,21 +561,6 @@ public class DataRegion {
       lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
-    }
-
-    // recover and start timed compaction thread
-    initCompaction();
-
-    if (config.isMppMode()
-        ? StorageEngineV2.getInstance().isAllSgReady()
-        : StorageEngine.getInstance().isAllSgReady()) {
-      logger.info(
-          "The data region {}[{}] is created successfully", logicalStorageGroupName, dataRegionId);
-    } else {
-      logger.info(
-          "The data region {}[{}] is recovered successfully",
-          logicalStorageGroupName,
-          dataRegionId);
     }
   }
 
@@ -568,11 +572,7 @@ public class DataRegion {
     }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.COMPACTION_SCHEDULE.getName()
-                + "-"
-                + logicalStorageGroupName
-                + "-"
-                + dataRegionId);
+            ThreadName.COMPACTION_SCHEDULE.getName() + "-" + storageGroupName + "-" + dataRegionId);
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         timedCompactionScheduleTask,
         this::executeCompaction,
@@ -583,7 +583,7 @@ public class DataRegion {
 
   private void recoverCompaction() {
     CompactionRecoverManager compactionRecoverManager =
-        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, dataRegionId);
+        new CompactionRecoverManager(tsFileManager, storageGroupName, dataRegionId);
     compactionRecoverManager.recoverInnerSpaceCompaction(true);
     compactionRecoverManager.recoverInnerSpaceCompaction(false);
     compactionRecoverManager.recoverCrossSpaceCompaction();
@@ -646,7 +646,7 @@ public class DataRegion {
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder =
-          fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, dataRegionId);
+          fsFactory.getFile(baseDir + File.separator + storageGroupName, dataRegionId);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -726,11 +726,7 @@ public class DataRegion {
           String.format(
               "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
                   + "file time is %d while system current time is %d, please check it.",
-              logicalStorageGroupName,
-              dataRegionId,
-              tsFile.getAbsolutePath(),
-              fileTime,
-              currentTime));
+              storageGroupName, dataRegionId, tsFile.getAbsolutePath(), fileTime, currentTime));
     }
   }
 
@@ -747,22 +743,26 @@ public class DataRegion {
   private void callbackAfterUnsealedTsFileRecovered(
       UnsealedTsFileRecoverPerformer recoverPerformer) {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
+    boolean isSeq = recoverPerformer.isSequence();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
       }
       try {
         tsFileResource.close();
       } catch (IOException e) {
         logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
       }
+      updateLastFlushTime(tsFileResource, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+      TsFileMetricManager.getInstance()
+          .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
     } else {
       // the last file is not closed, continue writing to it
       RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
       long timePartitionId = tsFileResource.getTimePartition();
-      boolean isSeq = recoverPerformer.isSequence();
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
               dataRegionId,
@@ -796,6 +796,7 @@ public class DataRegion {
         }
         tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
       }
+      updateLastFlushTime(tsFileResource, isSeq);
     }
     tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
@@ -819,6 +820,7 @@ public class DataRegion {
       }
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
+      updateLastFlushTime(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (DataRegionException | IOException e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
@@ -902,7 +904,7 @@ public class DataRegion {
     writeLock("InsertRow");
     try {
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+      long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
       lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
 
@@ -1466,24 +1468,34 @@ public class DataRegion {
 
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
-    try {
-      if (sequence) {
-        tsFileProcessor =
-            getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
-      } else {
-        tsFileProcessor =
-            getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
+    int retryCnt = 0;
+    do {
+      try {
+        if (sequence) {
+          tsFileProcessor =
+              getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
+        } else {
+          tsFileProcessor =
+              getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
+        }
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error(
+            "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+            e);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        break;
+      } catch (IOException e) {
+        if (retryCnt < 3) {
+          logger.warn("meet IOException when creating TsFileProcessor, retry it again", e);
+          retryCnt++;
+        } else {
+          logger.error(
+              "meet IOException when creating TsFileProcessor, change system mode to error", e);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          break;
+        }
       }
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
-          e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-    } catch (IOException e) {
-      logger.error(
-          "meet IOException when creating TsFileProcessor, change system mode to read-only", e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-    }
+    } while (tsFileProcessor == null);
     return tsFileProcessor;
   }
 
@@ -1518,7 +1530,7 @@ public class DataRegion {
     String filePath =
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
-            logicalStorageGroupName,
+            storageGroupName,
             dataRegionId,
             timePartitionId,
             System.currentTimeMillis(),
@@ -1535,7 +1547,7 @@ public class DataRegion {
     if (sequence) {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
+              storageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               dataRegionInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1544,7 +1556,7 @@ public class DataRegion {
     } else {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
+              storageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               dataRegionInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1597,7 +1609,7 @@ public class DataRegion {
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn(
                 "{} has spent {}s to wait for closing one tsfile.",
-                logicalStorageGroupName + "-" + this.dataRegionId,
+                storageGroupName + "-" + this.dataRegionId,
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
@@ -1606,7 +1618,7 @@ public class DataRegion {
         logger.error(
             "syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
                 + "group {}",
-            logicalStorageGroupName + "-" + dataRegionId,
+            storageGroupName + "-" + dataRegionId,
             e);
       }
     }
@@ -1640,8 +1652,7 @@ public class DataRegion {
       if (!workUnsequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
-      logger.info(
-          "close a sequence tsfile processor {}", logicalStorageGroupName + "-" + dataRegionId);
+      logger.info("close a sequence tsfile processor {}", storageGroupName + "-" + dataRegionId);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
@@ -1663,13 +1674,13 @@ public class DataRegion {
   public void deleteFolder(String systemDir) {
     logger.info(
         "{} will close all files for deleting data folder {}",
-        logicalStorageGroupName + "-" + dataRegionId,
+        storageGroupName + "-" + dataRegionId,
         systemDir);
     writeLock("deleteFolder");
     try {
       File dataRegionSystemFolder =
           SystemFileFactory.INSTANCE.getFile(
-              systemDir + File.separator + logicalStorageGroupName, dataRegionId);
+              systemDir + File.separator + storageGroupName, dataRegionId);
       org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
           dataRegionSystemFolder);
     } finally {
@@ -1698,8 +1709,7 @@ public class DataRegion {
   /** delete tsfile */
   public void syncDeleteDataFiles() {
     logger.info(
-        "{} will close all files for deleting data files",
-        logicalStorageGroupName + "-" + dataRegionId);
+        "{} will close all files for deleting data files", storageGroupName + "-" + dataRegionId);
     writeLock("syncDeleteDataFiles");
     try {
 
@@ -1723,7 +1733,7 @@ public class DataRegion {
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
       File dataRegionDataFolder =
-          fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
+          fsFactory.getFile(tsfilePath, storageGroupName + File.separator + dataRegionId);
       if (dataRegionDataFolder.exists()) {
         org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
             dataRegionDataFolder);
@@ -1734,14 +1744,13 @@ public class DataRegion {
   /** Iterate each TsFile and try to lock and remove those out of TTL. */
   public synchronized void checkFilesTTL() {
     if (dataTTL == Long.MAX_VALUE) {
-      logger.debug(
-          "{}: TTL not set, ignore the check", logicalStorageGroupName + "-" + dataRegionId);
+      logger.debug("{}: TTL not set, ignore the check", storageGroupName + "-" + dataRegionId);
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
-        logicalStorageGroupName + "-" + dataRegionId,
+        storageGroupName + "-" + dataRegionId,
         new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
@@ -1791,7 +1800,7 @@ public class DataRegion {
           logger.info(
               "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
               tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
+              storageGroupName,
               dataRegionId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
@@ -1814,7 +1823,7 @@ public class DataRegion {
           logger.info(
               "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
               tsFileProcessor.getTimeRangeId(),
-              logicalStorageGroupName,
+              storageGroupName,
               dataRegionId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
@@ -1836,7 +1845,7 @@ public class DataRegion {
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn(
                 "{} has spent {}s to wait for closing all TsFiles.",
-                logicalStorageGroupName + "-" + this.dataRegionId,
+                storageGroupName + "-" + this.dataRegionId,
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
@@ -1844,7 +1853,7 @@ public class DataRegion {
         logger.error(
             "CloseFileNodeCondition error occurs while waiting for closing the storage "
                 + "group {}",
-            logicalStorageGroupName + "-" + dataRegionId,
+            storageGroupName + "-" + dataRegionId,
             e);
         Thread.currentThread().interrupt();
       }
@@ -1857,7 +1866,7 @@ public class DataRegion {
     try {
       logger.info(
           "async force close all files in storage group: {}",
-          logicalStorageGroupName + "-" + dataRegionId);
+          storageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -1878,8 +1887,7 @@ public class DataRegion {
     writeLock("forceCloseAllWorkingTsFileProcessors");
     try {
       logger.info(
-          "force close all processors in storage group: {}",
-          logicalStorageGroupName + "-" + dataRegionId);
+          "force close all processors in storage group: {}", storageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -2179,7 +2187,7 @@ public class DataRegion {
    * @param pattern Must be a pattern start with a precise device path
    * @param startTime
    * @param endTime
-   * @param planIndex
+   * @param searchIndex
    * @param timePartitionFilter
    * @throws IOException
    */
@@ -2187,7 +2195,7 @@ public class DataRegion {
       PartialPath pattern,
       long startTime,
       long endTime,
-      long planIndex,
+      long searchIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     // If there are still some old version tsfiles, the delete won't succeeded.
@@ -2210,8 +2218,7 @@ public class DataRegion {
 
     try {
 
-      PartialPath devicePath = pattern.getDevicePath();
-      Set<PartialPath> devicePaths = Collections.singleton(devicePath);
+      Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
 
       // delete Last cache record if necessary
       // todo implement more precise process
@@ -2219,7 +2226,7 @@ public class DataRegion {
 
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
-          logDeleteInWAL(startTime, endTime, pattern, timePartitionFilter);
+          logDeletionInWAL(startTime, endTime, searchIndex, pattern, timePartitionFilter);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -2270,7 +2277,7 @@ public class DataRegion {
       if (timePartitionStartId <= entry.getKey()
           && entry.getKey() <= timePartitionEndId
           && (timePartitionFilter == null
-              || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteInWAL(deletionPlan);
         walFlushListeners.add(walFlushListener);
       }
@@ -2279,8 +2286,44 @@ public class DataRegion {
       if (timePartitionStartId <= entry.getKey()
           && entry.getKey() <= timePartitionEndId
           && (timePartitionFilter == null
-              || timePartitionFilter.satisfy(logicalStorageGroupName, entry.getKey()))) {
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteInWAL(deletionPlan);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    return walFlushListeners;
+  }
+
+  private List<WALFlushListener> logDeletionInWAL(
+      long startTime,
+      long endTime,
+      long searchIndex,
+      PartialPath path,
+      TimePartitionFilter timePartitionFilter) {
+    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return walFlushListeners;
+    }
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
+    deleteDataNode.setSearchIndex(searchIndex);
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
@@ -2294,27 +2337,37 @@ public class DataRegion {
       long deleteEnd,
       TimePartitionFilter timePartitionFilter) {
     if (timePartitionFilter != null
-        && !timePartitionFilter.satisfy(
-            logicalStorageGroupName, tsFileResource.getTimePartition())) {
+        && !timePartitionFilter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
 
     for (PartialPath device : devicePaths) {
-      String deviceId = device.getFullPath();
-      if (!tsFileResource.mayContainsDevice(deviceId)) {
-        // resource does not contain this device
-        continue;
+      long deviceStartTime, deviceEndTime;
+      if (device.hasWildcard()) {
+        Pair<Long, Long> startAndEndTime = tsFileResource.getPossibleStartTimeAndEndTime(device);
+        if (startAndEndTime == null) {
+          continue;
+        }
+        deviceStartTime = startAndEndTime.getLeft();
+        deviceEndTime = startAndEndTime.getRight();
+      } else {
+        String deviceId = device.getFullPath();
+        if (!tsFileResource.mayContainsDevice(deviceId)) {
+          // resource does not contain this device
+          continue;
+        }
+        deviceStartTime = tsFileResource.getStartTime(deviceId);
+        deviceEndTime = tsFileResource.getEndTime(deviceId);
       }
 
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
       if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
         // unsealed seq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+        if (deleteEnd >= deviceStartTime) {
           return false;
         }
       } else {
         // sealed file or unsealed unseq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+        if (deleteEnd >= deviceStartTime && deleteStart <= deviceEndTime) {
           // time range of device has overlap with the deletion
           return false;
         }
@@ -2371,8 +2424,9 @@ public class DataRegion {
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -2472,8 +2526,7 @@ public class DataRegion {
       closeStorageGroupCondition.notifyAll();
     }
     logger.info(
-        "signal closing storage group condition in {}",
-        logicalStorageGroupName + "-" + dataRegionId);
+        "signal closing storage group condition in {}", storageGroupName + "-" + dataRegionId);
   }
 
   private void executeCompaction() {
@@ -2616,21 +2669,23 @@ public class DataRegion {
     }
   }
 
-  private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
+  private void resetLastCacheWhenLoadingTsFile(TsFileResource resource)
       throws IllegalPathException {
-    for (String device : newTsFileResource.getDevices()) {
-      tryToDeleteLastCacheByDevice(new PartialPath(device));
-    }
-  }
-
-  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    try {
-      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
-    } catch (MetadataException e) {
-      // the path doesn't cache in cluster mode now, ignore
+
+    if (config.isMppMode()) {
+      // TODO: implement more precise process
+      DataNodeSchemaCache.getInstance().cleanUp();
+    } else {
+      for (String device : resource.getDevices()) {
+        try {
+          IoTDB.schemaProcessor.deleteLastCacheByDevice(new PartialPath(device));
+        } catch (MetadataException e) {
+          logger.warn(String.format("Create device %s error.", device));
+        }
+      }
     }
   }
 
@@ -2683,10 +2738,9 @@ public class DataRegion {
           newFilePartitionId,
           insertPos,
           deleteOriginFile);
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
-      // update latest time map
-      updateLatestTimeMap(newTsFileResource);
+      resetLastCacheWhenLoadingTsFile(newTsFileResource); // update last cache
+      updateLastFlushTime(newTsFileResource); // update last flush time
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
       logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
@@ -2695,7 +2749,6 @@ public class DataRegion {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException e) {
       logger.error(
@@ -2953,10 +3006,10 @@ public class DataRegion {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  private void updateLatestTimeMap(TsFileResource newTsFileResource) {
+  private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
-      long timePartitionId = StorageEngine.getTimePartition(endTime);
+      long timePartitionId = StorageEngineV2.getTimePartition(endTime);
       lastFlushTimeManager.updateLastTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateGlobalFlushedTime(device, endTime);
@@ -2986,7 +3039,7 @@ public class DataRegion {
         targetFile =
             fsFactory.getFile(
                 DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                logicalStorageGroupName
+                storageGroupName
                     + File.separatorChar
                     + dataRegionId
                     + File.separatorChar
@@ -3008,7 +3061,7 @@ public class DataRegion {
         targetFile =
             fsFactory.getFile(
                 DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                logicalStorageGroupName
+                storageGroupName
                     + File.separatorChar
                     + dataRegionId
                     + File.separatorChar
@@ -3042,7 +3095,7 @@ public class DataRegion {
       if (deleteOriginFile) {
         FileUtils.moveFile(tsFileToLoad, targetFile);
       } else {
-        Files.createLink(targetFile.toPath(), tsFileToLoad.toPath());
+        Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
       }
     } catch (IOException e) {
       logger.error(
@@ -3064,7 +3117,7 @@ public class DataRegion {
       if (deleteOriginFile) {
         FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
       } else {
-        Files.createLink(targetResourceFile.toPath(), resourceFileToLoad.toPath());
+        Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
       }
     } catch (IOException e) {
       logger.error(
@@ -3096,7 +3149,7 @@ public class DataRegion {
         if (deleteOriginFile) {
           FileUtils.moveFile(modFileToLoad, targetModFile);
         } else {
-          Files.createLink(targetModFile.toPath(), modFileToLoad.toPath());
+          Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
         }
       } catch (IOException e) {
         logger.error(
@@ -3264,7 +3317,7 @@ public class DataRegion {
    * @return data region path, like root.sg1/0
    */
   public String getStorageGroupPath() {
-    return logicalStorageGroupName + File.separator + dataRegionId;
+    return storageGroupName + File.separator + dataRegionId;
   }
 
   public DataRegionInfo getStorageGroupInfo() {
@@ -3360,8 +3413,7 @@ public class DataRegion {
   public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
     List<AbstractCompactionTask> runningTasks =
-        CompactionTaskManager.getInstance()
-            .abortCompaction(logicalStorageGroupName + "-" + dataRegionId);
+        CompactionTaskManager.getInstance().abortCompaction(storageGroupName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
       try {
         TimeUnit.MILLISECONDS.sleep(10);
@@ -3382,7 +3434,7 @@ public class DataRegion {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
       long partitionId = longTsFileProcessorEntry.getKey();
       TsFileProcessor processor = longTsFileProcessorEntry.getValue();
-      if (filter.satisfy(logicalStorageGroupName, partitionId)) {
+      if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
         processor.getTsFileResource().remove();
@@ -3400,7 +3452,7 @@ public class DataRegion {
       TimePartitionFilter filter, Iterator<TsFileResource> iterator, boolean sequence) {
     while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
-      if (filter.satisfy(logicalStorageGroupName, tsFileResource.getTimePartition())) {
+      if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         tsFileManager.remove(tsFileResource, sequence);
         updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
@@ -3496,7 +3548,7 @@ public class DataRegion {
           continue;
         }
         // init map
-        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+        long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
         lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
         // as the plans have been ordered, and we have get the write lock,
@@ -3637,14 +3689,15 @@ public class DataRegion {
   /**
    * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
    *
+   * @param syncManager ISyncManager which invokes to collect history TsFile
    * @param dataStartTime only collect history TsFiles which contains the data after the
    *     dataStartTime
    * @return A list, which contains TsFile path
    */
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
     writeLock("Collect data for sync");
     try {
-      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
+      return tsFileManager.collectHistoryTsFileForSync(syncManager, dataStartTime);
     } finally {
       writeUnlock();
     }
@@ -3728,7 +3781,7 @@ public class DataRegion {
     }
     // identifier should be same with getTsFileProcessor method
     return WALManager.getInstance()
-        .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
+        .applyForWALNode(storageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
   }
 
   /** Wait for this data region successfully deleted */
@@ -3755,6 +3808,10 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
+  }
+
+  public long getMemCost() {
+    return storageGroupInfo.getMemCost();
   }
 
   @TestOnly

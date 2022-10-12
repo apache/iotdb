@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.db.sync.externalpipe;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.sync.datasource.PipeOpManager;
 import org.apache.iotdb.db.sync.datasource.PipeStorageGroupInfo;
+import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.pipe.external.api.DataType;
 import org.apache.iotdb.pipe.external.api.ExternalPipeSinkWriterStatus;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriter;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -41,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -68,11 +67,13 @@ public class ExtPipePlugin {
   // ParamKey => ParamValue
   Map<String, String> sinkParams;
   private PipeOpManager pipeOpManager;
+  private ExtPipePluginManager extPipePluginManager;
 
   private IExternalPipeSinkWriterFactory pipeSinkWriterFactory;
   private ExtPipePluginConfiguration configuration;
 
   private volatile boolean alive = false;
+  // ArrayList: save DataTransmissionTasks' info
   private List<DataTransmissionTask> dataTransmissionTasks;
   private ExecutorService executorService;
 
@@ -83,10 +84,14 @@ public class ExtPipePlugin {
   private int timestampDivisor;
 
   public ExtPipePlugin(
-      String extPipeTypeName, Map<String, String> sinkParams, PipeOpManager pipeOpManager) {
+      String extPipeTypeName,
+      Map<String, String> sinkParams,
+      ExtPipePluginManager extPipePluginManager,
+      PipeOpManager pipeOpManager) {
     this.extPipeTypeName = extPipeTypeName;
     this.sinkParams = sinkParams;
     this.pipeOpManager = pipeOpManager;
+    this.extPipePluginManager = extPipePluginManager;
 
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
@@ -181,13 +186,8 @@ public class ExtPipePlugin {
 
     // == Launch pipe worker threads
     executorService =
-        Executors.newFixedThreadPool(
-            threadNum,
-            r -> {
-              Thread thread = new Thread(r);
-              thread.setName("ExtPipePlugin-worker-" + extPipeTypeName + "-" + thread.getId());
-              return thread;
-            });
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            threadNum, ThreadName.EXT_PIPE_PLUGIN_WORKER.getName() + "-" + extPipeTypeName);
 
     // == Start threads that will run external PiPeSink plugin
     dataTransmissionTasks = new ArrayList<>(threadNum);
@@ -265,7 +265,7 @@ public class ExtPipePlugin {
     }
     writerInvocationFailures.get(method).computeIfAbsent(eMsg, msg -> new AtomicInteger(0));
     writerInvocationFailures.get(method).get(eMsg).incrementAndGet();
-    logger.info("Exception thrown form writer", e);
+    logger.info("Exception thrown from writer", e);
   }
 
   /**
@@ -276,6 +276,30 @@ public class ExtPipePlugin {
    */
   public long getDataCommitIndex(String sgName) {
     return dataCommitMap.getOrDefault(sgName, Long.MIN_VALUE);
+  }
+
+  private int getThreadIndex(String sgName) {
+    return (abs(sgName.hashCode()) % configuration.getNumOfThreads());
+  }
+
+  /**
+   * Notify every working thread task that new data arrive
+   *
+   * @param sgName
+   * @param newDataBeginIndex
+   * @param newDataCount
+   */
+  public void notifyNewDataArrive(String sgName, long newDataBeginIndex, long newDataCount) {
+    logger.debug(
+        "notifyNewDataArrive(), sgName={}, newDataBeginIndex={}, newDataCount={}",
+        sgName,
+        newDataBeginIndex,
+        newDataCount);
+
+    DataTransmissionTask dataTransmissionTask = dataTransmissionTasks.get(getThreadIndex(sgName));
+    if (dataTransmissionTask != null) {
+      dataTransmissionTask.notifyNewDataArrive(sgName, newDataBeginIndex, newDataCount);
+    }
   }
 
   /**
@@ -293,6 +317,10 @@ public class ExtPipePlugin {
 
     private long nextIndex;
     private String lastReadSgName;
+
+    // condition-lock for notifying new data arriving
+    private byte[] newDataLocker = new byte[0];
+    private long newDataCounter = 0L;
 
     DataTransmissionTask(
         IExternalPipeSinkWriter writer, int threadIndex, ExtPipePluginConfiguration configuration)
@@ -352,10 +380,14 @@ public class ExtPipePlugin {
      * @param sgName
      * @param committedIndex
      */
-    private void commitData(String sgName, long committedIndex) {
+    private void commitData(String sgName, long committedIndex) throws IOException {
       logger.debug("commitData(), sgName={}, committedIndex={}.", sgName, committedIndex);
 
       dataCommitMap.put(sgName, committedIndex);
+
+      if (pipeOpManager.opBlockNeedCommit(sgName, committedIndex)) {
+        extPipePluginManager.triggerCommit(sgName, committedIndex);
+      }
     }
 
     /**
@@ -380,6 +412,20 @@ public class ExtPipePlugin {
     }
 
     /**
+     * Notify current working thread that new data arrive.
+     *
+     * @param sgName
+     * @param newDataBeginIndex
+     * @param newDataCount
+     */
+    public void notifyNewDataArrive(String sgName, long newDataBeginIndex, long newDataCount) {
+      synchronized (newDataLocker) {
+        newDataCounter++;
+        newDataLocker.notifyAll();
+      }
+    }
+
+    /**
      * Check/Wait new data/operation
      *
      * @return StorageGroup Name that has new data
@@ -394,12 +440,12 @@ public class ExtPipePlugin {
       }
 
       // find new data for the StorageGroup in sgSet
-      Set<String> sgSet = pipeOpManager.getSgSet();
       while (alive) {
+        Set<String> sgSet = pipeOpManager.getSgSet();
         Iterator<String> iter = sgSet.iterator();
         while (iter.hasNext()) {
           String sgName = iter.next();
-          if (threadIndex != (abs(sgName.hashCode()) % configuration.getNumOfThreads())) {
+          if (threadIndex != getThreadIndex(sgName)) {
             continue;
           }
 
@@ -409,7 +455,15 @@ public class ExtPipePlugin {
           }
         }
 
-        Thread.sleep(1_000); // 1 seconds
+        synchronized (newDataLocker) {
+          if (newDataCounter <= 0L) {
+            try {
+              newDataLocker.wait(15000); // maximum time 15 seconds
+            } catch (InterruptedException ignored) {
+            }
+          }
+          newDataCounter = 0L;
+        }
       }
 
       return null;
@@ -446,7 +500,7 @@ public class ExtPipePlugin {
             continue;
           }
 
-          if (!handleOperationWithRetry(operation)) {
+          if (!handleOperationWithRetry(sgName, operation)) {
             logger.error(
                 "Failed to handle operation after "
                     + configuration.getAttemptTimes()
@@ -491,83 +545,103 @@ public class ExtPipePlugin {
       return writer.getStatus();
     }
 
-    private boolean handleOperationWithRetry(Operation operation) {
-      if (operation instanceof InsertOperation) {
+    private boolean handleOperationWithRetry(String sgName, Operation operation) {
+      boolean succeed = false;
+      int attemptTimes = configuration.getAttemptTimes();
+      while (alive && attemptTimes > 0) {
+        // Retry
         try {
-          handleInsertOperation((InsertOperation) operation);
-        } catch (Exception e1) {
-          logger.error("Exception happened when handling an insert operation", e1);
-          handleExceptionsThrownByWriter("insert", e1);
-          boolean succeed = false;
-          int attemptTimes = 1;
-          while (alive && attemptTimes < configuration.getAttemptTimes()) {
-            // Backoff
-            try {
-              Thread.sleep(configuration.getBackOffInterval());
-            } catch (InterruptedException ignored) {
-            }
-            // Retry
-            try {
-              handleInsertOperation((InsertOperation) operation);
-              succeed = true;
-              break;
-            } catch (Exception e2) {
-              handleExceptionsThrownByWriter("insert", e2);
-            }
-            attemptTimes += 1;
-          }
-          return succeed;
+          pushOperationToExtPipe(sgName, operation);
+          succeed = true;
+          break;
+        } catch (Exception e) {
+          logger.error("When handle operation {}, Exception", operation.getOperationType(), e);
+          handleExceptionsThrownByWriter(operation.getOperationTypeName(), e);
         }
-      } else {
-        throw new IllegalArgumentException(
-            "Unrecognized operation " + operation.getClass().getSimpleName());
+        attemptTimes--;
+        // Backoff
+        try {
+          Thread.sleep(configuration.getBackOffInterval());
+        } catch (InterruptedException ignored) {
+        }
       }
-      return true;
+      return succeed;
     }
 
-    private void handleInsertOperation(InsertOperation operation) throws IOException {
+    private void pushOperationToExtPipe(String sgName, Operation operation)
+        throws IOException, IllegalArgumentException {
+      if (operation instanceof InsertOperation) {
+        handleInsertOperation(sgName, (InsertOperation) operation);
+        return;
+      }
+
+      if (operation instanceof DeleteOperation) {
+        handleDeleteOperation(sgName, (DeleteOperation) operation);
+        return;
+      }
+
+      logger.error("pushOperationToExtPipe(), Unrecognized Operation: {}", operation);
+      throw new IllegalArgumentException(
+          "pushOperationToExtPipe(), Unrecognized Operation:" + operation);
+    }
+
+    private void handleInsertOperation(String sgName, InsertOperation operation)
+        throws IOException, IllegalArgumentException {
       for (Pair<MeasurementPath, List<TimeValuePair>> dataPair : operation.getDataList()) {
-        MeasurementPath path = dataPair.left;
+        MeasurementPath measurementPath = dataPair.left;
         for (TimeValuePair tvPair : dataPair.right) {
-          String[] nodes = path.getNodes();
+          if (tvPair == null) {
+            continue;
+          }
+          String[] path = measurementPath.getNodes();
           long timestampInMs = tvPair.getTimestamp() / timestampDivisor;
           switch (tvPair.getValue().getDataType()) {
             case BOOLEAN:
-              writer.insertBoolean(nodes, timestampInMs, tvPair.getValue().getBoolean());
+              writer.insertBoolean(sgName, path, timestampInMs, tvPair.getValue().getBoolean());
               break;
             case INT32:
-              writer.insertInt32(nodes, timestampInMs, tvPair.getValue().getInt());
+              writer.insertInt32(sgName, path, timestampInMs, tvPair.getValue().getInt());
               break;
             case INT64:
-              writer.insertInt64(nodes, timestampInMs, tvPair.getValue().getLong());
+              writer.insertInt64(sgName, path, timestampInMs, tvPair.getValue().getLong());
               break;
             case FLOAT:
-              writer.insertFloat(nodes, timestampInMs, tvPair.getValue().getFloat());
+              writer.insertFloat(sgName, path, timestampInMs, tvPair.getValue().getFloat());
               break;
             case DOUBLE:
-              writer.insertDouble(nodes, timestampInMs, tvPair.getValue().getDouble());
+              writer.insertDouble(sgName, path, timestampInMs, tvPair.getValue().getDouble());
               break;
             case TEXT:
-              writer.insertText(nodes, timestampInMs, tvPair.getValue().getStringValue());
+              writer.insertText(sgName, path, timestampInMs, tvPair.getValue().getStringValue());
               break;
-            case VECTOR:
-              writer.insertVector(
-                  nodes,
-                  Arrays.stream(tvPair.getValue().getVector())
-                      .map(TsPrimitiveType::getDataType)
-                      .map(type -> DataType.fromTsDataType(type.serialize()))
-                      .toArray(DataType[]::new),
-                  timestampInMs,
-                  Arrays.stream(tvPair.getValue().getVector())
-                      .map(TsPrimitiveType::getValue)
-                      .toArray(Object[]::new));
-              break;
+              //            case VECTOR:
+              //              writer.insertVector(
+              //                  sgName,
+              //                  path,
+              //                  Arrays.stream(tvPair.getValue().getVector())
+              //                      .map(TsPrimitiveType::getDataType)
+              //                      .map(type -> DataType.fromTsDataType(type.serialize()))
+              //                      .toArray(DataType[]::new),
+              //                  timestampInMs,
+              //                  Arrays.stream(tvPair.getValue().getVector())
+              //                      .map(TsPrimitiveType::getValue)
+              //                      .toArray(Object[]::new));
+              //              break;
             default:
               throw new IllegalArgumentException(
                   "Unrecognized data type " + tvPair.getValue().getDataType());
           }
         }
       }
+    }
+
+    private void handleDeleteOperation(String sgName, DeleteOperation deleteOperation)
+        throws IOException {
+      writer.delete(
+          sgName,
+          deleteOperation.getDeletePathStr(),
+          deleteOperation.getStartTime() / timestampDivisor,
+          deleteOperation.getEndTime() / timestampDivisor);
     }
 
     private boolean flushWithRetry() {

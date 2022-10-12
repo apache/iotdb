@@ -24,29 +24,21 @@ import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
 
 public class CompactionMetricsRecorder {
 
-  private static final boolean ENABLE_METRIC =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
-
   public static void recordWriteInfo(
       CompactionType compactionType,
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
-    if (!ENABLE_METRIC) {
-      return;
-    }
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum / 1024L,
             Metric.DATA_WRITTEN.toString(),
@@ -59,8 +51,7 @@ public class CompactionMetricsRecorder {
             aligned ? "ALIGNED" : "NOT_ALIGNED",
             Tag.TYPE.toString(),
             processChunkType.toString());
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum / 1024L,
             Metric.DATA_WRITTEN.toString(),
@@ -72,11 +63,7 @@ public class CompactionMetricsRecorder {
   }
 
   public static void recordReadInfo(long byteNum) {
-    if (!ENABLE_METRIC) {
-      return;
-    }
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum,
             Metric.DATA_READ.toString(),
@@ -87,9 +74,6 @@ public class CompactionMetricsRecorder {
 
   public static void recordTaskInfo(
       AbstractCompactionTask task, CompactionTaskStatus status, int size) {
-    if (!ENABLE_METRIC) {
-      return;
-    }
     String taskType = "unknown";
     boolean isInnerTask = false;
     if (task instanceof InnerSpaceCompactionTask) {
@@ -102,8 +86,7 @@ public class CompactionMetricsRecorder {
     switch (status) {
       case ADD_TO_QUEUE:
       case POLL_FROM_QUEUE:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -114,8 +97,7 @@ public class CompactionMetricsRecorder {
             .set(size);
         break;
       case READY_TO_EXECUTE:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -126,8 +108,7 @@ public class CompactionMetricsRecorder {
             .set(size);
         break;
       case FINISHED:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -136,8 +117,7 @@ public class CompactionMetricsRecorder {
                 Tag.STATUS.toString(),
                 "running")
             .set(size);
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .timer(
                 task.getTimeCost(),
                 TimeUnit.MILLISECONDS,
@@ -146,8 +126,7 @@ public class CompactionMetricsRecorder {
                 Tag.NAME.toString(),
                 isInnerTask ? "inner_compaction" : "cross_compaction");
         if (isInnerTask) {
-          MetricsService.getInstance()
-              .getMetricManager()
+          MetricService.getInstance()
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),
@@ -157,8 +136,7 @@ public class CompactionMetricsRecorder {
                   Tag.TYPE.toString(),
                   ((InnerSpaceCompactionTask) task).isSequence() ? "sequence" : "unsequence");
         } else {
-          MetricsService.getInstance()
-              .getMetricManager()
+          MetricService.getInstance()
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),

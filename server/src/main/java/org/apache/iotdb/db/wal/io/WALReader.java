@@ -45,12 +45,18 @@ public class WALReader implements Closeable {
       (int) IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() / 10;
 
   private final File logFile;
+  private final boolean fileMayCorrupt;
   private final DataInputStream logStream;
   private WALEntry nextEntry;
   private boolean fileCorrupted = false;
 
   public WALReader(File logFile) throws IOException {
+    this(logFile, false);
+  }
+
+  public WALReader(File logFile, boolean fileMayCorrupt) throws IOException {
     this.logFile = logFile;
+    this.fileMayCorrupt = fileMayCorrupt;
     this.logStream =
         new DataInputStream(
             new BufferedInputStream(Files.newInputStream(logFile.toPath()), STREAM_BUFFER_SIZE));
@@ -77,7 +83,10 @@ public class WALReader implements Closeable {
           "WALEntry of wal file {} contains illegal path, skip illegal WALEntries.", logFile, e);
     } catch (Exception e) {
       fileCorrupted = true;
-      logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+      // log only when file should be complete
+      if (!fileMayCorrupt) {
+        logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+      }
     }
 
     return nextEntry != null;

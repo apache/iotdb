@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -50,14 +52,14 @@ import java.util.Map;
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
   private static final String INDENT = " ";
-  private static final String HENG = "─";
-  private static final String SHU = "│";
+  private static final String HORIZONTAL = "─";
+  private static final String VERTICAL = "│";
   private static final String LEFT_BOTTOM = "└";
   private static final String RIGHT_BOTTOM = "┘";
   private static final String LEFT_TOP = "┌";
   private static final String RIGHT_TOP = "┐";
-  private static final String SHANG = "┴";
-  private static final String XIA = "┬";
+  private static final String UP = "┴";
+  private static final String DOWN = "┬";
   private static final String CROSS = "┼";
 
   private static final int BOX_MARGIN = 1;
@@ -247,6 +249,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return render(node, boxValue, context);
   }
 
+  @Override
+  public List<String> visitTransform(TransformNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Transform-%s", node.getPlanNodeId().getId()));
+    for (int i = 0; i < node.getOutputExpressions().length; i++) {
+      Expression exp = node.getOutputExpressions()[i];
+      boxValue.add(
+          String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
+    }
+    return render(node, boxValue, context);
+  }
+
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
     return String.format(
         "Partition: %s",
@@ -276,7 +290,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           continue;
         }
         if (i == box.startPosition || i == box.endPosition) {
-          line.append(SHU);
+          line.append(VERTICAL);
           continue;
         }
         if (i - box.startPosition - 1 < valueLine.length()) {
@@ -298,14 +312,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       for (int i = 0; i < CONNECTION_LINE_HEIGHT; i++) {
         StringBuilder line = new StringBuilder();
         for (int j = 0; j < box.lineWidth; j++) {
-          line.append(j == box.midPosition ? SHU : INDENT);
+          line.append(j == box.midPosition ? VERTICAL : INDENT);
         }
         box.lines.add(line.toString());
       }
     } else {
       Map<Integer, String> symbolMap = new HashMap<>();
       Map<Integer, Boolean> childMidPositionMap = new HashMap<>();
-      symbolMap.put(box.midPosition, SHANG);
+      symbolMap.put(box.midPosition, UP);
       for (int i = 0; i < children.size(); i++) {
         int childMidPosition = getChildMidPosition(children, i);
         childMidPositionMap.put(childMidPosition, true);
@@ -314,7 +328,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           continue;
         }
         symbolMap.put(
-            childMidPosition, i == 0 ? LEFT_TOP : i == children.size() - 1 ? RIGHT_TOP : XIA);
+            childMidPosition, i == 0 ? LEFT_TOP : i == children.size() - 1 ? RIGHT_TOP : DOWN);
       }
       StringBuilder line1 = new StringBuilder();
       for (int i = 0; i < box.lineWidth; i++) {
@@ -323,14 +337,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           line1.append(INDENT);
           continue;
         }
-        line1.append(symbolMap.getOrDefault(i, HENG));
+        line1.append(symbolMap.getOrDefault(i, HORIZONTAL));
       }
       box.lines.add(line1.toString());
 
       for (int row = 1; row < CONNECTION_LINE_HEIGHT; row++) {
         StringBuilder nextLine = new StringBuilder();
         for (int i = 0; i < box.lineWidth; i++) {
-          nextLine.append(childMidPositionMap.containsKey(i) ? SHU : INDENT);
+          nextLine.append(childMidPositionMap.containsKey(i) ? VERTICAL : INDENT);
         }
         box.lines.add(nextLine.toString());
       }
@@ -363,7 +377,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       } else if (i == box.endPosition) {
         line.append(isTopEdge ? RIGHT_TOP : RIGHT_BOTTOM);
       } else {
-        line.append(HENG);
+        line.append(HORIZONTAL);
       }
     }
     return line.toString();

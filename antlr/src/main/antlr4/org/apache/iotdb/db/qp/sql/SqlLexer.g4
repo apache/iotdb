@@ -85,10 +85,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTOREGISTER
-    : A U T O R E G I S T E R
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -215,6 +211,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -249,6 +249,10 @@ GRANT
 
 GROUP
     : G R O U P
+    ;
+
+HAVING
+    : H A V I N G
     ;
 
 INDEX
@@ -331,6 +335,10 @@ NODES
     : N O D E S
     ;
 
+NONE
+    : N O N E
+    ;
+
 NOW
     : N O W
     ;
@@ -355,6 +363,10 @@ ORDER
     : O R D E R
     ;
 
+ONSUCCESS
+    : O N S U C C E S S
+    ;
+
 PARTITION
     : P A R T I T I O N
     ;
@@ -373,10 +385,6 @@ PIPE
 
 PIPES
     : P I P E S
-    ;
-
-PIPESERVER
-    : P I P E S E R V E R
     ;
 
 PIPESINK
@@ -421,6 +429,10 @@ QUERIES
 
 QUERY
     : Q U E R Y
+    ;
+
+RUNNING
+    : R U N N I N G
     ;
 
 READONLY
@@ -501,6 +513,14 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
     ;
 
 STOP
@@ -585,6 +605,10 @@ UPDATE
 
 UPSERT
     : U P S E R T
+    ;
+
+URI
+    : U R I
     ;
 
 USER
@@ -941,15 +965,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 

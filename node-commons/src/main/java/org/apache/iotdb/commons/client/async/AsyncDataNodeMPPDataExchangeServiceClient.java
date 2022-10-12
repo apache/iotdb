@@ -113,8 +113,9 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
 
     public Factory(
         ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientFactoryProperty clientFactoryProperty,
+        String threadName) {
+      super(clientManager, clientFactoryProperty, threadName);
     }
 
     @Override

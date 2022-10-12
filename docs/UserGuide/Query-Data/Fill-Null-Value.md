@@ -55,7 +55,7 @@ fill(previous)
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
 ```sql
-select temperature, status from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
 ```
 if we don't use any fill methods, the original result will be like:
 
@@ -76,7 +76,7 @@ Total line number = 4
 
 if we use previous fill, sql will be like:
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
+select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
 ```
 
 previous filled result will be like:
@@ -109,7 +109,7 @@ fill(linear)
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear)
+select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear)
 ```
 
 linear filled result will be like:

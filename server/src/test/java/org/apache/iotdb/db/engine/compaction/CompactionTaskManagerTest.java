@@ -297,6 +297,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
 
     for (TsFileResource resource : seqResources) {

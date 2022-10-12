@@ -24,11 +24,16 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
-  protected TsBlock tsBlock;
-  private boolean hasCachedTsBlock;
+  protected List<TsBlock> tsBlockList;
+  protected int currentIndex = 0;
 
   protected int limit;
   protected int offset;
@@ -52,7 +57,7 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
     this.sourceId = sourceId;
   }
 
-  protected abstract TsBlock createTsBlock();
+  protected abstract List<TsBlock> createTsBlockList();
 
   public PartialPath getPartialPath() {
     return partialPath;
@@ -85,19 +90,19 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    hasCachedTsBlock = false;
-    return tsBlock;
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    currentIndex++;
+    return tsBlockList.get(currentIndex - 1);
   }
 
   @Override
   public boolean hasNext() {
-    if (tsBlock == null) {
-      tsBlock = createTsBlock();
-      if (tsBlock.getPositionCount() > 0) {
-        hasCachedTsBlock = true;
-      }
+    if (tsBlockList == null) {
+      tsBlockList = createTsBlockList();
     }
-    return hasCachedTsBlock;
+    return currentIndex < tsBlockList.size();
   }
 
   @Override
@@ -108,5 +113,20 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

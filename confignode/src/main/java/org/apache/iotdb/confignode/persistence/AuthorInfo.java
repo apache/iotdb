@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -207,78 +208,66 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListRole() {
+  public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setPermissionInfo(permissionInfo);
-    return result;
-  }
-
-  public PermissionInfoResp executeListUser() {
-    PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+    if (!plan.getRoleName().isEmpty()) {
+      Role role;
+      try {
+        role = authorizer.getRole(plan.getRoleName());
+        if (role == null) {
+          result.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+          result.setPermissionInfo(permissionInfo);
+          return result;
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
+      }
+      Iterator<String> itr = userList.iterator();
+      while (itr.hasNext()) {
+        User userObj = authorizer.getUser(itr.next());
+        if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
+          itr.remove();
+        }
+      }
+    }
+
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
-  public PermissionInfoResp executeListRoleUsers(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = authorizer.getRole(plan.getRoleName());
-      if (role == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
+    List<String> roleList = new ArrayList<>();
+    ;
+    if (plan.getUserName().isEmpty()) {
+      roleList.addAll(authorizer.listAllRoles());
+    } else {
+      User user;
+      try {
+        user = authorizer.getUser(plan.getUserName());
+        if (user == null) {
+          result.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+          result.setPermissionInfo(permissionInfo);
+          return result;
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
       }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = authorizer.listAllUsers();
-    for (String userN : userList) {
-      User userObj = authorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(plan.getRoleName())) {
-        roleUsersList.add(userN);
+      for (String roleN : user.getRoleList()) {
+        roleList.add(roleN);
       }
-    }
-    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setPermissionInfo(permissionInfo);
-    return result;
-  }
-
-  public PermissionInfoResp executeListUserRoles(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = authorizer.getUser(plan.getUserName());
-      if (user == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> userRoleList = new ArrayList<>();
-    for (String roleN : user.getRoleList()) {
-      userRoleList.add(roleN);
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -369,7 +358,7 @@ public class AuthorInfo implements SnapshotProcessor {
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (plan.getNodeNameList().isEmpty()
               && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
-            rolePrivileges.add("");
+            rolePrivileges.add(roleN);
             rolePrivilegeSet.add(pathPrivilege.toString());
             continue;
           }

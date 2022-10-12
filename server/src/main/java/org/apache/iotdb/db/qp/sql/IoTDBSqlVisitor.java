@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
@@ -133,7 +135,6 @@ import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPathsSetTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPathsUsingTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkTypeOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowQueryResourceOperate;
@@ -143,10 +144,8 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTemplatesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
@@ -187,6 +186,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
@@ -645,11 +645,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreateTriggerOperator createTriggerOperator =
         new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
     createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
+    if (ctx.triggerEventClause().DELETE() != null) {
+      throw new SQLParserException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+    }
     createTriggerOperator.setEvent(
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT);
-    createTriggerOperator.setFullPath(parseFullPath(ctx.fullPath()));
+    createTriggerOperator.setFullPath(parsePrefixPath(ctx.prefixPath()));
     createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -1970,24 +1973,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    String privilege = parsePrivilege(ctx.privileges())[0];
-
-    List<PartialPath> prefixPath;
-    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
-      String[] path = {"root"};
-      prefixPath = Collections.singletonList(new PartialPath(path));
-    } else {
-      if (ctx.prefixPath() == null) {
-        throw new SQLParserException("Invalid prefix path");
-      }
-      prefixPath =
-          ctx.prefixPath().stream().map(path -> parsePrefixPath(path)).collect(Collectors.toList());
-    }
-    authorOperator.setNodeNameList(prefixPath);
+    authorOperator.setPrivilegeList(privileges);
+    authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
 
@@ -1995,14 +1993,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
@@ -2012,8 +2014,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(
-            SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorOperator;
@@ -2023,25 +2024,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    String privilege = parsePrivilege(ctx.privileges())[0];
-
-    List<PartialPath> nodeNameList;
-    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
-      String[] path = {"root"};
-      nodeNameList = Collections.singletonList(new PartialPath(path));
-    } else {
-      if (ctx.prefixPath() == null) {
-        throw new SQLParserException("Invalid prefix path");
-      }
-      nodeNameList =
-          ctx.prefixPath().stream()
-              .map(prefixPath -> parsePrefixPath(prefixPath))
-              .collect(Collectors.toList());
-    }
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
@@ -2050,16 +2044,44 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
+  }
+
+  private void checkGrantRevokePrivileges(String[] privileges, List<PartialPath> nodeNameList) {
+    if (nodeNameList.isEmpty()) {
+      nodeNameList.addAll(Collections.singletonList(new PartialPath(ALL_RESULT_NODES)));
+      return;
+    }
+    boolean pathRelevant = true;
+    String errorPrivilegeName = "";
+    for (String privilege : privileges) {
+      if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
+        pathRelevant = false;
+        errorPrivilegeName = privilege.toUpperCase();
+        break;
+      }
+    }
+    if (!(pathRelevant
+        || (nodeNameList.size() == 1
+            && nodeNameList.contains(new PartialPath(ALL_RESULT_NODES))))) {
+      throw new SQLParserException(
+          String.format(
+              "path independent privilege: [%s] can only be set on path: root.**",
+              errorPrivilegeName));
+    }
   }
 
   // Revoke Role From User
@@ -2067,7 +2089,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorOperator;
@@ -2097,14 +2119,24 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitListUser(IoTDBSqlParser.ListUserContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
+    AuthorOperator operator =
+        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
+    if (ctx.roleName != null) {
+      operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
+    }
+    return operator;
   }
 
   // List Roles
 
   @Override
   public Operator visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
+    AuthorOperator operator =
+        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
+    if (ctx.userName != null) {
+      operator.setUserName(parseIdentifier(ctx.userName.getText()));
+    }
+    return operator;
   }
 
   // List Privileges
@@ -2134,46 +2166,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             .map(prefixPath -> parsePrefixPath(prefixPath))
             .collect(Collectors.toList());
     operator.setNodeNameList(nodeNameList);
-    return operator;
-  }
-
-  // List Privileges of Users
-
-  @Override
-  public Operator visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(parseIdentifier(ctx.userName.getText()));
-    return operator;
-  }
-
-  // List Privileges of Roles
-
-  @Override
-  public Operator visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    return operator;
-  }
-
-  // List Roles of Users
-
-  @Override
-  public Operator visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_ROLES);
-    operator.setUserName(parseIdentifier(ctx.userName.getText()));
-    return operator;
-  }
-
-  // List Users of Role
-
-  @Override
-  public Operator visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_USERS);
-    operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     return operator;
   }
 
@@ -2250,12 +2242,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
-    if (ctx.READONLY() != null) {
-      // Set system to ReadOnly
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+    if (ctx.RUNNING() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
+    } else if (ctx.READONLY() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
     } else {
-      // Set system to Writable
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
+      throw new RuntimeException("Unknown system status in set system command.");
     }
   }
 
@@ -2370,8 +2362,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     LoadFilesOperator loadFilesOperator =
         new LoadFilesOperator(
             new File(parseFilePath(ctx.fileName.getText())),
-            true,
+            IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled(),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true,
             true);
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
@@ -2388,17 +2381,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    */
   private void parseLoadFiles(
       LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
-    if (ctx.AUTOREGISTER() != null) {
-      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else if (ctx.SGLEVEL() != null) {
+    if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else {
-      throw new SQLParserException(
-          String.format(
-              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
-              ctx.getText()));
+    } else if (ctx.ONSUCCESS() != null) {
+      operator.setDeleteAfterLoad(ctx.DELETE() != null);
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());
@@ -2544,10 +2532,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
       Expression right = ((BinaryExpression) predicate).getRightExpression();
-      if (!(left instanceof TimeSeriesOperand)) {
-        throw new SQLParserException("Not support for this sql in pipe.");
-      }
-      if (!SQLConstant.isReservedPath(((TimeSeriesOperand) left).getPath())) {
+      if (!SQLConstant.isReservedPath(parsePathFromExpression(left))) {
         throw new SQLParserException("Not support for this sql in pipe.");
       }
       if (!(right instanceof ConstantOperand)) {
@@ -2559,21 +2544,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       long startTime = Long.parseLong(((ConstantOperand) right).getValueString());
       operator.setStartTime(startTime);
     }
-  }
-
-  @Override
-  public Operator visitStartPipeServer(IoTDBSqlParser.StartPipeServerContext ctx) {
-    return new StartPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
-  }
-
-  @Override
-  public Operator visitStopPipeServer(IoTDBSqlParser.StopPipeServerContext ctx) {
-    return new StopPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_STOP);
-  }
-
-  @Override
-  public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
-    return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
   }
 
   /** 7. Common Clauses */
@@ -2704,7 +2674,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (StringUtils.isNumeric(unWrapped)
+      if (PathUtils.isRealNumber(unWrapped)
           || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
@@ -2821,7 +2791,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
-      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SQLParserException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_LITERAL().getText()));
+      }
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
@@ -2982,26 +2960,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Expression parseRegularExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new RegularExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new LikeExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -3313,8 +3281,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
-      String unWrappedString =
-          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
+      String unWrappedString = src.substring(1, src.length() - 1);
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
         String replaced = unWrappedString.replace("\"\"", "\"");
@@ -3334,23 +3301,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
           || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         return "'" + parseStringLiteral(src) + "'";
-      }
-    }
-    return src;
-  }
-
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
       }
     }
     return src;

@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,7 +40,6 @@ import java.sql.Statement;
  * IoTDB server should be defined as integration test.
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateAlignedTimeseriesIT {
 
   private Statement statement;
@@ -63,6 +61,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
@@ -90,8 +89,8 @@ public class IoTDBCreateAlignedTimeseriesIT {
     //    assertTimeseriesEquals(timeSeriesArray);
   }
 
-  @Ignore
   @Test
+  @Category({ClusterIT.class})
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
@@ -112,11 +111,9 @@ public class IoTDBCreateAlignedTimeseriesIT {
     // ensure that current storage group in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
-    statement.close();
-    connection.close();
     // todo
     //    EnvironmentUtils.stopDaemon();
-    setUp();
+    //    setUp();
 
     // ensure storage group in cache is right after recovering.
     assertTimeseriesEquals(timeSeriesArray);

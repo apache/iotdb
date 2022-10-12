@@ -59,13 +59,14 @@ public class IoTDBDeletionVersionAdaptionIT {
 
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
+  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
   private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();

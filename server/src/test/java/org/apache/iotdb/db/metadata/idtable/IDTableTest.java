@@ -27,6 +27,10 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -41,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.After;
@@ -48,10 +53,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -591,6 +602,86 @@ public class IDTableTest {
       idTable.getSeriesSchemas(insertRowPlan);
       assertNull(s1Node.getTriggerExecutor());
     } catch (MetadataException | StorageEngineException | QueryProcessException e) {
+      e.printStackTrace();
+      fail("throw exception");
+    }
+  }
+
+  @Test
+  public void testGetDiskSchemaEntries() {
+    try {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
+      String sgPath = "root.laptop";
+      for (int i = 0; i < 10; i++) {
+        String devicePath = sgPath + ".d" + i;
+        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
+        String measurement = "s" + i;
+        idTable.putSchemaEntry(
+            devicePath,
+            measurement,
+            new SchemaEntry(
+                TSDataType.BOOLEAN,
+                TSEncoding.BITMAP,
+                CompressionType.UNCOMPRESSED,
+                iDeviceID,
+                new PartialPath(devicePath + "." + measurement),
+                false,
+                idTable.getIDiskSchemaManager()),
+            false);
+        SchemaEntry schemaEntry =
+            idTable.getDeviceEntry(iDeviceID.toStringID()).getSchemaEntry(measurement);
+        List<SchemaEntry> schemaEntries = new ArrayList<>();
+        schemaEntries.add(schemaEntry);
+        List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+        assertNotNull(diskSchemaEntries);
+        assertEquals(diskSchemaEntries.size(), 1);
+        assertEquals(diskSchemaEntries.get(0).seriesKey, devicePath + "." + measurement);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail("throw exception");
+    }
+  }
+
+  @Test
+  public void testDeleteTimeseries() {
+    try {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
+      String sgPath = "root.laptop";
+      for (int i = 0; i < 10; i++) {
+        String devicePath = sgPath + ".d" + i;
+        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
+        String measurement = "s" + i;
+        SchemaEntry schemaEntry =
+            new SchemaEntry(
+                TSDataType.BOOLEAN,
+                TSEncoding.BITMAP,
+                CompressionType.UNCOMPRESSED,
+                iDeviceID,
+                new PartialPath(devicePath + "." + measurement),
+                false,
+                idTable.getIDiskSchemaManager());
+        idTable.putSchemaEntry(devicePath, measurement, schemaEntry, false);
+      }
+      List<PartialPath> partialPaths = new ArrayList<>();
+      partialPaths.add(new PartialPath("root.laptop.d0.s0"));
+      partialPaths.add(new PartialPath("root.laptop.d8.s8"));
+      partialPaths.add(new PartialPath("root.laptop.d2.s3"));
+      Pair<Integer, Set<String>> pairs = idTable.deleteTimeseries(partialPaths);
+      assertNotNull(pairs);
+      assertEquals((int) pairs.left, 2);
+      assertTrue(pairs.right.contains("root.laptop.d2.s3"));
+      assertFalse(pairs.right.contains("root.laptop.d0.s0"));
+      assertFalse(pairs.right.contains("root.laptop.d8.s8"));
+      Collection<DiskSchemaEntry> diskSchemaEntries =
+          idTable.getIDiskSchemaManager().getAllSchemaEntry();
+      for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
+        assertNotEquals("root.laptop.d0.s0", diskSchemaEntry.seriesKey);
+        assertNotEquals("root.laptop.d8.s8", diskSchemaEntry.seriesKey);
+      }
+      assertNull(idTable.getDeviceEntry("root.laptop.d0").getMeasurementMap().get("s0"));
+      assertNull(idTable.getDeviceEntry("root.laptop.d8").getMeasurementMap().get("s1"));
+    } catch (Exception e) {
       e.printStackTrace();
       fail("throw exception");
     }

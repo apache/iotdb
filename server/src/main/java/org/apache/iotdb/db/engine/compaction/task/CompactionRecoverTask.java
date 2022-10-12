@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -34,6 +36,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -301,7 +304,7 @@ public class CompactionRecoverTask {
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }
@@ -347,6 +350,12 @@ public class CompactionRecoverTask {
         File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
         if (tmpTargetFile != null) {
           tmpTargetFile.delete();
+          File chunkMetadataTempFile =
+              new File(
+                  tmpTargetFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
+          if (chunkMetadataTempFile.exists()) {
+            chunkMetadataTempFile.delete();
+          }
         }
       }
 

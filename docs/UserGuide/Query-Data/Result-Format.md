@@ -27,6 +27,12 @@ In addition, IoTDB supports two other results set format: 'align by device' and 
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
+> NOTE：
+> 
+> 1.You can see the result of 'align by device' as one relational table, `Time + Device` is the primary key of this Table. 
+>
+> 2.The result is order by `Device` firstly, and then by `Time` order.
+
 The SQL statement is:
 
 ```sql

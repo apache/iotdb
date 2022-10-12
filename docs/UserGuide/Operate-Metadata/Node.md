@@ -97,35 +97,35 @@ IoTDB > COUNT NODES root.**.temperature LEVEL=3
 As for the above mentioned example and Metadata tree, you can get following results:
 
 ```
-+-----+
-|count|
-+-----+
-|    4|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           4|
++------------+
 Total line number = 1
 It costs 0.003s
 
-+-----+
-|count|
-+-----+
-|    2|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           2|
++------------+
 Total line number = 1
 It costs 0.002s
 
-+-----+
-|count|
-+-----+
-|    1|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           1|
++------------+
 Total line number = 1
 It costs 0.002s
 
-+-----+
-|count|
-+-----+
-|    2|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           2|
++------------+
 Total line number = 1
 It costs 0.002s
 ```
@@ -239,19 +239,19 @@ You can get results below:
 Total line number = 4
 It costs 0.024s
 
-+-------+
-|devices|
-+-------+
-|      4|
-+-------+
++--------------+
+|count(devices)|
++--------------+
+|             4|
++--------------+
 Total line number = 1
 It costs 0.004s
 
-+-------+
-|devices|
-+-------+
-|      2|
-+-------+
++--------------+
+|count(devices)|
++--------------+
+|             2|
++--------------+
 Total line number = 1
 It costs 0.004s
 ```

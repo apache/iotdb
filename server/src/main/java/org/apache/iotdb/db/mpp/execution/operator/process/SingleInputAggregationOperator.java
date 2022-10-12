@@ -23,9 +23,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
@@ -36,9 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-
 public abstract class SingleInputAggregationOperator implements ProcessOperator {
 
   protected final OperatorContext operatorContext;
@@ -48,35 +43,34 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected TsBlock inputTsBlock;
   protected boolean canCallNext;
 
-  protected final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
-  protected TimeRange curTimeRange;
-
   protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
+
+  protected final long maxRetainedSize;
+  protected final long maxReturnSize;
 
   public SingleInputAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       Operator child,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter,
-      boolean outputPartialTimeWindow) {
+      ITimeRangeIterator timeRangeIterator,
+      long maxReturnSize) {
     this.operatorContext = operatorContext;
     this.ascending = ascending;
     this.child = child;
     this.aggregators = aggregators;
-
-    this.timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.maxRetainedSize = child.calculateMaxReturnSize();
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override
@@ -90,33 +84,15 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   }
 
   @Override
-  public boolean hasNext() {
-    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
-  }
-
-  @Override
   public TsBlock next() {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
     // reset operator state
-    resultTsBlockBuilder.reset();
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime
-        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
-        && !resultTsBlockBuilder.isFull()) {
-      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-        // move to next time window
-        curTimeRange = timeRangeIterator.nextTimeRange();
-
-        // clear previous aggregation result
-        for (Aggregator aggregator : aggregators) {
-          aggregator.updateTimeRange(curTimeRange);
-        }
-      }
-
+    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
         break;
@@ -124,7 +100,9 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
+      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return resultTsBlock;
     } else {
       return null;
     }
@@ -142,8 +120,20 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected abstract boolean calculateNextAggregationResult();
 
-  protected void updateResultTsBlock() {
-    curTimeRange = null;
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+  protected abstract void updateResultTsBlock();
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return maxReturnSize + maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
   }
 }

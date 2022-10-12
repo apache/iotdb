@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -170,12 +171,12 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
     }
 
     try {
-      final UDFExecutableResource resource = udfExecutableManager.request(uris);
+      final ExecutableResource resource = udfExecutableManager.request(uris);
       try {
-        udfExecutableManager.removeFromExtLibDir(functionName);
-        udfExecutableManager.moveToExtLibDir(resource, functionName);
+        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
+        udfExecutableManager.moveTempDirToExtLibDir(resource, functionName);
       } catch (Exception innerException) {
-        udfExecutableManager.removeFromExtLibDir(functionName);
+        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
         udfExecutableManager.removeFromTemporaryLibRoot(resource);
         throw innerException;
       }

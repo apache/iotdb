@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -57,7 +58,7 @@ public class IoTDBExampleIT {
       statement.execute("set storage group to root.sg");
       try (ResultSet resultSet = statement.executeQuery("show storage group")) {
         if (resultSet.next()) {
-          String storageGroupPath = resultSet.getString("storage group");
+          String storageGroupPath = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
           Assert.assertEquals("root.sg", storageGroupPath);
         } else {
           Assert.fail("This ResultSet is empty.");

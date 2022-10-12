@@ -18,20 +18,19 @@
 # under the License.
 #
 
-
 echo ----------------------------
 echo Starting IoTDB ConfigNode
 echo ----------------------------
 
 if [ -z "${CONFIGNODE_HOME}" ]; then
-  export CONFIGNODE_HOME="`dirname "$0"`/.."
+  export CONFIGNODE_HOME="$(dirname "$0")/.."
 fi
 
 CONFIGNODE_CONF=${CONFIGNODE_HOME}/conf
 CONFIGNODE_LOGS=${CONFIGNODE_HOME}/logs
 
 is_conf_path=false
-for arg do
+for arg; do
   shift
   if [ "$arg" == "-c" ]; then
     is_conf_path=true
@@ -48,19 +47,19 @@ done
 CONF_PARAMS="-s "$*
 
 if [ -f "$CONFIGNODE_CONF/confignode-env.sh" ]; then
-    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-      . "$CONFIGNODE_CONF/confignode-env.sh" "printgc"
-    else
-        . "$CONFIGNODE_CONF/confignode-env.sh"
-    fi
+  if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+    . "$CONFIGNODE_CONF/confignode-env.sh" "printgc"
+  else
+    . "$CONFIGNODE_CONF/confignode-env.sh"
+  fi
 else
-    echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
+  echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
 fi
 
 if [ -d ${CONFIGNODE_HOME}/lib ]; then
-LIB_PATH=${CONFIGNODE_HOME}/lib
+  LIB_PATH=${CONFIGNODE_HOME}/lib
 else
-LIB_PATH=${CONFIGNODE_HOME}/../lib
+  LIB_PATH=${CONFIGNODE_HOME}/../lib
 fi
 
 CLASSPATH=""
@@ -69,14 +68,13 @@ for f in ${LIB_PATH}/*.jar; do
 done
 classname=org.apache.iotdb.confignode.service.ConfigNode
 
-launch_service()
-{
-	class="$1"
-	confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
-	confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
-	confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
-	exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
-	return $?
+launch_service() {
+  class="$1"
+  confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
+  confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
+  confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
+  exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
+  return $?
 }
 
 # Start up the service

@@ -246,7 +246,6 @@ Usages of string literals:
 
 There are several ways to include quote characters within a string:
 
- - Precede the quote character by an escape character (\\).
  - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
  - A `'` inside a string quoted with `'` may be written as `''`.
 - A `"` inside a string quoted with `"` may be written as `""`.
@@ -256,15 +255,11 @@ The following examples demonstrate how quoting and escaping work:
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str\'ing'  // str'ing
-'\'string'  // 'string
 '''string'  // 'string
 
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str\"ing"  // str"ing
-"\"string"  // "string
 """string"  // "string
 ```
 
@@ -309,14 +304,14 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 - Permitted characters in unquoted identifiers:
   - [0-9 a-z A-Z _ ] (letters, digits and underscore)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
-- Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
+- Identifiers may begin with a digit, unquoted identifiers can not be a real number.
 - Identifiers are case sensitive.
 - Key words can be used as an identifier.
 
 **You need to quote the identifier with back quote(`) in the following cases:**
 
 - Identifier contains special characters.
-- Identifier consists of solely digits.
+- Identifier that is a real number.
 
 ### How to use quotations marks in quoted identifiers
 
@@ -355,14 +350,14 @@ Examples of case in which quoted identifier is used ：
 - UDF name should be quoted in cases described above ：
 
   ```sql
-  # create a funciton named 111, 111 consists of solely digits.
+  # create a funciton named 111, 111 is a real number.
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - Template name should be quoted in cases described above ：
 
   ```sql
-  # create a template named 111, 111 consists of solely digits.
+  # create a template named 111, 111 is a real number.
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -461,7 +456,7 @@ When node name is not wildcard, it is a identifier, which means the constraints 
 # Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
-# Node name consists of solely digits.
+# Node name is a real number.
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 ```
 
@@ -482,7 +477,7 @@ After executing above statments, execute "show timeseries"，below is the result
 # Node name contains special characters like . and `
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
-# Node name consists of solely digits.
+# Node name is a real number.
 insert into root.sg(timestamp, `111`) values (1, 2);
 ```
 
@@ -492,7 +487,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 # Node name contains special characters like . and `
 select a from root.sg.`www.``baidu.com`;
 
-# Node name consists of solely digits.
+# Node name is a real number.
 select `111` from root.sg
 ```
 
@@ -718,7 +713,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-## Learn More
+## Detailed Definitions of Lexical and Grammar
 
 Please read the lexical and grammar description files in our code repository:
 

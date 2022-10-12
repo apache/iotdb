@@ -22,7 +22,8 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -34,8 +35,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -80,18 +79,14 @@ public class UDFManager {
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
-    final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionRequest request =
         new TCreateFunctionRequest(functionName, className, uris);
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.CREATE_FUNCTION,
-            dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+
+    AsyncClientHandler<TCreateFunctionRequest, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public TSStatus dropFunction(String functionName) {
@@ -112,16 +107,12 @@ public class UDFManager {
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
-    final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocationMap,
-            DataNodeRequestType.DROP_FUNCTION,
-            dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+
+    AsyncClientHandler<TDropFunctionRequest, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 }

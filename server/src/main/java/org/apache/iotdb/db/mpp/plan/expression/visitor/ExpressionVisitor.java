@@ -20,12 +20,23 @@
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 /**
@@ -47,27 +58,73 @@ public abstract class ExpressionVisitor<R, C> {
     return visitExpression(unaryExpression, context);
   }
 
+  public R visitInExpression(InExpression inExpression, C context) {
+    return visitUnaryExpression(inExpression, context);
+  }
+
+  public R visitIsNullExpression(IsNullExpression isNullExpression, C context) {
+    return visitUnaryExpression(isNullExpression, context);
+  }
+
+  public R visitLikeExpression(LikeExpression likeExpression, C context) {
+    return visitUnaryExpression(likeExpression, context);
+  }
+
+  public R visitRegularExpression(RegularExpression regularExpression, C context) {
+    return visitUnaryExpression(regularExpression, context);
+  }
+
+  public R visitLogicNotExpression(LogicNotExpression logicNotExpression, C context) {
+    return visitUnaryExpression(logicNotExpression, context);
+  }
+
+  public R visitNegationExpression(NegationExpression negationExpression, C context) {
+    return visitUnaryExpression(negationExpression, context);
+  }
+
   public R visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     return visitExpression(binaryExpression, context);
+  }
+
+  public R visitArithmeticBinaryExpression(
+      ArithmeticBinaryExpression arithmeticBinaryExpression, C context) {
+    return visitBinaryExpression(arithmeticBinaryExpression, context);
+  }
+
+  public R visitLogicBinaryExpression(LogicBinaryExpression logicBinaryExpression, C context) {
+    return visitBinaryExpression(logicBinaryExpression, context);
+  }
+
+  public R visitCompareBinaryExpression(
+      CompareBinaryExpression compareBinaryExpression, C context) {
+    return visitBinaryExpression(compareBinaryExpression, context);
   }
 
   public R visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
     return visitExpression(ternaryExpression, context);
   }
 
+  public R visitBetweenExpression(BetweenExpression betweenExpression, C context) {
+    return visitTernaryExpression(betweenExpression, context);
+  }
+
   public R visitFunctionExpression(FunctionExpression functionExpression, C context) {
     return visitExpression(functionExpression, context);
   }
 
+  public R visitLeafOperand(LeafOperand leafOperand, C context) {
+    return visitExpression(leafOperand, context);
+  }
+
   public R visitTimeStampOperand(TimestampOperand timestampOperand, C context) {
-    return visitExpression(timestampOperand, context);
+    return visitLeafOperand(timestampOperand, context);
   }
 
   public R visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, C context) {
-    return visitExpression(timeSeriesOperand, context);
+    return visitLeafOperand(timeSeriesOperand, context);
   }
 
   public R visitConstantOperand(ConstantOperand constantOperand, C context) {
-    return visitExpression(constantOperand, context);
+    return visitLeafOperand(constantOperand, context);
   }
 }

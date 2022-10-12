@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -68,6 +70,23 @@ public class SchemaEngine {
   private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
+
+  private ISeriesNumerLimiter seriesNumerLimiter =
+      new ISeriesNumerLimiter() {
+        @Override
+        public void init(Properties properties) {}
+
+        @Override
+        public boolean addTimeSeries(int number) {
+          // always return true, don't limit the number of series
+          return true;
+        }
+
+        @Override
+        public void deleteTimeSeries(int number) {
+          // do nothing
+        }
+      };
 
   public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
@@ -290,11 +309,14 @@ public class SchemaEngine {
     IStorageGroupMNode storageGroupMNode = ensureStorageGroupByStorageGroupPath(storageGroup);
     switch (this.schemaRegionStoredMode) {
       case Memory:
-        schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion =
+            new SchemaRegionMemoryImpl(
+                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
         break;
       case Schema_File:
         schemaRegion =
-            new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
+            new SchemaRegionSchemaFileImpl(
+                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
         break;
       case Rocksdb_based:
         schemaRegion =
@@ -362,5 +384,9 @@ public class SchemaEngine {
       }
       sharedPrefixTree.deleteStorageGroup(new PartialPath(schemaRegion.getStorageGroupFullPath()));
     }
+  }
+
+  public void setSeriesNumerLimiter(ISeriesNumerLimiter seriesNumerLimiter) {
+    this.seriesNumerLimiter = seriesNumerLimiter;
   }
 }

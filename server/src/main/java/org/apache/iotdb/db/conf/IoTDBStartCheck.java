@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -48,6 +51,7 @@ public class IoTDBStartCheck {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -55,7 +59,7 @@ public class IoTDBStartCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String[] WAL_DIRS = config.getWalDirs();
+  private static final String[] WAL_DIRS = commonConfig.getWalDirs();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
@@ -70,7 +74,7 @@ public class IoTDBStartCheck {
   private static String timestampPrecision = config.getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = config.getPartitionInterval();
+  private static long partitionInterval = config.getTimePartitionIntervalForStorage();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
@@ -112,6 +116,7 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
 
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {
@@ -124,7 +129,7 @@ public class IoTDBStartCheck {
   }
 
   private IoTDBStartCheck() {
-    logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
+    logger.info("Starting IoTDB " + IoTDBConstant.VERSION_WITH_BUILD);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
@@ -453,6 +458,37 @@ public class IoTDBStartCheck {
         properties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL, regionConsensusProtocol);
       } else if (type == TConsensusGroupType.SchemaRegion) {
         properties.setProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL, regionConsensusProtocol);
+      }
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+  }
+
+  public void serializeGlobalConfig(TGlobalConfig globalConfig) throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    reloadProperties();
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+
+      if (!checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+        properties.setProperty(
+            DATA_REGION_CONSENSUS_PROTOCOL, globalConfig.getDataRegionConsensusProtocolClass());
+      }
+      if (!checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+        properties.setProperty(
+            SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
       }
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file

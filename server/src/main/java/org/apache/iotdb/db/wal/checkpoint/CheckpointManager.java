@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -170,10 +171,10 @@ public class CheckpointManager implements AutoCloseable {
         currentLogWriter.force();
       } catch (IOException e) {
         logger.error(
-            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to read-only.",
+            "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setReadOnly(true);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       }
 
       try {
@@ -189,10 +190,10 @@ public class CheckpointManager implements AutoCloseable {
         }
       } catch (IOException e) {
         logger.error(
-            "Fail to roll wal node-{}'s checkpoint writer, change system mode to read-only.",
+            "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setReadOnly(true);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       }
     } finally {
       infoLock.unlock();

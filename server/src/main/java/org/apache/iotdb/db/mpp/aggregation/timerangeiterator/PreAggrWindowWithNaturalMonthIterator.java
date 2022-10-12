@@ -147,4 +147,20 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   public long currentOutputTime() {
     return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
+
+  @Override
+  public long getTotalIntervalNum() {
+    long tmpInterval = 0;
+    while (hasNextTimeRange()) {
+      tmpInterval++;
+      nextTimeRange();
+    }
+
+    curTimeRange = null;
+    timeBoundaryHeap.clear();
+    aggrWindowIterator.reset();
+    initHeap();
+
+    return tmpInterval;
+  }
 }

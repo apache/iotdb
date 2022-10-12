@@ -30,6 +30,7 @@ public class FragmentInstanceDispatchException extends Exception {
   }
 
   public FragmentInstanceDispatchException(TSStatus failureStatus) {
+    super(failureStatus.getMessage());
     this.failureStatus = failureStatus;
   }
 

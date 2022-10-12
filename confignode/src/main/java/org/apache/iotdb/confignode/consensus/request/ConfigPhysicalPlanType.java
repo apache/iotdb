@@ -32,7 +32,7 @@ public enum ConfigPhysicalPlanType {
   GetStorageGroup,
   CountStorageGroup,
   CreateRegionGroups,
-  DeleteRegions,
+  DeleteRegionGroups,
   GetSchemaPartition,
   CreateSchemaPartition,
   GetOrCreateSchemaPartition,
@@ -57,7 +57,9 @@ public enum ConfigPhysicalPlanType {
   ListRole,
   ListUserPrivilege,
   ListRolePrivilege,
+  @Deprecated
   ListUserRoles,
+  @Deprecated
   ListRoleUsers,
   ApplyConfigNode,
   RemoveDataNode,
@@ -65,7 +67,6 @@ public enum ConfigPhysicalPlanType {
   CreateFunction,
   DropFunction,
   GetRegionInfoList,
-  GetDataNodesInfoList,
   GetNodePathsPartition,
   CreateSchemaTemplate,
   GetAllSchemaTemplate,
@@ -74,5 +75,17 @@ public enum ConfigPhysicalPlanType {
   CheckTemplateSettable,
   SetSchemaTemplate,
   GetPathsSetTemplate,
-  GetAllTemplateSetInfo;
+  GetAllTemplateSetInfo,
+  OfferRegionMaintainTasks,
+  PollRegionMaintainTask,
+  CreatePipeSink,
+  DropPipeSink,
+  GetPipeSink,
+  AddTriggerInTable,
+  DeleteTriggerInTable,
+  GetTriggerTable,
+  UpdateTriggerStateInTable,
+  GetRouting,
+  GetSeriesSlotList,
+  GetTimeSlotList
 }

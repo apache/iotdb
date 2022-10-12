@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -50,6 +51,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {}
+
+  @Override
+  public boolean isReadOnly() {
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
+  }
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
@@ -86,5 +92,23 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return super.getSleepTime();
   }
 }

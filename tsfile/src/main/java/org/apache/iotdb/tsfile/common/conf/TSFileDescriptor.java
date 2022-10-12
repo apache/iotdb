@@ -61,7 +61,7 @@ public class TSFileDescriptor {
     }
   }
 
-  private void overwriteConfigByCustomSettings(TSFileConfig conf, Properties properties) {
+  public void overwriteConfigByCustomSettings(TSFileConfig conf, Properties properties) {
     PropertiesOverWriter writer = new PropertiesOverWriter(properties);
 
     writer.setInt(conf::setGroupSizeInByte, "group_size_in_byte");

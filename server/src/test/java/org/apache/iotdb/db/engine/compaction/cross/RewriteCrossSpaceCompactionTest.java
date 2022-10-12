@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -227,6 +227,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.start();
 
@@ -464,6 +465,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.start();
 
@@ -611,6 +613,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
@@ -731,6 +734,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();

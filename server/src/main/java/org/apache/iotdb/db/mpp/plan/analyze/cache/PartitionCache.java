@@ -123,11 +123,11 @@ public class PartitionCache {
    * get storage group to device map
    *
    * @param devicePaths the devices that need to hit
-   * @param secondTry whether try to get all storage group from confignode
+   * @param tryToFetch whether try to get all storage group from config node
    * @param isAutoCreate whether auto create storage group when cache miss
    */
   public Map<String, List<String>> getStorageGroupToDevice(
-      List<String> devicePaths, boolean secondTry, boolean isAutoCreate) {
+      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
     StorageGroupCacheResult<List<String>> result =
         new StorageGroupCacheResult<List<String>>() {
           @Override
@@ -136,7 +136,7 @@ public class PartitionCache {
             map.get(storageGroupName).add(device);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, secondTry, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
     return result.getMap();
   }
 
@@ -144,11 +144,11 @@ public class PartitionCache {
    * get device to storage group map
    *
    * @param devicePaths the devices that need to hit
-   * @param secondTry whether try to get all storage group from confignode
+   * @param tryToFetch whether try to get all storage group from config node
    * @param isAutoCreate whether auto create storage group when cache miss
    */
   public Map<String, String> getDeviceToStorageGroup(
-      List<String> devicePaths, boolean secondTry, boolean isAutoCreate) {
+      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
     StorageGroupCacheResult<String> result =
         new StorageGroupCacheResult<String>() {
           @Override
@@ -156,7 +156,7 @@ public class PartitionCache {
             map.put(device, storageGroupName);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, secondTry, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
     return result.getMap();
   }
 
@@ -305,15 +305,14 @@ public class PartitionCache {
    *
    * @param result contains result, failed devices and map
    * @param devicePaths the devices that need to hit
-   * @param secondTry whether try to get all storage group from confignode
+   * @param tryToFetch whether try to get all storage group from confignode
    * @param isAutoCreate whether auto create storage group when device miss
    */
   private void getStorageGroupCacheResult(
       StorageGroupCacheResult<?> result,
       List<String> devicePaths,
-      boolean secondTry,
+      boolean tryToFetch,
       boolean isAutoCreate) {
-    Map<String, String> deviceToStorageGroupMap = new HashMap<>();
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
       if (devicePath.contains("*")) {
@@ -322,19 +321,20 @@ public class PartitionCache {
     }
     // first try to hit storage group in fast-fail way
     getStorageGroupMap(result, devicePaths, true);
-    if (!result.isSuccess() && secondTry) {
+    if (!result.isSuccess() && tryToFetch) {
       try {
         // try to fetch storage group from config node when miss
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate) {
+        if (!result.isSuccess() && isAutoCreate && config.isAutoCreateSchemaEnabled()) {
           // try to auto create storage group of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit storage group in fast-fail way
           getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
+            throw new StatementAnalyzeException(
+                "Failed to get Storage Group Map in three attempts.");
           }
         }
       } catch (TException | MetadataException | IOException e) {
@@ -359,7 +359,7 @@ public class PartitionCache {
   }
 
   /**
-   * invalid storage group cache
+   * invalidate storage group cache
    *
    * @param storageGroupNames the storage groups that need to invalid
    */
@@ -374,7 +374,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid all storage group cache */
+  /** invalidate all storage group cache */
   public void removeFromStorageGroupCache() {
     storageGroupCacheLock.writeLock().lock();
     try {
@@ -459,7 +459,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid replicaSetCache */
+  /** invalidate replicaSetCache */
   public void invalidReplicaSetCache() {
     try {
       regionReplicaSetLock.writeLock().lock();

@@ -162,6 +162,21 @@ public class LinearFillOperatorTest {
                 public boolean isFinished() {
                   return index >= 3;
                 }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -359,6 +374,21 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() {
                   return index >= 3;
+                }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
                 }
               });
 
@@ -558,6 +588,21 @@ public class LinearFillOperatorTest {
                 public boolean isFinished() {
                   return index >= 3;
                 }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -756,6 +801,21 @@ public class LinearFillOperatorTest {
                 public boolean isFinished() {
                   return index >= 3;
                 }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -902,6 +962,21 @@ public class LinearFillOperatorTest {
                 public boolean isFinished() {
                   return index >= 7;
                 }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1007,6 +1082,21 @@ public class LinearFillOperatorTest {
                 public boolean isFinished() {
                   return index >= 7;
                 }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1111,6 +1201,21 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() {
                   return index >= 7;
+                }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
                 }
               });
 

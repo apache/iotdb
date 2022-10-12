@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.memory;
 
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -73,11 +75,13 @@ public class MemoryPool {
 
   public MemoryPool(String id, long maxBytes, long maxBytesPerQuery) {
     this.id = Validate.notNull(id);
-    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero.");
+    Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero: %d", maxBytes);
     this.maxBytes = maxBytes;
     Validate.isTrue(
         maxBytesPerQuery > 0L && maxBytesPerQuery <= maxBytes,
-        "max bytes per query should be greater than zero while less than or equal to max bytes.");
+        "max bytes per query should be greater than zero while less than or equal to max bytes. maxBytesPerQuery: %d, maxBytes: %d",
+        maxBytesPerQuery,
+        maxBytes);
     this.maxBytesPerQuery = maxBytesPerQuery;
   }
 
@@ -89,11 +93,13 @@ public class MemoryPool {
     return maxBytes;
   }
 
-  public ListenableFuture<Void> reserve(String queryId, long bytes) {
+  /** @return if reserve succeed, pair.right will be true, otherwise false */
+  public Pair<ListenableFuture<Void>, Boolean> reserve(String queryId, long bytes) {
     Validate.notNull(queryId);
     Validate.isTrue(
         bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query.");
+        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
+        bytes);
 
     ListenableFuture<Void> result;
     synchronized (this) {
@@ -101,21 +107,22 @@ public class MemoryPool {
           || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
         result = MemoryReservationFuture.create(queryId, bytes);
         memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
+        return new Pair<>(result, Boolean.FALSE);
       } else {
         reservedBytes += bytes;
         queryMemoryReservations.merge(queryId, bytes, Long::sum);
         result = Futures.immediateFuture(null);
+        return new Pair<>(result, Boolean.TRUE);
       }
     }
-
-    return result;
   }
 
   public boolean tryReserve(String queryId, long bytes) {
     Validate.notNull(queryId);
     Validate.isTrue(
         bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query.");
+        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
+        bytes);
 
     if (maxBytes - reservedBytes < bytes
         || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {

@@ -196,30 +196,35 @@ public class MultiLeaderConfig {
   }
 
   public static class Replication {
-    private final int maxPendingRequestNumPerNode;
     private final int maxRequestPerBatch;
     private final int maxPendingBatch;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
+    private final long walThrottleThreshold;
+    private final long throttleTimeOutMs;
+    private final long checkpointGap;
+    private final Long allocateMemoryForConsensus;
 
     private Replication(
-        int maxPendingRequestNumPerNode,
         int maxRequestPerBatch,
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
-        long maxRetryWaitTimeMs) {
-      this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
+        long maxRetryWaitTimeMs,
+        long walThrottleThreshold,
+        long throttleTimeOutMs,
+        long checkpointGap,
+        long allocateMemoryForConsensus) {
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
-    }
-
-    public int getMaxPendingRequestNumPerNode() {
-      return maxPendingRequestNumPerNode;
+      this.walThrottleThreshold = walThrottleThreshold;
+      this.throttleTimeOutMs = throttleTimeOutMs;
+      this.checkpointGap = checkpointGap;
+      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
     }
 
     public int getMaxRequestPerBatch() {
@@ -242,22 +247,38 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
+    public long getWalThrottleThreshold() {
+      return walThrottleThreshold;
+    }
+
+    public long getThrottleTimeOutMs() {
+      return throttleTimeOutMs;
+    }
+
+    public long getCheckpointGap() {
+      return checkpointGap;
+    }
+
+    public Long getAllocateMemoryForConsensus() {
+      return allocateMemoryForConsensus;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 200;
-      private int maxRequestPerBatch = 40;
-      private int maxPendingBatch = 1;
+      private int maxRequestPerBatch = 30;
+      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
+      // in DataRegionStateMachine
+      private int maxPendingBatch = 5;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
-
-      public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
-        this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
-        return this;
-      }
+      private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
+      private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
+      private long checkpointGap = 500;
+      private long allocateMemoryForConsensus;
 
       public Replication.Builder setMaxRequestPerBatch(int maxRequestPerBatch) {
         this.maxRequestPerBatch = maxRequestPerBatch;
@@ -285,14 +306,32 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public Replication.Builder setWalThrottleThreshold(long walThrottleThreshold) {
+        this.walThrottleThreshold = walThrottleThreshold;
+        return this;
+      }
+
+      public Replication.Builder setThrottleTimeOutMs(long throttleTimeOutMs) {
+        this.throttleTimeOutMs = throttleTimeOutMs;
+        return this;
+      }
+
+      public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+        this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
-            maxPendingRequestNumPerNode,
             maxRequestPerBatch,
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
-            maxRetryWaitTimeMs);
+            maxRetryWaitTimeMs,
+            walThrottleThreshold,
+            throttleTimeOutMs,
+            checkpointGap,
+            allocateMemoryForConsensus);
       }
     }
   }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.flush;
 
 public interface FlushManagerMBean {
 
+  int getNumberOfWaitingTasks();
+
   int getNumberOfWorkingTasks();
 
   int getNumberOfPendingTasks();

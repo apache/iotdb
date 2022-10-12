@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -27,27 +28,27 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class SetSystemModeOperator extends Operator {
 
-  private boolean isReadOnly;
+  private NodeStatus status;
 
   /**
    * The operator for set system to readonly / writable statement.
    *
    * @param tokenIntType tokenIntType.
-   * @param isReadOnly isReadOnly.
+   * @param status system status.
    */
-  public SetSystemModeOperator(int tokenIntType, boolean isReadOnly) {
+  public SetSystemModeOperator(int tokenIntType, NodeStatus status) {
     super(tokenIntType);
-    this.isReadOnly = isReadOnly;
+    this.status = status;
     operatorType = OperatorType.SET_SYSTEM_MODE;
   }
 
-  public boolean isReadOnly() {
-    return isReadOnly;
+  public NodeStatus getStatus() {
+    return status;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new SetSystemModePlan(isReadOnly);
+    return new SetSystemModePlan(status);
   }
 }

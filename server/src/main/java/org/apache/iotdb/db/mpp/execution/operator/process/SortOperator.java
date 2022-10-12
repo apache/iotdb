@@ -54,4 +54,19 @@ public class SortOperator implements ProcessOperator {
   public boolean isFinished() {
     return false;
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return 0;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return 0;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0;
+  }
 }

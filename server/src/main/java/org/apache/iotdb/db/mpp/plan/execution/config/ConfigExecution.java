@@ -43,6 +43,8 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -50,7 +52,9 @@ import java.util.concurrent.ExecutorService;
 
 public class ConfigExecution implements IQueryExecution {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -68,7 +72,10 @@ public class ConfigExecution implements IQueryExecution {
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
-    this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
+    this.task =
+        statement.accept(
+            new ConfigTaskVisitor(),
+            new ConfigTaskVisitor.TaskContext(context.getQueryId().getId()));
     this.resultSetConsumed = false;
     if (config.isClusterMode()) {
       configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
@@ -113,7 +120,8 @@ public class ConfigExecution implements IQueryExecution {
     }
   }
 
-  public void fail(Throwable cause) {
+  private void fail(Throwable cause) {
+    LOGGER.error("Failures happened during running ConfigExecution.", cause);
     stateMachine.transitionToFailed(cause);
     ConfigTaskResult result;
     if (cause instanceof IoTDBException) {

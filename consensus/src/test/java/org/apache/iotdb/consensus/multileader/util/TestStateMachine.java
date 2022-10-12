@@ -23,12 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -40,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
+  private static final Logger logger = LoggerFactory.getLogger(TestStateMachine.class);
   private final RequestSets requestSets = new RequestSets(ConcurrentHashMap.newKeySet());
 
   public Set<IndexedConsensusRequest> getRequestSet() {
@@ -68,17 +73,34 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   @Override
   public TSStatus write(IConsensusRequest request) {
     synchronized (requestSets) {
-      IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
-      List<IConsensusRequest> transformedRequest = new ArrayList<>();
-      for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
-        ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-        transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
+      if (request instanceof IndexedConsensusRequest) {
+        writeOneRequest((IndexedConsensusRequest) request);
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (request instanceof BatchIndexedConsensusRequest) {
+        BatchIndexedConsensusRequest batchIndexedConsensusRequest =
+            (BatchIndexedConsensusRequest) request;
+        List<TSStatus> subStatus = new ArrayList<>();
+        for (IndexedConsensusRequest innerRequest : batchIndexedConsensusRequest.getRequests()) {
+          writeOneRequest(innerRequest);
+          subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        }
+        return new TSStatus().setSubStatus(subStatus);
+      } else {
+        logger.error("Unknown request: {}", request);
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
       }
-      requestSets.add(
-          new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest),
-          indexedConsensusRequest.getSearchIndex() != ConsensusReqReader.DEFAULT_SEARCH_INDEX);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+  }
+
+  private void writeOneRequest(IndexedConsensusRequest indexedConsensusRequest) {
+    List<IConsensusRequest> transformedRequest = new ArrayList<>();
+    for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
+      ByteBuffer buffer = innerRequest.serializeToByteBuffer();
+      transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
+    }
+    requestSets.add(
+        new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest),
+        indexedConsensusRequest.getSearchIndex() != ConsensusReqReader.DEFAULT_SEARCH_INDEX);
   }
 
   @Override

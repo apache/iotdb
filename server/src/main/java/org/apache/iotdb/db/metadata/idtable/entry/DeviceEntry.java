@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** device entry in id table */
 public class DeviceEntry {
@@ -47,7 +46,7 @@ public class DeviceEntry {
 
   public DeviceEntry(IDeviceID deviceID) {
     this.deviceID = deviceID;
-    measurementMap = new HashMap<>();
+    measurementMap = new ConcurrentHashMap<>();
     lastTimeMapOfEachPartition = new HashMap<>();
     flushTimeMapOfEachPartition = new HashMap<>();
   }
@@ -150,7 +149,6 @@ public class DeviceEntry {
   }
   // endregion
 
-  @TestOnly
   public Map<String, SchemaEntry> getMeasurementMap() {
     return measurementMap;
   }

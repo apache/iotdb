@@ -24,8 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
-
-import org.apache.commons.lang3.StringUtils;
+import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
 import java.util.List;
 
@@ -65,7 +64,7 @@ public class PathUtils {
       return;
     }
     for (List<String> measurements : measurementLists) {
-      isLegalMeasurements(measurements);
+      isLegalSingleMeasurements(measurements);
     }
   }
 
@@ -90,7 +89,7 @@ public class PathUtils {
         }
       }
       if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
-          || StringUtils.isNumeric(measurement)
+          || isRealNumber(measurement)
           || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
         throw new IllegalPathException(measurement);
       }
@@ -124,6 +123,11 @@ public class PathUtils {
         PathUtils.isLegalPath(measurement);
       }
     }
+  }
+
+  /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
+  public static boolean isRealNumber(String str) {
+    return PathVisitor.isRealNumber(str);
   }
 
   public static boolean isStartWith(String deviceName, String storageGroup) {

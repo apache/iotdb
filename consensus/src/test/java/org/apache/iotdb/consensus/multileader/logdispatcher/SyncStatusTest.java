@@ -40,6 +40,7 @@ public class SyncStatusTest {
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
   private static final String prefix = "version";
   private static final MultiLeaderConfig config = new MultiLeaderConfig.Builder().build();
+  private static final long CHECK_POINT_GAP = 500;
 
   @Before
   public void setUp() throws IOException {
@@ -54,7 +55,8 @@ public class SyncStatusTest {
   /** Confirm success from front to back */
   @Test
   public void sequenceTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
@@ -79,7 +81,8 @@ public class SyncStatusTest {
   /** Confirm success from back to front */
   @Test
   public void reverseTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -111,7 +114,8 @@ public class SyncStatusTest {
   /** Confirm success first from front to back, then back to front */
   @Test
   public void mixedTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -138,7 +142,9 @@ public class SyncStatusTest {
         i++) {
       status.removeBatch(batchList.get(i));
       Assert.assertEquals(
-          config.getReplication().getMaxPendingBatch() / 2, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch()
+              - config.getReplication().getMaxPendingBatch() / 2,
+          status.getPendingBatches().size());
       Assert.assertEquals(
           config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
@@ -153,7 +159,8 @@ public class SyncStatusTest {
   /** Test Blocking while addNextBatch */
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);

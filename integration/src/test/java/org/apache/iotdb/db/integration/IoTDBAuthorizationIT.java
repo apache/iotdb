@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -40,7 +44,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -70,101 +73,49 @@ public class IoTDBAuthorizationIT {
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw'");
 
-      boolean caught = false;
       try (Connection userCon =
               DriverManager.getConnection(
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        try {
-          userStmt.execute("SET STORAGE GROUP TO root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a"));
 
-        caught = false;
-        try {
-          userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        // empty result timeseries set doesn't need authority check
-        userStmt.execute("SELECT * from root.a");
-
-        caught = false;
-        try {
-          userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL ON root.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL on root.**");
 
         userStmt.execute("SET STORAGE GROUP TO root.a");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
         userStmt.execute("SELECT * from root.a");
-        userStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a.**");
-        userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b.**");
+        userStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b");
 
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL ON root.**");
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b.**");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b");
 
-        caught = false;
-        try {
-          userStmt.execute("SET STORAGE GROUP TO root.b");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          userStmt.execute("CREATE TIMESERIES root.b.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          userStmt.execute("INSERT INTO root.b(timestamp, b) VALUES (100, 100)");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          userStmt.execute("SELECT * from root.a");
-        } catch (SQLException e) {
-          // user has no authority on root.a
-          caught = true;
-        }
-        assertTrue(caught);
-
-        // empty result timeseries set doesn't need authority check
-        userStmt.execute("SELECT * from root.b");
-
-        caught = false;
-        try {
-          userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.b"));
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("CREATE TIMESERIES root.b.b WITH DATATYPE=INT32,ENCODING=PLAIN"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("INSERT INTO root.b(timestamp, b) VALUES (100, 100)"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a"));
       }
     }
   }
@@ -178,18 +129,13 @@ public class IoTDBAuthorizationIT {
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER sgtest 'sgtest'");
 
-      boolean caught = false;
       try (Connection userCon =
               DriverManager.getConnection(
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "sgtest", "sgtest");
           Statement userStmt = userCon.createStatement()) {
 
-        try {
-          userStmt.execute("SET STORAGE GROUP TO root.sgtest");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.sgtest"));
 
         adminStmt.execute("GRANT USER sgtest PRIVILEGES SET_STORAGE_GROUP ON root.sgtest");
 
@@ -199,13 +145,8 @@ public class IoTDBAuthorizationIT {
           fail(e.getMessage());
         }
 
-        caught = false;
-        try {
-          userStmt.execute("DELETE STORAGE GROUP root.sgtest");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("DELETE STORAGE GROUP root.sgtest"));
 
         adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_STORAGE_GROUP ON root.sgtest");
 
@@ -340,27 +281,20 @@ public class IoTDBAuthorizationIT {
   @Test
   public void illegalPasswordTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    boolean caught = false;
     try (Connection adminCon =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'temppw '");
-    } catch (SQLException e) {
-      caught = true;
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("CREATE USER tempuser 'temppw '"));
     }
-    assertTrue(caught);
 
-    caught = false;
     try (Connection adminCon =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser 'te'");
-    } catch (SQLException e) {
-      caught = true;
+      Assert.assertThrows(SQLException.class, () -> adminStmt.execute("CREATE USER tempuser 'te'"));
     }
-    assertTrue(caught);
   }
 
   @Test
@@ -377,6 +311,7 @@ public class IoTDBAuthorizationIT {
       userCon.close();
 
       adminStmt.execute("ALTER USER tempuser SET PASSWORD 'newpw'");
+
       boolean caught = false;
       try {
         userCon =
@@ -412,125 +347,65 @@ public class IoTDBAuthorizationIT {
           Statement userStmt = userCon.createStatement()) {
 
         // grant a non-existing user
-        boolean caught = false;
-        try {
-          adminStmt.execute("GRANT USER nulluser PRIVILEGES SET_STORAGE_GROUP on root.a.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER nulluser PRIVILEGES SET_STORAGE_GROUP on root.a"));
         // grant a non-existing privilege
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES NOT_A_PRIVILEGE on root.a.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES NOT_A_PRIVILEGE on root.a"));
         // duplicate grant
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        // grant on an illegal seriesPath
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.**");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.**"));
+        // grant on a illegal seriesPath
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b"));
         // grant admin
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER root PRIVILEGES DELETE_TIMESERIES on root.a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER root PRIVILEGES DELETE_TIMESERIES on root.a.b"));
         // no privilege to grant
-        caught = false;
-        try {
-          userStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b"));
         // revoke a non-existing privilege
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER");
-        caught = false;
-        try {
-          adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER on root.**");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER on root.**"));
         // revoke a non-existing user
-        caught = false;
-        try {
-          adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES CREATE_USER");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        // revoke on an illegal seriesPath
-        caught = false;
-        try {
-          adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES CREATE_USER on root.**"));
+        // revoke on a illegal seriesPath
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b"));
         // revoke admin
-        caught = false;
-        try {
-          adminStmt.execute("REVOKE USER root PRIVILEGES DELETE_TIMESERIES on root.a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("REVOKE USER root PRIVILEGES DELETE_TIMESERIES on root.a.b"));
         // no privilege to revoke
-        caught = false;
-        try {
-          userStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b"));
         // grant privilege to grant
-        caught = false;
-        try {
-          userStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.b"));
+
         adminStmt.execute("GRANT USER tempuser PRIVILEGES GRANT_USER_PRIVILEGE on root.**");
         userStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**");
 
         // grant privilege to revoke
-        caught = false;
-        try {
-          userStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**"));
+
         adminStmt.execute("GRANT USER tempuser PRIVILEGES REVOKE_USER_PRIVILEGE on root.**");
         userStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**");
       }
@@ -553,104 +428,63 @@ public class IoTDBAuthorizationIT {
           Statement userStmt = userCon.createStatement()) {
 
         // grant and revoke the user the privilege to create time series
-        boolean caught = false;
-        try {
-          userStmt.execute("SET STORAGE GROUP TO root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
         userStmt.execute("SET STORAGE GROUP TO root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-
-        caught = false;
-        try {
-          // no privilege to create this one
-          userStmt.execute("SET STORAGE GROUP TO root.b");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          // privilege already exists
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // no privilege to create this one
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.b"));
+        // privilege already exists
+        Assert.assertThrows(
+            SQLException.class,
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a"));
+        // no privilege to create this one any more
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        // no privilege to create timeseries
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
-        caught = false;
-        try {
-          // no privilege to create this one any more
-          userStmt.execute("SET STORAGE GROUP TO root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          // no privilege to create timeseries
-          userStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        caught = false;
-        try {
-          // privilege already exists
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // no privilege to create this one any more
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN"));
+        // privilege already exists
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b"));
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
-        caught = false;
-        try {
-          // no privilege to create this one any more
-          userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
-        // the user cannot delete the timeseries now
-        caught = false;
-        try {
-          // no privilege to delete this one any more
-          userStmt.execute("DELETE TIMESERIES root.a.b");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // no privilege to create this one any more
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN"));
+        // the user cannot delete the timeseries now, no privilege to delete this one any more
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("DELETE TIMESERIES root.a.b"));
 
         // the user can delete the timeseries now
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.*");
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.b.*");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.b.**");
         userStmt.execute("DELETE TIMESERIES root.a.b");
 
         // revoke the privilege to delete time series
         adminStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         adminStmt.execute("SET STORAGE GROUP TO root.b");
         adminStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN");
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.*");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.**");
         userStmt.execute("DELETE TIMESERIES root.b.a");
-        caught = false;
-        try {
-          // no privilege to create this one any more
-          userStmt.execute("DELETE TIMESERIES root.a.b");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // no privilege to create this one any more
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("DELETE TIMESERIES root.a.b"));
       }
     }
   }
@@ -675,49 +509,30 @@ public class IoTDBAuthorizationIT {
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
 
         // grant privilege to insert
-        boolean caught = false;
-        try {
-          userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES INSERT_TIMESERIES on root.a.*");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)"));
+
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES INSERT_TIMESERIES on root.a.**");
         userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)");
 
         // revoke privilege to insert
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES INSERT_TIMESERIES on root.a.*");
-        caught = false;
-        try {
-          userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES INSERT_TIMESERIES on root.a.**");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)"));
         // grant privilege to query
-        caught = false;
-        try {
-          userStmt.execute("SELECT * from root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.a.*");
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
+
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.a.**");
         userStmt.execute("SELECT * from root.a");
         userStmt.getResultSet().close();
         userStmt.execute("SELECT LAST b from root.a");
         userStmt.getResultSet().close();
 
         // revoke privilege to query
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.a.*");
-        caught = false;
-        try {
-          userStmt.execute("SELECT * from root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.a.**");
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
       }
     }
   }
@@ -736,13 +551,8 @@ public class IoTDBAuthorizationIT {
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        boolean caught = false;
-        try {
-          userStmt.execute("CREATE ROLE admin");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE ROLE admin"));
+
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute(
             "GRANT ROLE admin PRIVILEGES SET_STORAGE_GROUP,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
@@ -757,25 +567,20 @@ public class IoTDBAuthorizationIT {
         userStmt.getResultSet().close();
 
         adminStmt.execute("REVOKE ROLE admin PRIVILEGES DELETE_TIMESERIES on root.**");
-        caught = false;
-        try {
-          userStmt.execute("DELETE FROM root.* WHERE TIME <= 1000000000");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("DELETE FROM root.* WHERE TIME <= 1000000000"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
         adminStmt.execute("REVOKE admin FROM tempuser");
         userStmt.execute("SELECT * FROM root.**");
         userStmt.getResultSet().close();
-        caught = false;
-        try {
-          userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN"));
       }
     }
   }
@@ -940,100 +745,32 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.a.b.c");
       adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.b.*");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.c.**");
-      adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.d.b.c");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.e.*.f");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.f.**.g");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.g.*.h.*");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.h.**.i.**");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.i.*.j.**");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.j.**.k.*");
       adminStmt.execute("GRANT role1 TO user1");
 
-      ResultSet resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES user1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
       String ans =
           ",root.a.b : READ_TIMESERIES"
               + ",\n"
               + "role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
               + ",\n"
-              + "role1,root.b.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.c.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
               + "role1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.e.*.f : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.f.**.g : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.g.*.h.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.h.**.i.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.i.*.j.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
-              + ",\n"
-              + "role1,root.j.**.k.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
               + ",\n";
       try {
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b");
-        ans = ",root.a.b : READ_TIMESERIES,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
         ans = "role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.b.`x1.x2`");
-        ans = "role1,root.b.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.c.d.e");
-        ans = "role1,root.c.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.e.`x1.x2`.f");
-        ans = "role1,root.e.*.f : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.f.x1.x2.g");
-        ans = "role1,root.f.**.g : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.g.x1.h.x2");
-        ans = "role1,root.g.*.h.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.h.x1.x2.i.x3.x4");
-        ans = "role1,root.h.**.i.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.i.x1.j.x2.x3");
-        ans = "role1,root.i.*.j.** : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.j.x1.x2.k.x3");
-        ans = "role1,root.j.**.k.* : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-        validateResultSet(resultSet, ans);
-
         adminStmt.execute("REVOKE role1 from user1");
 
-        resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES user1");
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
         ans = ",root.a.b : READ_TIMESERIES,\n";
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b");
-        ans = ",root.a.b : READ_TIMESERIES,\n";
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
+        ans = "";
         validateResultSet(resultSet, ans);
       } finally {
         resultSet.close();
@@ -1053,7 +790,7 @@ public class IoTDBAuthorizationIT {
 
     try {
       adminStmt.execute("CREATE ROLE role1");
-      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
       String ans = "";
       try {
         // not granted list role privilege, should return empty
@@ -1063,8 +800,7 @@ public class IoTDBAuthorizationIT {
             "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.a.b.c");
         adminStmt.execute(
             "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.d.b.c");
-
-        resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
         ans =
             "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
                 + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
@@ -1077,7 +813,7 @@ public class IoTDBAuthorizationIT {
         adminStmt.execute(
             "REVOKE ROLE role1 PRIVILEGES INSERT_TIMESERIES,DELETE_TIMESERIES ON root.a.b.c");
 
-        resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
         ans =
             "root.a.b.c : READ_TIMESERIES,\n"
                 + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
@@ -1117,7 +853,7 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute("GRANT zhazha TO chenduxiu");
       adminStmt.execute("GRANT hakase TO chenduxiu");
 
-      ResultSet resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
+      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE OF USER chenduxiu");
       String ans = "xijing,\n" + "dalao,\n" + "shenshi,\n" + "zhazha,\n" + "hakase,\n";
       try {
         validateResultSet(resultSet, ans);
@@ -1125,7 +861,7 @@ public class IoTDBAuthorizationIT {
         adminStmt.execute("REVOKE dalao FROM chenduxiu");
         adminStmt.execute("REVOKE hakase FROM chenduxiu");
 
-        resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
+        resultSet = adminStmt.executeQuery("LIST ROLE OF USER chenduxiu");
         ans = "xijing,\n" + "shenshi,\n" + "zhazha,\n";
         validateResultSet(resultSet, ans);
       } finally {
@@ -1173,7 +909,7 @@ public class IoTDBAuthorizationIT {
       adminStmt.execute("CREATE USER RiverSky '2333333'");
       adminStmt.execute("GRANT zhazha TO RiverSky");
 
-      ResultSet resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE dalao");
+      ResultSet resultSet = adminStmt.executeQuery("LIST USER OF ROLE dalao");
       String ans =
           "DailySecurity,\n"
               + "DoubleLight,\n"
@@ -1192,12 +928,12 @@ public class IoTDBAuthorizationIT {
       try {
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE zhazha");
+        resultSet = adminStmt.executeQuery("LIST USER OF ROLE zhazha");
         ans = "RiverSky,\n";
         validateResultSet(resultSet, ans);
 
         adminStmt.execute("REVOKE zhazha from RiverSky");
-        resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE zhazha");
+        resultSet = adminStmt.executeQuery("LIST USER OF ROLE zhazha");
         ans = "";
         validateResultSet(resultSet, ans);
       } finally {
@@ -1245,15 +981,11 @@ public class IoTDBAuthorizationIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
         Statement userStmt = userCon.createStatement()) {
       try {
-        // without list user privilege
-        ResultSet resultSet = userStmt.executeQuery("LIST USER");
-        String ans = "";
-        validateResultSet(resultSet, ans);
-
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
         // with list user privilege
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES LIST_USER ON root.**");
-        resultSet = userStmt.executeQuery("LIST USER");
-        ans =
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES LIST_USER on root.**");
+        ResultSet resultSet = userStmt.executeQuery("LIST USER");
+        String ans =
             "root,\n"
                 + "tempuser,\n"
                 + "user0,\n"
@@ -1294,9 +1026,17 @@ public class IoTDBAuthorizationIT {
         } catch (BatchUpdateException e) {
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator(),
               e.getMessage());
         }
@@ -1328,9 +1068,15 @@ public class IoTDBAuthorizationIT {
           System.out.println(e.getMessage());
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
                   + System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
                   + System.lineSeparator(),
               e.getMessage());
         }
@@ -1374,28 +1120,6 @@ public class IoTDBAuthorizationIT {
             userStatement.executeQuery(
                 "SELECT s1, s1, s1 - s3, s2 * sin(s1), s1 + 1 / 2 * sin(s1), sin(s1), sin(s1) FROM root.test")) {
       assertTrue(resultSet.next());
-    }
-  }
-
-  @Test
-  public void testEmptySetAuthorityCheck() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection adminConnection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement adminStatement = adminConnection.createStatement()) {
-      adminStatement.execute("CREATE USER a_application 'a_application'");
-      adminStatement.execute("GRANT USER a_application PRIVILEGES READ_TIMESERIES on root.ln.**;");
-
-      adminStatement.execute("INSERT INTO root.ln.wt01.wf01(time, s1) VALUES(1, 2)");
-    }
-
-    try (Connection userConnection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "a_application", "a_application");
-        Statement userStatement = userConnection.createStatement();
-        ResultSet resultSet = userStatement.executeQuery("SELECT * FROM root.ln.*")) {
-      assertFalse(resultSet.next());
     }
   }
 }

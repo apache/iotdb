@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1656333428851,
+  "iteration": 1664936811638,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -89,7 +89,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 28,
+      "id": 47,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -113,8 +113,10 @@
           },
           "exemplar": true,
           "expr": "config_node{instance=~\"$instance\"}",
+          "format": "time_series",
+          "instant": false,
           "interval": "",
-          "legendFormat": "Online ConfigNode",
+          "legendFormat": "{{status}} ConfigNode",
           "refId": "A"
         },
         {
@@ -126,7 +128,7 @@
           "expr": "data_node{instance=~\"$instance\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "Online DataNode",
+          "legendFormat": "{{status}} DataNode",
           "refId": "B"
         },
         {
@@ -177,7 +179,191 @@
         "x": 0,
         "y": 8
       },
-      "id": 40,
+      "id": 36,
+      "panels": [],
+      "title": "Node Info",
+      "type": "row"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 2,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 1,
+                  "text": "Unknown"
+                },
+                "1": {
+                  "index": 0,
+                  "text": "Online"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "cluster_node_status{}",
+          "legendFormat": "{{instance}}  {{type}} {{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "The status of cluster node",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 28,
+      "panels": [],
+      "title": "Leadership Distribution",
+      "type": "row"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 26,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "max(cluster_node_leader_count{}) by (name) ",
+          "interval": "",
+          "legendFormat": "Total leaders on {{name}} ",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Leadership distribution",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 24,
       "panels": [],
       "title": "Region",
       "type": "row"
@@ -233,9 +419,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 29
       },
-      "id": 38,
+      "id": 22,
       "options": {
         "legend": {
           "calcs": [],
@@ -314,9 +500,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 29
       },
-      "id": 32,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -395,9 +581,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 37
       },
-      "id": 35,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -476,9 +662,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 17
+        "y": 37
       },
-      "id": 37,
+      "id": 18,
       "options": {
         "legend": {
           "calcs": [],
@@ -512,7 +698,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 45
       },
       "id": 16,
       "panels": [],
@@ -570,7 +756,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 26
+        "y": 46
       },
       "id": 10,
       "options": {
@@ -664,7 +850,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 26
+        "y": 46
       },
       "id": 8,
       "options": {
@@ -758,7 +944,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 34
+        "y": 54
       },
       "id": 6,
       "options": {
@@ -888,7 +1074,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 34
+        "y": 54
       },
       "id": 4,
       "options": {
@@ -969,7 +1155,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 42
+        "y": 62
       },
       "id": 2,
       "options": {
@@ -1063,9 +1249,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 42
+        "y": 62
       },
-      "id": 26,
+      "id": 27,
       "options": {
         "legend": {
           "calcs": [],
@@ -1084,16 +1270,16 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
+          "expr": "avg(rate(entry_seconds_sum{instance=\"$instance\"}[1m])/rate(entry_seconds_count{instance=\"$instance\"}[1m])) by (name,instance)",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
       "title": "The time consumed of interface",
       "type": "timeseries"
     },
-	{
+    {
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1139,7 +1325,7 @@
               }
             ]
           },
-		  "unit": "percent"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -1147,7 +1333,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 70
       },
       "id": 42,
       "options": {
@@ -1229,7 +1415,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 70
       },
       "id": 44,
       "options": {
@@ -1324,7 +1510,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 58
+        "y": 78
       },
       "id": 46,
       "options": {
@@ -1424,7 +1610,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -1440,6 +1626,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7g",
-  "version": 19,
+  "version": 5,
   "weekStart": ""
 }

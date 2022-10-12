@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
@@ -42,6 +44,8 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
@@ -62,8 +66,11 @@ public class ShowFunctionsTask implements IConfigTask {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     try {
-      final TsBlockBuilder builder =
-          new TsBlockBuilder(HeaderConstant.SHOW_FUNCTIONS_HEADER.getRespDataTypes());
+      List<TSDataType> outputDataTypes =
+          ColumnHeaderConstant.showFunctionsColumnHeaders.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
+      TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
       final QueryDataSet showDataSet = generateShowFunctionsListDataSet();
       while (showDataSet.hasNextWithoutConstraint()) {
@@ -78,7 +85,9 @@ public class ShowFunctionsTask implements IConfigTask {
 
       future.set(
           new ConfigTaskResult(
-              TSStatusCode.SUCCESS_STATUS, builder.build(), HeaderConstant.SHOW_FUNCTIONS_HEADER));
+              TSStatusCode.SUCCESS_STATUS,
+              builder.build(),
+              DatasetHeaderFactory.getShowFunctionsHeader()));
     } catch (Exception e) {
       LOGGER.error("Failed to get functions.", e);
       future.setException(e);

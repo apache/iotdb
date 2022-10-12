@@ -618,7 +618,9 @@ public class SeriesScanUtil {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      return cachedTsBlock;
+      TsBlock res = cachedTsBlock;
+      cachedTsBlock = null;
+      return res;
     } else {
 
       /*

@@ -73,6 +73,8 @@ public class DistributionPlanner {
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
     }
     SubPlan subPlan = splitFragment(rootWithExchange);
+    // Mark the root Fragment of root SubPlan as `root`
+    subPlan.getPlanFragment().setRoot(true);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
@@ -111,14 +113,14 @@ public class DistributionPlanner {
         context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
-    sinkNode.setChild(rootInstance.getFragment().getRoot());
+    sinkNode.setChild(rootInstance.getFragment().getPlanNodeTree());
     context
         .getResultNodeContext()
         .setUpStream(
             rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
             rootInstance.getId(),
             sinkNode.getPlanNodeId());
-    rootInstance.getFragment().setRoot(sinkNode);
+    rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
   private PlanFragmentId getNextFragmentId() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.TriggerManagementException;
+import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;

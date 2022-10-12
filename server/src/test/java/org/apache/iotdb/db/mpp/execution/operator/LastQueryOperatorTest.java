@@ -21,9 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -56,6 +56,8 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -133,9 +135,11 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(0),
               aggregators1,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -155,9 +159,11 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(2),
               aggregators2,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -252,9 +258,11 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(0),
               aggregators1,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -274,9 +282,11 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(2),
               aggregators2,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 

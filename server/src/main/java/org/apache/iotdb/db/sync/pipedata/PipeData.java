@@ -36,6 +36,8 @@ public abstract class PipeData {
 
   protected long serialNumber;
 
+  public PipeData() {}
+
   public PipeData(long serialNumber) {
     this.serialNumber = serialNumber;
   }
@@ -65,25 +67,35 @@ public abstract class PipeData {
     return byteStream.toByteArray();
   }
 
-  public static PipeData deserialize(DataInputStream stream)
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    serialNumber = stream.readLong();
+  }
+
+  public static PipeData createPipeData(DataInputStream stream)
       throws IOException, IllegalPathException {
+    PipeData pipeData;
     PipeDataType type = PipeDataType.values()[stream.readByte()];
     switch (type) {
       case TSFILE:
-        return TsFilePipeData.deserialize(stream);
+        pipeData = new TsFilePipeData();
+        break;
       case DELETION:
-        return DeletionPipeData.deserialize(stream);
+        pipeData = new DeletionPipeData();
+        break;
       case SCHEMA:
-        return SchemaPipeData.deserialize(stream);
+        pipeData = new SchemaPipeData();
+        break;
       default:
         logger.error("Deserialize PipeData error because Unknown type {}.", type);
         throw new UnsupportedOperationException(
             "Deserialize PipeData error because Unknown type " + type);
     }
+    pipeData.deserialize(stream);
+    return pipeData;
   }
 
-  public static PipeData deserialize(byte[] bytes) throws IllegalPathException, IOException {
-    return deserialize(new DataInputStream(new ByteArrayInputStream(bytes)));
+  public static PipeData createPipeData(byte[] bytes) throws IllegalPathException, IOException {
+    return createPipeData(new DataInputStream(new ByteArrayInputStream(bytes)));
   }
 
   public abstract ILoader createLoader();

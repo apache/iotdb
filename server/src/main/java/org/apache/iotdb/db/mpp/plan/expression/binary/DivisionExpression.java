@@ -21,9 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.ArithmeticDivisionTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -35,13 +32,6 @@ public class DivisionExpression extends ArithmeticBinaryExpression {
 
   public DivisionExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
-  }
-
-  @Override
-  protected ArithmeticBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new ArithmeticDivisionTransformer(
-        leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override

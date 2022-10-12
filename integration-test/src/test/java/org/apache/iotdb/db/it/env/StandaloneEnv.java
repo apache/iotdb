@@ -25,11 +25,17 @@ import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.util.Version;
 
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
@@ -44,13 +50,17 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
   public void cleanAfterClass() {
     cleanAfterTest();
   }
 
   @Override
   public void initBeforeTest() {
-
     EnvironmentUtils.envSetUp();
   }
 
@@ -65,11 +75,11 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection() throws SQLException {
+  public Connection getConnection(String username, String password) throws SQLException {
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", username, password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
@@ -78,13 +88,14 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
+  public Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       return DriverManager.getConnection(
           Config.IOTDB_URL_PREFIX + "127.0.0.1:6667" + "?" + VERSION + "=" + version.toString(),
-          "root",
-          "root");
+          username,
+          password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
@@ -123,5 +134,57 @@ public class StandaloneEnv implements BaseEnv {
   @Override
   public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
     return null;
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            SessionConfig.DEFAULT_HOST,
+            SessionConfig.DEFAULT_PORT,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD);
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader,
+      Version version)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            host,
+            rpcPort,
+            username,
+            password,
+            fetchSize,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            enableCacheLeader,
+            version);
+
+    session.open();
+    return session;
+  }
+
+  @Override
+  public void restartDataNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    // Do nothing
   }
 }

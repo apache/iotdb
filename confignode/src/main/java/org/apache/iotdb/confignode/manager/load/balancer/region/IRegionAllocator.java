@@ -34,14 +34,14 @@ public interface IRegionAllocator {
    * Calculating the next optimal TRegionReplicaSet based on the current online DataNodes and
    * allocated Regions
    *
-   * @param onlineDataNodes DataNodes that currently communicable
+   * @param targetDataNodes DataNodes that can be used for allocation
    * @param allocatedRegions Allocated Regions
    * @param replicationFactor Replication factor of TRegionReplicaSet
    * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
    * @return The optimal TRegionReplicaSet derived by the specific algorithm
    */
   TRegionReplicaSet allocateRegion(
-      List<TDataNodeConfiguration> onlineDataNodes,
+      List<TDataNodeConfiguration> targetDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);
