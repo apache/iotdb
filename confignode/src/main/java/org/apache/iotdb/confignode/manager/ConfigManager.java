@@ -1071,14 +1071,6 @@ public class ConfigManager implements IManager {
   @Override
   public TGetRoutingResp getRouting(GetRoutingPlan plan) {
     TSStatus status = confirmLeader();
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
-        "GetRouting receive path: {}, type: {}, seriesSlot: {}, timeSlot: {}, return: {}",
-        plan.getStorageGroup(),
-        plan.getPartitionType(),
-        plan.getSeriesSlotId(),
-        plan.getTimeSlotId(),
-        partitionManager.getRouting(plan).convertToRpcGetRoutingResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getRouting(plan).convertToRpcGetRoutingResp()
         : new TGetRoutingResp(status);
@@ -1087,14 +1079,6 @@ public class ConfigManager implements IManager {
   @Override
   public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
-        "GetTimeSlotList receive path: {}, seriesSlot: {}, startTime: {}, endTime: {}, return: {}",
-        plan.getStorageGroup(),
-        plan.getSeriesSlotId(),
-        plan.getStartTime(),
-        plan.getEndTime(),
-        partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
         : new TGetTimeSlotListResp(status);
@@ -1103,12 +1087,6 @@ public class ConfigManager implements IManager {
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
-        "GetSeriesSlotList receive path: {}, type: {}, return: {}",
-        plan.getStorageGroup(),
-        plan.getPartitionType(),
-        partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
