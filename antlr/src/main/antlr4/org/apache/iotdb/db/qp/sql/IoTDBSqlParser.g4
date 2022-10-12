@@ -47,7 +47,6 @@ ddlStatement
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
     | setArchiving | cancelArchiving | pauseArchiving | resumeArchiving | showArchiving
-    | showAllArchiving
     ;
 
 dmlStatement
@@ -362,12 +361,7 @@ resumeArchiving
 
 // Show Archiving
 showArchiving
-    : SHOW ARCHIVING ON prefixPath (COMMA prefixPath)*
-    ;
-
-// Show All Archiving
-showAllArchiving
-    : SHOW ALL ARCHIVING
+    : SHOW ALL? ARCHIVING (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 

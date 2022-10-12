@@ -893,18 +893,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitShowArchiving(IoTDBSqlParser.ShowArchivingContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
-    List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
-    for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
-      storageGroups.add(parsePrefixPath(prefixPath));
+    if (ctx.ON() != null) {
+      List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
+      for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
+        storageGroups.add(parsePrefixPath(prefixPath));
+      }
     }
-    return new ShowArchivingOperator(storageGroups);
-  }
-
-  // Show All Archiving
-  @Override
-  public Operator visitShowAllArchiving(IoTDBSqlParser.ShowAllArchivingContext ctx) {
-    List<PartialPath> storageGroups = new ArrayList<>();
-    return new ShowArchivingOperator(storageGroups);
+    return new ShowArchivingOperator(storageGroups, ctx.ALL() != null);
   }
 
   // Start Trigger

@@ -178,12 +178,18 @@ public class ArchivingTask {
     return startTime;
   }
 
+  public long getSubmitTime() {
+    return submitTime;
+  }
+
   public ArchivingTaskStatus getStatus() {
     return status;
   }
 
-  public long getSubmitTime() {
-    return submitTime;
+  public boolean isActive() {
+    return status == ArchivingTaskStatus.READY
+        || status == ArchivingTaskStatus.RUNNING
+        || status == ArchivingTaskStatus.PAUSED;
   }
 
   public void setStatus(ArchivingTaskStatus status) {

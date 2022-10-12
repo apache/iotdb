@@ -23,11 +23,14 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import java.util.List;
 
 public class ShowArchivingPlan extends ShowPlan {
-  private List<PartialPath> storageGroups;
+  private final List<PartialPath> storageGroups;
 
-  public ShowArchivingPlan(List<PartialPath> storageGroups) {
+  private final boolean showAll;
+
+  public ShowArchivingPlan(List<PartialPath> storageGroups, boolean showAll) {
     super(ShowContentType.SHOW_ARCHIVING);
     this.storageGroups = storageGroups;
+    this.showAll = showAll;
   }
 
   @Override
@@ -37,5 +40,9 @@ public class ShowArchivingPlan extends ShowPlan {
 
   public List<PartialPath> getStorageGroups() {
     return storageGroups;
+  }
+
+  public boolean isShowAll() {
+    return showAll;
   }
 }

@@ -35,12 +35,14 @@ Show the data archiving tasks.
 #### Syntax
 
 ```sql
+SHOW ARCHIVING
 SHOW ALL ARCHIVING
 SHOW ARCHIVING ON <storage_group>
+SHOW ALL ARCHIVING ON <storage_group>
 ```
 
 - `<storage_group>` specifies the storage group to show archiving task on.
-
+- `all` By default, only tasks in the READY, RUNNING, and PAUSED states are returned. You can view tasks in other states by adding the all parameter.
 #### Example Result
 
 ```sql
@@ -106,7 +108,7 @@ CANCEL ARCHIVING ON root.ln
 
 ### Pause Archiving Task
 
-Suspend the data migration task, run the `RESUME` command to resume the task.
+Suspend the data migration task.
 
 #### Syntax
 
