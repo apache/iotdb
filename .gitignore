@@ -38,6 +38,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.jar
 !trigger-example.jar
+!TriggerCounter.jar
 
 *.gz
 *.tar.gz
