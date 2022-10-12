@@ -59,13 +59,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
   public ISchemaRegionPlan deserialize(ByteBuffer byteBuffer) {
     ISchemaRegionPlan schemaRegionPlan =
         SchemaRegionPlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
-    ISchemaRegionPlan plan =
-        schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
-
-    // deserialize a long to keep compatible with old version (CRC32 code)
-    byteBuffer.getLong();
-
-    return plan;
+    return schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
   }
 
   private static class SchemaRegionPlanDeserializeVisitor

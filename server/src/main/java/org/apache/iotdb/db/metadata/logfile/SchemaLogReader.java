@@ -102,6 +102,10 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
       nextSchemaPlan = deserializer.deserialize(ByteBuffer.wrap(logBuffer));
       index += logLength;
+
+      // read a long to keep compatible with old version (CRC32 code)
+      inputStream.readLong();
+      index += Long.BYTES;
     } catch (EOFException e) {
       nextSchemaPlan = null;
       truncateBrokenLogs();

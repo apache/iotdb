@@ -59,9 +59,6 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     if (result.isFailed()) {
       throw result.getException();
     }
-
-    // serialize a long to keep compatible with old version (CRC32 code)
-    dataOutputStream.writeLong(0);
   }
 
   private static class SchemaRegionPlanSerializationResult {

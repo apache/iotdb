@@ -37,6 +37,9 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private static final int INITIALIZED_BUFFER_SIZE = 8192;
 
+  // bytes data of a long for compatibility with old version (CRC32 code)
+  private static final byte[] PLACE_HOLDER = new byte[Long.BYTES];
+
   private final File logFile;
 
   private final ByteArrayOutputStream logBufferStream =
@@ -48,7 +51,7 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final boolean forceEachWrite;
 
-  private boolean writeLengthForRecord = true;
+  private boolean textMode = false;
 
   private boolean hasSynced = true;
 
@@ -72,30 +75,31 @@ public class SchemaLogWriter<T> implements AutoCloseable {
   }
 
   public SchemaLogWriter(
-      String logFilePath,
-      ISerializer<T> serializer,
-      boolean forceEachWrite,
-      boolean writeLengthForRecord)
+      String logFilePath, ISerializer<T> serializer, boolean forceEachWrite, boolean textMode)
       throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     fileOutputStream = new FileOutputStream(logFile, true);
     this.serializer = serializer;
 
     this.forceEachWrite = forceEachWrite;
-    this.writeLengthForRecord = writeLengthForRecord;
+    this.textMode = textMode;
   }
 
   public synchronized void write(T schemaPlan) throws IOException {
     hasSynced = false;
     // serialize plan to binary data
     serializer.serialize(schemaPlan, logBufferStream);
-    // write the length of plan data
-    if (writeLengthForRecord) {
+    if (!textMode) {
+      // write the length of plan data
       logLengthBuffer.putInt(logBufferStream.size());
       fileOutputStream.write(logLengthBuffer.array());
+
+      // write a long to keep compatible with old version (CRC32 code)
+      logBufferStream.write(PLACE_HOLDER);
     }
     // write the plan data
     logBufferStream.writeTo(fileOutputStream);
+
     // clear buffer
     logLengthBuffer.clear();
     logBufferStream.reset();
