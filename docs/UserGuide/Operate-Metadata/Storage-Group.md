@@ -20,6 +20,9 @@
 -->
 
 # Storage Group Management
+
+Storage Group can be regarded as Database in the relational database.
+
 ## Create Storage Group
 
 According to the storage model we can set up the corresponding storage group. Two SQL statements are supported for creating storage groups, as follows:
