@@ -77,6 +77,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -114,11 +115,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   private CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
+  private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSGCachedImpl(IStorageGroupMNode storageGroupMNode, int schemaRegionId)
+  public MTreeBelowSGCachedImpl(
+      IStorageGroupMNode storageGroupMNode,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      int schemaRegionId)
       throws MetadataException, IOException {
+    this.tagGetter = tagGetter;
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     store = new CachedMTreeStore(storageGroup, schemaRegionId);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
@@ -631,7 +637,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
   }
 
   /**
@@ -657,7 +663,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
@@ -669,6 +675,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              path.setTagMap(tagGetter.apply(node));
             }
             result.add(path);
           }

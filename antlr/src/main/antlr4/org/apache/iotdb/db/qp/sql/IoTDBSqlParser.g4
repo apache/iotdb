@@ -413,6 +413,7 @@ specialClause
     | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
     | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
     | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTagClause orderByClause? #groupByTagStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -459,6 +460,8 @@ groupByTimeClause
     : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? fillClause? RR_BRACKET
     | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
+    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    COMMA TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 groupByFillClause
@@ -468,6 +471,10 @@ groupByFillClause
 
 groupByLevelClause
     : GROUP BY LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
+    ;
+
+groupByTagClause
+    : GROUP BY TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 fillClause

@@ -118,6 +118,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
@@ -648,29 +649,28 @@ public class RSchemaRegion implements ISchemaRegion {
           }
           Set<IMNode> tempSet = ConcurrentHashMap.newKeySet();
 
-          parentNeedsToCheck
-              .parallelStream()
-              .forEach(
-                  currentNode -> {
-                    if (!currentNode.isStorageGroup()) {
-                      PartialPath parentPath = currentNode.getPartialPath();
-                      int level = parentPath.getNodeLength();
-                      int end = parentPath.getNodeLength() - 1;
-                      if (!readWriteHandler.existAnySiblings(
-                          RSchemaUtils.getLevelPathPrefix(parentPath.getNodes(), end, level))) {
-                        try {
-                          readWriteHandler.deleteNode(
-                              parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
-                          IMNode parentNode = currentNode.getParent();
-                          if (!parentNode.isStorageGroup()) {
-                            tempSet.add(currentNode.getParent());
-                          }
-                        } catch (Exception e) {
-                          logger.warn("delete {} fail.", parentPath.getFullPath(), e);
-                        }
+          Stream<IMNode> parentStream = parentNeedsToCheck.parallelStream();
+          parentStream.forEach(
+              currentNode -> {
+                if (!currentNode.isStorageGroup()) {
+                  PartialPath parentPath = currentNode.getPartialPath();
+                  int level = parentPath.getNodeLength();
+                  int end = parentPath.getNodeLength() - 1;
+                  if (!readWriteHandler.existAnySiblings(
+                      RSchemaUtils.getLevelPathPrefix(parentPath.getNodes(), end, level))) {
+                    try {
+                      readWriteHandler.deleteNode(
+                          parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
+                      IMNode parentNode = currentNode.getParent();
+                      if (!parentNode.isStorageGroup()) {
+                        tempSet.add(currentNode.getParent());
                       }
+                    } catch (Exception e) {
+                      logger.warn("delete {} fail.", parentPath.getFullPath(), e);
                     }
-                  });
+                  }
+                }
+              });
           parentNeedsToCheck.clear();
           parentNeedsToCheck.addAll(tempSet);
         }
@@ -768,35 +768,33 @@ public class RSchemaRegion implements ISchemaRegion {
       byte[] suffixToMatch =
           RSchemaUtils.getSuffixOfLevelPath(
               ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
-
-      scanKeys
-          .parallelStream()
-          .forEach(
-              prefixNodes -> {
-                String levelPrefix =
-                    RSchemaUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
-                Arrays.stream(nodeType)
-                    .parallel()
-                    .forEach(
-                        x -> {
-                          byte[] startKey = RSchemaUtils.toRocksDBKey(levelPrefix, x);
-                          RocksIterator iterator = readWriteHandler.iterator(null);
-                          iterator.seek(startKey);
-                          while (iterator.isValid()) {
-                            if (!RSchemaUtils.prefixMatch(iterator.key(), startKey)) {
-                              break;
-                            }
-                            if (RSchemaUtils.suffixMatch(iterator.key(), suffixToMatch)) {
-                              if (lastIteration) {
-                                function.apply(iterator.key(), iterator.value());
-                              } else {
-                                tempNodes.add(RSchemaUtils.toMetaNodes(iterator.key()));
-                              }
-                            }
-                            iterator.next();
+      Stream<String[]> scanKeysStream = scanKeys.parallelStream();
+      scanKeysStream.forEach(
+          prefixNodes -> {
+            String levelPrefix =
+                RSchemaUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
+            Arrays.stream(nodeType)
+                .parallel()
+                .forEach(
+                    x -> {
+                      byte[] startKey = RSchemaUtils.toRocksDBKey(levelPrefix, x);
+                      RocksIterator iterator = readWriteHandler.iterator(null);
+                      iterator.seek(startKey);
+                      while (iterator.isValid()) {
+                        if (!RSchemaUtils.prefixMatch(iterator.key(), startKey)) {
+                          break;
+                        }
+                        if (RSchemaUtils.suffixMatch(iterator.key(), suffixToMatch)) {
+                          if (lastIteration) {
+                            function.apply(iterator.key(), iterator.value());
+                          } else {
+                            tempNodes.add(RSchemaUtils.toMetaNodes(iterator.key()));
                           }
-                        });
-              });
+                        }
+                        iterator.next();
+                      }
+                    });
+          });
       scanKeys.clear();
       scanKeys.addAll(tempNodes);
       tempNodes.clear();
@@ -1204,8 +1202,13 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMath)
-      throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMath, boolean withTags) throws MetadataException {
+    if (withTags) {
+      Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> results =
+          getMatchedMeasurementPathWithTags(pathPattern.getNodes());
+      return new ArrayList<>(results.keySet());
+    }
     List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
@@ -1223,15 +1226,16 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     // todo page query
-    return new Pair<>(getMeasurementPaths(pathPattern, false), offset + limit);
+    return new Pair<>(getMeasurementPaths(pathPattern, false, withTags), offset + limit);
   }
 
   @Override
   public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
@@ -1277,6 +1281,7 @@ public class RSchemaRegion implements ISchemaRegion {
     return new Pair<>(res, 1);
   }
 
+  @SuppressWarnings("unchecked")
   private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
       getMatchedMeasurementPathWithTags(String[] nodes) throws IllegalPathException {
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> allResult =
@@ -1295,10 +1300,12 @@ public class RSchemaRegion implements ISchemaRegion {
           if (!(attributes instanceof Map)) {
             attributes = Collections.emptyMap();
           }
-          @SuppressWarnings("unchecked")
+          Map<String, String> tagMap = (Map<String, String>) tag;
+          Map<String, String> attributesMap = (Map<String, String>) attributes;
           Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-              new Pair<>((Map<String, String>) tag, (Map<String, String>) attributes);
+              new Pair<>(tagMap, attributesMap);
           allResult.put(measurementPath, tagsAndAttributes);
+          measurementPath.setTagMap(tagMap);
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});

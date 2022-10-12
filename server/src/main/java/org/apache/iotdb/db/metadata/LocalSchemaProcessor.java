@@ -798,7 +798,7 @@ public class LocalSchemaProcessor {
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
   }
 
   /**
@@ -821,7 +821,7 @@ public class LocalSchemaProcessor {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     List<MeasurementPath> measurementPaths = new LinkedList<>();
     Pair<List<MeasurementPath>, Integer> result;
@@ -836,7 +836,7 @@ public class LocalSchemaProcessor {
       }
       result =
           schemaRegion.getMeasurementPathsWithAlias(
-              pathPattern, tmpLimit, tmpOffset, isPrefixMatch);
+              pathPattern, tmpLimit, tmpOffset, isPrefixMatch, withTags);
       measurementPaths.addAll(result.left);
       resultOffset += result.right;
       if (limit != 0) {
