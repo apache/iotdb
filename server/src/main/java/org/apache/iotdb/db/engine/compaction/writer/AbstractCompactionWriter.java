@@ -94,16 +94,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void endFile() throws IOException;
 
-  abstract List<TsFileIOWriter> getFileIOWriter();
-
-  public void checkAndMayFlushChunkMetadata() throws IOException {
-    List<TsFileIOWriter> writers = this.getFileIOWriter();
-    for (TsFileIOWriter writer : writers) {
-      writer.checkMetadataSizeAndMayFlush();
-    }
-  }
-
-  public abstract void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId);
+  public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
   protected void writeDataPoint(Long timestamp, Object value, IChunkWriter iChunkWriter) {
     if (iChunkWriter instanceof ChunkWriterImpl) {

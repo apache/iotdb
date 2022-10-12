@@ -3671,10 +3671,10 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     deleteTimeseriesInMManager(seriesPaths);
 
     for (TsFileResource resource : seqResources) {
-      resource.setTimeIndexType((byte) 2);
+      resource.degradeTimeIndex();
     }
     for (TsFileResource resource : unseqResources) {
-      resource.setTimeIndexType((byte) 2);
+      resource.degradeTimeIndex();
     }
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();

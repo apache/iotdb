@@ -3,12 +3,12 @@ package org.apache.iotdb.db.engine.compaction.writer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
@@ -72,16 +72,18 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public List<TsFileIOWriter> getFileIOWriter() {
-    return Collections.singletonList(fileWriter);
-  }
-
-  @Override
-  public void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId) {
-    // we need to synchronized here to avoid multi-thread competition in sub-task
-    synchronized (this) {
-      targetResource.updateStartTime(deviceId, startTime);
-      targetResource.updateEndTime(deviceId, endTime);
+  public void checkAndMayFlushChunkMetadata() throws IOException {
+    // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
+    // time and end time in resource.
+    List<TimeseriesMetadata> timeseriesMetadatasOfCurrentDevice =
+        fileWriter.getDeviceTimeseriesMetadataMap().get(deviceId);
+    if (timeseriesMetadatasOfCurrentDevice != null) {
+      // this target file contains current device
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadatasOfCurrentDevice) {
+        targetResource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
+        targetResource.updateEndTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
+      }
     }
+    fileWriter.checkMetadataSizeAndMayFlush();
   }
 }

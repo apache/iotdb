@@ -53,7 +53,6 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -5654,7 +5653,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d1000" + i + PATH_SEPARATOR + "s" + j,
                 iterator.currentTime());
             count++;
-            System.out.println(iterator.currentTime());
             iterator.next();
           }
         }

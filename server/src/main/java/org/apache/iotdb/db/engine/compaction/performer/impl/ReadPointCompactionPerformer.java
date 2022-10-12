@@ -69,7 +69,6 @@ public class ReadPointCompactionPerformer
   private List<TsFileResource> seqFiles = Collections.emptyList();
   private List<TsFileResource> unseqFiles = Collections.emptyList();
 
-  private List<TsFileResource> sortedSourceFiles;
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
@@ -103,7 +102,6 @@ public class ReadPointCompactionPerformer
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
-    sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -221,8 +219,8 @@ public class ReadPointCompactionPerformer
       for (Future<Void> future : futures) {
         future.get();
       }
-      compactionWriter.checkAndMayFlushChunkMetadata();
       compactionWriter.endChunkGroup();
+      compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
 
@@ -287,7 +285,7 @@ public class ReadPointCompactionPerformer
         }
       }
     }
-    writer.updateStartTimeAndEndTime(startTime, endTime, subTaskId);
+    // writer.updateStartTimeAndEndTime(startTime, endTime, subTaskId);
   }
 
   private AbstractCompactionWriter getCompactionWriter(

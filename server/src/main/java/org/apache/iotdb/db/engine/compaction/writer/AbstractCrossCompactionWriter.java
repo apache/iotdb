@@ -85,7 +85,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       }
       isDeviceExistedInTargetFiles[i] = false;
     }
-    deviceId = null;
     seqFileIndexArray = null;
   }
 
@@ -135,6 +134,26 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     seqTsFileResources = null;
   }
 
+  @Override
+  public void checkAndMayFlushChunkMetadata() throws IOException {
+    for (int i = 0; i < targetFileWriters.size(); i++) {
+      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
+      TsFileResource resource = targetResources.get(i);
+      // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
+      // time and end time in resource.
+      List<TimeseriesMetadata> timeseriesMetadatasOfCurrentDevice =
+          fileIOWriter.getDeviceTimeseriesMetadataMap().get(deviceId);
+      if (timeseriesMetadatasOfCurrentDevice != null) {
+        // this target file contains current device
+        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadatasOfCurrentDevice) {
+          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
+          resource.updateEndTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
+        }
+      }
+      fileIOWriter.checkMetadataSizeAndMayFlush();
+    }
+  }
+
   /**
    * Find the index of the target file to be inserted according to the data time. Notice: unsealed
    * chunk should be flushed to current file before moving target file index.<br>
@@ -160,11 +179,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     }
   }
 
-  @Override
-  public List<TsFileIOWriter> getFileIOWriter() {
-    return targetFileWriters;
-  }
-
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
@@ -188,16 +202,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       }
 
       fileIndex++;
-    }
-  }
-
-  @Override
-  public void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId) {
-    synchronized (this) {
-      // we need to synchronized here to avoid multi-thread competition in sub-task
-      TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
-      resource.updateStartTime(deviceId, startTime);
-      resource.updateEndTime(deviceId, endTime);
     }
   }
 }

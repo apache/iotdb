@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,10 +113,9 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         }
 
         compactionWriter.endChunkGroup();
+        compactionWriter.checkAndMayFlushChunkMetadata();
       }
       compactionWriter.endFile();
-      CompactionUtils.updateDeviceStartTimeAndEndTime(
-          targetFiles, compactionWriter.getFileIOWriter());
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } catch (Exception e) {
       throw new RuntimeException(e);
