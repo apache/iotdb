@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -132,7 +133,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TSStatus operatePipe(SetPipeStatusPlan physicalPlan) {
+  public TSStatus setPipeStatus(SetPipeStatusPlan physicalPlan) {
     TSStatus status = new TSStatus();
     try {
       syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
@@ -143,6 +144,11 @@ public class ClusterSyncInfo implements SnapshotProcessor {
       LOGGER.error(e.getMessage());
     }
     return status;
+  }
+
+  public TSStatus dropPipe(DropPipePlan physicalPlan) {
+    syncMetadata.dropPipe(physicalPlan.getPipeName());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public PipeResp showPipe(ShowPipePlan plan) {

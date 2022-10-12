@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -276,7 +277,9 @@ public class ConfigPlanExecutor {
       case PreCreatePipe:
         return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
       case SetPipeStatus:
-        return syncInfo.operatePipe((SetPipeStatusPlan) physicalPlan);
+        return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
+      case DropPipe:
+        return syncInfo.dropPipe((DropPipePlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

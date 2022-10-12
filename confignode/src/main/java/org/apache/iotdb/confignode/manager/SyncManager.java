@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -122,6 +123,10 @@ public class SyncManager {
 
   public TSStatus setPipeStatus(String pipeName, PipeStatus pipeStatus) {
     return getConsensusManager().write(new SetPipeStatusPlan(pipeName, pipeStatus)).getStatus();
+  }
+
+  public TSStatus dropPipe(String pipeName) {
+    return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
   }
 
   public TShowPipeResp showPipe(String pipeName) {

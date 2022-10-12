@@ -121,7 +121,7 @@ public class LocalSyncInfo {
         syncMetadata.setPipeStatus(pipeName, PipeStatus.STOP);
         break;
       case DROP_PIPE:
-        syncMetadata.drop(pipeName);
+        syncMetadata.dropPipe(pipeName);
         break;
       default:
         throw new PipeException("Unknown operatorType " + syncOperation);
