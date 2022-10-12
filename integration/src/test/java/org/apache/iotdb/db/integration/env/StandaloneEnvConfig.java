@@ -51,7 +51,7 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
     return this;
   }
 

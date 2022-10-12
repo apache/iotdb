@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -31,6 +32,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -81,7 +88,7 @@ public class IoTDBClusterPartitionIT {
   private static final int testReplicationFactor = 3;
 
   protected static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 86400000;
+  private static final long testTimePartitionInterval = 604800000;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
@@ -570,6 +577,144 @@ public class IoTDBClusterPartitionIT {
         TimeUnit.SECONDS.sleep(1);
       }
       Assert.assertTrue(allRunning);
+    }
+  }
+
+  @Test
+  public void testGetSlots()
+      throws TException, IOException, IllegalPathException, InterruptedException {
+    final String sg = "root.sg";
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+
+    final String d00 = sg0 + ".d0.s";
+    final String d01 = sg0 + ".d1.s";
+    final String d10 = sg1 + ".d0.s";
+    final String d11 = sg1 + ".d1.s";
+
+    final int seriesPartitionBatchSize = 100;
+    final int timePartitionBatchSize = 10;
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+      ByteBuffer buffer;
+      TSchemaPartitionReq schemaPartitionReq;
+
+      // We assert the correctness of setting storageGroups, dataPartitions, schemaPartitions
+
+      // Set StorageGroups
+      client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
+      client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
+
+      // Create SchemaPartitions
+      buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      schemaPartitionReq = new TSchemaPartitionReq(buffer);
+      client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
+
+      TDataPartitionReq dataPartitionReq;
+      TDataPartitionTableResp dataPartitionTableResp;
+
+      // Prepare partitionSlotsMap
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+
+      // Create DataPartitions
+      for (int i = 0; i < 2; i++) {
+        String storageGroup = sg + i;
+        partitionSlotsMap =
+            constructPartitionSlotsMap(
+                storageGroup, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
+
+        dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+        for (int retry = 0; retry < 5; retry++) {
+          // Build new Client since it's unstable
+          try (SyncConfigNodeIServiceClient configNodeClient =
+              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+            dataPartitionTableResp =
+                configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+            if (dataPartitionTableResp != null) {
+              break;
+            }
+          } catch (Exception e) {
+            // Retry sometimes in order to avoid request timeout
+            LOGGER.error(e.getMessage());
+            TimeUnit.SECONDS.sleep(1);
+          }
+        }
+      }
+
+      // Test getRouting api
+      TGetRoutingReq getRoutingReq;
+      TGetRoutingResp getRoutingResp;
+
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(0);
+      TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(0L);
+
+      getRoutingReq = new TGetRoutingReq(sg0, seriesPartitionSlot, timePartitionSlot);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      // Test GetTimeSlotList api
+      TGetTimeSlotListReq getTimeSlotListReq;
+      TGetTimeSlotListResp getTimeSlotListResp;
+
+      seriesPartitionSlot.setSlotId(0);
+
+      getTimeSlotListReq = new TGetTimeSlotListReq(sg0, seriesPartitionSlot);
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(timePartitionBatchSize, getTimeSlotListResp.getTimeSlotListSize());
+
+      long startTime = 5;
+      getTimeSlotListReq.setStartTime(startTime * testTimePartitionInterval);
+
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(
+          timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
+
+      long endTime = 6;
+      getTimeSlotListReq.setEndTime(endTime * testTimePartitionInterval);
+
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
+
+      // Test GetSeriesSlotList api
+      TGetSeriesSlotListReq getSeriesSlotListReq;
+      TGetSeriesSlotListResp getSeriesSlotListResp;
+
+      getSeriesSlotListReq = new TGetSeriesSlotListReq(sg0);
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(102, getSeriesSlotListResp.getSeriesSlotListSize());
+
+      getSeriesSlotListReq.setType(TConsensusGroupType.PartitionRegion);
+
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(
+          seriesPartitionBatchSize + 2, getSeriesSlotListResp.getSeriesSlotListSize());
+
+      getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
+
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(2, getSeriesSlotListResp.getSeriesSlotListSize());
+
+      getSeriesSlotListReq.setType(TConsensusGroupType.DataRegion);
+
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(seriesPartitionBatchSize, getSeriesSlotListResp.getSeriesSlotListSize());
     }
   }
 }

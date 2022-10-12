@@ -327,13 +327,14 @@ public class PartitionCache {
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate && config.isAutoCreateSchemaEnabled()) {
+        if (!result.isSuccess() && isAutoCreate) {
           // try to auto create storage group of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit storage group in fast-fail way
           getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
+            throw new StatementAnalyzeException(
+                "Failed to get Storage Group Map in three attempts.");
           }
         }
       } catch (TException | MetadataException | IOException e) {
@@ -358,7 +359,7 @@ public class PartitionCache {
   }
 
   /**
-   * invalid storage group cache
+   * invalidate storage group cache
    *
    * @param storageGroupNames the storage groups that need to invalid
    */
@@ -373,7 +374,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid all storage group cache */
+  /** invalidate all storage group cache */
   public void removeFromStorageGroupCache() {
     storageGroupCacheLock.writeLock().lock();
     try {
@@ -458,7 +459,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid replicaSetCache */
+  /** invalidate replicaSetCache */
   public void invalidReplicaSetCache() {
     try {
       regionReplicaSetLock.writeLock().lock();

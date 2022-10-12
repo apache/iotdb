@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.LocalSyncInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,21 +59,21 @@ public class LocalSyncInfoTest {
       createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
       createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
       try {
-        localSyncInfo.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
+        localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
         Assert.fail();
       } catch (PipeException e) {
         // throw exception because can not find pipeSink
       }
       localSyncInfo.addPipeSink(createPipeSinkPlan);
-      localSyncInfo.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
+      localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
       try {
-        localSyncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
+        localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
         Assert.fail();
       } catch (PipeException e) {
         // throw exception because only one pipe is allowed now
       }
       localSyncInfo.operatePipe(pipe1, SyncOperation.DROP_PIPE);
-      localSyncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
+      localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
       localSyncInfo.operatePipe(pipe2, SyncOperation.STOP_PIPE);
       localSyncInfo.operatePipe(pipe2, SyncOperation.START_PIPE);
       Assert.assertEquals(1, localSyncInfo.getAllPipeSink().size());

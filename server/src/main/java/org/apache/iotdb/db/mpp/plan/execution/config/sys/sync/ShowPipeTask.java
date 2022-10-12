@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -55,13 +55,13 @@ public class ShowPipeTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      List<TPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
+      List<TShowPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipeColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TPipeInfo tPipeInfo : pipeInfoList) {
+    for (TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)

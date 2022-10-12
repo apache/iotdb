@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
@@ -114,6 +115,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitGroupByLevel(GroupByLevelNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitGroupByTag(GroupByTagNode node, C context) {
     return visitPlan(node, context);
   }
 

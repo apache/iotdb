@@ -74,7 +74,7 @@ public class IoTDBStartCheck {
   private static String timestampPrecision = config.getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = config.getPartitionInterval();
+  private static long partitionInterval = config.getTimePartitionIntervalForStorage();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();

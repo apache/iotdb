@@ -188,9 +188,7 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
-      throws IOException, InterruptedException, IllegalPathException, ExecutionException {
-    MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
-        deviceIterator.iterateNotAlignedSeries(device, false);
+      throws IOException, InterruptedException, ExecutionException {
     Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));

@@ -228,6 +228,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     init();
   }
 
+  @Override
   @SuppressWarnings("squid:S2093")
   public synchronized void init() throws MetadataException {
     if (initialized) {
@@ -243,7 +244,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSGMemoryImpl(storageGroupMNode, schemaRegionId.getId());
+      mtree =
+          new MTreeBelowSGMemoryImpl(
+              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -304,6 +307,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
   public void forceMlog() {
     if (!initialized) {
       return;
@@ -462,14 +466,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for schema region Info query and operation
 
+  @Override
   public String getStorageGroupFullPath() {
     return storageGroupFullPath;
   }
 
+  @Override
   public SchemaRegionId getSchemaRegionId() {
     return schemaRegionId;
   }
 
+  @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
@@ -556,7 +563,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
                       schemaRegionId);
                 }
-              });
+              },
+              tagManager::readTags);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -598,6 +606,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     createTimeseries(plan, -1);
   }
 
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
@@ -678,6 +687,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param plan CreateAlignedTimeSeriesPlan
    */
+  @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
@@ -793,6 +803,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
+  @Override
   public synchronized Pair<Integer, Set<String>> deleteTimeseries(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
     try {
@@ -984,6 +995,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return node;
   }
 
+  @Override
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     try {
@@ -1000,6 +1012,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param path a full path or a prefix path
    */
+  @Override
   public boolean isPathExist(PartialPath path) {
     try {
       return mtree.isPathExist(path);
@@ -1016,6 +1029,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
+  @Override
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
@@ -1044,6 +1058,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
+  @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevicesNum(pathPattern, isPrefixMatch);
@@ -1063,11 +1078,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param level the level should match the level of the path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
   }
 
+  @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
@@ -1093,6 +1110,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for level Node info Query
+  @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern,
       int nodeLevel,
@@ -1113,6 +1131,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
+  @Override
   public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
@@ -1128,6 +1147,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @return All child nodes of given seriesPath.
    */
+  @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     return mtree.getChildNodeNameInNextLevel(pathPattern);
   }
@@ -1142,6 +1162,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param timeseries a path pattern of the target timeseries
    * @return A HashSet instance which stores devices paths.
    */
+  @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
     return mtree.getDevicesByTimeseries(timeseries);
   }
@@ -1154,6 +1175,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
+  @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
@@ -1165,6 +1187,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
+  @Override
   public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
       throws MetadataException {
     return mtree.getDevices(plan);
@@ -1182,9 +1205,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+  @Override
+  public List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException {
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, withTags).left;
   }
 
   /**
@@ -1196,7 +1220,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return getMeasurementPaths(pathPattern, false);
+    return getMeasurementPaths(pathPattern, false, false);
   }
 
   /**
@@ -1206,18 +1230,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
-    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch, withTags);
   }
 
   @Override
   public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
-    return mtree.fetchSchema(pathPattern, templateMap);
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
+  @Override
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     // show timeseries with index
@@ -1362,6 +1389,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   // attention: this path must be a device node
+  @Override
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
     List<MeasurementPath> res = new LinkedList<>();
@@ -1399,6 +1427,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces and methods for MNode query
+  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
@@ -1412,6 +1441,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     return mtree.getMeasurementMNode(fullPath);
   }
@@ -1458,6 +1488,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     if (leafMNode.getAlias() != null) {
@@ -1482,6 +1513,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertTagsAndAttributes(
       String alias,
@@ -1537,6 +1569,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    */
+  @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
@@ -1558,6 +1591,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
    */
+  @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
@@ -1580,6 +1614,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1596,6 +1631,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1616,6 +1652,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
    */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1638,6 +1675,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces and Implementation for InsertPlan process
   /** get schema for device. Attention!!! Only support insertPlan */
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
@@ -1949,19 +1987,23 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param templateName designated template name, blank string for any template exists
    * @return paths set
    */
+  @Override
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
     return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
   }
 
+  @Override
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
   }
 
+  @Override
   public boolean isTemplateAppendable(Template template, List<String> measurements)
       throws MetadataException {
     return mtree.isTemplateAppendable(template, measurements);
   }
 
+  @Override
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
     Template template = TemplateManager.getInstance().getTemplate(plan.getTemplateName());
@@ -1987,6 +2029,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
   public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     // get mnode should be atomic
     try {
@@ -2011,6 +2054,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     // check whether any template has been set on designated path
     if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
@@ -2108,10 +2152,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for Trigger
 
+  @Override
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     return mtree.getNodeByPath(fullPath);
   }
 
+  @Override
   public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
     // do nothing
   }
