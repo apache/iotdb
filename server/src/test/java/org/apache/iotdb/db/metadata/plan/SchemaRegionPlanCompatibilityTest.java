@@ -69,6 +69,7 @@ public class SchemaRegionPlanCompatibilityTest {
   private static int serializeToBuffer(PhysicalPlan oldPlan) {
     BUFFER.clear();
     oldPlan.serialize(BUFFER);
+    BUFFER.putLong(0);
     int position = BUFFER.position();
     BUFFER.flip();
     return position;
