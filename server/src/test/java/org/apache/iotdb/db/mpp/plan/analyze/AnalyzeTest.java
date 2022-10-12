@@ -611,7 +611,7 @@ public class AnalyzeTest {
     assertEquals(
         expectedAnalysis.getAggregationExpressions(), actualAnalysis.getAggregationExpressions());
     assertEquals(
-        expectedAnalysis.getGroupByLevelExpressions(), actualAnalysis.getGroupByLevelExpressions());
+        expectedAnalysis.getCrossGroupByExpressions(), actualAnalysis.getCrossGroupByExpressions());
   }
 
   private void alignByDeviceAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {

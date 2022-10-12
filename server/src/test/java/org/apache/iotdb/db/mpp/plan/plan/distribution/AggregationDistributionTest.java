@@ -46,7 +46,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -219,7 +219,7 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
@@ -257,7 +257,7 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
@@ -319,7 +319,7 @@ public class AggregationDistributionTest {
             new PlanNodeId("TestGroupByLevelNode"),
             Collections.singletonList(slidingWindowAggregationNode),
             Collections.singletonList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
@@ -396,12 +396,12 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT)),
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
@@ -456,14 +456,14 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
@@ -531,14 +531,14 @@ public class AggregationDistributionTest {
             new PlanNodeId("TestGroupByLevelNode"),
             Collections.singletonList(slidingWindowAggregationNode),
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
@@ -637,9 +637,9 @@ public class AggregationDistributionTest {
 
   private void verifyGroupByLevelDescriptor(
       Map<String, List<String>> expected, GroupByLevelNode node) {
-    List<GroupByLevelDescriptor> descriptors = node.getGroupByLevelDescriptors();
+    List<CrossSeriesAggregationDescriptor> descriptors = node.getGroupByLevelDescriptors();
     assertEquals(expected.size(), descriptors.size());
-    for (GroupByLevelDescriptor descriptor : descriptors) {
+    for (CrossSeriesAggregationDescriptor descriptor : descriptors) {
       String outputExpression = descriptor.getOutputExpression().getExpressionString();
       assertEquals(expected.get(outputExpression).size(), descriptor.getInputExpressions().size());
       for (Expression inputExpression : descriptor.getInputExpressions()) {

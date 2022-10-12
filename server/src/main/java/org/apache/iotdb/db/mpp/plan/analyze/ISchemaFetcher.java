@@ -39,6 +39,8 @@ public interface ISchemaFetcher {
 
   ISchemaTree fetchSchema(PathPatternTree patternTree);
 
+  ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
+
   ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
