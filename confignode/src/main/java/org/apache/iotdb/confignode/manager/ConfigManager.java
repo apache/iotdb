@@ -798,7 +798,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerTable()
-        : new TGetTriggerTableResp().setStatus(status);
+        : new TGetTriggerTableResp(status, Collections.emptyList());
   }
 
   @Override
@@ -806,7 +806,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerJar(req)
-        : new TGetTriggerJarResp().setStatus(status);
+        : new TGetTriggerJarResp(status, Collections.emptyList());
   }
 
   @Override
