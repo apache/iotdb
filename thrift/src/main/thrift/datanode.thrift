@@ -169,12 +169,16 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
-struct TcreateTriggerInstanceReq {
+struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
   2: required binary jarFile
 }
 
-struct TactiveTriggerInstanceReq {
+struct TActiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
+struct TInactiveTriggerInstanceReq {
   1: required string triggerName
 }
 
@@ -274,6 +278,16 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TCreatePipeOnDataNodeReq{
+  1: required binary pipeInfo
+}
+
+struct TOperatePipeOnDataNodeReq {
+    1: required string pipeName
+    // ordinal of {@linkplain SyncOperation}
+    2: required i8 operation
 }
 
 service IDataNodeRPCService {
@@ -421,20 +435,29 @@ service IDataNodeRPCService {
    *
    * @param TriggerInformation, jar file.
    **/
-  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+  common.TSStatus createTriggerInstance(TCreateTriggerInstanceReq req)
 
   /**
    * Config node will active a trigger instance on data node.
    *
    * @param trigger name.
    **/
-  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+  common.TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req)
+
 
   /**
-    * Config node will drop a trigger on all online config nodes and data nodes.
-    *
-    * @param trigger name, whether need to delete jar
-    **/
+   * Config node will inactive a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req)
+
+
+  /**
+   * Config node will drop a trigger on all online config nodes and data nodes.
+   *
+   * @param trigger name, whether need to delete jar
+   **/
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
@@ -506,6 +529,16 @@ service IDataNodeRPCService {
   * Delete matched timeseries and remove according schema black list in target schemRegion
   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+ /**
+  * Create PIPE on DataNode
+  */
+  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode
+  */
+  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
 }
 
 service MPPDataExchangeService {

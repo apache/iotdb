@@ -38,6 +38,8 @@ public interface BaseEnv {
 
   void initBeforeClass() throws InterruptedException;
 
+  void initClusterEnvironment(int configNodesNum, int dataNodesNum);
+
   void cleanAfterClass();
 
   void initBeforeTest() throws InterruptedException;
@@ -129,4 +131,8 @@ public interface BaseEnv {
     session.open();
     return session;
   }
+
+  void restartDataNode(int index);
+
+  void shutdownDataNode(int index);
 }

@@ -29,7 +29,10 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -38,17 +41,28 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -57,6 +71,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -67,13 +83,6 @@ import java.util.List;
  * services.
  */
 public interface IManager {
-
-  /**
-   * if a service stop
-   *
-   * @return true if service stopped
-   */
-  boolean isStopped();
 
   /**
    * Get DataManager
@@ -116,6 +125,20 @@ public interface IManager {
    * @return UDFManager instance
    */
   UDFManager getUDFManager();
+
+  /**
+   * Get TriggerManager
+   *
+   * @return TriggerManager instance
+   */
+  TriggerManager getTriggerManager();
+
+  /**
+   * Get SyncManager
+   *
+   * @return SyncManager instance
+   */
+  SyncManager getSyncManager();
 
   /**
    * Get ProcedureManager
@@ -274,6 +297,15 @@ public interface IManager {
 
   TSStatus dropFunction(String udfName);
 
+  /** Create trigger */
+  TSStatus createTrigger(TCreateTriggerReq req);
+
+  /** Drop trigger */
+  TSStatus dropTrigger(TDropTriggerReq req);
+
+  /** Show trigger & DataNode start */
+  TGetTriggerTableResp getTriggerTable();
+
   /** Merge on all DataNodes */
   TSStatus merge();
 
@@ -359,4 +391,74 @@ public interface IManager {
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
+
+  /**
+   * Create PipeSink
+   *
+   * @param plan Info about PipeSink
+   * @return TSStatus
+   */
+  TSStatus createPipeSink(CreatePipeSinkPlan plan);
+
+  /**
+   * Drop PipeSink
+   *
+   * @param plan Name of PipeSink
+   * @return TSStatus
+   */
+  TSStatus dropPipeSink(DropPipeSinkPlan plan);
+
+  /**
+   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
+   *
+   * @param req specify the pipeSinkName
+   * @return TGetPipeSinkResp contains the PipeSink
+   */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
+
+  /**
+   * Create Pipe
+   *
+   * @param pipeInfo Info about Pipe
+   * @return TSStatus
+   */
+  TSStatus createPipe(TPipeInfo pipeInfo);
+
+  /**
+   * Start Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus startPipe(String pipeName);
+
+  /**
+   * Stop Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus stopPipe(String pipeName);
+
+  /**
+   * Drop Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus dropPipe(String pipeName);
+
+  /**
+   * Get Pipe by name. If pipeName is empty, get all Pipe.
+   *
+   * @param req specify the pipeName
+   * @return TShowPipeResp contains the TShowPipeInfo
+   */
+  TShowPipeResp showPipe(TShowPipeReq req);
+
+  TGetRoutingResp getRouting(GetRoutingPlan plan);
+
+  TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
+
+  TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
 }

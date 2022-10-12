@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
 public class TimePartitionUtils {
   @ServerConfigConsistent
-  private static long timePartitionIntervalForRouting =
+  public static long timePartitionIntervalForRouting =
       IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
   public static TTimePartitionSlot getTimePartitionForRouting(long time) {

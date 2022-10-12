@@ -19,30 +19,30 @@
 
 package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TriggerManagementService implements IService {
+public class TriggerManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
@@ -54,7 +54,7 @@ public class TriggerManagementService implements IService {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private TDataNodeLocation tDataNodeLocationCache;
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private TriggerManagementService() {
     this.lock = new ReentrantLock();
@@ -62,55 +62,129 @@ public class TriggerManagementService implements IService {
     this.executorMap = new ConcurrentHashMap<>();
   }
 
-  public void acquireRegistrationLock() {
+  public void acquireLock() {
     lock.lock();
   }
 
-  public void releaseRegistrationLock() {
+  public void releaseLock() {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) {
+  public void register(TriggerInformation triggerInformation) throws IOException {
     try {
-      acquireRegistrationLock();
+      acquireLock();
       checkIfRegistered(triggerInformation);
       doRegister(triggerInformation);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to register trigger({}) on data node, the cause is: {}",
-          triggerInformation.getTriggerName(),
-          e.getMessage());
     } finally {
-      releaseRegistrationLock();
-    }
-  };
-
-  public void activeTrigger(String triggerName) {
-    triggerTable.activeTrigger(triggerName);
-  };
-
-  private void checkIfRegistered(TriggerInformation triggerInformation)
-      throws TriggerManagementException {
-    String triggerName = triggerInformation.getTriggerName();
-    if (triggerTable.containsTrigger(triggerName)) {
-      String errorMessage =
-          String.format(
-              "Failed to registered trigger %s, "
-                  + "because trigger %s has already been registered in TriggerTable",
-              triggerName, triggerName);
-      LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      releaseLock();
     }
   }
 
-  private void doRegister(TriggerInformation triggerInformation) {
+  public void activeTrigger(String triggerName) {
+    try {
+      acquireLock();
+      triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public void inactiveTrigger(String triggerName) {
+    try {
+      acquireLock();
+      triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public void dropTrigger(String triggerName, boolean needToDeleteJar) throws IOException {
+    try {
+      acquireLock();
+      TriggerInformation triggerInformation = triggerTable.removeTriggerInformation(triggerName);
+      TriggerExecutor executor = executorMap.remove(triggerName);
+      if (executor != null) {
+        executor.onDrop();
+      }
+      // todo: delete trigger in PatternTree when implementing trigger fire
+
+      // if it is needed to delete jar file of the trigger, delete both jar file and md5
+      if (triggerInformation != null && needToDeleteJar) {
+        TriggerExecutableManager.getInstance()
+            .removeFileUnderLibRoot(triggerInformation.getJarName());
+        TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
+      }
+    } finally {
+      releaseLock();
+    }
+  }
+
+  private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
+    String triggerName = triggerInformation.getTriggerName();
+    if (triggerTable.containsTrigger(triggerName)) {
+      String jarName = triggerInformation.getJarName();
+      if (TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
+        // A jar with the same name exists, we need to check md5
+        String existedMd5 = "";
+        String md5FilePath = triggerName + ".txt";
+
+        // if meet error when reading md5 from txt, we need to compute it again
+        boolean hasComputed = false;
+        if (TriggerExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
+          try {
+            existedMd5 =
+                TriggerExecutableManager.getInstance()
+                    .readTextFromFileUnderTemporaryRoot(md5FilePath);
+            hasComputed = true;
+          } catch (IOException e) {
+            LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+          }
+        }
+        if (!hasComputed) {
+          try {
+            existedMd5 =
+                DigestUtils.md5Hex(
+                    Files.newInputStream(
+                        Paths.get(
+                            TriggerExecutableManager.getInstance().getLibRoot()
+                                + File.separator
+                                + triggerInformation.getJarName())));
+            // save the md5 in a txt under trigger temporary lib
+            TriggerExecutableManager.getInstance()
+                .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
+          } catch (IOException e) {
+            String errorMessage =
+                String.format(
+                    "Failed to registered trigger %s, "
+                        + "because error occurred when trying to compute md5 of jar file for trigger %s ",
+                    triggerName, triggerName);
+            LOGGER.warn(errorMessage, e);
+            throw new TriggerManagementException(errorMessage);
+          }
+        }
+
+        if (!existedMd5.equals(triggerInformation.getJarFileMD5())) {
+          // same jar name with different md5
+          String errorMessage =
+              String.format(
+                  "Failed to registered trigger %s, "
+                      + "because existed md5 of jar file for trigger %s is different from the new jar file. ",
+                  triggerName, triggerName);
+          LOGGER.warn(errorMessage);
+          throw new TriggerManagementException(errorMessage);
+        }
+      }
+    }
+  }
+
+  private void doRegister(TriggerInformation triggerInformation) throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
       triggerTable.addTriggerInformation(triggerName, triggerInformation);
       // if it is a stateful trigger, we only create its instance on specified DataNode
       if (!triggerInformation.isStateful()
-          || triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation())) {
+          || triggerInformation.getDataNodeLocation().getDataNodeId() == DATA_NODE_ID) {
         // get trigger instance
         Trigger trigger =
             constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
@@ -122,15 +196,13 @@ public class TriggerManagementService implements IService {
       String errorMessage =
           String.format(
               "Failed to register trigger %s with className: %s. The cause is: %s",
-              triggerInformation.getTriggerName(),
-              triggerInformation.getClassName(),
-              e.getMessage());
+              triggerInformation.getTriggerName(), triggerInformation.getClassName(), e);
       LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      throw e;
     }
   }
 
-  private Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
+  public Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
       throws TriggerManagementException {
     try {
       Class<?> triggerClass = Class.forName(className, true, classLoader);
@@ -145,53 +217,14 @@ public class TriggerManagementService implements IService {
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
   }
-
-  private TDataNodeLocation getTDataNodeLocation() {
-    if (tDataNodeLocationCache == null) {
-      // Set DataNodeLocation
-      tDataNodeLocationCache = new TDataNodeLocation();
-      tDataNodeLocationCache.setDataNodeId(CONFIG.getDataNodeId());
-      tDataNodeLocationCache.setClientRpcEndPoint(
-          new TEndPoint(CONFIG.getRpcAddress(), CONFIG.getRpcPort()));
-      tDataNodeLocationCache.setInternalEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getInternalPort()));
-      tDataNodeLocationCache.setMPPDataExchangeEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getMppDataExchangePort()));
-      tDataNodeLocationCache.setDataRegionConsensusEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getDataRegionConsensusPort()));
-      tDataNodeLocationCache.setSchemaRegionConsensusEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getSchemaRegionConsensusPort()));
-    }
-    return tDataNodeLocationCache;
-  }
-
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
-  }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  private static TriggerManagementService INSTANCE = null;
-
-  public static synchronized TriggerManagementService setupAndGetInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new TriggerManagementService();
-    }
-    return INSTANCE;
+  private static class TriggerManagementServiceHolder {
+    private static final TriggerManagementService INSTANCE = new TriggerManagementService();
   }
 
   public static TriggerManagementService getInstance() {
-    return INSTANCE;
+    return TriggerManagementServiceHolder.INSTANCE;
   }
 }

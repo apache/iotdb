@@ -31,7 +31,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -60,12 +64,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -154,11 +155,11 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -242,7 +243,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCO
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
@@ -1338,43 +1338,32 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(
           String.format("File path '%s' doesn't exists.", file.getPath()));
     }
-    if (file.isDirectory()) {
-      loadDir(file, plan);
-    } else {
-      loadFile(file, plan);
+
+    List<File> tsFiles = new ArrayList<>();
+    findAllTsFiles(file, tsFiles);
+    tsFiles.sort(
+        (o1, o2) -> {
+          String file1Name = o1.getName();
+          String file2Name = o2.getName();
+          try {
+            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
+          } catch (IOException e) {
+            return file1Name.compareTo(file2Name);
+          }
+        });
+    for (File tsFile : tsFiles) {
+      loadFile(tsFile, plan);
     }
   }
 
-  private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
-    File[] files = curFile.listFiles();
-    long[] establishTime = new long[files.length];
-    List<Integer> tsfiles = new ArrayList<>();
-
-    for (int i = 0; i < files.length; i++) {
-      File file = files[i];
-      if (!file.isDirectory()) {
-        String fileName = file.getName();
-        if (fileName.endsWith(TSFILE_SUFFIX)) {
-          establishTime[i] = Long.parseLong(fileName.split(FILE_NAME_SEPARATOR)[0]);
-          tsfiles.add(i);
-        }
+  private void findAllTsFiles(File curFile, List<File> files) {
+    if (curFile.isFile()) {
+      if (curFile.getName().endsWith(TSFILE_SUFFIX)) {
+        files.add(curFile);
       }
-    }
-    Collections.sort(
-        tsfiles,
-        (o1, o2) -> {
-          if (establishTime[o1] == establishTime[o2]) {
-            return 0;
-          }
-          return establishTime[o1] < establishTime[o2] ? -1 : 1;
-        });
-    for (Integer i : tsfiles) {
-      loadFile(files[i], plan);
-    }
-
-    for (File file : files) {
-      if (file.isDirectory()) {
-        loadDir(file, plan);
+    } else {
+      for (File file : curFile.listFiles()) {
+        findAllTsFiles(file, files);
       }
     }
   }
@@ -1443,7 +1432,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource, true);
+        StorageEngine.getInstance().loadNewTsFile(resource, plan.isDeleteAfterLoad());
       }
     } catch (Exception e) {
       logger.error("fail to load file {}", file.getName(), e);
@@ -2506,7 +2495,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
-      SyncService.getInstance().addPipe(plan);
+      SyncService.getInstance()
+          .addPipe(SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, System.currentTimeMillis()));
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }

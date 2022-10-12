@@ -202,6 +202,8 @@ public class ConfigNodeDescriptor {
       conf.setTemporaryLibDir(
           properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
 
+      conf.setTriggerLibDir(properties.getProperty("trigger_lib_dir", conf.getTriggerLibDir()));
+
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
@@ -282,46 +284,131 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadRatisConsensusConfig(Properties properties) {
-    conf.setRatisConsensusLogAppenderBufferSize(
+    conf.setDataRegionRatisConsensusLogAppenderBufferSize(
         Long.parseLong(
             properties.getProperty(
-                "ratis_log_appender_buffer_size_max",
-                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+                "data_region_ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
 
-    conf.setRatisSnapshotTriggerThreshold(
+    conf.setPartitionRegionRatisConsensusLogAppenderBufferSize(
         Long.parseLong(
             properties.getProperty(
-                "ratis_snapshot_trigger_threshold",
-                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+                "partition_region_ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getPartitionRegionRatisConsensusLogAppenderBufferSize()))));
 
-    conf.setRatisLogUnsafeFlushEnable(
+    conf.setSchemaRegionRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getSchemaRegionRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setDataRegionRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setPartitionRegionRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getPartitionRegionRatisSnapshotTriggerThreshold()))));
+
+    conf.setSchemaRegionRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getSchemaRegionRatisSnapshotTriggerThreshold()))));
+
+    conf.setDataRegionRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties.getProperty(
-                "ratis_log_unsafe_flush_enable",
-                String.valueOf(conf.isRatisLogUnsafeFlushEnable()))));
+                "data_region_ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))));
 
-    conf.setRatisLogSegmentSizeMax(
+    conf.setPartitionRegionRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "partition_region_ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isPartitionRegionRatisLogUnsafeFlushEnable()))));
+
+    conf.setSchemaRegionRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "schema_region_ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isSchemaRegionRatisLogUnsafeFlushEnable()))));
+
+    conf.setDataRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "ratis_log_segment_size_max", String.valueOf(conf.getRatisLogSegmentSizeMax()))));
+                "data_region_ratis_log_segment_size_max",
+                String.valueOf(conf.getDataRegionRatisLogSegmentSizeMax()))));
 
-    conf.setRatisGrpcFlowControlWindow(
+    conf.setPartitionRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "ratis_grpc_flow_control_window",
-                String.valueOf(conf.getRatisGrpcFlowControlWindow()))));
+                "partition_region_ratis_log_segment_size_max",
+                String.valueOf(conf.getPartitionRegionRatisLogSegmentSizeMax()))));
 
-    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setSchemaRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "ratis_rpc_leader_election_timeout_min_ms",
-                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMinMs()))));
+                "schema_region_ratis_log_segment_size_max",
+                String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
-    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
             properties.getProperty(
-                "ratis_rpc_leader_election_timeout_max_ms",
-                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMaxMs()))));
+                "data_region_ratis_grpc_flow_control_window",
+                String.valueOf(conf.getDataRegionRatisGrpcFlowControlWindow()))));
+
+    conf.setPartitionRegionRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_grpc_flow_control_window",
+                String.valueOf(conf.getPartitionRegionRatisGrpcFlowControlWindow()))));
+
+    conf.setSchemaRegionRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_grpc_flow_control_window",
+                String.valueOf(conf.getSchemaRegionRatisGrpcFlowControlWindow()))));
+
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs()))));
+
+    conf.setPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs()))));
+
+    conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs()))));
+
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
+
+    conf.setPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
+
+    conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
   }
 
   /**

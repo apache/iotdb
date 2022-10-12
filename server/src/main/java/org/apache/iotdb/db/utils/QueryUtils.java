@@ -154,7 +154,9 @@ public class QueryUtils {
               removed = false;
             }
           }
-          alignedChunkMetadata.setModified(modified);
+          if (!alignedChunkMetadata.isModified()) {
+            alignedChunkMetadata.setModified(modified);
+          }
           return removed;
         });
   }
@@ -162,7 +164,7 @@ public class QueryUtils {
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
+      metaData.insertIntoSortedDeletions(deletion.getTimeRange());
     }
   }
 

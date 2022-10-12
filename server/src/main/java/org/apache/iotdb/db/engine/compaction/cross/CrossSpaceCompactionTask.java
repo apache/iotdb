@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
@@ -169,6 +170,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         deleteOldFiles(selectedSequenceFiles);
         deleteOldFiles(selectedUnsequenceFiles);
+
+        for (TsFileResource seqResource : selectedSequenceFiles) {
+          TsFileMetricManager.getInstance().deleteFile(seqResource.getTsFileSize(), true);
+        }
+        for (TsFileResource unseqResource : selectedUnsequenceFiles) {
+          TsFileMetricManager.getInstance().deleteFile(unseqResource.getTsFileSize(), false);
+        }
+        for (TsFileResource targetResource : targetTsfileResourceList) {
+          TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+        }
+
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         if (logFile.exists()) {

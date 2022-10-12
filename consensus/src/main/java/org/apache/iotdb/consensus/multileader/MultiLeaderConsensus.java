@@ -46,6 +46,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.SyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.logdispatcher.MultiLeaderMemoryManager;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -94,6 +95,9 @@ public class MultiLeaderConsensus implements IConsensus {
         new IClientManager.Factory<TEndPoint, SyncMultiLeaderServiceClient>()
             .createClientManager(
                 new SyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
+    // init multiLeader memory manager
+    MultiLeaderMemoryManager.getInstance()
+        .init(config.getMultiLeaderConfig().getReplication().getAllocateMemoryForConsensus());
   }
 
   @Override
@@ -309,12 +313,26 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    try {
+      impl.takeSnapshot();
+    } catch (ConsensusGroupAddPeerException e) {
+      return ConsensusGenericResponse.newBuilder()
+          .setSuccess(false)
+          .setException(new ConsensusException(e.getMessage()))
+          .build();
+    }
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override

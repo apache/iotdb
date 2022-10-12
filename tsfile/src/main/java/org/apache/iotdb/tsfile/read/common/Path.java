@@ -21,13 +21,14 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -181,7 +182,12 @@ public class Path implements Serializable, Comparable<Path> {
     serializeWithoutType(byteBuffer);
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) 3, stream); // org.apache.iotdb.db.metadata.path#PathType
+    serializeWithoutType(stream);
+  }
+
+  public void serialize(PublicBAOS stream) throws IOException {
     ReadWriteIOUtils.write((byte) 3, stream); // org.apache.iotdb.db.metadata.path#PathType
     serializeWithoutType(stream);
   }
@@ -192,7 +198,13 @@ public class Path implements Serializable, Comparable<Path> {
     ReadWriteIOUtils.write(fullPath, byteBuffer);
   }
 
-  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+  protected void serializeWithoutType(OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(measurement, stream);
+    ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(fullPath, stream);
+  }
+
+  protected void serializeWithoutType(PublicBAOS stream) throws IOException {
     ReadWriteIOUtils.write(measurement, stream);
     ReadWriteIOUtils.write(device, stream);
     ReadWriteIOUtils.write(fullPath, stream);

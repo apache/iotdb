@@ -147,7 +147,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -176,7 +179,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -200,7 +204,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
         timeseriesMetadataOffsetMap = new HashMap<>();
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -280,7 +285,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         new Pair<>(new ArrayList<>(), new LinkedHashMap<>());
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         continue;
       }
 
@@ -361,7 +367,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(tsFileResource)) {
+      if (!deviceIteratorMap.containsKey(tsFileResource)
+          || !deviceIteratorMap.get(tsFileResource).current().equals(currentDevice)) {
         continue;
       }
       TsFileDeviceIterator iterator = deviceIteratorMap.get(tsFileResource);

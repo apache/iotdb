@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -33,6 +35,10 @@ public class UDFExecutableManager extends ExecutableManager implements IService,
 
   private UDFExecutableManager(String temporaryLibRoot, String udfLibRoot) {
     super(temporaryLibRoot, udfLibRoot);
+  }
+
+  public void removeUDFJarFromExtLibDir(String functionName) {
+    FileUtils.deleteQuietly(getDirUnderLibRootByName(functionName));
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

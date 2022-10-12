@@ -135,7 +135,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param pos current index of pathNodes
    * @param resultList result list
    */
-  public void searchOverlapped(
+  private void searchOverlapped(
       PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
@@ -146,6 +146,54 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     }
     for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
       searchOverlapped(child, pathNodes, pos + 1, resultList);
+    }
+  }
+
+  /**
+   * Get a list of value lists related to PathPattern that overlapped with measurements under the
+   * same device.
+   *
+   * @param devicePath device path without wildcard
+   * @param measurements list of measurements
+   * @return value list
+   */
+  public List<List<V>> getOverlapped(PartialPath devicePath, List<String> measurements) {
+    List<List<V>> res = new ArrayList<>();
+    for (int i = 0; i < measurements.size(); i++) {
+      res.add(new ArrayList<>());
+    }
+    searchOverlapped(root, devicePath.getNodes(), 0, measurements, res);
+    return res;
+  }
+
+  /**
+   * Recursive method for search overlapped pattern.
+   *
+   * @param node current PathPatternNode
+   * @param deviceNodes pathNodes of device
+   * @param pos current index of pathNodes
+   * @param measurements list of measurements under device
+   * @param resultList result list
+   */
+  private void searchOverlapped(
+      PathPatternNode<V, VSerializer> node,
+      String[] deviceNodes,
+      int pos,
+      List<String> measurements,
+      List<List<V>> resultList) {
+    if (pos == deviceNodes.length - 1) {
+      for (int i = 0; i < measurements.size(); i++) {
+        for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(measurements.get(i))) {
+          resultList.get(i).addAll(child.getValues());
+        }
+      }
+      return;
+    }
+    if (node.isMultiLevelWildcard()) {
+      searchOverlapped(node, deviceNodes, pos + 1, measurements, resultList);
+    }
+    for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(deviceNodes[pos + 1])) {
+      searchOverlapped(child, deviceNodes, pos + 1, measurements, resultList);
     }
   }
 }

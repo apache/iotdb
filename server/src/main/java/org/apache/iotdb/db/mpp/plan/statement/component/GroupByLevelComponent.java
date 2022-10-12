@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
@@ -39,8 +40,12 @@ public class GroupByLevelComponent extends StatementNode {
     this.levels = levels;
   }
 
-  public void updateIsCountStar(FunctionExpression rawExpression) {
-    isCountStar.add(rawExpression.isCountStar());
+  public void updateIsCountStar(Expression rawExpression) {
+    if (rawExpression instanceof FunctionExpression) {
+      isCountStar.add(((FunctionExpression) rawExpression).isCountStar());
+    } else {
+      isCountStar.add(false);
+    }
   }
 
   public boolean isCountStar(int i) {

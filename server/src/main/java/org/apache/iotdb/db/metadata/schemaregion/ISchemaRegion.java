@@ -22,13 +22,13 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -110,6 +110,9 @@ public interface ISchemaRegion {
 
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
+  Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
    * is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -138,7 +141,7 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
-  List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Delete timeseries in schema black list.
