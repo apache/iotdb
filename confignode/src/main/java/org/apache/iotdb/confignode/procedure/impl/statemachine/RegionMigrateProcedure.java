@@ -142,7 +142,7 @@ public class RegionMigrateProcedure
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "{}, Failed state is not support rollback, filed state {}, originalDataNode: {}",
+            "{}, Failed state is not support rollback, failed state {}, originalDataNode: {}",
             REMOVE_DATANODE_PROCESS,
             state,
             originalDataNode);
