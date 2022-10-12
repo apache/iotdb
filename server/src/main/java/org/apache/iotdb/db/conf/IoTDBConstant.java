@@ -90,7 +90,7 @@ public class IoTDBConstant {
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_LOCK_INFO = "lock holder";
-  public static final String COLUMN_TTL = "ttl";
+  public static final String COLUMN_TTL = "ttl(ms)";
 
   public static final String COLUMN_TASK_ID = "task id";
   public static final String COLUMN_SUBMIT_TIME = "submit time";
