@@ -366,7 +366,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            IoTDB.schemaProcessor.getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch)
+            IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
+                    originalPath, 0, 0, isPrefixMatch, false)
                 .left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(

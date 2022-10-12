@@ -655,6 +655,21 @@ public class TagManager {
     return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
   }
 
+  /**
+   * Read the tags of this node.
+   *
+   * @param node the node to query.
+   * @return the tag key-value map.
+   * @throws RuntimeException If any IOException happens.
+   */
+  public Map<String, String> readTags(IMeasurementMNode node) {
+    try {
+      return readTagFile(node.getOffset()).getLeft();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public void clear() throws IOException {
     this.tagIndex.clear();
     if (tagLogFile != null) {
