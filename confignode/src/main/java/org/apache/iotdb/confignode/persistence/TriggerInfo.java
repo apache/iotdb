@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
@@ -178,7 +179,7 @@ public class TriggerInfo implements SnapshotProcessor {
     try {
       for (String jarName : physicalPlan.getJarNames()) {
         jarList.add(
-            triggerExecutableManager.transferToBytebuffer(
+            ExecutableManager.transferToBytebuffer(
                 TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarName)));
       }
     } catch (Exception e) {
