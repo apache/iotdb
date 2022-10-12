@@ -59,6 +59,9 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     if (result.isFailed()) {
       throw result.getException();
     }
+
+    // serialize a long to keep compatible with old version (CRC32 code)
+    dataOutputStream.writeLong(0);
   }
 
   private static class SchemaRegionSerializationResult {
@@ -100,7 +103,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateSetLevel());
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateId());
         dataOutputStream.writeBoolean(activateTemplateInClusterPlan.isAligned());
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionSerializationResult.SUCCESS;
       } catch (IOException e) {
@@ -114,7 +117,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       try {
         ReadWriteIOUtils.write(
             activateTemplatePlan.getPrefixPath().getFullPath(), dataOutputStream);
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionSerializationResult.SUCCESS;
       } catch (IOException e) {
@@ -127,7 +130,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, DataOutputStream dataOutputStream) {
       try {
         ReadWriteIOUtils.write(autoCreateDeviceMNodePlan.getPath().getFullPath(), dataOutputStream);
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionSerializationResult.SUCCESS;
       } catch (IOException e) {
@@ -226,7 +229,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
           }
         }
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -283,7 +286,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
           ReadWriteIOUtils.write(attributes, dataOutputStream);
         }
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -302,7 +305,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
           ReadWriteIOUtils.write(path.getFullPath(), dataOutputStream);
         }
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -317,7 +320,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       try {
         preDeleteTimeSeriesPlan.getPath().serialize(dataOutputStream);
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -333,7 +336,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       try {
         rollbackPreDeleteTimeSeriesPlan.getPath().serialize(dataOutputStream);
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -349,7 +352,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         ReadWriteIOUtils.write(setTemplatePlan.getTemplateName(), dataOutputStream);
         ReadWriteIOUtils.write(setTemplatePlan.getPrefixPath(), dataOutputStream);
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;
@@ -365,7 +368,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         ReadWriteIOUtils.write(unsetTemplatePlan.getPrefixPath(), dataOutputStream);
         ReadWriteIOUtils.write(unsetTemplatePlan.getTemplateName(), dataOutputStream);
 
-        // serialize a long to keep compatible with old version
+        // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
 
         return SchemaRegionSerializationResult.SUCCESS;

@@ -59,7 +59,13 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
   public ISchemaRegionPlan deserialize(ByteBuffer byteBuffer) {
     ISchemaRegionPlan schemaRegionPlan =
         SchemaRegionPlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
-    return schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
+    ISchemaRegionPlan plan =
+        schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
+
+    // deserialize a long to keep compatible with old version (CRC32 code)
+    byteBuffer.getLong();
+
+    return plan;
   }
 
   private static class SchemaRegionPlanDeserializeVisitor
@@ -84,7 +90,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       activateTemplateInClusterPlan.setTemplateId(ReadWriteIOUtils.readInt(buffer));
       activateTemplateInClusterPlan.setAligned(ReadWriteIOUtils.readBool(buffer));
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
       return activateTemplateInClusterPlan;
     }
@@ -98,7 +104,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
       return activateTemplatePlan;
     }
@@ -112,7 +118,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
       return autoCreateDeviceMNodePlan;
     }
@@ -213,7 +219,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         createAlignedTimeSeriesPlan.setAttributesList(attributesList);
       }
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return createAlignedTimeSeriesPlan;
@@ -256,7 +262,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         createTimeSeriesPlan.setAttributes(ReadWriteIOUtils.readMap(buffer));
       }
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return createTimeSeriesPlan;
@@ -277,7 +283,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return deleteTimeSeriesPlan;
@@ -288,7 +294,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, ByteBuffer buffer) {
       preDeleteTimeSeriesPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return preDeleteTimeSeriesPlan;
@@ -300,7 +306,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       rollbackPreDeleteTimeSeriesPlan.setPath(
           (PartialPath) PathDeserializeUtil.deserialize(buffer));
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return rollbackPreDeleteTimeSeriesPlan;
@@ -311,7 +317,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       setTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
       setTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return setTemplatePlan;
@@ -323,7 +329,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       unsetTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
       unsetTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
 
-      // deserialize a long to keep compatible with old version
+      // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
 
       return unsetTemplatePlan;
