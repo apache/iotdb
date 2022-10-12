@@ -573,7 +573,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;
