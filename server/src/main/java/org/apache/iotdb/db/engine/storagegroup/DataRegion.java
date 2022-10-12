@@ -80,6 +80,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -1747,7 +1748,8 @@ public class DataRegion {
       logger.debug("{}: TTL not set, ignore the check", storageGroupName + "-" + dataRegionId);
       return;
     }
-    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    long ttlLowerBound =
+        DatetimeUtils.currentTime() - DatetimeUtils.convertMilliTimeWithPrecision(dataTTL);
     logger.debug(
         "{}: TTL removing files before {}",
         storageGroupName + "-" + dataRegionId,

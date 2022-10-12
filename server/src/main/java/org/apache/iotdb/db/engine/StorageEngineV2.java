@@ -104,8 +104,6 @@ public class StorageEngineV2 implements IService {
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
-  private final boolean enableMemControl = config.isEnableMemControl();
-
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
