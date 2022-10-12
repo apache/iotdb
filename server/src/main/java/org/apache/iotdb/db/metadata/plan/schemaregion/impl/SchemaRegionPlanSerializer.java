@@ -40,17 +40,23 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 
+@NotThreadSafe
 public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan> {
+
+  public final ConfigurableDataOutputStream dataOutputStream =
+      new ConfigurableDataOutputStream(null);
 
   @Override
   public void serialize(ISchemaRegionPlan plan, OutputStream outputStream) throws IOException {
-    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+    dataOutputStream.changeOutputStream(outputStream);
     // serialize plan type
     plan.getPlanType().serialize(dataOutputStream);
     // serialize plan attributes
@@ -58,6 +64,17 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         plan.accept(new SchemaRegionPlanSerializeVisitor(), dataOutputStream);
     if (result.isFailed()) {
       throw result.getException();
+    }
+  }
+
+  private static class ConfigurableDataOutputStream extends DataOutputStream {
+
+    private ConfigurableDataOutputStream(OutputStream out) {
+      super(out);
+    }
+
+    private void changeOutputStream(OutputStream out) {
+      this.out = out;
     }
   }
 

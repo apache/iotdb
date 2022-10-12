@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools.schema;
 
+import org.apache.iotdb.db.metadata.logfile.BufferedSerializer;
+import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
@@ -145,9 +147,11 @@ public class MLogParser {
 
   public static void parseFromFile(String inputFile, String outputFile) throws IOException {
     try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
-            new SchemaLogReader<>(inputFile, new SchemaRegionPlanDeserializer());
+            new SchemaLogReader<>(
+                inputFile, new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()));
         SchemaLogWriter<ISchemaRegionPlan> mLogTxtWriter =
-            new SchemaLogWriter<>(outputFile, new SchemaRegionPlanTxtSerializer(), false, true)) {
+            new SchemaLogWriter<>(
+                outputFile, new BufferedSerializer<>(new SchemaRegionPlanTxtSerializer()), false)) {
       ISchemaRegionPlan plan;
       while (mLogReader.hasNext()) {
         plan = mLogReader.next();

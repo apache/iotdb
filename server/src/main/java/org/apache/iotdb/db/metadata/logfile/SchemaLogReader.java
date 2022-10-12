@@ -21,17 +21,17 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStream;
 import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 
@@ -41,25 +41,24 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
   private final File logFile;
 
-  private final DataInputStream inputStream;
+  private final RecordableInputStream inputStream;
 
   private final IDeserializer<T> deserializer;
 
   private T nextSchemaPlan;
 
-  private int index = 0;
   private boolean isFileCorrupted = false;
 
   public SchemaLogReader(String schemaDir, String logFileName, IDeserializer<T> deserializer)
       throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
+    inputStream = new RecordableInputStream(new BufferedInputStream(new FileInputStream(logFile)));
     this.deserializer = deserializer;
   }
 
   public SchemaLogReader(String logFilePath, IDeserializer<T> deserializer) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
+    inputStream = new RecordableInputStream(new BufferedInputStream(new FileInputStream(logFile)));
     this.deserializer = deserializer;
   }
 
@@ -87,25 +86,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
   private void readNext() {
     try {
-      int logLength = inputStream.readInt();
-      index += Integer.BYTES;
-      if (logLength <= 0) {
-        LOGGER.error(
-            "File {} is corrupted. Read log length {} is negative.", logFile.getPath(), logLength);
-        throw new IOException(String.format("File %s is corrupted.", logFile.getPath()));
-      }
-
-      byte[] logBuffer = new byte[logLength];
-      if (logLength < inputStream.read(logBuffer, 0, logLength)) {
-        throw new EOFException();
-      }
-
-      nextSchemaPlan = deserializer.deserialize(ByteBuffer.wrap(logBuffer));
-      index += logLength;
-
-      // read a long to keep compatible with old version (CRC32 code)
-      inputStream.readLong();
-      index += Long.BYTES;
+      nextSchemaPlan = deserializer.deserialize(inputStream);
     } catch (EOFException e) {
       nextSchemaPlan = null;
       truncateBrokenLogs();
@@ -113,7 +94,10 @@ public class SchemaLogReader<T> implements AutoCloseable {
       nextSchemaPlan = null;
       isFileCorrupted = true;
       LOGGER.error(
-          "File {} is corrupted. The uncorrupted size is {}.", logFile.getPath(), index, e);
+          "File {} is corrupted. The uncorrupted size is {}.",
+          logFile.getPath(),
+          inputStream.getReadBytes(),
+          e);
     }
   }
 
@@ -129,10 +113,62 @@ public class SchemaLogReader<T> implements AutoCloseable {
   private void truncateBrokenLogs() {
     try (FileOutputStream outputStream = new FileOutputStream(logFile, true);
         FileChannel channel = outputStream.getChannel()) {
-      channel.truncate(index);
+      channel.truncate(inputStream.getReadBytes());
       isFileCorrupted = false;
     } catch (IOException e) {
-      LOGGER.error("Fail to truncate log file to size {}", index, e);
+      LOGGER.error("Fail to truncate log file to size {}", inputStream.getReadBytes(), e);
+    }
+  }
+
+  private static class RecordableInputStream extends InputStream {
+
+    private final InputStream inputStream;
+
+    private int readBytes = 0;
+
+    public RecordableInputStream(InputStream inputStream) {
+      this.inputStream = inputStream;
+    }
+
+    @Override
+    public int read() throws IOException {
+      return inputStream.read();
+    }
+
+    @Override
+    public int read(@NotNull byte[] b) throws IOException {
+      int num = super.read(b);
+      if (num == -1) {
+        return -1;
+      }
+      readBytes += num;
+      return num;
+    }
+
+    @Override
+    public int read(@NotNull byte[] b, int off, int len) throws IOException {
+      int num = super.read(b, off, len);
+      if (num == -1) {
+        return -1;
+      }
+      readBytes += num;
+      return num;
+    }
+
+    @Override
+    public synchronized void reset() throws IOException {
+      super.reset();
+      readBytes = 0;
+    }
+
+    @Override
+    public void close() throws IOException {
+      inputStream.close();
+      readBytes = 0;
+    }
+
+    public int getReadBytes() {
+      return readBytes;
     }
   }
 }

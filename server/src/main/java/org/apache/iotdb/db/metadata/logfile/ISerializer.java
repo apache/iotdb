@@ -21,8 +21,16 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 public interface ISerializer<T> {
 
-  void serialize(T t, OutputStream outputStream) throws IOException;
+  default void serialize(T t, OutputStream outputStream) throws IOException {
+    throw new UnsupportedEncodingException();
+  }
+
+  default void serialize(T t, ByteBuffer buffer) {
+    throw new UnsupportedOperationException();
+  }
 }

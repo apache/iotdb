@@ -19,17 +19,31 @@
 
 package org.apache.iotdb.db.metadata.logfile;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
+import java.io.OutputStream;
 
-public interface IDeserializer<T> {
+@NotThreadSafe
+public class BufferedSerializer<T> implements ISerializer<T> {
 
-  default T deserialize(InputStream inputStream) throws IOException {
-    throw new UnsupportedOperationException();
+  private static final int INITIALIZED_BUFFER_SIZE = 8192;
+
+  private final ByteArrayOutputStream logBufferStream =
+      new ByteArrayOutputStream(INITIALIZED_BUFFER_SIZE);
+
+  private final ISerializer<T> serializer;
+
+  public BufferedSerializer(ISerializer<T> serializer) {
+    this.serializer = serializer;
   }
 
-  default T deserialize(ByteBuffer buffer) {
-    throw new UnsupportedOperationException();
+  @Override
+  public void serialize(T t, OutputStream outputStream) throws IOException {
+    serializer.serialize(t, logBufferStream);
+    logBufferStream.writeTo(outputStream);
+    // clear buffer
+    logBufferStream.reset();
   }
 }

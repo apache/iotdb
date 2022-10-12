@@ -47,6 +47,8 @@ import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
+import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -304,7 +306,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         new SchemaLogWriter<>(
             schemaRegionDirPath,
             MetadataConstant.METADATA_LOG,
-            new SchemaRegionPlanSerializer(),
+            new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
             config.getSyncMlogPeriodInMs() == 0);
   }
 
@@ -347,7 +349,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           new SchemaLogReader<>(
               schemaRegionDirPath,
               MetadataConstant.METADATA_LOG,
-              new SchemaRegionPlanDeserializer()); ) {
+              new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
         idx = applyMLog(mLogReader);
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
