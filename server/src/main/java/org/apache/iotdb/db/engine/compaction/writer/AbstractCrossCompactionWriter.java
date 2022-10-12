@@ -5,9 +5,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -82,16 +79,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    chunkPointNumArray[subTaskId] = 0;
-    if (isAlign) {
-      chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
-    } else {
-      chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
-    }
-  }
-
-  @Override
   public void endMeasurement(int subTaskId) throws IOException {
     flushChunkToFileWriter(
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
@@ -110,25 +97,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isEmptyFile[fileIndex] = false;
   }
 
+  /** Write data in batch, only used for aligned device. */
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {
-    // todo control time range of target tsfile
-    checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
-    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
-    chunkWriter.write(timestamps, columns, batchSize);
-    synchronized (this) {
-      // we need to synchronized here to avoid multi-thread competition in sub-task
-      TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
-      resource.updateStartTime(deviceId, timestamps.getStartTime());
-      resource.updateEndTime(deviceId, timestamps.getEndTime());
-    }
-    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
-    checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId, true);
-    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
-    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
-  }
+  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException;
 
   @Override
   public void endFile() throws IOException {

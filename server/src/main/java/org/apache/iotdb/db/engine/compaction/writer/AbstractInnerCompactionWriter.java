@@ -3,9 +3,6 @@ package org.apache.iotdb.db.engine.compaction.writer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -35,16 +32,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   @Override
   public void endChunkGroup() throws IOException {
     fileWriter.endChunkGroup();
-  }
-
-  @Override
-  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    chunkPointNumArray[subTaskId] = 0;
-    if (isAlign) {
-      chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
-    } else {
-      chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
-    }
   }
 
   @Override

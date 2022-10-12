@@ -76,8 +76,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void endChunkGroup() throws IOException;
 
-  public abstract void startMeasurement(
-      List<IMeasurementSchema> measurementSchemaList, int subTaskId);
+  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
+    chunkPointNumArray[subTaskId] = 0;
+    if (isAlign) {
+      chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
+    } else {
+      chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
+    }
+  }
 
   public abstract void endMeasurement(int subTaskId) throws IOException;
 
