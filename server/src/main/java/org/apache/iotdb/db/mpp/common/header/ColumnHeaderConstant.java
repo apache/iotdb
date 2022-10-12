@@ -207,7 +207,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
+          new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32),
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
@@ -275,4 +275,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> getRoutingColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32));
+
+  public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64));
+
+  public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32));
 }

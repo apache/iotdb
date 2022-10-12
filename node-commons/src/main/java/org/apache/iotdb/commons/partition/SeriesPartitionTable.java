@@ -33,9 +33,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -121,7 +123,13 @@ public class SeriesPartitionTable {
     if (!seriesPartitionMap.containsKey(timeSlotId)) {
       return new ArrayList<>();
     }
-    return seriesPartitionMap.get(timeSlotId);
+    if (timeSlotId.getStartTime() >= 0) {
+      return seriesPartitionMap.get(timeSlotId);
+    } else {
+      Set<TConsensusGroupId> result = new HashSet<>();
+      seriesPartitionMap.values().forEach(result::addAll);
+      return new ArrayList<>(result);
+    }
   }
 
   List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {

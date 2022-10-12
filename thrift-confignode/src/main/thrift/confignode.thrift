@@ -179,8 +179,9 @@ struct TDataPartitionTableResp {
 
 struct TGetRoutingReq {
     1: required string storageGroup
-    2: required common.TSeriesPartitionSlot seriesSlotId
-    3: required common.TTimePartitionSlot timeSlotId
+    2: required common.TConsensusGroupType type
+    3: required common.TSeriesPartitionSlot seriesSlotId
+    4: optional common.TTimePartitionSlot timeSlotId
 }
 
 struct TGetRoutingResp {
@@ -389,7 +390,7 @@ struct TRegionInfo {
   3: required i32 dataNodeId
   4: required string clientRpcIp
   5: required i32 clientRpcPort
-  6: required i64 seriesSlots
+  6: required i32 seriesSlots
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType

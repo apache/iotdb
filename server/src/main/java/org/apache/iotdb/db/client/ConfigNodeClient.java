@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -1159,7 +1158,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(TGetRoutingReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1176,7 +1174,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1193,7 +1190,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

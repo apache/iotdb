@@ -649,11 +649,41 @@ public class IoTDBClusterPartitionIT {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(0);
       TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(0L);
 
-      getRoutingReq = new TGetRoutingReq(sg0, seriesPartitionSlot, timePartitionSlot);
+      getRoutingReq = new TGetRoutingReq(sg0, TConsensusGroupType.DataRegion, seriesPartitionSlot);
+      getRoutingReq.setTimeSlotId(timePartitionSlot);
       getRoutingResp = client.getRouting(getRoutingReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
       Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.setType(TConsensusGroupType.SchemaRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRoutingResp.status.getCode());
+
+      getRoutingReq.setType(TConsensusGroupType.PartitionRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRoutingResp.status.getCode());
+
+      getRoutingReq.unsetTimeSlotId();
+      getRoutingReq.setType(TConsensusGroupType.SchemaRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.setType(TConsensusGroupType.DataRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.unsetType();
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(0, getRoutingResp.getDataRegionIdListSize());
 
       // Test GetTimeSlotList api
       TGetTimeSlotListReq getTimeSlotListReq;

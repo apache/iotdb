@@ -47,6 +47,7 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
+    | getRegion | getTimeSlotList | getSeriesSlotList
     ;
 
 dmlStatement
@@ -223,6 +224,24 @@ dropContinuousQuery
 // Drop Schema Template
 dropSchemaTemplate
     : DROP SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Get Region
+getRegion
+    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE SERIESSLOTID operator_eq
+        seriesSlot=INTEGER_LITERAL (OPERATOR_AND TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL)?
+    ;
+
+// Get Time Slot List
+getTimeSlotList
+    : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+    ;
+
+// Get Series Slot List
+getSeriesSlotList
+    : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
     ;
 
 // Set TTL

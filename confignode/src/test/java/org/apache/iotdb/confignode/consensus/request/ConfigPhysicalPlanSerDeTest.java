@@ -117,6 +117,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.PartitionRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.junit.Assert.assertEquals;
 
@@ -1002,7 +1003,8 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetRoutingPlanTest() throws IOException {
     GetRoutingPlan getRoutingPlan0 =
-        new GetRoutingPlan("root.test", new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+        new GetRoutingPlan(
+            "root.test", PartitionRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
     GetRoutingPlan getRoutingPlan1 =
         (GetRoutingPlan) ConfigPhysicalPlan.Factory.create(getRoutingPlan0.serializeToByteBuffer());
     Assert.assertEquals(getRoutingPlan0, getRoutingPlan1);

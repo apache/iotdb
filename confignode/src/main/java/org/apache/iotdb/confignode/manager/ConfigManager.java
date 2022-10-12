@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -1070,29 +1069,46 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(GetRoutingPlan plan) {
     TSStatus status = confirmLeader();
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetRouting receive path: {}, type: {}, seriesSlot: {}, timeSlot: {}, return: {}",
+        plan.getStorageGroup(),
+        plan.getPartitionType(),
+        plan.getSeriesSlotId(),
+        plan.getTimeSlotId(),
+        partitionManager.getRouting(plan).convertToRpcGetRoutingResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getRouting(plan).convertToRpcGetRoutingResp()
         : new TGetRoutingResp(status);
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetTimeSlotList receive path: {}, seriesSlot: {}, startTime: {}, endTime: {}, return: {}",
+        plan.getStorageGroup(),
+        plan.getSeriesSlotId(),
+        plan.getStartTime(),
+        plan.getEndTime(),
+        partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
         : new TGetTimeSlotListResp(status);
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
-    resp.setStatus(status);
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetSeriesSlotList receive path: {}, type: {}, return: {}",
+        plan.getStorageGroup(),
+        plan.getPartitionType(),
+        partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
