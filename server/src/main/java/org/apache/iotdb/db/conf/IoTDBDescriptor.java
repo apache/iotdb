@@ -294,11 +294,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-      conf.setWriteMemoryVariationReportProportion(
-          Double.parseDouble(
-              properties.getProperty(
-                  "write_memory_variation_report_proportion",
-                  Double.toString(conf.getWriteMemoryVariationReportProportion()))));
+    conf.setWriteMemoryVariationReportProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "write_memory_variation_report_proportion",
+                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(

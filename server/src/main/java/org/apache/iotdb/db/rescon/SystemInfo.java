@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -146,7 +146,7 @@ public class SystemInfo {
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-                dataRegionInfo.getDataRegion().getStorageGroupName(),
+            dataRegionInfo.getDataRegion().getStorageGroupName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -155,7 +155,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-              dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -163,7 +163,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-              dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();

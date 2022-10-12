@@ -157,8 +157,13 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-//  /** If storage group increased more than this threshold, report to system. Unit: byte */
-//  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+  //  /** If storage group increased more than this threshold, report to system. Unit: byte */
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+
+  public long getStorageGroupSizeReportThreshold() {
+    return storageGroupSizeReportThreshold;
+  }
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForWrite()}, report to system.

@@ -3320,10 +3320,6 @@ public class DataRegion {
     return storageGroupName + File.separator + dataRegionId;
   }
 
-  public DataRegionInfo getStorageGroupInfo() {
-    return dataRegionInfo;
-  }
-
   /**
    * Check if the data of "tsFileResource" all exist locally by comparing planIndexes in the
    * partition of "partitionNumber". This is available only when the IoTDB instances which generated
@@ -3811,7 +3807,7 @@ public class DataRegion {
   }
 
   public long getMemCost() {
-    return storageGroupInfo.getMemCost();
+    return dataRegionInfo.getMemCost();
   }
 
   @TestOnly
