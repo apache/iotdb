@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.exception.sync;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+public class PipeSinkBeingUsedException extends PipeSinkException {
+  public PipeSinkBeingUsedException(String pipeSinkName, String pipeName) {
+    super(
+        String.format(
+            "Can not drop PIPESINK %s, because PIPE %s is using it.", pipeSinkName, pipeName));
+  }
 }

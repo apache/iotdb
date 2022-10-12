@@ -16,15 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.sync.metedata;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+import org.junit.Test;
+
+public class SyncMetadataTest {
+  @Test
+  public void testPipeSinkOperation() {}
+
+  @Test
+  public void testPipeOperation() {}
+
+  @Test
+  public void testSnapshot() {}
 }

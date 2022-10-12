@@ -54,9 +54,8 @@ public class LocalSyncInfo {
     SyncLogReader logReader = new SyncLogReader(new File(SyncPathUtil.getSysDir()));
     try {
       logReader.recover();
-      syncMetadata.setPipes(logReader.getAllPipeInfos());
+      syncMetadata.setPipes(logReader.getPipes());
       syncMetadata.setPipeSinks(logReader.getAllPipeSinks());
-      syncMetadata.setRunningPipe(logReader.getRunningPipeInfo());
     } catch (IOException e) {
       LOGGER.error(
           "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
@@ -122,7 +121,7 @@ public class LocalSyncInfo {
         syncMetadata.setPipeStatus(pipeName, PipeStatus.STOP);
         break;
       case DROP_PIPE:
-        syncMetadata.setPipeStatus(pipeName, PipeStatus.DROP);
+        syncMetadata.drop(pipeName);
         break;
       default:
         throw new PipeException("Unknown operatorType " + syncOperation);
@@ -130,17 +129,12 @@ public class LocalSyncInfo {
     syncLogWriter.operatePipe(pipeName, syncOperation);
   }
 
-  public PipeInfo getPipeInfo(String pipeName, long createTime) {
-    return syncMetadata.getPipeInfo(pipeName, createTime);
+  public PipeInfo getPipeInfo(String pipeName) {
+    return syncMetadata.getPipeInfo(pipeName);
   }
 
   public List<PipeInfo> getAllPipeInfos() {
     return syncMetadata.getAllPipeInfos();
-  }
-
-  /** @return null if no pipe has been created */
-  public PipeInfo getRunningPipeInfo() {
-    return syncMetadata.getRunningPipeInfo();
   }
 
   /**
@@ -148,12 +142,10 @@ public class LocalSyncInfo {
    * NORMAL.
    *
    * @param pipeName name of pipe
-   * @param createTime createTime of pipe
    * @param messageType pipe message type
    */
-  public void changePipeMessage(
-      String pipeName, long createTime, PipeMessage.PipeMessageType messageType) {
-    syncMetadata.changePipeMessage(pipeName, createTime, messageType);
+  public void changePipeMessage(String pipeName, PipeMessage.PipeMessageType messageType) {
+    syncMetadata.changePipeMessage(pipeName, messageType);
   }
 
   // endregion

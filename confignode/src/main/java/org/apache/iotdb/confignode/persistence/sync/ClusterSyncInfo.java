@@ -171,8 +171,8 @@ public class ClusterSyncInfo implements SnapshotProcessor {
    * @throws PipeNotExistException if there is Pipe does not exist
    */
   public PipeInfo getPipeInfo(String pipeName) throws PipeNotExistException {
-    PipeInfo pipeInfo = syncMetadata.getRunningPipeInfo();
-    if (pipeInfo == null || !pipeInfo.getPipeName().equals(pipeName)) {
+    PipeInfo pipeInfo = syncMetadata.getPipeInfo(pipeName);
+    if (pipeInfo == null) {
       throw new PipeNotExistException(pipeName);
     }
     return pipeInfo;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.receiver.manager;
+package org.apache.iotdb.db.sync.persistence;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
@@ -66,25 +66,26 @@ public class LocalSyncInfoTest {
       }
       localSyncInfo.addPipeSink(createPipeSinkPlan);
       localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
+      localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
       try {
         localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
         Assert.fail();
       } catch (PipeException e) {
-        // throw exception because only one pipe is allowed now
+        // throw exception because pipe already exists
       }
-      localSyncInfo.operatePipe(pipe1, SyncOperation.DROP_PIPE);
-      localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
       localSyncInfo.operatePipe(pipe2, SyncOperation.STOP_PIPE);
       localSyncInfo.operatePipe(pipe2, SyncOperation.START_PIPE);
       Assert.assertEquals(1, localSyncInfo.getAllPipeSink().size());
       Assert.assertEquals(2, localSyncInfo.getAllPipeInfos().size());
-      localSyncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.WARN);
-      localSyncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.NORMAL);
-      PipeInfo pipeInfo1 = localSyncInfo.getPipeInfo(pipe2, createdTime2);
+      localSyncInfo.changePipeMessage(pipe2, PipeMessage.PipeMessageType.WARN);
+      localSyncInfo.changePipeMessage(pipe2, PipeMessage.PipeMessageType.NORMAL);
+      PipeInfo pipeInfo1 = localSyncInfo.getPipeInfo(pipe2);
       Assert.assertEquals(PipeMessage.PipeMessageType.WARN, pipeInfo1.getMessageType());
-      localSyncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.ERROR);
-      PipeInfo pipeInfo2 = localSyncInfo.getPipeInfo(pipe2, createdTime2);
+      localSyncInfo.changePipeMessage(pipe2, PipeMessage.PipeMessageType.ERROR);
+      PipeInfo pipeInfo2 = localSyncInfo.getPipeInfo(pipe2);
       Assert.assertEquals(PipeMessage.PipeMessageType.ERROR, pipeInfo2.getMessageType());
+      localSyncInfo.operatePipe(pipe1, SyncOperation.DROP_PIPE);
+      Assert.assertEquals(1, localSyncInfo.getAllPipeInfos().size());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

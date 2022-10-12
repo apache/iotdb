@@ -53,11 +53,18 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
   // <DataRegionId, ISyncManager>
   private final Map<String, ISyncManager> syncManagerMap = new ConcurrentHashMap<>();
+  /**
+   * Write lock needs to be added to block the real-time data collection process when collecting
+   * historical data, otherwise data may be lost. Because historical data collection operations are
+   * rare, it will not affect write performance.
+   */
+  private final ReentrantReadWriteLock syncManagerReadWriteLock = new ReentrantReadWriteLock(false);
 
   private final TsFilePipeInfo pipeInfo;
 
@@ -71,6 +78,9 @@ public class TsFilePipe implements Pipe {
 
   /* handle rpc send logic in sender-side*/
   private final SenderManager senderManager;
+
+  /* whether finish collect history file. If false, no need to collect realtime file*/
+  private boolean isCollectFinished;
 
   //  private long maxSerialNumber;
   private AtomicLong maxSerialNumber;
@@ -89,6 +99,7 @@ public class TsFilePipe implements Pipe {
     this.pipeSink = pipeSink;
 
     this.pipeLog = new TsFilePipeLogger(this);
+    this.isCollectFinished = pipeLog.isCollectFinished();
     this.collectRealTimeDataLock = new ReentrantLock();
     this.senderManager = new SenderManager(this, pipeSink);
 
@@ -123,39 +134,40 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public synchronized void start() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      throw new PipeException(
-          String.format(
-              "Can not start pipe %s, because the pipe has been drop.", pipeInfo.getPipeName()));
-    } else if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
+    if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
-
-    // init sync manager
-    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
-    for (DataRegion dataRegion : dataRegions) {
-      logger.info(
-          logFormat(
-              "init syncManager for %s-%s",
-              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
-      getOrCreateSyncManager(dataRegion.getDataRegionId());
-    }
     try {
-      if (!pipeLog.isCollectFinished()) {
-        pipeLog.clear();
-        collectHistoryData();
-        pipeLog.finishCollect();
+      syncManagerReadWriteLock.writeLock().lock();
+      // init sync manager
+      List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+      for (DataRegion dataRegion : dataRegions) {
+        logger.info(
+            logFormat(
+                "init syncManager for %s-%s",
+                dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+        getOrCreateSyncManager(dataRegion.getDataRegionId());
       }
+      try {
+        if (!isCollectFinished) {
+          pipeLog.clear();
+          collectHistoryData();
+          pipeLog.finishCollect();
+          isCollectFinished = true;
+        }
 
-      pipeInfo.setStatus(PipeStatus.RUNNING);
-      senderManager.start();
-    } catch (IOException e) {
-      logger.error(
-          logFormat(
-              "Clear pipe dir %s error.",
-              SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
-          e);
-      throw new PipeException("Start error, can not clear pipe log.");
+        pipeInfo.setStatus(PipeStatus.RUNNING);
+        senderManager.start();
+      } catch (IOException e) {
+        logger.error(
+            logFormat(
+                "Clear pipe dir %s error.",
+                SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
+            e);
+        throw new PipeException("Start error, can not clear pipe log.");
+      }
+    } finally {
+      syncManagerReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -283,14 +295,20 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public ISyncManager getOrCreateSyncManager(String dataRegionId) {
-    return syncManagerMap.computeIfAbsent(
-        dataRegionId,
-        id -> {
-          registerDataRegion(id);
-          return new LocalSyncManager(
-              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
-              this);
-        });
+    try {
+      //
+      syncManagerReadWriteLock.readLock().lock();
+      return syncManagerMap.computeIfAbsent(
+          dataRegionId,
+          id -> {
+            registerDataRegion(id);
+            return new LocalSyncManager(
+                StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+                this);
+          });
+    } finally {
+      syncManagerReadWriteLock.readLock().unlock();
+    }
   }
 
   private void registerDataRegion(String dataRegionId) {
@@ -319,6 +337,11 @@ public class TsFilePipe implements Pipe {
   }
 
   @Override
+  public boolean isHistoryCollectFinished() {
+    return isCollectFinished;
+  }
+
+  @Override
   public PipeInfo getPipeInfo() {
     return pipeInfo;
   }
@@ -338,22 +361,14 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public synchronized void stop() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      throw new PipeException(
-          String.format("Can not stop pipe %s, because the pipe is drop.", pipeInfo.getPipeName()));
-    }
     senderManager.stop();
     pipeInfo.setStatus(PipeStatus.STOP);
   }
 
   @Override
   public synchronized void drop() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      return;
-    }
-    senderManager.close();
+    close();
     clear();
-    pipeInfo.setStatus(PipeStatus.DROP);
   }
 
   private void clear() {
@@ -376,9 +391,6 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public void close() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      return;
-    }
     historyQueueMap.values().forEach(PipeDataQueue::close);
     realTimeQueueMap.values().forEach(PipeDataQueue::close);
     senderManager.close();

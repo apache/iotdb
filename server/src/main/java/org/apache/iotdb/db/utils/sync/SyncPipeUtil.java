@@ -109,7 +109,7 @@ public class SyncPipeUtil {
   }
 
   /** parse PipeInfo to Pipe, ignore status */
-  public static Pipe parseTPipeSinkInfoAsPipeSink(PipeInfo pipeInfo, PipeSink pipeSink)
+  public static Pipe parsePipeInfoAsPipe(PipeInfo pipeInfo, PipeSink pipeSink)
       throws PipeException {
     if (pipeInfo instanceof TsFilePipeInfo) {
       return new TsFilePipe(
