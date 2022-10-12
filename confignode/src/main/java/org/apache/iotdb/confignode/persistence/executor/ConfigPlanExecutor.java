@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurati
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -59,6 +62,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -170,8 +176,16 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetPipeSink:
         return syncInfo.getPipeSink((GetPipeSinkPlan) req);
+      case ShowPipe:
+        return syncInfo.showPipe((ShowPipePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable();
+      case GetRouting:
+        return partitionInfo.getRouting((GetRoutingPlan) req);
+      case GetTimeSlotList:
+        return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
+      case GetSeriesSlotList:
+        return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -259,6 +273,10 @@ public class ConfigPlanExecutor {
         return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
       case DropPipeSink:
         return syncInfo.dropPipeSink((DropPipeSinkPlan) physicalPlan);
+      case PreCreatePipe:
+        return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
+      case SetPipeStatus:
+        return syncInfo.operatePipe((SetPipeStatusPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

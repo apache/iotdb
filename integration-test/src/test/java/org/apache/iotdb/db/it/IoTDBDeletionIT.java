@@ -401,6 +401,30 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testDeleteDataFromEmptySeries() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN;");
+      statement.execute(
+          "INSERT INTO root.ln.wf01.wt01(Time,status) VALUES (2022-10-11 10:20:50,true),(2022-10-11 10:20:51,true);");
+      statement.execute(
+          "create timeseries root.sg.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN;");
+
+      statement.execute(
+          "DELETE FROM root.ln.wf01.wt01.status,root.sg.wf01.wt01.status WHERE time >2022-10-11 10:20:50;");
+
+      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    }
+  }
+
+  @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

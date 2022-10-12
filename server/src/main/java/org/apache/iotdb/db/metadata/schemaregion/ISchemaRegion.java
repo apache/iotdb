@@ -290,9 +290,10 @@ public interface ISchemaRegion {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param withTags whether returns tag kvs in the result list.
    */
-  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
+  List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
@@ -302,10 +303,11 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
 
-  List<MeasurementPath> fetchSchema(PartialPath pathPattern, Map<Integer, Template> templateMap)
+  List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(

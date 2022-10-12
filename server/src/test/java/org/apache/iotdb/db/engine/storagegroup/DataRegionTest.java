@@ -421,11 +421,11 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(100);
+    config.setTimePartitionIntervalForStorage(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -505,7 +505,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 
@@ -514,11 +514,11 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(1200);
+    config.setTimePartitionIntervalForStorage(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -598,7 +598,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 
@@ -607,11 +607,11 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getPartitionInterval();
+    long defaultTimePartition = config.getTimePartitionIntervalForStorage();
     boolean defaultEnablePartition = config.isEnablePartition();
     config.setEnableDiscardOutOfOrderData(true);
     config.setEnablePartition(true);
-    config.setPartitionInterval(1000);
+    config.setTimePartitionIntervalForStorage(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -691,7 +691,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setPartitionInterval(defaultTimePartition);
+    config.setTimePartitionIntervalForStorage(defaultTimePartition);
     config.setEnablePartition(defaultEnablePartition);
   }
 

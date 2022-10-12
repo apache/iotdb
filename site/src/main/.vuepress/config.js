@@ -840,9 +840,9 @@ var config = {
 						title: 'Quick Start',
 						children: [
 							['QuickStart/QuickStart','Quick Start'],
-							['QuickStart/Files','Data storage'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
+							['QuickStart/Files','Data storage']
 						]
 					},
 					{
@@ -854,7 +854,7 @@ var config = {
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/Time-Partition','Time Partition'],
+							['Data-Concept/Time-Partition','Time Partition of Data'],
 							['Data-Concept/Time-zone','Time zone']
 						]
 					},
@@ -1773,9 +1773,9 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
-							['QuickStart/Files','数据文件存储'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
-							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)']
+							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
+							['QuickStart/Files','数据文件存储']
 						]
 					},
 					{
@@ -1787,7 +1787,7 @@ var config = {
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/Time-Partition','时间分区'],
+							['Data-Concept/Time-Partition','数据的时间分区'],
 							['Data-Concept/Time-zone','时区']
 						]
 					},

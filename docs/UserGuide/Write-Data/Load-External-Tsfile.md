@@ -37,7 +37,7 @@ This command has two usages:
 
 1. Load a single tsfile by specifying a file path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. This command has three options: sglevel, verify, onSuccess.
+The first parameter indicates the path of the tsfile to be loaded. This command has three options: sglevel, verify, onSuccess.
 
 SGLEVEL option. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-datanode.properties`.
 
@@ -61,7 +61,7 @@ Examples:
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. The options above also works for this command.
+The first parameter indicates the path of the tsfile to be loaded. The options above also works for this command.
 
 Examples:
 

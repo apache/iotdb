@@ -67,6 +67,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
@@ -150,6 +151,9 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagClauseContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagStatementContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
@@ -974,6 +978,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
     }
 
+    if (ctx.TAGS() != null) {
+      List<String> tagKeys = new ArrayList<>();
+      for (IdentifierContext identifierContext : ctx.identifier()) {
+        tagKeys.add(identifierContext.getText());
+      }
+      queryStatement.setGroupByTagComponent(new GroupByTagComponent(tagKeys));
+    }
+
     // parse fill clause
     if (ctx.fillClause() != null) {
       parseFillClause(ctx.fillClause());
@@ -1093,6 +1105,31 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Expression predicate =
         parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
     queryStatement.setHavingCondition(new HavingCondition(predicate));
+  }
+
+  @Override
+  public Statement visitGroupByTagStatement(GroupByTagStatementContext ctx) {
+    // parse group by tag clause
+    parseGroupByTagClause(ctx.groupByTagClause());
+
+    // parse order by time
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
+    }
+
+    return queryStatement;
+  }
+
+  public void parseGroupByTagClause(GroupByTagClauseContext ctx) {
+    Set<String> tagKeys = new LinkedHashSet<>();
+    for (IdentifierContext identifierContext : ctx.identifier()) {
+      String key = parseIdentifier(identifierContext.getText());
+      if (tagKeys.contains(key)) {
+        throw new SemanticException("duplicated key in GROUP BY TAGS: " + key);
+      }
+      tagKeys.add(key);
+    }
+    queryStatement.setGroupByTagComponent(new GroupByTagComponent(new ArrayList<>(tagKeys)));
   }
 
   // Fill Clause
