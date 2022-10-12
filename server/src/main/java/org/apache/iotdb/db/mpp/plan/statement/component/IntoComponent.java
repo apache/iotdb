@@ -44,4 +44,13 @@ public class IntoComponent extends StatementNode {
     }
     return false;
   }
+
+  public boolean isMeasurementsExistPlaceholder() {
+    for (IntoItem intoItem : intoItems) {
+      if (intoItem.isMeasurementsExistPlaceholder()) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
