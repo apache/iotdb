@@ -69,6 +69,15 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     this.forceEachWrite = forceEachWrite;
   }
 
+  public SchemaLogWriter(String logFilePath, ISerializer<T> serializer, boolean forceEachWrite)
+      throws IOException {
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    this.serializer = serializer;
+
+    this.forceEachWrite = forceEachWrite;
+  }
+
   public synchronized void write(T schemaPlan) throws IOException {
     hasSynced = false;
     // serialize plan to binary data

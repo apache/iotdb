@@ -57,6 +57,12 @@ public class SchemaLogReader<T> implements AutoCloseable {
     this.deserializer = deserializer;
   }
 
+  public SchemaLogReader(String logFilePath, IDeserializer<T> deserializer) throws IOException {
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
+    this.deserializer = deserializer;
+  }
+
   public boolean hasNext() {
     if (isFileCorrupted()) {
       return false;
@@ -108,7 +114,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws IOException {
     inputStream.close();
   }
 
