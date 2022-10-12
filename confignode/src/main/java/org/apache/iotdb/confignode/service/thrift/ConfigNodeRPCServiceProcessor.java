@@ -652,7 +652,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetRoutingResp getRouting(TGetRoutingReq req) {
     if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRoutingResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.ordinal()));
+      return new TGetRoutingResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
     }
     TTimePartitionSlot timePartitionSlot =
         req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);
