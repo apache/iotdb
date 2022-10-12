@@ -265,7 +265,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
       logWriter =
           new SchemaLogWriter<>(
-              schemaRegionDirPath, MetadataConstant.METADATA_LOG, new SchemaRegionPlanSerializer());
+              schemaRegionDirPath,
+              MetadataConstant.METADATA_LOG,
+              new SchemaRegionPlanSerializer(),
+              config.getSyncMlogPeriodInMs() == 0);
       isRecovering = false;
     } catch (IOException e) {
       logger.error(

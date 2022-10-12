@@ -46,9 +46,12 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final ISerializer<T> serializer;
 
+  private final boolean forceEachWrite;
+
   private boolean hasSynced = true;
 
-  public SchemaLogWriter(String schemaDir, String logFileName, ISerializer<T> serializer)
+  public SchemaLogWriter(
+      String schemaDir, String logFileName, ISerializer<T> serializer, boolean forceEachWrite)
       throws IOException {
     File dir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!dir.exists()) {
@@ -62,6 +65,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
     fileOutputStream = new FileOutputStream(logFile, true);
     this.serializer = serializer;
+
+    this.forceEachWrite = forceEachWrite;
   }
 
   public synchronized void write(T schemaPlan) throws IOException {
@@ -76,6 +81,10 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     // clear buffer
     logLengthBuffer.clear();
     logBufferStream.reset();
+
+    if (forceEachWrite) {
+      syncBufferToDisk();
+    }
   }
 
   public synchronized void force() throws IOException {
@@ -84,6 +93,11 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     }
     hasSynced = true;
     fileOutputStream.getFD().sync();
+  }
+
+  private void syncBufferToDisk() throws IOException {
+    fileOutputStream.getFD().sync();
+    hasSynced = true;
   }
 
   public synchronized void clear() throws IOException {

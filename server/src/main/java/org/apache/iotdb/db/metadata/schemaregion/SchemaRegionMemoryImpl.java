@@ -299,7 +299,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     logWriter =
         new SchemaLogWriter<>(
-            schemaRegionDirPath, MetadataConstant.METADATA_LOG, new SchemaRegionPlanSerializer());
+            schemaRegionDirPath,
+            MetadataConstant.METADATA_LOG,
+            new SchemaRegionPlanSerializer(),
+            config.getSyncMlogPeriodInMs() == 0);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {

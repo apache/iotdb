@@ -38,5 +38,7 @@ public class AutoCreateDeviceMNodePlanImpl implements IAutoCreateDeviceMNodePlan
   }
 
   @Override
-  public void setPath(PartialPath path) {}
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
 }
