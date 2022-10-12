@@ -16,9 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWriter {
-  // Each sub task has point count in current measurment, which is used to check size.
-  // The index of the array corresponds to subTaskId.
-  protected int[] measurementPointCountArray = new int[subTaskNum];
 
   // target fileIOWriters
   protected List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
@@ -33,10 +30,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   // device end time in each source seq file
   protected final long[] currentDeviceEndTime;
 
-  protected boolean isAlign;
-
-  protected String deviceId;
-
   // whether each target file is empty or not
   protected final boolean[] isEmptyFile;
 
@@ -47,8 +40,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private int chunkGroupHeaderSize;
 
   protected List<TsFileResource> targetResources;
-
-  private long lastCheckIndex = 0;
 
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -92,7 +83,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    measurementPointCountArray[subTaskId] = 0;
+    chunkPointNumArray[subTaskId] = 0;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {
@@ -111,21 +102,33 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    long curCheckIndex = ++measurementPointCountArray[subTaskId] / checkPoint;
-    writeDataPoint(
-        timestamp,
-        value,
-        chunkWriters[subTaskId],
-        curCheckIndex > lastCheckIndex ? targetFileWriters.get(fileIndex) : null,
-        true);
+    writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
+    chunkPointNumArray[subTaskId]++;
+    checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
-    lastCheckIndex = curCheckIndex;
   }
 
   @Override
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException;
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    // todo control time range of target tsfile
+    checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    synchronized (this) {
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
+      resource.updateStartTime(deviceId, timestamps.getStartTime());
+      resource.updateEndTime(deviceId, timestamps.getEndTime());
+    }
+    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
+    checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId, true);
+    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
+    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+  }
 
   @Override
   public void endFile() throws IOException {

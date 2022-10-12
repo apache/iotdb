@@ -14,12 +14,9 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    writeDataPoint(
-        timestamp,
-        value,
-        chunkWriters[subTaskId],
-        ++measurementPointCountArray[subTaskId] % checkPoint == 0 ? fileWriter : null,
-        false);
+    writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
+    chunkPointNumArray[subTaskId]++;
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId, false);
     isEmptyFile = false;
   }
 
@@ -33,7 +30,8 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       targetResource.updateStartTime(deviceId, timestamps.getStartTime());
       targetResource.updateEndTime(deviceId, timestamps.getEndTime());
     }
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, false);
+    chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId, false);
     isEmptyFile = false;
   }
 }

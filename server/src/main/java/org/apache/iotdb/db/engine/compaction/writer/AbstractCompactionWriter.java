@@ -6,7 +6,6 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -22,7 +21,8 @@ import java.io.IOException;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
-  int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+  protected static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
@@ -30,32 +30,47 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
-  protected int[] measurementPointCountArray = new int[subTaskNum];
+  protected int[] chunkPointNumArray = new int[subTaskNum];
 
+  // used to control the target chunk size
   public static final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
+  // used to control the point num of target chunk
   public static final long targetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
+  // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
   public static final long chunkSizeLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
 
+  // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
   public static final long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
-  public static final long pageSizeLowerBoundInCompaction =
-      TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  // if unsealed page size is lower then this, then deserialize next page no matter it is
+  // overlapped or not
+  public static final long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
 
+  // if point num of unsealed page is lower then this, then deserialize next page no matter it is
+  // overlapped or not
   public static final long pagePointNumLowerBoundInCompaction =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+      chunkPointNumLowerBoundInCompaction / 10;
 
   // When num of points writing into target files reaches check point, then check chunk size
   public static final long checkPoint =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
 
+  private long lastCheckIndex = 0;
+
   private static final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
+
+  protected boolean isAlign;
+
+  protected String deviceId;
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -84,13 +99,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void updateStartTimeAndEndTime(String device, long time, int subTaskId);
 
-  protected void writeDataPoint(
-      Long timestamp,
-      Object value,
-      IChunkWriter iChunkWriter,
-      TsFileIOWriter tsFileIOWriter,
-      boolean isCrossSpace)
-      throws IOException {
+  protected void writeDataPoint(Long timestamp, Object value, IChunkWriter iChunkWriter) {
     if (iChunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
@@ -148,11 +157,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
       chunkWriter.write(timestamp);
     }
-
-    // check chunk size and may open a new chunk
-    if (tsFileIOWriter != null) {
-      checkChunkSizeAndMayOpenANewChunk(tsFileIOWriter, iChunkWriter, isCrossSpace);
-    }
   }
 
   protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter)
@@ -169,27 +173,25 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
-      TsFileIOWriter fileWriter, IChunkWriter iChunkWriter, boolean isCrossSpace)
+      TsFileIOWriter fileWriter, IChunkWriter iChunkWriter, int subTaskId, boolean isCrossSpace)
       throws IOException {
-    if (checkIsChunkSizeOverThreshold(iChunkWriter)) {
-      flushChunkToFileWriter(fileWriter, iChunkWriter);
-      if (enableMetrics) {
-        boolean isAlign = iChunkWriter instanceof AlignedChunkWriterImpl;
-        CompactionMetricsRecorder.recordWriteInfo(
-            isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            isAlign,
-            iChunkWriter.estimateMaxSeriesMemSize());
+    if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
+      // if chunk point num reaches the check point, then check if the chunk size over threshold
+      lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
+      if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum)) {
+        flushChunkToFileWriter(fileWriter, iChunkWriter);
+        chunkPointNumArray[subTaskId] = 0;
+        lastCheckIndex = 0;
+        if (enableMetrics) {
+          CompactionMetricsRecorder.recordWriteInfo(
+              isCrossSpace
+                  ? CompactionType.CROSS_COMPACTION
+                  : CompactionType.INNER_UNSEQ_COMPACTION,
+              ProcessChunkType.DESERIALIZE_CHUNK,
+              isAlign,
+              iChunkWriter.estimateMaxSeriesMemSize());
+        }
       }
-    }
-  }
-
-  private boolean checkIsChunkSizeOverThreshold(IChunkWriter iChunkWriter) {
-    if (iChunkWriter instanceof AlignedChunkWriterImpl) {
-      return ((AlignedChunkWriterImpl) iChunkWriter).checkIsChunkSizeOverThreshold(targetChunkSize);
-    } else {
-      return iChunkWriter.getSerializedChunkSize() >= targetChunkSize
-          || iChunkWriter.getPointNum() >= targetChunkPointNum;
     }
   }
 }

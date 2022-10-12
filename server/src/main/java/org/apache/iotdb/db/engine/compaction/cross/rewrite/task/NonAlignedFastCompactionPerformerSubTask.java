@@ -7,7 +7,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -39,7 +39,7 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
   boolean hasStartMeasurement = false;
 
   public NonAlignedFastCompactionPerformerSubTask(
-      NewFastCrossCompactionWriter compactionWriter,
+      FastCrossCompactionWriter compactionWriter,
       String deviceId,
       List<Integer> pathsIndex,
       List<String> allMeasurements,

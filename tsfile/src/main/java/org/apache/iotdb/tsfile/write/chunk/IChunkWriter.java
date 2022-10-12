@@ -46,9 +46,9 @@ public interface IChunkWriter {
   /** set the current pageWriter to null, friendly for gc */
   void clearPageWriter();
 
-  /** get point num of this chunk */
-  long getPointNum();
+  /** used for compaction to check whether the chunk is over threshold or not. */
+  boolean checkIsChunkSizeOverThreshold(long size, long pointNum);
 
-  /** check whether the unsealed page is over threshold or not. */
-  boolean checkIsUnsealedPageOverThreshold();
+  /** used for compaction to check whether the unsealed page is over threshold or not. */
+  boolean checkIsUnsealedPageOverThreshold(long size, long pointNum);
 }

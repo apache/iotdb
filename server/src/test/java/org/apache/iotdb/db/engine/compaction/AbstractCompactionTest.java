@@ -61,6 +61,9 @@ public class AbstractCompactionTest {
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
+  private final long oldTargetChunkPointNum =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
   private static final int oldChunkGroupSize =
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private static final int oldPagePointSize =
@@ -356,6 +359,7 @@ public class AbstractCompactionTest {
     unseqResources.clear();
     IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);

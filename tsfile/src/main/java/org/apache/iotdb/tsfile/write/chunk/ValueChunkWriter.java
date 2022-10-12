@@ -406,7 +406,7 @@ public class ValueChunkWriter {
     return pageBuffer;
   }
 
-  public boolean checkIsUnsealedPageOverThreshold() {
-    return pageWriter.estimateMaxMemSize() >= pageSizeThreshold;
+  public boolean checkIsUnsealedPageOverThreshold(long size) {
+    return pageWriter.estimateMaxMemSize() >= size;
   }
 }

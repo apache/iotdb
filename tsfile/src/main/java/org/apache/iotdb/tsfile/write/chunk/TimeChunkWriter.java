@@ -319,7 +319,7 @@ public class TimeChunkWriter {
     return pageWriter;
   }
 
-  public boolean checkIsUnsealedPageOverThreshold() {
-    return pageWriter.getPointNumber() >= maxNumberOfPointsInPage;
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
   }
 }

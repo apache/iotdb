@@ -17,10 +17,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   protected boolean isEmptyFile;
 
-  protected boolean isAlign;
-
-  protected String deviceId;
-
   protected TsFileResource targetResource;
 
   public AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -43,7 +39,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    measurementPointCountArray[subTaskId] = 0;
+    chunkPointNumArray[subTaskId] = 0;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {

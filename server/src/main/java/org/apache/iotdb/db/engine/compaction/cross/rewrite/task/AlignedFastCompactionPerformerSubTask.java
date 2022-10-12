@@ -7,7 +7,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -36,7 +36,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
   private List<IMeasurementSchema> measurementSchemas;
 
   public AlignedFastCompactionPerformerSubTask(
-      NewFastCrossCompactionWriter compactionWriter,
+      FastCrossCompactionWriter compactionWriter,
       FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       List<IMeasurementSchema> measurementSchemas,

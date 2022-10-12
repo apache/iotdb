@@ -12,7 +12,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NonAlignedFastCo
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -88,8 +88,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     // Todo: use one tsfileSequenceReader，instead of opening a new reader in device iterator.
-    try (NewFastCrossCompactionWriter compactionWriter =
-        new NewFastCrossCompactionWriter(targetFiles, seqFiles); ) {
+    try (FastCrossCompactionWriter compactionWriter =
+        new FastCrossCompactionWriter(targetFiles, seqFiles); ) {
       deviceIterator = new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
       // iterate each device
       // Todo: to decrease memory, get device in batch on one node instead of getting all at one
@@ -159,7 +159,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private void compactAlignedSeries(
       String deviceId,
       MultiTsFileDeviceIterator deviceIterator,
-      NewFastCrossCompactionWriter newFastCrossCompactionWriter)
+      FastCrossCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
@@ -173,7 +173,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     }
 
     new AlignedFastCompactionPerformerSubTask(
-            newFastCrossCompactionWriter,
+            fastCrossCompactionWriter,
             this,
             timeseriesMetadataOffsetMap,
             measurementSchemas,
@@ -185,7 +185,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private void compactNonAlignedSeries(
       String deviceID,
       MultiTsFileDeviceIterator deviceIterator,
-      NewFastCrossCompactionWriter newFastCrossCompactionWriter)
+      FastCrossCompactionWriter fastCrossCompactionWriter)
       throws IOException, InterruptedException, IllegalPathException {
     //    Map<String, Pair<MeasurementSchema, List<IChunkMetadata>>> measurementMap =
     //        deviceIterator.getAllNonAlignedSchemasAndMetadatasOfCurrentDevice();
@@ -222,7 +222,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
           CompactionTaskManager.getInstance()
               .submitSubTask(
                   new NonAlignedFastCompactionPerformerSubTask(
-                      newFastCrossCompactionWriter,
+                      fastCrossCompactionWriter,
                       deviceID,
                       measurementsForEachSubTask[i],
                       allMeasurements,

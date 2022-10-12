@@ -349,8 +349,13 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public long getPointNum() {
-    return statistics.getCount();
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
+  }
+
+  @Override
+  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum) {
+    return estimateMaxSeriesMemSize() >= size || statistics.getCount() >= pointNum;
   }
 
   public TSDataType getDataType() {
@@ -462,11 +467,5 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public void setLastPoint(boolean isLastPoint) {
     this.isLastPoint = isLastPoint;
-  }
-
-  @Override
-  public boolean checkIsUnsealedPageOverThreshold() {
-    return pageWriter.getPointNumber() >= maxNumberOfPointsInPage
-        || pageWriter.estimateMaxMemSize() >= pageSizeThreshold;
   }
 }

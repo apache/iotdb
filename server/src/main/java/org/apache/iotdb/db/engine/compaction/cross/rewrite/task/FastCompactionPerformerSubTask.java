@@ -7,7 +7,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
-import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -47,7 +47,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
   protected final PriorityQueue<PageElement> pageQueue;
 
-  protected NewFastCrossCompactionWriter compactionWriter;
+  protected FastCrossCompactionWriter compactionWriter;
 
   protected FastCompactionPerformer fastCompactionPerformer;
 
@@ -63,7 +63,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   protected String deviceId;
 
   public FastCompactionPerformerSubTask(
-      NewFastCrossCompactionWriter compactionWriter,
+      FastCrossCompactionWriter compactionWriter,
       FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       String deviceId,
