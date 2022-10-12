@@ -559,10 +559,10 @@ public class DataNodeRemoveHandler {
   /**
    * Filter a DataNode who contains other RegionReplica excepts the given one.
    *
-   * <p> Choose the RUNNING status datanode firstly, if no RUNNING status datanode match the condition,
-   * then we choose the REMOVING status datanode.
+   * <p>Choose the RUNNING status datanode firstly, if no RUNNING status datanode match the
+   * condition, then we choose the REMOVING status datanode.
    *
-   * <p> `addRegionPeer`, `removeRegionPeer` and `changeRegionLeader` invoke this method.
+   * <p>`addRegionPeer`, `removeRegionPeer` and `changeRegionLeader` invoke this method.
    *
    * @param regionId The specific RegionId
    * @param filterLocation The DataNodeLocation that should be filtered
