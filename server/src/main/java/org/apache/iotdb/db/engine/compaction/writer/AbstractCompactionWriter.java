@@ -103,7 +103,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  public abstract void updateStartTimeAndEndTime(String device, long time, int subTaskId);
+  public abstract void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId);
 
   protected void writeDataPoint(Long timestamp, Object value, IChunkWriter iChunkWriter) {
     if (iChunkWriter instanceof ChunkWriterImpl) {

@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,8 +150,7 @@ public class ReadPointCompactionPerformer
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    Map<String, MeasurementSchema> schemaMap =
-        deviceIterator.getAllAlignedSchemasAndMetadatasOfCurrentDevice().right;
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -266,8 +264,14 @@ public class ReadPointCompactionPerformer
       int subTaskId,
       boolean isAligned)
       throws IOException {
+    long startTime = Long.MAX_VALUE;
+    long endTime = Long.MIN_VALUE;
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
+      if (startTime == Long.MAX_VALUE) {
+        startTime = tsBlock.getStartTime();
+      }
+      endTime = tsBlock.getEndTime();
       if (isAligned) {
         writer.write(
             tsBlock.getTimeColumn(),
@@ -276,24 +280,14 @@ public class ReadPointCompactionPerformer
             tsBlock.getPositionCount());
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
-        TimeValuePair timeValuePair = null;
-        boolean updateFirstTime = false;
         while (pointReader.hasNextTimeValuePair()) {
-          timeValuePair = pointReader.nextTimeValuePair();
-          if (!updateFirstTime) {
-            // update start time
-            writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
-            updateFirstTime = true;
-          }
+          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
           writer.write(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
         }
-        // update end time
-        if (timeValuePair != null) {
-          writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
-        }
       }
     }
+    writer.updateStartTimeAndEndTime(startTime, endTime, subTaskId);
   }
 
   private AbstractCompactionWriter getCompactionWriter(

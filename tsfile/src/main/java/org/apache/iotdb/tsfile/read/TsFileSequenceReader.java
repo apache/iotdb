@@ -60,7 +60,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -895,13 +894,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param excludedMeasurementIds skip timeseries whose measurementId is in the set
    */
   public void getDeviceTimeseriesMetadata(
-      List<ITimeSeriesMetadata> iTimeSeriesMetadataList,
+      List<TimeseriesMetadata> timeseriesMetadataList,
       MetadataIndexNode measurementNode,
       Set<String> excludedMeasurementIds,
       boolean needChunkMetadata)
       throws IOException {
     int metadataIndexListSize = measurementNode.getChildren().size();
-    boolean isAligned = isAlignedDevice(measurementNode);
     for (int i = 0; i < metadataIndexListSize; i++) {
       long endOffset = measurementNode.getEndOffset();
       if (i != metadataIndexListSize - 1) {
@@ -915,27 +913,18 @@ public class TsFileSequenceReader implements AutoCloseable {
               TimeseriesMetadata.deserializeFrom(
                   nextBuffer, excludedMeasurementIds, needChunkMetadata);
           if (timeseriesMetadata != null) {
-            iTimeSeriesMetadataList.add(timeseriesMetadata);
+            timeseriesMetadataList.add(timeseriesMetadata);
           }
         }
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
         getDeviceTimeseriesMetadata(
-            iTimeSeriesMetadataList,
+            timeseriesMetadataList,
             nextLayerMeasurementNode,
             excludedMeasurementIds,
             needChunkMetadata);
       }
-    }
-    if (isAligned) {
-      List<ITimeSeriesMetadata> allTimeseriesMetadatas = new ArrayList<>(iTimeSeriesMetadataList);
-      iTimeSeriesMetadataList.clear();
-      AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
-          new AlignedTimeSeriesMetadata(
-              (TimeseriesMetadata) allTimeseriesMetadatas.remove(0),
-              (List<TimeseriesMetadata>) (List<?>) allTimeseriesMetadatas);
-      iTimeSeriesMetadataList.add(alignedTimeSeriesMetadata);
     }
   }
 

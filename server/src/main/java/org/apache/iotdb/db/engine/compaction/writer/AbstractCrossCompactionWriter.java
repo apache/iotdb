@@ -1,7 +1,9 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -44,8 +46,17 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
+    long memorySizeForEachWriter =
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction()
+                / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
-      this.targetFileWriters.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
+      this.targetFileWriters.add(
+          new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -181,13 +192,12 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+  public void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId) {
     synchronized (this) {
-      int fileIndex = seqFileIndexArray[subTaskId];
-      TsFileResource resource = targetResources.get(fileIndex);
       // we need to synchronized here to avoid multi-thread competition in sub-task
-      resource.updateStartTime(device, time);
-      resource.updateEndTime(device, time);
+      TsFileResource resource = targetResources.get(seqFileIndexArray[subTaskId]);
+      resource.updateStartTime(deviceId, startTime);
+      resource.updateEndTime(deviceId, endTime);
     }
   }
 }

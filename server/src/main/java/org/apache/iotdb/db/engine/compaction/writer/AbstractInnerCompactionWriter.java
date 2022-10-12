@@ -1,6 +1,8 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -17,7 +19,14 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected TsFileResource targetResource;
 
   public AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile());
+    long sizeForFileWriter =
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction());
+    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
     this.targetResource = targetFileResource;
     isEmptyFile = true;
   }
@@ -68,11 +77,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+  public void updateStartTimeAndEndTime(long startTime, long endTime, int subTaskId) {
     // we need to synchronized here to avoid multi-thread competition in sub-task
     synchronized (this) {
-      targetResource.updateStartTime(device, time);
-      targetResource.updateEndTime(device, time);
+      targetResource.updateStartTime(deviceId, startTime);
+      targetResource.updateEndTime(deviceId, endTime);
     }
   }
 }
