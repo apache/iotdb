@@ -25,6 +25,10 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
@@ -58,6 +62,16 @@ public class MemorySourceHandle implements ISourceHandle {
   public synchronized TsBlock receive() {
     hasNext = false;
     return result;
+  }
+
+  @Override
+  public ByteBuffer getSerializedTsBlock() {
+    hasNext = false;
+    try{
+      return new TsBlockSerde().serialize(result);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

@@ -66,8 +66,8 @@ public class SourceHandle implements ISourceHandle {
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
-  private final Map<Integer, TsBlock> sequenceIdToTsBlock = new HashMap<>();
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
+  private final Map<Integer,ByteBuffer> sequenceIdToBfBlock = new HashMap<>();
 
   private final String threadName;
   private long retryIntervalInMs;
@@ -124,7 +124,7 @@ public class SourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
 
-      TsBlock tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      TsBlock tsBlock = serde.deserialize(sequenceIdToBfBlock.remove(currSequenceId));
       if (tsBlock == null) {
         return null;
       }
@@ -134,7 +134,7 @@ public class SourceHandle implements ISourceHandle {
       bufferRetainedSizeInBytes -= retainedSize;
       localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), retainedSize);
 
-      if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
+      if (sequenceIdToBfBlock.isEmpty() && !isFinished()) {
         logger.info("[WaitForMoreTsBlock]");
         blocked = SettableFuture.create();
       }
@@ -143,6 +143,38 @@ public class SourceHandle implements ISourceHandle {
       }
       trySubmitGetDataBlocksTask();
       return tsBlock;
+    }
+  }
+
+  @Override
+  public ByteBuffer getSerializedTsBlock() {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+
+      checkState();
+
+      if (!blocked.isDone()) {
+        throw new IllegalStateException("Source handle is blocked.");
+      }
+
+      ByteBuffer bfBlock = sequenceIdToBfBlock.remove(currSequenceId);
+      if (bfBlock == null) {
+        return null;
+      }
+      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      logger.info("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+      currSequenceId += 1;
+      bufferRetainedSizeInBytes -= retainedSize;
+      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), retainedSize);
+
+      if (sequenceIdToBfBlock.isEmpty() && !isFinished()) {
+        logger.info("[WaitForMoreTsBlock]");
+        blocked = SettableFuture.create();
+      }
+      if (isFinished()) {
+        sourceHandleListener.onFinished(this);
+      }
+      trySubmitGetDataBlocksTask();
+      return bfBlock;
     }
   }
 
@@ -385,12 +417,10 @@ public class SourceHandle implements ISourceHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
-            List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
-            for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
-              TsBlock tsBlock = serde.deserialize(byteBuffer);
-              tsBlocks.add(tsBlock);
-            }
-            logger.info("[EndPullTsBlocksFromRemote] Count:{}", tsBlocks.size());
+            List<ByteBuffer> bfBlocks = new ArrayList<>(resp.getTsBlocks().size());
+            bfBlocks.addAll(resp.getTsBlocks());
+
+            logger.info("[EndPullTsBlocksFromRemote] Count:{}", bfBlocks.size());
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
@@ -398,7 +428,7 @@ public class SourceHandle implements ISourceHandle {
                 return;
               }
               for (int i = startSequenceId; i < endSequenceId; i++) {
-                sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
+                sequenceIdToBfBlock.put(i, bfBlocks.get(i - startSequenceId));
               }
               logger.info("[PutTsBlocksIntoBuffer]");
               if (!blocked.isDone()) {

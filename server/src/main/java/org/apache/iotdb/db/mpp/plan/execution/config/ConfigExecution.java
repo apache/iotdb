@@ -42,10 +42,13 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -168,6 +171,19 @@ public class ConfigExecution implements IQueryExecution {
     if (!resultSetConsumed) {
       resultSetConsumed = true;
       return Optional.of(resultSet);
+    }
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<ByteBuffer> getByteBufferBatchResult(){
+    if(!resultSetConsumed){
+      resultSetConsumed = true;
+      try{
+        return Optional.of(new TsBlockSerde().serialize(resultSet));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
     return Optional.empty();
   }

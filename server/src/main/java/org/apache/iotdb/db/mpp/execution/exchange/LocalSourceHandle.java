@@ -26,8 +26,12 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
@@ -100,6 +104,36 @@ public class LocalSourceHandle implements ISourceHandle {
       }
       checkAndInvokeOnFinished();
       return tsBlock;
+    }
+  }
+
+  @Override
+  public ByteBuffer getSerializedTsBlock() {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      checkState();
+
+      if (!queue.isBlocked().isDone()) {
+        throw new IllegalStateException("Source handle is blocked.");
+      }
+      TsBlock tsBlock;
+      synchronized (queue) {
+        tsBlock = queue.remove();
+      }
+      if (tsBlock != null) {
+        currSequenceId++;
+        logger.info(
+                "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+                currSequenceId,
+                tsBlock.getRetainedSizeInBytes());
+      }
+      checkAndInvokeOnFinished();
+      if(tsBlock!=null){
+        return new TsBlockSerde().serialize(tsBlock);
+      }else{
+        return null;
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 

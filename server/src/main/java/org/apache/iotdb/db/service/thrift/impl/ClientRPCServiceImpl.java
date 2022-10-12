@@ -118,11 +118,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
@@ -155,6 +151,147 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } else {
       PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) throws TException {
+    return executeStatementV2(req);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req) throws TException {
+    return executeStatementV2(req);
+  }
+
+  //To fetch required amounts of data and combine them through List
+  private List<ByteBuffer> convertQueryResultByFetchSize(IQueryExecution queryExecution, int fetchSize) {
+    int rowCount = 0;
+    List<ByteBuffer> res = new LinkedList<>();
+    while(rowCount<fetchSize){
+      try {
+        Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+        if(!optionalByteBuffer.isPresent()){
+          break;
+        }
+
+        ByteBuffer byteBuffer = optionalByteBuffer.get();
+        byteBuffer.mark();
+        int valueColumnCount = byteBuffer.getInt();
+        if(valueColumnCount==0){
+          continue;
+        }
+        for(int i=0;i<valueColumnCount;i++){
+          byteBuffer.get();
+        }
+        int positionCount = byteBuffer.getInt();
+        byteBuffer.reset();
+
+        res.add(byteBuffer);
+        rowCount += positionCount;
+
+      } catch (IoTDBException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return res;
+  }
+  @Override
+  public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) throws TException {
+    String statement = req.getStatement();
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.currentTimeMillis();
+    try {
+      Statement s =
+              StatementGenerator.createStatement(
+                      statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+                RpcUtils.getStatus(
+                        TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
+
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      // create and cache dataset
+      ExecutionResult result =
+              COORDINATOR.execute(
+                      s,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(req.sessionId),
+                      statement,
+                      PARTITION_FETCHER,
+                      SCHEMA_FETCHER,
+                      req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          resp.setQueryResult(convertQueryResultByFetchSize(queryExecution,req.getFetchSize()));
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+              onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } finally {
+      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
+      }
+    }
+  }
+
+  @Override
+  public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) throws TException {
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
+      }
+
+      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
+      try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
+
+        List<ByteBuffer> result = convertQueryResultByFetchSize(queryExecution,req.fetchSize);
+        boolean hasResultSet = !result.isEmpty();
+
+        resp.setHasResultSet(hasResultSet);
+        resp.setIsAlign(true);
+        resp.setQueryResult(result);
+
+        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        if (!hasResultSet) {
+          COORDINATOR.removeQueryExecution(req.queryId);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
   }
 

@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.nio.ByteBuffer;
+
 public interface ISourceHandle {
 
   /** Get the local fragment instance ID that this source handle belongs to. */
@@ -39,6 +41,9 @@ public interface ISourceHandle {
    * RuntimeException} will be thrown if any error happened.
    */
   TsBlock receive();
+
+  /** get the serialized tsblock as the form of bytebuffer. */
+  ByteBuffer getSerializedTsBlock();
 
   /** If there are more tsblocks. */
   boolean isFinished();

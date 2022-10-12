@@ -68,6 +68,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -375,6 +376,60 @@ public class QueryExecution implements IQueryExecution {
         if (stateMachine.getFailureStatus() != null) {
           throw new IoTDBException(
               stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+        }
+        Throwable t = e.getCause() == null ? e : e.getCause();
+        throwIfUnchecked(t);
+        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      } catch (InterruptedException e) {
+        stateMachine.transitionToFailed(e);
+        Thread.currentThread().interrupt();
+        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      } catch (Throwable t) {
+        stateMachine.transitionToFailed(t);
+        throw t;
+      }
+    }
+  }
+
+  @Override
+  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
+    // iterate until we get a non-nullable TsBlock or result is finished
+    while (true) {
+      try {
+        if (resultHandle.isAborted()) {
+          logger.warn("[ResultHandleAborted]");
+          stateMachine.transitionToAborted();
+          if (stateMachine.getFailureStatus() != null) {
+            throw new IoTDBException(
+                    stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+          } else {
+            throw new IoTDBException(
+                    stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+          }
+        } else if (resultHandle.isFinished()) {
+          logger.info("[ResultHandleFinished]");
+          stateMachine.transitionToFinished();
+          return Optional.empty();
+        }
+
+        ListenableFuture<?> blocked = resultHandle.isBlocked();
+        blocked.get();
+        if (!resultHandle.isFinished()) {
+          //use the getSerializedTsBlock instead of receive to get ByteBuffer result
+          ByteBuffer res = resultHandle.getSerializedTsBlock();
+          if (res == null) {
+            continue;
+          }
+          return Optional.of(res);
+        } else {
+          return Optional.empty();
+        }
+      } catch (ExecutionException | CancellationException e) {
+        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
+        if (stateMachine.getFailureStatus() != null) {
+          throw new IoTDBException(
+                  stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
         }
         Throwable t = e.getCause() == null ? e : e.getCause();
         throwIfUnchecked(t);
