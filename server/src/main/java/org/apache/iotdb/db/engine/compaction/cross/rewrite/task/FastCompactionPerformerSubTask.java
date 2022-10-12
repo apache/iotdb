@@ -14,7 +14,6 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +100,11 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       deserializeFileIntoQueue(overlappedFiles);
 
       if (!isAligned) {
+        // for nonAligned sensors, only after getting chunkMetadatas can we create schema to start
+        // measurement; for aligned sensors, we get all chunk metadatas before compacting because we
+        // need to get all sensors and their schemas under the current device, but since the
+        // compaction process is to read a batch of overlapped files each time, which may not
+        // contain all the sensors.
         startMeasurement();
       }
 

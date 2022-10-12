@@ -60,14 +60,15 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
   @Override
   public Void call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-
     for (Integer index : pathsIndex) {
+      // get source files which are sorted by the startTime of current device from old to new, files
+      // that do not contain the current device have been filtered out as well.
       fastCompactionPerformer.getSortedSourceFiles().forEach(x -> fileList.add(new FileElement(x)));
-
       currentSensorIndex = index;
       hasStartMeasurement = false;
 
       compactFiles();
+
       if (hasStartMeasurement) {
         compactionWriter.endMeasurement(subTaskId);
       }

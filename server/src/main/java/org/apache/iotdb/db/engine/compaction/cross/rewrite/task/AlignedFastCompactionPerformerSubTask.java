@@ -60,10 +60,9 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
   @Override
   public Void call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-
-    fastCompactionPerformer
-        .getSortedSourceFilesAndFirstMeasurementNodeOfCurrentDevice()
-        .forEach(x -> fileList.add(new FileElement(x.left, x.right)));
+    // get source files which are sorted by the startTime of current device from old to new, files
+    // that do not contain the current device have been filtered out as well.
+    fastCompactionPerformer.getSortedSourceFiles().forEach(x -> fileList.add(new FileElement(x)));
 
     compactionWriter.startMeasurement(measurementSchemas, subTaskId);
     compactFiles();
@@ -88,6 +87,11 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
         Pair<Long, Long> timeseriesOffsetInCurrentFile = entry.getValue().get(resource);
         if (measurementID.equals("")) {
           // read time chunk metadatas
+          if (timeseriesOffsetInCurrentFile == null) {
+            // current file does not contain this aligned device
+            timeChunkMetadatas = null;
+            break;
+          }
           timeChunkMetadatas =
               reader.getChunkMetadataListByTimeseriesMetadataOffset(
                   timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
@@ -105,50 +109,53 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
         }
       }
 
-      // construct aligned chunk metadatas
       List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
-      for (int i = 0; i < timeChunkMetadatas.size(); i++) {
-        List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
-        for (List<IChunkMetadata> chunkMetadata : valueChunkMetadatas) {
-          if (chunkMetadata == null) {
-            valueChunkMetadataList.add(null);
-          } else {
-            valueChunkMetadataList.add(chunkMetadata.get(i));
+      // if current file contains this aligned device,then construct aligned chunk metadatas
+      if (timeChunkMetadatas != null) {
+        for (int i = 0; i < timeChunkMetadatas.size(); i++) {
+          List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+          for (List<IChunkMetadata> chunkMetadata : valueChunkMetadatas) {
+            if (chunkMetadata == null) {
+              valueChunkMetadataList.add(null);
+            } else {
+              valueChunkMetadataList.add(chunkMetadata.get(i));
+            }
           }
-        }
-        AlignedChunkMetadata alignedChunkMetadata =
-            new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
+          AlignedChunkMetadata alignedChunkMetadata =
+              new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
 
-        // set file path
-        alignedChunkMetadata.setFilePath(resource.getTsFilePath());
-        alignedChunkMetadataList.add(alignedChunkMetadata);
+          // set file path
+          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
+          alignedChunkMetadataList.add(alignedChunkMetadata);
+        }
+
+        // get value modifications of this file
+        List<List<Modification>> valueModifications = new ArrayList<>();
+        alignedChunkMetadataList
+            .get(0)
+            .getValueChunkMetadataList()
+            .forEach(
+                x -> {
+                  try {
+                    if (x == null) {
+                      valueModifications.add(null);
+                    } else {
+                      valueModifications.add(
+                          fastCompactionPerformer.getModifications(
+                              resource, new PartialPath(deviceId, x.getMeasurementUid())));
+                    }
+                  } catch (IllegalPathException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
+
+        // modify aligned chunk metadatas
+        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
       }
 
-      // get value modifications of this file
-      List<List<Modification>> valueModifications = new ArrayList<>();
-      alignedChunkMetadataList
-          .get(0)
-          .getValueChunkMetadataList()
-          .forEach(
-              x -> {
-                try {
-                  if (x == null) {
-                    valueModifications.add(null);
-                  } else {
-                    valueModifications.add(
-                        fastCompactionPerformer.getModifications(
-                            resource, new PartialPath(deviceId, x.getMeasurementUid())));
-                  }
-                } catch (IllegalPathException e) {
-                  throw new RuntimeException(e);
-                }
-              });
-
-      // modify aligned chunk metadatas
-      QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
-
       if (alignedChunkMetadataList.size() == 0) {
-        // all chunks has been deleted in this file, just remove it
+        // all chunks has been deleted in this file or current file does not contain this aligned
+        // device, just remove it
         removeFile(fileElement);
       }
 

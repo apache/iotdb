@@ -113,6 +113,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         }
 
         compactionWriter.endChunkGroup();
+        // update resource and check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
       }
       compactionWriter.endFile();
