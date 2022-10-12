@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence;
+package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -77,23 +78,26 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Registered ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-  private final Set<TConfigNodeLocation> registeredConfigNodes;
+  private final Map<Integer, TConfigNodeLocation> registeredConfigNodes;
 
   // Registered DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
   private final AtomicInteger nextNodeId = new AtomicInteger(-1);
-  private final ConcurrentNavigableMap<Integer, TDataNodeConfiguration> registeredDataNodes =
-      new ConcurrentSkipListMap<>();
+  private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
 
-  // For remove or draining DataNode
-  private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
+  // Node Statistics
+  private final Map<Integer, NodeStatistics> nodeStatisticsMap;
 
   private final String snapshotFileName = "node_info.bin";
 
   public NodeInfo() {
-    this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-    this.registeredConfigNodes = new HashSet<>();
+    this.registeredConfigNodes = new ConcurrentHashMap<>();
+
+    this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
+    this.registeredDataNodes = new ConcurrentHashMap<>();
+
+    this.nodeStatisticsMap = new ConcurrentHashMap<>();
   }
 
   /**
@@ -236,20 +240,6 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return the number of registered Nodes */
-  public int getRegisteredNodeCount() {
-    int result;
-    configNodeInfoReadWriteLock.readLock().lock();
-    dataNodeInfoReadWriteLock.readLock().lock();
-    try {
-      result = registeredConfigNodes.size() + registeredDataNodes.size();
-    } finally {
-      dataNodeInfoReadWriteLock.readLock().unlock();
-      configNodeInfoReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;
@@ -295,8 +285,8 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
 
-      registeredConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
+      registeredConfigNodes.put(applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(), applyConfigNodePlan.getConfigNodeLocation());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
@@ -323,8 +313,8 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
+      registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodePlan.getConfigNodeLocation(),
@@ -345,7 +335,7 @@ public class NodeInfo implements SnapshotProcessor {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
-      result = new ArrayList<>(registeredConfigNodes);
+      result = new ArrayList<>(registeredConfigNodes.values());
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -380,8 +370,6 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeRegisteredDataNode(fileOutputStream, protocol);
 
-      serializeDrainingDataNodes(fileOutputStream, protocol);
-
       fileOutputStream.flush();
 
       fileOutputStream.close();
@@ -405,8 +393,9 @@ public class NodeInfo implements SnapshotProcessor {
   private void serializeRegisteredConfigNode(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(registeredConfigNodes.size(), outputStream);
-    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      configNodeLocation.write(protocol);
+    for (Entry<Integer, TConfigNodeLocation> entry : registeredConfigNodes.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      entry.getValue().write(protocol);
     }
   }
 
@@ -419,12 +408,8 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void serializeDrainingDataNodes(OutputStream outputStream, TProtocol protocol)
-      throws IOException, TException {
-    ReadWriteIOUtils.write(drainingDataNodes.size(), outputStream);
-    for (TDataNodeLocation tDataNodeLocation : drainingDataNodes) {
-      tDataNodeLocation.write(protocol);
-    }
+  private void serializeNodeStatistics(OutputStream outputStream, TProtocol protocol) throws IOException {
+    ReadWriteIOUtils.write(nodeStatisticsMap.size(), outputStream);
   }
 
   @Override
@@ -453,8 +438,6 @@ public class NodeInfo implements SnapshotProcessor {
 
       deserializeRegisteredDataNode(fileInputStream, protocol);
 
-      deserializeDrainingDataNodes(fileInputStream, protocol);
-
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
@@ -465,9 +448,10 @@ public class NodeInfo implements SnapshotProcessor {
       throws IOException, TException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
+      int configNodeId = ReadWriteIOUtils.readInt(inputStream);
       TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
       configNodeLocation.read(protocol);
-      registeredConfigNodes.add(configNodeLocation);
+      registeredConfigNodes.put(configNodeId, configNodeLocation);
       size--;
     }
   }
@@ -484,23 +468,6 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void deserializeDrainingDataNodes(InputStream inputStream, TProtocol protocol)
-      throws IOException, TException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
-      tDataNodeLocation.read(protocol);
-      drainingDataNodes.add(tDataNodeLocation);
-      size--;
-    }
-  }
-
-  // as drainingDataNodes is not currently implemented, manually set it to validate the test
-  @TestOnly
-  public void setDrainingDataNodes(Set<TDataNodeLocation> tDataNodeLocations) {
-    drainingDataNodes.addAll(tDataNodeLocations);
-  }
-
   @TestOnly
   public int getNextNodeId() {
     return nextNodeId.get();
@@ -510,15 +477,9 @@ public class NodeInfo implements SnapshotProcessor {
     return minimumDataNode;
   }
 
-  @TestOnly
-  public Set<TDataNodeLocation> getDrainingDataNodes() {
-    return drainingDataNodes;
-  }
-
   public void clear() {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
-    drainingDataNodes.clear();
     registeredConfigNodes.clear();
   }
 }

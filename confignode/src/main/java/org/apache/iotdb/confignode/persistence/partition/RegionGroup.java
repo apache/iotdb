@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -46,6 +47,8 @@ public class RegionGroup {
   private final Map<TSeriesPartitionSlot, AtomicLong> slotCountMap;
 
   private final AtomicLong totalTimeSlotCount;
+
+  private volatile RegionGroupStatistics statistics;
 
   public RegionGroup() {
     this.replicaSet = new TRegionReplicaSet();

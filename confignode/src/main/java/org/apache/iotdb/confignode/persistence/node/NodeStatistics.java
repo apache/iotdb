@@ -16,9 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence.partition;
+package org.apache.iotdb.confignode.persistence.node;
 
-public enum RegionMaintainType {
-  CREATE,
-  DELETE
+import org.apache.iotdb.commons.cluster.NodeStatus;
+
+public class NodeStatistics {
+
+  private final NodeStatus status;
+  private final String statusReason;
+
+  public NodeStatistics(NodeStatus status, String statusReason) {
+    this.status = status;
+    this.statusReason = statusReason;
+  }
+
+  public NodeStatus getStatus() {
+    return status;
+  }
+
+  public String getStatusReason() {
+    return statusReason;
+  }
 }
