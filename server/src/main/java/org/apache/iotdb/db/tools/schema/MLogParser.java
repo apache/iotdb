@@ -147,7 +147,7 @@ public class MLogParser {
     try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
             new SchemaLogReader<>(inputFile, new SchemaRegionPlanDeserializer());
         SchemaLogWriter<ISchemaRegionPlan> mLogTxtWriter =
-            new SchemaLogWriter<>(outputFile, new SchemaRegionPlanTxtSerializer(), false)) {
+            new SchemaLogWriter<>(outputFile, new SchemaRegionPlanTxtSerializer(), false, false)) {
       ISchemaRegionPlan plan;
       while (mLogReader.hasNext()) {
         plan = mLogReader.next();

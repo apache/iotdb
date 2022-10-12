@@ -48,6 +48,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final boolean forceEachWrite;
 
+  private boolean writeLengthForRecord = true;
+
   private boolean hasSynced = true;
 
   public SchemaLogWriter(
@@ -69,13 +71,18 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     this.forceEachWrite = forceEachWrite;
   }
 
-  public SchemaLogWriter(String logFilePath, ISerializer<T> serializer, boolean forceEachWrite)
+  public SchemaLogWriter(
+      String logFilePath,
+      ISerializer<T> serializer,
+      boolean forceEachWrite,
+      boolean writeLengthForRecord)
       throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     fileOutputStream = new FileOutputStream(logFile, true);
     this.serializer = serializer;
 
     this.forceEachWrite = forceEachWrite;
+    this.writeLengthForRecord = writeLengthForRecord;
   }
 
   public synchronized void write(T schemaPlan) throws IOException {
@@ -83,8 +90,10 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     // serialize plan to binary data
     serializer.serialize(schemaPlan, logBufferStream);
     // write the length of plan data
-    logLengthBuffer.putInt(logBufferStream.size());
-    fileOutputStream.write(logLengthBuffer.array());
+    if (writeLengthForRecord) {
+      logLengthBuffer.putInt(logBufferStream.size());
+      fileOutputStream.write(logLengthBuffer.array());
+    }
     // write the plan data
     logBufferStream.writeTo(fileOutputStream);
     // clear buffer
