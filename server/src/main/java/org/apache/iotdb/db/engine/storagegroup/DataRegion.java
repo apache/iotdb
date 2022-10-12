@@ -3074,9 +3074,10 @@ public class DataRegion {
           return false;
         }
         if (insertPos == -1) {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, 0);
+          tsFileManager.insertToPartitionFileList(tsFileResource, filePartitionId, true, 0);
         } else {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
+          tsFileManager.insertToPartitionFileList(
+              tsFileResource, filePartitionId, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",

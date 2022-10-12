@@ -422,6 +422,11 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         }
       }
     }
+
+    logger.info(
+        String.format(
+            "Finish Parsing TsFile %s, split to %d pieces, send to %d RegionReplicaSet.",
+            tsFile.getPath(), tsFileDataList.size(), replicaSet2Pieces.keySet().size()));
   }
 
   private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
