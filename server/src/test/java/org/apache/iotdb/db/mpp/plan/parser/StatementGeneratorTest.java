@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
@@ -39,6 +40,21 @@ public class StatementGeneratorTest {
     List<String> prefixPaths = Collections.singletonList("root.sg1.d1");
     checkQueryStatement(
         "SELECT s1, s2 FROM root.sg1.d1 LIMIT 10 OFFSET 10", selectExprList, prefixPaths, 10, 10);
+  }
+
+  @Test
+  public void testGroupByTagWithDuplicatedKeys() {
+    try {
+      checkQueryStatement(
+          "SELECT avg(*) FROM root.sg.** GROUP BY TAGS(k1, k2, k1)",
+          Collections.emptyList(),
+          Collections.emptyList(),
+          10,
+          10);
+      Assert.fail();
+    } catch (SemanticException e) {
+      Assert.assertEquals("duplicated key in GROUP BY TAGS: k1", e.getMessage());
+    }
   }
 
   // TODO: add more tests

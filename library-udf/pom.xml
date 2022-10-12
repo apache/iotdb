@@ -27,6 +27,12 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>library-udf</artifactId>
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
@@ -77,6 +83,12 @@
         <dependency>
             <groupId>com.github.wendykierp</groupId>
             <artifactId>JTransforms</artifactId>
+        </dependency>
+        <!-- Sampling  -->
+        <dependency>
+            <groupId>com.github.ggalmazor</groupId>
+            <artifactId>lt_downsampling_java8</artifactId>
+            <version>0.0.6</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>

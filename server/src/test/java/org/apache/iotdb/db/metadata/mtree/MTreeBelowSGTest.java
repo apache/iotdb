@@ -92,9 +92,11 @@ public abstract class MTreeBelowSGTest {
       IMTreeBelowSG mtree;
       if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
           .equals(SchemaEngineMode.Schema_File)) {
-        mtree = new MTreeBelowSGCachedImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+        mtree =
+            new MTreeBelowSGCachedImpl(root.getStorageGroupNodeByStorageGroupPath(path), null, 0);
       } else {
-        mtree = new MTreeBelowSGMemoryImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+        mtree =
+            new MTreeBelowSGMemoryImpl(root.getStorageGroupNodeByStorageGroupPath(path), null, 0);
       }
       usedMTree.add(mtree);
       return mtree;
@@ -283,7 +285,8 @@ public abstract class MTreeBelowSGTest {
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
       List<MeasurementPath> result2 =
-          storageGroup.getMeasurementPathsWithAlias(new PartialPath("root.a.*.s0"), 0, 0, false)
+          storageGroup.getMeasurementPathsWithAlias(
+                  new PartialPath("root.a.*.s0"), 0, 0, false, false)
               .left;
       result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
@@ -294,7 +297,7 @@ public abstract class MTreeBelowSGTest {
 
       result2 =
           storageGroup.getMeasurementPathsWithAlias(
-                  new PartialPath("root.a.*.temperature"), 0, 0, false)
+                  new PartialPath("root.a.*.temperature"), 0, 0, false, false)
               .left;
       result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
@@ -302,7 +305,8 @@ public abstract class MTreeBelowSGTest {
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
 
       Pair<List<MeasurementPath>, Integer> result3 =
-          storageGroup.getMeasurementPathsWithAlias(new PartialPath("root.a.**"), 2, 0, false);
+          storageGroup.getMeasurementPathsWithAlias(
+              new PartialPath("root.a.**"), 2, 0, false, false);
       assertEquals(2, result3.left.size());
       assertEquals(2, result3.right.intValue());
 
@@ -516,7 +520,7 @@ public abstract class MTreeBelowSGTest {
     assertEquals(
         2,
         storageGroup
-            .getMeasurementPathsWithAlias(new PartialPath("root.**"), 0, 0, false)
+            .getMeasurementPathsWithAlias(new PartialPath("root.**"), 0, 0, false, false)
             .left
             .size());
   }

@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -54,6 +55,10 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
+
+  private static final int SEED_CONFIG_NODE_ID = 0;
+
+  private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
 
   private final String mbeanName =
       String.format(
@@ -90,13 +95,16 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+        configManager.initConsensusManager();
+
         SystemPropertiesUtils.storeSystemParameters();
+        SystemPropertiesUtils.storeConfigNodeId(SEED_CONFIG_NODE_ID);
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
             .applyConfigNode(
                 new TConfigNodeLocation(
-                    0,
+                    SEED_CONFIG_NODE_ID,
                     new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                     new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
@@ -185,7 +193,7 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
-                -1,
+                INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
             CONF.getDataRegionConsensusProtocolClass(),
@@ -208,12 +216,25 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     for (int retry = 0; retry < 3; retry++) {
-      TSStatus status =
-          (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+      TSStatus status;
+      TConfigNodeRegisterResp resp = null;
+      Object obj =
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+
+      if (obj instanceof TConfigNodeRegisterResp) {
+        resp = (TConfigNodeRegisterResp) obj;
+        status = resp.getStatus();
+      } else {
+        status = (TSStatus) obj;
+      }
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
+        CONF.setConfigNodeId(resp.getConfigNodeId());
+
+        configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
