@@ -68,6 +68,10 @@ public class Analysis {
 
   private boolean finishQueryAfterAnalyze;
 
+  // potential fail message when finishQueryAfterAnalyze is true. If failMessage is NULL, means no
+  // fail.
+  private String failMessage;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY TIME)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +288,18 @@ public class Analysis {
 
   public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
+  }
+
+  public boolean isFailed() {
+    return failMessage != null;
+  }
+
+  public String getFailMessage() {
+    return failMessage;
+  }
+
+  public void setFailMessage(String failMessage) {
+    this.failMessage = failMessage;
   }
 
   public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {

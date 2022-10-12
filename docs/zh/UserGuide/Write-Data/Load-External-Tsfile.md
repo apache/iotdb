@@ -35,7 +35,7 @@
 
 1. 通过指定文件路径(绝对路径)加载单 tsfile 文件。
 
-第二个参数表示待加载的 tsfile 文件的路径，其中文件名称需要符合 tsfile 的命名规范，即`{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`。load 命令有三个可选项，分别是 sglevel，值域为整数，verify，值域为 true/false，onSuccess，值域为delete/none。不同选项之间用空格隔开，选项之间无顺序要求。
+第一个参数表示待加载的 tsfile 文件的路径。load 命令有三个可选项，分别是 sglevel，值域为整数，verify，值域为 true/false，onSuccess，值域为delete/none。不同选项之间用空格隔开，选项之间无顺序要求。
 
 SGLEVEL 选项，当 tsfile 对应的存储组不存在时，用户可以通过 sglevel 参数的值来制定存储组的级别，默认为`iotdb-datanode.properties`中设置的级别。例如当设置 level 参数为1时表明此 tsfile 中所有时间序列中层级为1的前缀路径是存储组，即若存在设备 root.sg.d1.s1，此时 root.sg 被指定为存储组。
 
@@ -60,7 +60,7 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
 
 2. 通过指定文件夹路径(绝对路径)批量加载文件。
 
-第二个参数表示待加载的 tsfile 文件夹的路径，其中文件夹内所有文件名称需要符合 tsfile 的命名规范，即`{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`。选项意义与加载单个 tsfile 文件相同。
+第一个参数表示待加载的 tsfile 文件夹的路径。选项意义与加载单个 tsfile 文件相同。
 
 示例：
 

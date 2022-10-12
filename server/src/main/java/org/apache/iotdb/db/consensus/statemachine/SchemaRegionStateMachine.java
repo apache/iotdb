@@ -69,7 +69,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    logger.info("Execute write plan in SchemaRegionStateMachine");
     try {
       return getPlanNode(request).accept(new SchemaExecutionVisitor(), schemaRegion);
     } catch (IllegalArgumentException e) {
