@@ -84,6 +84,7 @@ public class ConsensusManager {
         ConsensusFactory.getConsensusImpl(
                 CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(CONF.getConfigNodeId())
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                     .setRatisConfig(
                         RatisConfig.newBuilder()
@@ -172,7 +173,11 @@ public class ConsensusManager {
 
     List<Peer> peerList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
+      peerList.add(
+          new Peer(
+              consensusGroupId,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
     }
     consensusImpl.createPeer(consensusGroupId, peerList);
   }
@@ -188,7 +193,10 @@ public class ConsensusManager {
         consensusImpl
             .addPeer(
                 consensusGroupId,
-                new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()))
+                new Peer(
+                    consensusGroupId,
+                    configNodeLocation.getConfigNodeId(),
+                    configNodeLocation.getConsensusEndPoint()))
             .isSuccess();
 
     if (!result) {
@@ -207,7 +215,10 @@ public class ConsensusManager {
     return consensusImpl
         .removePeer(
             consensusGroupId,
-            new Peer(consensusGroupId, tConfigNodeLocation.getConsensusEndPoint()))
+            new Peer(
+                consensusGroupId,
+                tConfigNodeLocation.getConfigNodeId(),
+                tConfigNodeLocation.getConsensusEndPoint()))
         .isSuccess();
   }
 
@@ -234,7 +245,7 @@ public class ConsensusManager {
             getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
             registeredConfigNodes.stream()
-                .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
+                .filter(leader -> leader.getConfigNodeId() == leaderPeer.getNodeId())
                 .findFirst()
                 .orElse(null);
         if (leaderLocation != null) {

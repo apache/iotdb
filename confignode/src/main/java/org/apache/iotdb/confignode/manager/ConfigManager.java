@@ -87,6 +87,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -143,7 +144,7 @@ public class ConfigManager implements IManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
-  private final ConsensusManager consensusManager;
+  private ConsensusManager consensusManager;
 
   /** Manage cluster node */
   private final NodeManager nodeManager;
@@ -170,6 +171,8 @@ public class ConfigManager implements IManager {
   /** Sync */
   private final SyncManager syncManager;
 
+  private final PartitionRegionStateMachine stateMachine;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -192,7 +195,7 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             syncInfo);
-    PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
+    this.stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
@@ -204,10 +207,10 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
+  }
 
-    // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
-    // above managers
-    this.consensusManager = new ConsensusManager(this, stateMachine);
+  public void initConsensusManager() throws IOException {
+    this.consensusManager = new ConsensusManager(this, this.stateMachine);
   }
 
   public void close() throws IOException {
@@ -665,24 +668,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) {
-    // Check global configuration
-    TSStatus status = confirmLeader();
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TSStatus errorStatus = checkConfigNodeGlobalConfig(req);
-      if (errorStatus != null) {
-        return errorStatus;
-      }
-
-      procedureManager.addConfigNode(req);
-      return StatusUtils.OK;
-    }
-
-    return status;
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    return nodeManager.registerConfigNode(req);
   }
 
-  private TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
+  public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
     final String errorPrefix = "Reject register, please ensure that the parameter ";
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
@@ -735,8 +725,23 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    consensusManager.createPeerForConsensusGroup(configNodeLocations);
-    return StatusUtils.OK;
+    for (int i = 0; i < 30; i++) {
+      try {
+        if (consensusManager == null) {
+          Thread.sleep(1000);
+        } else {
+          consensusManager.createPeerForConsensusGroup(configNodeLocations);
+          return StatusUtils.OK;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
+      } catch (Exception e) {
+        LOGGER.error("Failed to create peer for consensus group", e);
+        break;
+      }
+    }
+    return StatusUtils.INTERNAL_ERROR;
   }
 
   @Override
@@ -1162,5 +1167,15 @@ public class ConfigManager implements IManager {
       }
     }
     return filteredRegionReplicaSets;
+  }
+
+  public TConfigNodeLocation getConfigNodeLocation(int nodeId) {
+    List<TConfigNodeLocation> configNodeLocations = this.nodeManager.getRegisteredConfigNodes();
+    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
+      if (configNodeLocation.getConfigNodeId() == nodeId) {
+        return configNodeLocation;
+      }
+    }
+    return null;
   }
 }

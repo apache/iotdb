@@ -75,6 +75,7 @@ public class RatisConsensusTest {
           ConsensusFactory.getConsensusImpl(
                   ConsensusFactory.RatisConsensus,
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(peers.get(i).getNodeId())
                       .setThisNode(peers.get(i).getEndpoint())
                       .setRatisConfig(config)
                       .setStorageDir(peersStorage.get(i).getAbsolutePath())
@@ -94,9 +95,9 @@ public class RatisConsensusTest {
   public void setUp() throws IOException {
     gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6000)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+    peers.add(new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)));
+    peers.add(new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)));
+    peers.add(new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
     peersStorage.add(new File("target" + java.io.File.separator + "1"));
     peersStorage.add(new File("target" + java.io.File.separator + "2"));
