@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -140,8 +140,8 @@ public interface PartitionTable {
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
     PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(path);
-    startTime = DatetimeUtils.convertMilliTimeWithPrecision(startTime);
-    endTime = DatetimeUtils.convertMilliTimeWithPrecision(endTime);
+    startTime = DateTimeUtils.convertMilliTimeWithPrecision(startTime);
+    endTime = DateTimeUtils.convertMilliTimeWithPrecision(endTime);
     while (startTime <= endTime) {
       long nextTime = (startTime / partitionInterval + 1) * partitionInterval;
       timeRangeMapRaftGroup.put(
