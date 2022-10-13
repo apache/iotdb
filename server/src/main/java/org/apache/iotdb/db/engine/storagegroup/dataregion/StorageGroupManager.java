@@ -390,7 +390,7 @@ public class StorageGroupManager {
   public void setTTL(long dataTTL) {
     for (DataRegion dataRegion : this.dataRegion) {
       if (dataRegion != null) {
-        dataRegion.setDataTTL(dataTTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }

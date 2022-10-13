@@ -77,7 +77,7 @@ IoTDB> SET SYSTEM TO READONLY ON LOCAL
 IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 ```
 
-## 超时
+## 终止查询
 
 IoTDB 支持 Session 超时和查询超时。
 
@@ -108,9 +108,9 @@ session.executeQueryStatement(String sql, long timeout)
 > 如果不配置超时时间参数或将超时时间设置为负数，将使用服务器端默认的超时时间。 
 > 如果超时时间设置为0，则会禁用超时功能。
 
-### 查询中止
+### 查询终止
 
-除了被动地等待查询超时外，IoTDB 还支持主动地中止查询，命令为：
+除了被动地等待查询超时外，IoTDB 还支持主动地终止查询，命令为：
 
 ```sql
 KILL QUERY <queryId>
