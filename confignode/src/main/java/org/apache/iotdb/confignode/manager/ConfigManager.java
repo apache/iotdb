@@ -1179,9 +1179,9 @@ public class ConfigManager implements IManager {
     return null;
   }
 
-  public void transfer(List<TDataNodeLocation> newUnknownDataList) {
+  public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
     LOGGER.info("start Transfer of {}", newUnknownDataList);
     // transfer trigger
-    triggerManager.transferTrigger(newUnknownDataList);
+    return triggerManager.transferTrigger(newUnknownDataList);
   }
 }

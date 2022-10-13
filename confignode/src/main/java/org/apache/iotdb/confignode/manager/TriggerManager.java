@@ -111,7 +111,8 @@ public class TriggerManager {
     }
   }
 
-  public void transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
+  public TSStatus transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
     // TODO implement
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

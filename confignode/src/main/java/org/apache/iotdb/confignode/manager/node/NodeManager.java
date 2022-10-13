@@ -699,14 +699,18 @@ public class NodeManager {
                   oldUnknownNodes.remove(dataNodeLocation);
                 } else if (!oldUnknownNodes.contains(dataNodeLocation)
                     && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
-                  oldUnknownNodes.add(dataNodeLocation);
                   newUnknownNodes.add(dataNodeLocation);
                 }
               }
             });
 
     if (!newUnknownNodes.isEmpty()) {
-      configManager.transfer(newUnknownNodes);
+      TSStatus transferResult = configManager.transfer(newUnknownNodes);
+      if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        oldUnknownNodes.addAll(newUnknownNodes);
+      } else {
+        LOGGER.warn("Fail to transfer because {}, will retry", transferResult.getMessage());
+      }
     }
   }
 

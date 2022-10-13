@@ -466,5 +466,5 @@ public interface IManager {
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
-  void transfer(List<TDataNodeLocation> newUnknownDataList);
+  TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
 }
