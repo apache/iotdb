@@ -1645,7 +1645,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void checkNodeName(String src) {
     // node name could start with * and end with *
     if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
-      throw new SQLParserException(
+      throw new SemanticException(
           String.format(
               "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
               src));

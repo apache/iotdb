@@ -39,8 +39,6 @@ public class IntoComponent extends StatementNode {
       "select into: the number of source devices and the number of target devices should be the same.";
   public static String PATH_NUM_MISMATCH_ERROR_MSG =
       "select into: the number of source columns and the number of target paths should be the same.";
-  public static String DUPLICATE_TARGET_DEVICE_ERROR_MSG =
-      "select into: target devices in into clause should be different.";
   public static String DUPLICATE_TARGET_PATH_ERROR_MSG =
       "select into: target paths in into clause should be different.";
 
@@ -196,6 +194,9 @@ public class IntoComponent extends StatementNode {
     public void nextMeasurement() {
       if (!intoItems.get(deviceIndex).isMeasurementsExistPlaceholder()) {
         measurementIndex++;
+        if (measurementIndex == intoItems.get(deviceIndex).getIntoMeasurements().size()) {
+          measurementIndex = 0;
+        }
       }
     }
   }

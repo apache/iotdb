@@ -21,37 +21,42 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_DEVICE_ERROR_MSG;
 import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 
-public class IntoDeviceMeasurementDescriptor extends IntoPathDescriptor {
+public class IntoDeviceMeasurementDescriptor {
 
-  private final Map<PartialPath, PartialPath> targetDeviceToSourceDeviceMap;
+  private final Map<PartialPath, Map<String, Pair<PartialPath, String>>> targetPathToSourceMap;
+  protected final Map<PartialPath, Boolean> deviceToAlignedMap;
 
   public IntoDeviceMeasurementDescriptor() {
-    super();
-    this.targetDeviceToSourceDeviceMap = new HashMap<>();
+    this.targetPathToSourceMap = new HashMap<>();
+    this.deviceToAlignedMap = new HashMap<>();
   }
 
-  public void specifyTargetDevice(PartialPath sourceDevice, PartialPath targetDevice) {
-    if (targetDeviceToSourceDeviceMap.containsKey(targetDevice)
-        && !targetDeviceToSourceDeviceMap.get(targetDevice).equals(sourceDevice)) {
-      throw new SemanticException(DUPLICATE_TARGET_DEVICE_ERROR_MSG);
-    }
-    targetDeviceToSourceDeviceMap.put(targetDevice, sourceDevice);
-  }
-
-  public void specifyTargetMeasurement(
-      PartialPath targetDevice, String sourceColumn, String targetMeasurement) {
-    Map<String, String> measurementToSourceColumnMap =
+  public void specifyTargetDeviceMeasurement(
+      PartialPath sourceDevice,
+      PartialPath targetDevice,
+      String sourceColumn,
+      String targetMeasurement) {
+    Map<String, Pair<PartialPath, String>> measurementToSourceColumnMap =
         targetPathToSourceMap.computeIfAbsent(targetDevice, key -> new HashMap<>());
     if (measurementToSourceColumnMap.containsKey(targetMeasurement)) {
       throw new SemanticException(DUPLICATE_TARGET_PATH_ERROR_MSG);
     }
-    measurementToSourceColumnMap.put(targetMeasurement, sourceColumn);
+    measurementToSourceColumnMap.put(targetMeasurement, new Pair<>(sourceDevice, sourceColumn));
+  }
+
+  public void specifyDeviceAlignment(PartialPath targetDevice, boolean isAligned) {
+    if (deviceToAlignedMap.containsKey(targetDevice)
+        && deviceToAlignedMap.get(targetDevice) != isAligned) {
+      throw new SemanticException(
+          "select into: alignment property must be the same for the same device.");
+    }
+    deviceToAlignedMap.put(targetDevice, isAligned);
   }
 }

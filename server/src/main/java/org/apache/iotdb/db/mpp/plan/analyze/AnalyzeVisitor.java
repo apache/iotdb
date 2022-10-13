@@ -201,6 +201,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.info("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
+        if (queryStatement.isSelectInto()) {
+          analysis.setRespDatasetHeader(
+              DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+        }
         if (queryStatement.isLastQuery()) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
         }
@@ -1026,7 +1030,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath deviceTemplate = intoDeviceMeasurementIterator.getDeviceTemplate();
       boolean isAlignedDevice = intoDeviceMeasurementIterator.isAlignedDevice();
       PartialPath targetDevice = constructTargetDevice(sourceDevice, deviceTemplate);
-      intoDeviceMeasurementDescriptor.specifyTargetDevice(sourceDevice, targetDevice);
       intoDeviceMeasurementDescriptor.specifyDeviceAlignment(targetDevice, isAlignedDevice);
 
       for (Expression sourceColumn : sourceColumns) {
@@ -1037,10 +1040,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               constructTargetMeasurement(
                   sourceDevice.concatNode(sourceColumn.toString()), measurementTemplate);
         } else {
-          targetMeasurement = sourceColumn.toString();
+          targetMeasurement = measurementTemplate;
         }
-        intoDeviceMeasurementDescriptor.specifyTargetMeasurement(
-            targetDevice, sourceColumn.toString(), targetMeasurement);
+        intoDeviceMeasurementDescriptor.specifyTargetDeviceMeasurement(
+            sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
         intoDeviceMeasurementIterator.nextMeasurement();
       }
 

@@ -41,7 +41,7 @@ public class TsFileConstant {
   private static final String IDENTIFIER_MATCHER = "([a-zA-Z0-9_\\u2E80-\\u9FFF]+)";
   public static final Pattern IDENTIFIER_PATTERN = Pattern.compile(IDENTIFIER_MATCHER);
 
-  private static final String NODE_NAME_MATCHER = "(\\*{0,2}[a-zA-Z0-9_\\u2E80-\\u9FFF]+\\*{0,2})";
+  private static final String NODE_NAME_MATCHER = "(\\*{0,2}[a-zA-Z0-9_\\u2E80-\\u9FFF]*\\*{0,2})";
   public static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
