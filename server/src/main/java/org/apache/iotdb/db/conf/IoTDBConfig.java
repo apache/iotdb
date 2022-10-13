@@ -128,6 +128,8 @@ public class IoTDBConfig {
   /** The proportion of write memory for write process */
   private double writeProportion = 0.8;
 
+  private double chunkMetadataSizeProportionInWrite = 0.1;
+
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
@@ -397,6 +399,8 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+
+  private double chunkMetadataMemorySizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -788,6 +792,8 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
+  private int patternMatchingThreshold = 1000000;
+
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
@@ -863,6 +869,9 @@ public class IoTDBConfig {
 
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
+
+  /** number of threads given to archiving tasks */
+  private int archivingThreadNum = 2;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -2750,6 +2759,14 @@ public class IoTDBConfig {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
   }
 
+  public int getArchivingThreadNum() {
+    return archivingThreadNum;
+  }
+
+  public void setArchivingThreadNum(int archivingThreadNum) {
+    this.archivingThreadNum = archivingThreadNum;
+  }
+
   public double getWriteProportion() {
     return writeProportion;
   }
@@ -2772,5 +2789,21 @@ public class IoTDBConfig {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public double getChunkMetadataMemorySizeProportion() {
+    return chunkMetadataMemorySizeProportion;
+  }
+
+  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
+    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
   }
 }

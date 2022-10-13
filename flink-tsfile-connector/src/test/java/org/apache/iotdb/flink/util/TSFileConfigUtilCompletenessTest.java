@@ -74,7 +74,8 @@ public class TSFileConfigUtilCompletenessTest {
       "setTSFileStorageFs",
       "setUseKerberos",
       "setValueEncoder",
-      "setCustomizedProperties"
+      "setCustomizedProperties",
+      "setPatternMatchingThreshold"
     };
     Set<String> addedSetters = new HashSet<>();
     Collections.addAll(addedSetters, setters);

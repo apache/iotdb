@@ -89,6 +89,7 @@ public class CompactionSchedulerTest {
 
   @Before
   public void setUp() throws MetadataException, IOException {
+    IoTDB.activated = true;
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     IoTDB.metaManager.init();
@@ -112,6 +113,7 @@ public class CompactionSchedulerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    IoTDB.activated = false;
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();

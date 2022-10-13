@@ -177,4 +177,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
+
+  public void checkAndMayFlushChunkMetadata() throws IOException {
+    List<TsFileIOWriter> writers = this.getFileIOWriter();
+    for (TsFileIOWriter writer : writers) {
+      writer.checkMetadataSizeAndMayFlush();
+    }
+  }
 }

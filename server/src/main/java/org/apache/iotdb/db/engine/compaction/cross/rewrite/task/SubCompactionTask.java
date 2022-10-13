@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -45,7 +44,7 @@ public class SubCompactionTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
-  private final Set<String> measurementList;
+  private final List<String> measurementList;
 
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
@@ -57,7 +56,7 @@ public class SubCompactionTask implements Callable<Void> {
 
   public SubCompactionTask(
       String device,
-      Set<String> measurementList,
+      List<String> measurementList,
       QueryContext queryContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,

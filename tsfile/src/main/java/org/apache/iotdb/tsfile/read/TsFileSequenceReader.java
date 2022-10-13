@@ -929,7 +929,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
+      throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
@@ -949,7 +950,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           null,
           metadataIndexNode.getNodeType(),
           timeseriesMetadataMap,
-          false);
+          needChunkMetadata);
     }
     return timeseriesMetadataMap;
   }

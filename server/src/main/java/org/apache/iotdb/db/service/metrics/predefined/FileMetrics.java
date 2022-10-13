@@ -97,7 +97,7 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null != currentServiceFuture) {
+    if (metricService.isEnable() && null == currentServiceFuture) {
       currentServiceFuture =
           service.scheduleAtFixedRate(
               this::collect,
@@ -149,37 +149,11 @@ public class FileMetrics implements IMetricSet {
                   return FileUtils.getDirSize(dir);
                 })
             .sum();
-    walFileTotalCount =
-        Stream.of(walDirs)
-            .mapToLong(
-                dir -> {
-                  File walFolder = new File(dir);
-                  if (walFolder.exists()) {
-                    File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                    long result = 0L;
-                    if (null != walNodeFolders) {
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          try {
-                            result +=
-                                org.apache.commons.io.FileUtils.listFiles(walFolder, null, true)
-                                    .size();
-                          } catch (UncheckedIOException exception) {
-                            // do nothing
-                            logger.debug(
-                                "Failed when count wal folder {}: ",
-                                walNodeFolder.getName(),
-                                exception);
-                          }
-                        }
-                      }
-                    }
-                    return result;
-                  } else {
-                    return 0L;
-                  }
-                })
-            .sum();
+    File walFolder = new File(walDirs);
+    if (walFolder.exists() && walFolder.isDirectory()) {
+      walFileTotalCount =
+          org.apache.commons.io.FileUtils.listFiles(new File(walDirs), null, true).size();
+    }
     sequenceFileTotalCount =
         Stream.of(dataDirs)
             .mapToLong(

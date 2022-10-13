@@ -43,7 +43,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -51,7 +50,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +58,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,7 +112,6 @@ public class CompactionUtils {
       }
 
       compactionWriter.endFile();
-      updateDeviceStartTimeAndEndTime(targetFileResources, compactionWriter);
       updatePlanIndexes(targetFileResources, seqFileResources, unseqFileResources);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
@@ -156,6 +153,7 @@ public class CompactionUtils {
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
     }
+    compactionWriter.checkAndMayFlushChunkMetadata();
   }
 
   private static void compactNonAlignedSeries(
@@ -165,49 +163,52 @@ public class CompactionUtils {
       QueryContext queryContext,
       QueryDataSource queryDataSource)
       throws IOException, InterruptedException {
-    Map<String, MeasurementSchema> measurementSchemaMap =
-        deviceIterator.getAllSchemasOfCurrentDevice();
-    int subTaskNums = Math.min(measurementSchemaMap.size(), subTaskNum);
-
-    // assign all measurements to different sub tasks
-    Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
-    int idx = 0;
-    for (String measurement : measurementSchemaMap.keySet()) {
-      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
-      }
-      measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
-    }
-
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
+    allMeasurements.sort((String::compareTo));
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
     // construct sub tasks and start compacting measurements in parallel
-    List<Future<Void>> futures = new ArrayList<>();
-    compactionWriter.startChunkGroup(device, false);
-    for (int i = 0; i < subTaskNums; i++) {
-      futures.add(
-          CompactionTaskManager.getInstance()
-              .submitSubTask(
-                  new SubCompactionTask(
-                      device,
-                      measurementsForEachSubTask[i],
-                      queryContext,
-                      queryDataSource,
-                      compactionWriter,
-                      measurementSchemaMap,
-                      i)));
-    }
+    if (subTaskNums > 0) {
+      // assign the measurements for each subtask
+      List<String>[] measurementListArray = new List[subTaskNums];
+      for (int i = 0, size = allMeasurements.size(); i < size; ++i) {
+        int index = i % subTaskNums;
+        if (measurementListArray[index] == null) {
+          measurementListArray[index] = new LinkedList<>();
+        }
+        measurementListArray[index].add(allMeasurements.get(i));
+      }
 
-    // wait for all sub tasks finish
-    for (int i = 0; i < subTaskNums; i++) {
-      try {
-        futures.get(i).get();
-      } catch (InterruptedException | ExecutionException e) {
-        logger.error("SubCompactionTask meet errors ", e);
-        Thread.interrupted();
-        throw new InterruptedException();
+      // construct sub tasks and start compacting measurements in parallel
+      List<Future<Void>> futures = new ArrayList<>();
+      compactionWriter.startChunkGroup(device, false);
+      for (int i = 0; i < subTaskNums; i++) {
+        futures.add(
+            CompactionTaskManager.getInstance()
+                .submitSubTask(
+                    new SubCompactionTask(
+                        device,
+                        measurementListArray[i],
+                        queryContext,
+                        queryDataSource,
+                        compactionWriter,
+                        schemaMap,
+                        i)));
+      }
+
+      // wait for all sub tasks finish
+      for (int i = 0; i < subTaskNums; i++) {
+        try {
+          futures.get(i).get();
+        } catch (InterruptedException | ExecutionException e) {
+          logger.error("SubCompactionTask meet errors ", e);
+          Thread.interrupted();
+          throw new InterruptedException();
+        }
       }
     }
-
     compactionWriter.endChunkGroup();
+    compactionWriter.checkAndMayFlushChunkMetadata();
   }
 
   public static void writeWithReader(
@@ -258,29 +259,6 @@ public class CompactionUtils {
     } else {
       // inner space
       return new InnerSpaceCompactionWriter(targetFileResources.get(0));
-    }
-  }
-
-  private static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
-    List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource fileResource = targetResources.get(i);
-      // The tmp target file may does not have any data points written due to the existence of the
-      // mods file, and it will be deleted after compaction. So skip the target file that has been
-      // deleted.
-      if (!fileResource.getTsFile().exists()) {
-        continue;
-      }
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
-          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
     }
   }
 

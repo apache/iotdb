@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -115,6 +116,21 @@ public class StorageGroupManager {
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
         virtualStorageGroupProcessor.checkFilesTTL();
+      }
+    }
+  }
+
+  /** push check archiving to all virtual storage group processors */
+  public void checkArchivingTask(ArchivingTask task) {
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
+        this.virtualStorageGroupProcessor) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
+        // task stopped running (eg. the task is paused), return
+        return;
+      }
+
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.checkArchivingTask(task);
       }
     }
   }
@@ -440,7 +456,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.setDataTTL(dataTTL);
+        virtualStorageGroupProcessor.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }
