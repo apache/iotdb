@@ -225,6 +225,12 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
+      conf.setUnknownDataNodeDetectInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "unknown_datanode_detect_interval",
+                  String.valueOf(conf.getHeartbeatInterval()))));
+
       String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
       if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
           || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {

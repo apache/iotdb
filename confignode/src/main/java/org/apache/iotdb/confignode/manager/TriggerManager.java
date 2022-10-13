@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 public class TriggerManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
@@ -108,5 +109,9 @@ public class TriggerManager {
               .setMessage(e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public void transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
+    // TODO implement
   }
 }
