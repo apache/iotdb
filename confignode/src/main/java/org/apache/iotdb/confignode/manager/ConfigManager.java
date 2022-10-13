@@ -1123,11 +1123,11 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // get all storage groups and slots by getting schema partition
+    // Get all storage groups and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
-    // construct request for getting data partition
+    // Construct request for getting data partition
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
         new HashMap<>();
     schemaPartitionTable.forEach(
@@ -1137,12 +1137,12 @@ public class ConfigManager implements IManager {
           partitionSlotsMap.put(key, slotListMap);
         });
 
-    // get all data partitions
+    // Get all data partitions
     GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
-    // get all region replicaset of target data partitions
+    // Get all region replicaset of target data partitions
     List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
     Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()

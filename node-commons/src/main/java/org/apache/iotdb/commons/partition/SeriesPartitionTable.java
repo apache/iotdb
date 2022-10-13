@@ -120,10 +120,10 @@ public class SeriesPartitionTable {
    * @return the timePartition's corresponding dataRegionIds
    */
   List<TConsensusGroupId> getRouting(TTimePartitionSlot timeSlotId) {
-    if (!seriesPartitionMap.containsKey(timeSlotId)) {
-      return new ArrayList<>();
-    }
     if (timeSlotId.getStartTime() >= 0) {
+      if (!seriesPartitionMap.containsKey(timeSlotId)) {
+        return new ArrayList<>();
+      }
       return seriesPartitionMap.get(timeSlotId);
     } else {
       Set<TConsensusGroupId> result = new HashSet<>();
