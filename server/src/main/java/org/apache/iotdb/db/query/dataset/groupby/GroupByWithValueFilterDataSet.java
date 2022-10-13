@@ -185,8 +185,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     List<String> gbAggregations = groupByTimePlan.getDeduplicatedAggregations();
     List<TSDataType> gbTsDataTypes = groupByTimePlan.getDeduplicatedDataTypes();
     for (int i = 0; i < curAggregateResults.length; ++i) {
-      curAggregateResults[i] = AggregateResultFactory.getAggrResultByName(
-          gbAggregations.get(i), gbTsDataTypes.get(i), ascending);
+      curAggregateResults[i] =
+          AggregateResultFactory.getAggrResultByName(
+              gbAggregations.get(i), gbTsDataTypes.get(i), ascending);
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
