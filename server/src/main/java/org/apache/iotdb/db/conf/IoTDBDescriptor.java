@@ -1005,7 +1005,8 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     conf.setTimePartitionIntervalForStorage(
-        DateTimeUtils.convertMilliTimeWithPrecision(conf.getTimePartitionIntervalForStorage()));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1918,7 +1919,8 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setTimePartitionIntervalForRouting(
-        DateTimeUtils.convertMilliTimeWithPrecision(globalConfig.timePartitionInterval));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
