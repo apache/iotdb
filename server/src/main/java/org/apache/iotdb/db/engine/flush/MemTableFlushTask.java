@@ -288,7 +288,6 @@ public class MemTableFlushTask {
               this.writer.endChunkGroup();
             } else {
               ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
-              writer.checkMetadataSizeAndMayFlush();
             }
           } catch (IOException e) {
             LOGGER.error(
