@@ -480,7 +480,7 @@ public class SnapshotLoader {
           @Override
           public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
               throws IOException {
-            return null;
+            return FileVisitResult.CONTINUE;
           }
 
           @Override
@@ -489,17 +489,17 @@ public class SnapshotLoader {
             if (SnapshotFileSet.isDataFile(file.toFile())) {
               fileList.add(file.toFile());
             }
-            return null;
+            return FileVisitResult.CONTINUE;
           }
 
           @Override
           public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-            return null;
+            return FileVisitResult.CONTINUE;
           }
 
           @Override
           public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-            return null;
+            return FileVisitResult.CONTINUE;
           }
         });
     return fileList;
