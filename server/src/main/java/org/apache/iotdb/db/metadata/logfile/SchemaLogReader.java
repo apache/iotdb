@@ -98,7 +98,6 @@ public class SchemaLogReader<T> implements AutoCloseable {
       nextSchemaPlan = deserializer.deserialize(inputStream);
     } catch (EOFException e) {
       nextSchemaPlan = null;
-      LOGGER.warn(e.getMessage(), e);
       truncateBrokenLogs();
     } catch (IOException e) {
       nextSchemaPlan = null;
@@ -157,6 +156,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
       }
       isFileCorrupted = false;
     } catch (IOException e) {
+      isFileCorrupted = true;
       LOGGER.error("Fail to truncate log file to size {}", currentIndex, e);
     }
   }
