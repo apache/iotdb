@@ -70,6 +70,10 @@ public class Analysis {
 
   private boolean finishQueryAfterAnalyze;
 
+  // potential fail message when finishQueryAfterAnalyze is true. If failMessage is NULL, means no
+  // fail.
+  private String failMessage;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY TIME)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,8 +89,24 @@ public class Analysis {
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
-  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
-  private Map<Expression, Set<Expression>> groupByLevelExpressions;
+  // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
+  // keys' order is the output one.
+  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
+
+  // tag keys specified in `GROUP BY TAG` clause
+  private List<String> tagKeys;
+
+  // {tag values -> {grouped expression -> output expressions}}
+  // For different combination of tag keys, the grouped expression may be different. Let's say there
+  // are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
+  // tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
+  // GROUP BY k1", timeseries are grouped by their tags into 2 buckets. Bucket [v1] has
+  // [root.sg.d1.temperature, root.sg.d1.status], while bucket [v2] has [root.sg.d2.temperature].
+  // Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
+  // aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
+  // has [last_value(temperature)].
+  private Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      tagValuesToGroupedTimeseriesOperands;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
@@ -234,12 +254,13 @@ public class Analysis {
         || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 
-  public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
-    return groupByLevelExpressions;
+  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+    return crossGroupByExpressions;
   }
 
-  public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
-    this.groupByLevelExpressions = groupByLevelExpressions;
+  public void setCrossGroupByExpressions(
+      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+    this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
   public FillDescriptor getFillDescriptor() {
@@ -296,6 +317,18 @@ public class Analysis {
 
   public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
+  }
+
+  public boolean isFailed() {
+    return failMessage != null;
+  }
+
+  public String getFailMessage() {
+    return failMessage;
+  }
+
+  public void setFailMessage(String failMessage) {
+    this.failMessage = failMessage;
   }
 
   public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {
@@ -431,5 +464,24 @@ public class Analysis {
 
   public void setIntoPathDescriptor(IntoPathDescriptor intoPathDescriptor) {
     this.intoPathDescriptor = intoPathDescriptor;
+  }
+
+  public List<String> getTagKeys() {
+    return tagKeys;
+  }
+
+  public void setTagKeys(List<String> tagKeys) {
+    this.tagKeys = tagKeys;
+  }
+
+  public Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      getTagValuesToGroupedTimeseriesOperands() {
+    return tagValuesToGroupedTimeseriesOperands;
+  }
+
+  public void setTagValuesToGroupedTimeseriesOperands(
+      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+          tagValuesToGroupedTimeseriesOperands) {
+    this.tagValuesToGroupedTimeseriesOperands = tagValuesToGroupedTimeseriesOperands;
   }
 }

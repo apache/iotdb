@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
@@ -94,6 +95,9 @@ public class QueryStatement extends Statement {
 
   // `GROUP BY LEVEL` clause
   protected GroupByLevelComponent groupByLevelComponent;
+
+  // `GROUP BY TAG` clause
+  protected GroupByTagComponent groupByTagComponent;
 
   // `INTO` clause
   protected IntoComponent intoComponent;
@@ -226,6 +230,14 @@ public class QueryStatement extends Statement {
     this.groupByLevelComponent = groupByLevelComponent;
   }
 
+  public GroupByTagComponent getGroupByTagComponent() {
+    return groupByTagComponent;
+  }
+
+  public void setGroupByTagComponent(GroupByTagComponent groupByTagComponent) {
+    this.groupByTagComponent = groupByTagComponent;
+  }
+
   public boolean isLastQuery() {
     return selectComponent.isHasLast();
   }
@@ -236,6 +248,10 @@ public class QueryStatement extends Statement {
 
   public boolean isGroupByLevel() {
     return groupByLevelComponent != null;
+  }
+
+  public boolean isGroupByTag() {
+    return groupByTagComponent != null;
   }
 
   public boolean isGroupByTime() {
@@ -299,6 +315,12 @@ public class QueryStatement extends Statement {
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("group by level does not support align by device now.");
+      }
+      if (isGroupByTag() && isAlignByDevice()) {
+        throw new SemanticException("group by tag does not support align by device now.");
+      }
+      if (isGroupByTag() && isGroupByLevel()) {
+        throw new SemanticException("group by level cannot be used togather with group by tag");
       }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {

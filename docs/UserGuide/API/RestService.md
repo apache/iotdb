@@ -821,7 +821,7 @@ Parameter Description:
 | dataTypes | array | yes  | The data type |
 |  values | array | yes  | Value columns, the values in each column can be `null` |
 |  isAligned | boolean | yes  | Whether to align the timeseries |
-|  deviceId | boolean | yes  | Device name |
+|  deviceId | string | yes  | Device name |
 
 Example request:
 ```shell

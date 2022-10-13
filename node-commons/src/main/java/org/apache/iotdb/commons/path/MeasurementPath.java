@@ -35,12 +35,16 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MeasurementPath extends PartialPath {
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
   private IMeasurementSchema measurementSchema;
+
+  private Map<String, String> tagMap;
 
   private boolean isUnderAlignedEntity = false;
 
@@ -95,6 +99,10 @@ public class MeasurementPath extends PartialPath {
     return measurementSchema;
   }
 
+  public Map<String, String> getTagMap() {
+    return tagMap;
+  }
+
   @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
@@ -106,6 +114,10 @@ public class MeasurementPath extends PartialPath {
 
   public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
     this.measurementSchema = measurementSchema;
+  }
+
+  public void setTagMap(Map<String, String> tagMap) {
+    this.tagMap = tagMap;
   }
 
   @Override
@@ -153,6 +165,9 @@ public class MeasurementPath extends PartialPath {
     result.device = device;
     result.measurementAlias = measurementAlias;
     result.measurementSchema = measurementSchema;
+    if (tagMap != null) {
+      result.tagMap = new HashMap<>(tagMap);
+    }
     result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
   }
@@ -172,6 +187,10 @@ public class MeasurementPath extends PartialPath {
       newMeasurementPath =
           new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
       newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
+      newMeasurementPath.setMeasurementAlias(this.measurementAlias);
+      if (tagMap != null) {
+        newMeasurementPath.setTagMap(new HashMap<>(tagMap));
+      }
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
     }
@@ -193,6 +212,12 @@ public class MeasurementPath extends PartialPath {
       }
       measurementSchema.serializeTo(byteBuffer);
     }
+    if (tagMap == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      ReadWriteIOUtils.write(tagMap, byteBuffer);
+    }
     ReadWriteIOUtils.write(isUnderAlignedEntity, byteBuffer);
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
   }
@@ -212,6 +237,12 @@ public class MeasurementPath extends PartialPath {
       }
       measurementSchema.serializeTo(stream);
     }
+    if (tagMap == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(tagMap, stream);
+    }
     ReadWriteIOUtils.write(isUnderAlignedEntity, stream);
     ReadWriteIOUtils.write(measurementAlias, stream);
   }
@@ -227,6 +258,10 @@ public class MeasurementPath extends PartialPath {
       } else if (type == 1) {
         measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
       }
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);

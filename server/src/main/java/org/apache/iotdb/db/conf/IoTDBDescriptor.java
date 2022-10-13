@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -1005,7 +1005,7 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     conf.setTimePartitionIntervalForStorage(
-        convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
+        DateTimeUtils.convertMilliTimeWithPrecision(conf.getTimePartitionIntervalForStorage()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1820,7 +1820,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 
@@ -1918,7 +1918,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setTimePartitionIntervalForRouting(
-        convertMilliWithPrecision(globalConfig.timePartitionInterval));
+        DateTimeUtils.convertMilliTimeWithPrecision(globalConfig.timePartitionInterval));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
@@ -1989,22 +1989,6 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
-  }
-
-  public long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = conf.getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   private static class IoTDBDescriptorHolder {

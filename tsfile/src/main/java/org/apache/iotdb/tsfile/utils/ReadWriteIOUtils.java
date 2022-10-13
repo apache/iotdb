@@ -844,7 +844,7 @@ public class ReadWriteIOUtils {
     int size = list.size();
     buffer.putInt(size);
     for (String s : list) {
-      buffer.put(s.getBytes());
+      write(s, buffer);
     }
   }
 

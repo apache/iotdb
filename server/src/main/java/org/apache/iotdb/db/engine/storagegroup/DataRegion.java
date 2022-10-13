@@ -80,6 +80,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -853,7 +854,7 @@ public class DataRegion {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowPlan.getTime())) {
-      throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
+      throw new OutOfTTLException(insertRowPlan.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     writeLock("InsertRow");
     try {
@@ -896,7 +897,7 @@ public class DataRegion {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
-      throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() - dataTTL));
+      throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
@@ -1090,7 +1091,7 @@ public class DataRegion {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (System.currentTimeMillis() - dataTTL));
+            (DateTimeUtils.currentTime() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -1156,7 +1157,7 @@ public class DataRegion {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   /**
@@ -1747,7 +1748,7 @@ public class DataRegion {
       logger.debug("{}: TTL not set, ignore the check", storageGroupName + "-" + dataRegionId);
       return;
     }
-    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         storageGroupName + "-" + dataRegionId,
@@ -2039,7 +2040,7 @@ public class DataRegion {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
@@ -2669,22 +2670,24 @@ public class DataRegion {
     }
   }
 
-  private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
+  private void resetLastCacheWhenLoadingTsFile(TsFileResource resource)
       throws IllegalPathException {
-    for (String device : newTsFileResource.getDevices()) {
-      tryToDeleteLastCacheByDevice(new PartialPath(device));
-    }
-  }
-
-  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    //    try { TODO: support last cache
-    //      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
-    //    } catch (MetadataException e) {
-    //      // the path doesn't cache in cluster mode now, ignore
-    //    }
+
+    if (config.isMppMode()) {
+      // TODO: implement more precise process
+      DataNodeSchemaCache.getInstance().cleanUp();
+    } else {
+      for (String device : resource.getDevices()) {
+        try {
+          IoTDB.schemaProcessor.deleteLastCacheByDevice(new PartialPath(device));
+        } catch (MetadataException e) {
+          logger.warn(String.format("Create device %s error.", device));
+        }
+      }
+    }
   }
 
   /**
@@ -2736,10 +2739,9 @@ public class DataRegion {
           newFilePartitionId,
           insertPos,
           deleteOriginFile);
-      resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
-      // update latest time map
-      updateLatestTimeMap(newTsFileResource);
+      resetLastCacheWhenLoadingTsFile(newTsFileResource); // update last cache
+      updateLastFlushTime(newTsFileResource); // update last flush time
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
       logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
@@ -3005,10 +3007,10 @@ public class DataRegion {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  private void updateLatestTimeMap(TsFileResource newTsFileResource) {
+  private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
-      long timePartitionId = StorageEngine.getTimePartition(endTime);
+      long timePartitionId = StorageEngineV2.getTimePartition(endTime);
       lastFlushTimeManager.updateLastTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateGlobalFlushedTime(device, endTime);
@@ -3294,6 +3296,13 @@ public class DataRegion {
     return workUnsequenceTsFileProcessors.values();
   }
 
+  public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
+    if (dataTTL != Long.MAX_VALUE) {
+      dataTTL = DateTimeUtils.convertMilliTimeWithPrecision(dataTTL);
+    }
+    this.dataTTL = dataTTL;
+  }
+
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
   }
@@ -3542,8 +3551,9 @@ public class DataRegion {
                       TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
-                          new Date(insertRowNode.getTime()),
-                          new Date(System.currentTimeMillis() - dataTTL))));
+                          DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
+                          DateTimeUtils.convertMillsecondToZonedDateTime(
+                              DateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map

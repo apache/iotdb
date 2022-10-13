@@ -44,7 +44,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
-  public static final String COLUMN_TTL = "ttl";
+  public static final String COLUMN_TTL = "ttl(ms)";
   public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";

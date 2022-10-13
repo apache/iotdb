@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -136,7 +137,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException("Write TPipeSinkInfo failed: ", e);
     }
   }
 
@@ -145,8 +146,26 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException("Read TPipeSinkInfo failed: ", e);
     }
     return pipeSinkInfo;
+  }
+
+  public static void serializeTPipeInfo(TPipeInfo pipeInfo, DataOutputStream stream) {
+    try {
+      pipeInfo.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TPipeInfo failed: ", e);
+    }
+  }
+
+  public static TPipeInfo deserializeTPipeInfo(ByteBuffer buffer) {
+    TPipeInfo pipeInfo = new TPipeInfo();
+    try {
+      pipeInfo.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TPipeInfo failed: ", e);
+    }
+    return pipeInfo;
   }
 }

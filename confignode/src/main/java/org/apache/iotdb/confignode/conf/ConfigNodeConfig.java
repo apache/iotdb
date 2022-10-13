@@ -29,6 +29,11 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
+  /**
+   * the config node id for cluster mode, the default value -1 should be changed after join cluster
+   */
+  private int configNodeId = 0;
+
   /** could set ip or hostname */
   private String internalAddress = "0.0.0.0";
 
@@ -109,7 +114,7 @@ public class ConfigNodeConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 86400000;
+  private long timePartitionInterval = 604_800_000;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
@@ -207,6 +212,14 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public int getConfigNodeId() {
+    return configNodeId;
+  }
+
+  public void setConfigNodeId(int configNodeId) {
+    this.configNodeId = configNodeId;
   }
 
   public String getInternalAddress() {
