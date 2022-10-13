@@ -42,7 +42,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.PauseArchivingPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetArchivingPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowArchivingPlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -92,7 +92,7 @@ public class ArchivingTest {
     targetDir = new File("separated_test");
     targetDir.mkdirs();
 
-    startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
+    startTime = DateTimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
   @After
@@ -342,9 +342,9 @@ public class ArchivingTest {
       RowRecord rowRecord = queryDataSet.next();
       String sg = rowRecord.getFields().get(2).getStringValue();
       if (sg.equals(sg1)) {
-        ZonedDateTime startDate = DatetimeUtils.convertMillsecondToZonedDateTime(startTime);
+        ZonedDateTime startDate = DateTimeUtils.convertMillsecondToZonedDateTime(startTime);
         assertEquals(
-            DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate),
+            DateTimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate),
             rowRecord.getFields().get(4).getStringValue());
         assertEquals(ttl, rowRecord.getFields().get(5).getLongV());
         assertEquals(targetDir.getPath(), rowRecord.getFields().get(6).getStringValue());

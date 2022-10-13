@@ -36,9 +36,9 @@ import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
-public class DatetimeUtils {
+public class DateTimeUtils {
 
-  private DatetimeUtils() {
+  private DateTimeUtils() {
     // forbidding instantiation
   }
 
@@ -553,7 +553,7 @@ public class DatetimeUtils {
           unit += duration.charAt(i);
         }
         total +=
-            DatetimeUtils.convertDurationStrToLong(
+            DateTimeUtils.convertDurationStrToLong(
                 currentTime == -1 ? -1 : currentTime + total,
                 temp,
                 unit.toLowerCase(),

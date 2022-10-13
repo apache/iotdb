@@ -63,7 +63,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -877,7 +877,7 @@ public class VirtualStorageGroupProcessor {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowPlan.getTime())) {
-      throw new OutOfTTLException(insertRowPlan.getTime(), (DatetimeUtils.currentTime() - dataTTL));
+      throw new OutOfTTLException(insertRowPlan.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     writeLock("InsertRow");
     try {
@@ -1031,7 +1031,7 @@ public class VirtualStorageGroupProcessor {
 
   /** @return whether the given time falls in ttl */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (DatetimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   /**
@@ -1486,7 +1486,7 @@ public class VirtualStorageGroupProcessor {
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       return;
     }
-    long ttlLowerBound = DatetimeUtils.currentTime() - dataTTL;
+    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId,
@@ -1562,11 +1562,11 @@ public class VirtualStorageGroupProcessor {
     }
 
     long ttlLowerBound =
-        DatetimeUtils.currentTime() - DatetimeUtils.convertMilliTimeWithPrecision(task.getTTL());
+        DateTimeUtils.currentTime() - DateTimeUtils.convertMilliTimeWithPrecision(task.getTTL());
     logger.debug(
         "{}: Archiving files before {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId,
-        DatetimeUtils.convertMillsecondToZonedDateTime(ttlLowerBound));
+        DateTimeUtils.convertMillsecondToZonedDateTime(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
@@ -1867,7 +1867,7 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? DatetimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
@@ -3002,7 +3002,7 @@ public class VirtualStorageGroupProcessor {
 
   public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
-      dataTTL = DatetimeUtils.convertMilliTimeWithPrecision(dataTTL);
+      dataTTL = DateTimeUtils.convertMilliTimeWithPrecision(dataTTL);
     }
     this.dataTTL = dataTTL;
   }
