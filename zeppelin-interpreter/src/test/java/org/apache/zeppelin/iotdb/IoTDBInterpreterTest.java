@@ -365,7 +365,7 @@ public class IoTDBInterpreterTest {
   public void testShowTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW TTL ON root.test.wf01", null);
-    String gt = "storage group\ttl(ms)\n" + "root.test.wf01\t12345";
+    String gt = "storage group\tttl(ms)\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
