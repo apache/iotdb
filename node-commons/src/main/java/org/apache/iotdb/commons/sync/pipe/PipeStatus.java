@@ -22,5 +22,10 @@ public enum PipeStatus {
   // a new pipe should be stop status
   RUNNING,
   STOP,
-  DROP
+  DROP,
+  // internal status
+  PREPARE_CREATE,
+  PREPARE_START,
+  PREPARE_STOP,
+  PREPARE_DROP
 }

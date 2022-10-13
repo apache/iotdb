@@ -286,9 +286,12 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
       for (TRegionReplicaSet regionReplicaSet :
           dataPartition.getDataRegionReplicaSet(
               devicePath.getFullPath(), Collections.emptyList())) {
-        regionToPatternMap
-            .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-            .addAll(pathPattern.alterPrefixPath(devicePath));
+        // regionId is null when data region of devicePath not existed
+        if (regionReplicaSet.getRegionId() != null) {
+          regionToPatternMap
+              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+              .addAll(pathPattern.alterPrefixPath(devicePath));
+        }
       }
     }
   }

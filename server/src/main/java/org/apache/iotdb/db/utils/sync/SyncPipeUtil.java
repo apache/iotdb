@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -67,46 +68,8 @@ public class SyncPipeUtil {
   }
 
   // TODO(sync): delete this in new-standalone version
-  public static Pipe parseCreatePipePlanAsPipe(
-      CreatePipePlan plan, PipeSink pipeSink, long pipeCreateTime) throws PipeException {
-    boolean syncDelOp = true;
-    for (Pair<String, String> pair : plan.getPipeAttributes()) {
-      pair.left = pair.left.toLowerCase();
-      if ("syncdelop".equals(pair.left)) {
-        syncDelOp = Boolean.parseBoolean(pair.right);
-      } else {
-        throw new PipeException(String.format("Can not recognition attribute %s", pair.left));
-      }
-    }
-
-    return new TsFilePipe(
-        pipeCreateTime, plan.getPipeName(), pipeSink, plan.getDataStartTimestamp(), syncDelOp);
-  }
-
-  public static Pipe parseCreatePipePlanAsPipe(
-      CreatePipeStatement createPipeStatement, PipeSink pipeSink, long pipeCreateTime)
+  public static PipeInfo parseCreatePipePlanAsPipeInfo(CreatePipePlan plan, long pipeCreateTime)
       throws PipeException {
-    boolean syncDelOp = true;
-    for (Map.Entry<String, String> entry : createPipeStatement.getPipeAttributes().entrySet()) {
-      String attributeKey = entry.getKey().toLowerCase();
-      if ("syncdelop".equals(attributeKey)) {
-        syncDelOp = Boolean.parseBoolean(entry.getValue());
-      } else {
-        throw new PipeException(String.format("Can not recognition attribute %s", entry.getKey()));
-      }
-    }
-
-    return new TsFilePipe(
-        pipeCreateTime,
-        createPipeStatement.getPipeName(),
-        pipeSink,
-        createPipeStatement.getStartTime(),
-        syncDelOp);
-  }
-
-  // TODO(sync): delete this in new-standalone version
-  public static PipeInfo parseCreatePipePlanAsPipeInfo(
-      CreatePipePlan plan, PipeSink pipeSink, long pipeCreateTime) throws PipeException {
     boolean syncDelOp = true;
     for (Pair<String, String> pair : plan.getPipeAttributes()) {
       pair.left = pair.left.toLowerCase();
@@ -119,15 +82,14 @@ public class SyncPipeUtil {
 
     return new TsFilePipeInfo(
         plan.getPipeName(),
-        pipeSink.getPipeSinkName(),
+        plan.getPipeSinkName(),
         pipeCreateTime,
         plan.getDataStartTimestamp(),
         syncDelOp);
   }
 
   public static PipeInfo parseCreatePipePlanAsPipeInfo(
-      CreatePipeStatement createPipeStatement, PipeSink pipeSink, long pipeCreateTime)
-      throws PipeException {
+      CreatePipeStatement createPipeStatement, long pipeCreateTime) throws PipeException {
     boolean syncDelOp = true;
     for (Map.Entry<String, String> entry : createPipeStatement.getPipeAttributes().entrySet()) {
       String attributeKey = entry.getKey().toLowerCase();
@@ -140,14 +102,14 @@ public class SyncPipeUtil {
 
     return new TsFilePipeInfo(
         createPipeStatement.getPipeName(),
-        pipeSink.getPipeSinkName(),
+        createPipeStatement.getPipeSinkName(),
         pipeCreateTime,
         createPipeStatement.getStartTime(),
         syncDelOp);
   }
 
   /** parse PipeInfo to Pipe, ignore status */
-  public static Pipe parsePipeInfoAsPipe(PipeInfo pipeInfo, PipeSink pipeSink)
+  public static Pipe parseTPipeSinkInfoAsPipeSink(PipeInfo pipeInfo, PipeSink pipeSink)
       throws PipeException {
     if (pipeInfo instanceof TsFilePipeInfo) {
       return new TsFilePipe(
@@ -162,7 +124,8 @@ public class SyncPipeUtil {
   }
 
   /** parse TPipeSinkInfo to PipeSink */
-  public static PipeSink parsePipeInfoAsPipe(TPipeSinkInfo pipeSinkInfo) throws PipeSinkException {
+  public static PipeSink parseTPipeSinkInfoAsPipeSink(TPipeSinkInfo pipeSinkInfo)
+      throws PipeSinkException {
     if (pipeSinkInfo.getPipeSinkType().equals(PipeSink.PipeSinkType.IoTDB.name())) {
       PipeSink pipeSink = new IoTDBPipeSink(pipeSinkInfo.getPipeSinkName());
       pipeSink.setAttribute(pipeSinkInfo.getAttributes());
@@ -171,5 +134,26 @@ public class SyncPipeUtil {
       // TODO(ext-pipe): parse TPipeSinkInfo to external pipe sink
       throw new UnsupportedOperationException();
     }
+  }
+
+  /** parse TPipeInfo to PipeInfo */
+  public static PipeInfo parseTPipeInfoAsPipeInfo(TPipeInfo pipeInfo, long pipeCreateTime)
+      throws PipeException {
+    boolean syncDelOp = true;
+    for (Map.Entry<String, String> entry : pipeInfo.getAttributes().entrySet()) {
+      String attributeKey = entry.getKey().toLowerCase();
+      if ("syncdelop".equals(attributeKey)) {
+        syncDelOp = Boolean.parseBoolean(entry.getValue());
+      } else {
+        throw new PipeException(String.format("Can not recognition attribute %s", entry.getKey()));
+      }
+    }
+
+    return new TsFilePipeInfo(
+        pipeInfo.getPipeName(),
+        pipeInfo.getPipeSinkName(),
+        pipeCreateTime,
+        pipeInfo.getStartTime(),
+        syncDelOp);
   }
 }

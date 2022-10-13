@@ -55,6 +55,7 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
     partialPath.serialize(stream);
     stream.writeInt(level);
   }

@@ -762,10 +762,10 @@ public class IoTDBConfig {
   private boolean enablePartition = false;
 
   /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 86400000;
+  private long timePartitionIntervalForStorage = 604_800_000;
 
   /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 86400000;
+  private long timePartitionIntervalForRouting = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,

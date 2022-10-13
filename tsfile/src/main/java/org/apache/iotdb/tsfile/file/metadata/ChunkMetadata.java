@@ -223,10 +223,11 @@ public class ChunkMetadata implements IChunkMetadata {
         if (interval.getMax() < startTime) {
           resultInterval.add(interval);
         } else if (interval.getMin() > endTime) {
-          // remaining TimeRanges are in order, add all and break
+          // remaining TimeRanges are in order, add all and return
           resultInterval.add(new TimeRange(startTime, endTime));
           resultInterval.addAll(deleteIntervalList.subList(i, deleteIntervalList.size()));
-          break;
+          deleteIntervalList = resultInterval;
+          return;
         } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
           startTime = Math.min(interval.getMin(), startTime);
           endTime = Math.max(interval.getMax(), endTime);
