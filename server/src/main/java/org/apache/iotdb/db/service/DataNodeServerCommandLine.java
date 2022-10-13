@@ -92,7 +92,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
-      doRemoveNode(args);
+      doRemoveDataNode(args);
     } else {
       LOGGER.error("Unrecognized mode {}", mode);
     }
@@ -104,7 +104,8 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
    *
    * @param args id or ip:rpc_port for removed datanode
    */
-  private void doRemoveNode(String[] args) throws BadNodeUrlException, TException, IoTDBException {
+  private void doRemoveDataNode(String[] args)
+      throws BadNodeUrlException, TException, IoTDBException {
 
     if (args.length != 2) {
       LOGGER.info("Usage: <node-id>/<ip>:<rpc-port>");

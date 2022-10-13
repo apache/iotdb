@@ -442,7 +442,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) {
+  public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage(
@@ -457,6 +457,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
+
+    //    List<TConfigNodeLocation> registeredConfigNodes =
+    //            configManager.getNodeManager().getRegisteredConfigNodes();
+    //    registeredConfigNodes.remove(configNodeLocation);
+    //    try {
+    //      // The removed ConfigNode also need to update the confignode-system.properties file
+    //      // Because user may execute remove-confignode.sh in this node
+    //      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
+    //      LOGGER.info(
+    //              "Updated ConfigNode information files after deleteConfigNodePeer. {}.",
+    //              registeredConfigNodes);
+    //    } catch (IOException e) {
+    //      LOGGER.error("Current ConfigNode to be removed can't update ConfigNode information.",
+    // e);
+    //    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage("remove ConsensusGroup success.");
   }

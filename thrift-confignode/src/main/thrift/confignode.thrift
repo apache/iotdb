@@ -699,13 +699,13 @@ service IConfigNodeRPCService {
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /**
-   * Let the specific ConfigNode remove the ConsensusGroup
+   * Let the specific ConfigNode delete the peer
    *
-   * @return SUCCESS_STATUS if remove ConsensusGroup successfully
+   * @return SUCCESS_STATUS if delete peer  successfully
    *         REMOVE_CONFIGNODE_FAILED if the specific ConfigNode doesn't exist in the current cluster
    *                                  or Ratis internal failure
    */
-  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
