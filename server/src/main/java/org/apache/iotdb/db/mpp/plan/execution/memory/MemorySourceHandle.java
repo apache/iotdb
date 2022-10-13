@@ -67,10 +67,14 @@ public class MemorySourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() {
     hasNext = false;
-    try{
-      return new TsBlockSerde().serialize(result);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    if(result.isEmpty()){
+      return null;
+    }else{
+      try {
+        return new TsBlockSerde().serialize(result);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

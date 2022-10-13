@@ -397,7 +397,7 @@ public class IoTDBRpcDataSet {
       return String.valueOf(time);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= tsBlockSize || isNull(index, tsBlockIndex)) {
+    if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {
       lastReadWasNull = true;
       return null;
     }
@@ -430,7 +430,7 @@ public class IoTDBRpcDataSet {
       return time;
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= tsBlockSize || isNull(index, tsBlockIndex)) {
+    if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {
       lastReadWasNull = true;
       return null;
     }
@@ -469,7 +469,7 @@ public class IoTDBRpcDataSet {
   }
 
   public void checkRecord() throws StatementExecutionException {
-    if (queryResultIndex>=queryResultSize||tsBlockIndex>=tsBlockSize||queryResult==null||curTsBlock==null) {
+    if (queryResultIndex>queryResultSize||tsBlockIndex>=tsBlockSize||queryResult==null||curTsBlock==null) {
       throw new StatementExecutionException("No record remains");
     }
   }
