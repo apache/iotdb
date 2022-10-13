@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -264,7 +265,7 @@ public class ConfigNodeClient
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {},because the current node is not leader,try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
           configNode,
           config.getAddressAndPort());
       return true;
@@ -656,7 +657,7 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
   }
 

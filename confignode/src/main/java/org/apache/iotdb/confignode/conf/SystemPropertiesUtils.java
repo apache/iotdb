@@ -239,6 +239,16 @@ public class SystemPropertiesUtils {
     storeSystemProperties(systemProperties);
   }
 
+  public static void storeConfigNodeId(int nodeId) throws IOException {
+    if (!systemPropertiesFile.exists()) {
+      return;
+    }
+
+    Properties systemProperties = getSystemProperties();
+    systemProperties.setProperty("config_node_id", String.valueOf(nodeId));
+    storeSystemProperties(systemProperties);
+  }
+
   private static synchronized Properties getSystemProperties() throws IOException {
     // Create confignode-system.properties file if necessary
     if (!systemPropertiesFile.exists()) {
