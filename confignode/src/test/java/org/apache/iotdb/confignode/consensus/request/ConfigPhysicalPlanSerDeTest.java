@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -997,6 +998,19 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         updateTriggerStateInTablePlan0.getTriggerState(),
         updateTriggerStateInTablePlan1.getTriggerState());
+  }
+
+  @Test
+  public void GetTriggerJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("test1");
+    jarNames.add("test2");
+    GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
+
+    GetTriggerJarPlan getTriggerJarPlan1 =
+        (GetTriggerJarPlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
   }
 
   @Test
