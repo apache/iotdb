@@ -37,18 +37,11 @@ public class DataRegionInfo {
   private final AtomicLong memoryCost;
 
   /** The threshold of reporting it's size to SystemInfo */
-  //  private final long storageGroupSizeReportThreshold =
-  //      (long)
-  //          (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
-  //              * IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
-  //              * IoTDBDescriptor.getInstance().getConfig().getWriteProportion());
-
   private final long storageGroupSizeReportThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
-  //      (long)
-  //          (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
-  //              * IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
-  //              * IoTDBDescriptor.getInstance().getConfig().getWriteProportion());
+      (long)
+          (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
+              * IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
+              * IoTDBDescriptor.getInstance().getConfig().getWriteProportion());
 
   private final AtomicLong lastReportedSize = new AtomicLong();
 
