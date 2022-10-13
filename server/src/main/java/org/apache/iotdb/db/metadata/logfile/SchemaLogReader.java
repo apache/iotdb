@@ -97,14 +97,17 @@ public class SchemaLogReader<T> implements AutoCloseable {
     try {
       nextSchemaPlan = deserializer.deserialize(inputStream);
     } catch (EOFException e) {
+      // meet the end of the file, truncate the broken ending
       nextSchemaPlan = null;
       truncateBrokenLogs();
     } catch (IOException e) {
+      // failed to read file
       nextSchemaPlan = null;
       isFileCorrupted = true;
       LOGGER.error(
           "File {} is corrupted. The uncorrupted size is {}.", logFile.getPath(), currentIndex, e);
     } catch (Exception e) {
+      // error occurred when deserializing the entry
       nextSchemaPlan = null;
       try {
         if (inputStream.available() > 0) {
@@ -116,12 +119,13 @@ public class SchemaLogReader<T> implements AutoCloseable {
               currentIndex,
               e);
         } else {
-          // the file has already been all read out, but error occurred during deserialize the last
-          // entry.
+          // the file has already been all read out, but error occurred during deserializing the
+          // last entry in file ending.
           LOGGER.warn(e.getMessage(), e);
           truncateBrokenLogs();
         }
       } catch (IOException ex) {
+        // failed to read file
         isFileCorrupted = true;
         LOGGER.error(
             "File {} is corrupted. The uncorrupted size is {}.",
