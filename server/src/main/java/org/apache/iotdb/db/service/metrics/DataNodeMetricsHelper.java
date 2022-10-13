@@ -16,15 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 
-public interface MetricServiceMBean {
-
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
+public class DataNodeMetricsHelper {
+  /** Bind predefined metric sets into DataNode */
+  public static void bind() {
+    // bind predefined metric sets
+    MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(new LogbackMetrics());
+    MetricService.getInstance().addMetricSet(new FileMetrics());
+    MetricService.getInstance().addMetricSet(new ProcessMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics());
+  }
 }

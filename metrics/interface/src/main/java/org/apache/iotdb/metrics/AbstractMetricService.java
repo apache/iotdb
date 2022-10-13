@@ -24,7 +24,6 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.Counter;
@@ -44,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
@@ -53,8 +51,6 @@ public abstract class AbstractMetricService {
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** Is the first initialization of metric service */
-  protected AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -102,10 +98,6 @@ public abstract class AbstractMetricService {
     loadReporter();
     // do start all reporter without first time
     startAllReporter();
-    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
-    for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
-      enablePredefinedMetrics(predefinedMetric);
-    }
   }
 
   /** stop metric core module */
@@ -160,9 +152,6 @@ public abstract class AbstractMetricService {
       }
     }
   }
-
-  /** Enable predefined Metrics */
-  protected abstract void enablePredefinedMetrics(PredefinedMetric metric);
 
   /** Reload metric service according to reloadLevel */
   protected abstract void reloadProperties(ReloadLevel reloadLevel);

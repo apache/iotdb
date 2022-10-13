@@ -16,24 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics.enums;
+package org.apache.iotdb.commons.service.metric;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+import org.apache.iotdb.commons.exception.StartupException;
 
-  public String getName() {
-    return name;
-  }
+public interface MetricServiceMBean {
 
-  String name;
+  void startService() throws StartupException;
 
-  Operation(String name) {
-    this.name = name;
-  }
+  void restartService() throws StartupException;
+
+  void stopService();
 }

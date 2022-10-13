@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.metricsets.predefined.jvm;
+package org.apache.iotdb.metrics.metricsets.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;

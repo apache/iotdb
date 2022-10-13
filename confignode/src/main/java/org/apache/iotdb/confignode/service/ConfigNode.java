@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -38,7 +39,10 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.ProcessMetrics;
+import org.apache.iotdb.db.service.metrics.SystemMetrics;
+import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -177,6 +181,12 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
     registerManager.register(MetricService.getInstance());
+    // bind predefined metric sets
+    MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(new LogbackMetrics());
+    MetricService.getInstance().addMetricSet(new ProcessMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics());
+
     LOGGER.info("Successfully setup internal services.");
   }
 

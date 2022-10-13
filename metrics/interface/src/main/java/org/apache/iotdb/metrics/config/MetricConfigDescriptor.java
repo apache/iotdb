@@ -86,7 +86,6 @@ public class MetricConfigDescriptor {
         // restart reporters or restart service
         if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
             || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig.getPredefinedMetrics().equals(newMetricConfig.getPredefinedMetrics())
             || !metricConfig
                 .getAsyncCollectPeriodInSecond()
                 .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {

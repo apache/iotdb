@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,7 +47,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -179,6 +180,8 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
+    // bind predefined metrics
+    DataNodeMetricsHelper.bind();
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");

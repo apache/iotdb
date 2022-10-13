@@ -16,16 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.service.metric.enums;
 
-package org.apache.iotdb.db.service.metrics.enums;
+public enum Operation {
+  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
+  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
+  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
+  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
+  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
+  EXECUTE_QUERY("EXECUTE_QUERY"),
+  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
 
-public enum Tag {
-  TYPE,
-  NAME,
-  STATUS;
+  public String getName() {
+    return name;
+  }
 
-  @Override
-  public String toString() {
-    return super.toString().toLowerCase();
+  String name;
+
+  Operation(String name) {
+    this.name = name;
   }
 }
