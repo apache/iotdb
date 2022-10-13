@@ -50,6 +50,11 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
+  public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+    return fetchSchema(patternTree);
+  }
+
+  @Override
   public ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
@@ -72,12 +77,16 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
+    s1.setTagMap(Collections.singletonMap("key1", "value1"));
     SchemaMeasurementNode s2 =
         new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
+    s2.setTagMap(Collections.singletonMap("key1", "value1"));
     SchemaMeasurementNode s3 =
         new SchemaMeasurementNode("s3", new MeasurementSchema("s3", TSDataType.BOOLEAN));
+    s3.setTagMap(Collections.singletonMap("key1", "value2"));
     SchemaMeasurementNode s4 =
         new SchemaMeasurementNode("s4", new MeasurementSchema("s4", TSDataType.TEXT));
+    s4.setTagMap(Collections.singletonMap("key2", "value1"));
     s2.setAlias("status");
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");

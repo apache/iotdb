@@ -28,11 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class GroupByLevelDescriptor extends AggregationDescriptor {
+public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private final Expression outputExpression;
 
-  public GroupByLevelDescriptor(
+  public CrossSeriesAggregationDescriptor(
       String aggregationFuncName,
       AggregationStep step,
       List<Expression> inputExpressions,
@@ -41,7 +41,7 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
     this.outputExpression = outputExpression;
   }
 
-  public GroupByLevelDescriptor(
+  public CrossSeriesAggregationDescriptor(
       AggregationDescriptor aggregationDescriptor, Expression outputExpression) {
     super(aggregationDescriptor);
     this.outputExpression = outputExpression;
@@ -66,8 +66,8 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
     return inputColumnNameToExpressionMap;
   }
 
-  public GroupByLevelDescriptor deepClone() {
-    return new GroupByLevelDescriptor(
+  public CrossSeriesAggregationDescriptor deepClone() {
+    return new CrossSeriesAggregationDescriptor(
         this.getAggregationFuncName(),
         this.getStep(),
         this.getInputExpressions(),
@@ -86,10 +86,10 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
     Expression.serialize(outputExpression, stream);
   }
 
-  public static GroupByLevelDescriptor deserialize(ByteBuffer byteBuffer) {
+  public static CrossSeriesAggregationDescriptor deserialize(ByteBuffer byteBuffer) {
     AggregationDescriptor aggregationDescriptor = AggregationDescriptor.deserialize(byteBuffer);
     Expression outputExpression = Expression.deserialize(byteBuffer);
-    return new GroupByLevelDescriptor(aggregationDescriptor, outputExpression);
+    return new CrossSeriesAggregationDescriptor(aggregationDescriptor, outputExpression);
   }
 
   @Override
@@ -103,7 +103,7 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
     if (!super.equals(o)) {
       return false;
     }
-    GroupByLevelDescriptor that = (GroupByLevelDescriptor) o;
+    CrossSeriesAggregationDescriptor that = (CrossSeriesAggregationDescriptor) o;
     return Objects.equals(outputExpression, that.outputExpression);
   }
 

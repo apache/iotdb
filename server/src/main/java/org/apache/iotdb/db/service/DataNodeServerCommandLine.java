@@ -117,7 +117,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");
     }
-    logger.info("Start to remove datanode, detail:{}", dataNodeLocations);
+    logger.info("Start to remove datanode, removed datanode: {}", dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
