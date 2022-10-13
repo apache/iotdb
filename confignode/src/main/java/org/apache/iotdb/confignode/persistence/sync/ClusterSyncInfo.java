@@ -132,16 +132,8 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   }
 
   public TSStatus setPipeStatus(SetPipeStatusPlan physicalPlan) {
-    TSStatus status = new TSStatus();
-    try {
-      syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (PipeException e) {
-      LOGGER.error("failed to execute OperatePipePlan {} on ClusterSyncInfo", physicalPlan, e);
-      status.setCode(TSStatusCode.PIPE_ERROR.getStatusCode());
-      LOGGER.error(e.getMessage());
-    }
-    return status;
+    syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TSStatus dropPipe(DropPipePlan physicalPlan) {
