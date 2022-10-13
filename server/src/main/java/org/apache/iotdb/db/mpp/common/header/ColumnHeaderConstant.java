@@ -115,6 +115,12 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MESSAGE = "message";
 
+  // column names for select into
+  public static final String COLUMN_SOURCE_DEVICE = "source device";
+  public static final String COLUMN_SOURCE_COLUMN = "source column";
+  public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
+  public static final String COLUMN_WRITTEN = "written";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
@@ -275,4 +281,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> selectIntoColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
+
+  public static final List<ColumnHeader> selectIntoAlignByDeviceColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_SOURCE_DEVICE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
 }

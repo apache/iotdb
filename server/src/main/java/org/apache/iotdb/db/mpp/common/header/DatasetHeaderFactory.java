@@ -128,4 +128,10 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowPipeHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
+
+  public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
+    return isAlignByDevice
+        ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.selectIntoColumnHeaders, true);
+  }
 }
