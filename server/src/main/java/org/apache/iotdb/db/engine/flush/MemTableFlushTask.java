@@ -111,12 +111,6 @@ public class MemTableFlushTask {
               : memTable.memSize()
                   / memTable.getSeriesNumber()
                   * config.getIoTaskQueueSizeForFlushing();
-      long memorySizeForMetadata =
-          (long)
-              (IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
-                  * memTable.memSize());
-      writer.setMemorySizeForMetadata(memorySizeForMetadata);
-      estimatedTemporaryMemSize += memorySizeForMetadata;
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
     long start = System.currentTimeMillis();
