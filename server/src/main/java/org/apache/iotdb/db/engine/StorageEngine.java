@@ -327,6 +327,9 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
   }
 
   public static long getTimePartition(long time) {
