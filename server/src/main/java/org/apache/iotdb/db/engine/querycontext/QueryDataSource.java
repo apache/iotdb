@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -77,9 +78,9 @@ public class QueryDataSource {
   public Filter updateFilterUsingTTL(Filter filter) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
-        filter = new AndFilter(filter, TimeFilter.gtEq(System.currentTimeMillis() - dataTTL));
+        filter = new AndFilter(filter, TimeFilter.gtEq(DatetimeUtils.currentTime() - dataTTL));
       } else {
-        filter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
+        filter = TimeFilter.gtEq(DatetimeUtils.currentTime() - dataTTL);
       }
     }
     return filter;

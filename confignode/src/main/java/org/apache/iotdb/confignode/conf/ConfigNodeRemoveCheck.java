@@ -40,6 +40,7 @@ import java.util.Properties;
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class ConfigNodeRemoveCheck {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
