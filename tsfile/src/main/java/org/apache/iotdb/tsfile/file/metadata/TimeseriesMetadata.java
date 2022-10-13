@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -124,21 +123,9 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     return timeseriesMetaData;
   }
 
-  public static Pair<String, Pair<Integer, Integer>> deserializeAndGetChunkMetadataOffset(
-      ByteBuffer buffer) {
-    ReadWriteIOUtils.readByte(buffer); // read timeseriesType
-    String measurementID = ReadWriteIOUtils.readVarIntString(buffer);
-    TSDataType tsDataType = ReadWriteIOUtils.readDataType(buffer);
-    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-    Statistics.deserialize(buffer, tsDataType); // read statistic
-    return new Pair<>(
-        measurementID,
-        new Pair<>(buffer.position(), buffer.position() + chunkMetaDataListDataSize));
-  }
-
   /**
-   * Return null if excludedMeasurements contains the measurementId without deserializing chunk
-   * metadata.
+   * Return timeseries metadata without deserializing chunk metadatas if excludedMeasurements
+   * contains the measurementId of this timeseries metadata or needChunkMetadata is false.
    */
   public static TimeseriesMetadata deserializeFrom(
       ByteBuffer buffer, Set<String> excludedMeasurements, boolean needChunkMetadata) {
@@ -147,17 +134,16 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     TSDataType tsDataType = ReadWriteIOUtils.readDataType(buffer);
     int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, tsDataType);
-    if (excludedMeasurements.contains(measurementID)) {
-      buffer.position(buffer.position() + chunkMetaDataListDataSize);
-      return null;
-    }
+
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
-    timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
     timeseriesMetaData.setMeasurementId(measurementID);
+    timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
     timeseriesMetaData.setTSDataType(tsDataType);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(statistics);
-    if (needChunkMetadata) {
+
+    if (!excludedMeasurements.contains(measurementID) && needChunkMetadata) {
+      // measurement is not in the excluded set and need chunk metadata
       ByteBuffer byteBuffer = buffer.slice();
       byteBuffer.limit(chunkMetaDataListDataSize);
       timeseriesMetaData.chunkMetadataList = new ArrayList<>();

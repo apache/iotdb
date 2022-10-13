@@ -6,7 +6,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -37,15 +36,19 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
 
   public AlignedFastCompactionPerformerSubTask(
       FastCrossCompactionWriter compactionWriter,
-      FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       List<IMeasurementSchema> measurementSchemas,
+      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
+      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      List<TsFileResource> sortedSourceFiles,
       String deviceId,
       int subTaskId) {
     super(
         compactionWriter,
-        fastCompactionPerformer,
         timeseriesMetadataOffsetMap,
+        readerCacheMap,
+        modificationCacheMap,
+        sortedSourceFiles,
         deviceId,
         true,
         subTaskId);
@@ -62,7 +65,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     // get source files which are sorted by the startTime of current device from old to new, files
     // that do not contain the current device have been filtered out as well.
-    fastCompactionPerformer.getSortedSourceFiles().forEach(x -> fileList.add(new FileElement(x)));
+    sortedSourceFiles.forEach(x -> fileList.add(new FileElement(x)));
 
     compactionWriter.startMeasurement(measurementSchemas, subTaskId);
     compactFiles();
@@ -76,7 +79,6 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
-      TsFileSequenceReader reader = fastCompactionPerformer.getReaderFromCache(resource);
 
       // read time chunk metadatas and value chunk metadatas in the current file
       List<IChunkMetadata> timeChunkMetadatas = new ArrayList<>();
@@ -93,8 +95,10 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
             break;
           }
           timeChunkMetadatas =
-              reader.getChunkMetadataListByTimeseriesMetadataOffset(
-                  timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+              readerCacheMap
+                  .get(resource)
+                  .getChunkMetadataListByTimeseriesMetadataOffset(
+                      timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
         } else {
           // read value chunk metadatas
           if (timeseriesOffsetInCurrentFile == null) {
@@ -103,8 +107,10 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
           } else {
             // current file contains this aligned timeseries
             valueChunkMetadatas.add(
-                reader.getChunkMetadataListByTimeseriesMetadataOffset(
-                    timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
+                readerCacheMap
+                    .get(resource)
+                    .getChunkMetadataListByTimeseriesMetadataOffset(
+                        timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
           }
         }
       }
@@ -141,7 +147,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
                       valueModifications.add(null);
                     } else {
                       valueModifications.add(
-                          fastCompactionPerformer.getModifications(
+                          getModificationsFromCache(
                               resource, new PartialPath(deviceId, x.getMeasurementUid())));
                     }
                   } catch (IllegalPathException e) {

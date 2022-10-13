@@ -60,6 +60,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -841,9 +842,22 @@ public class TsFileSequenceReader implements AutoCloseable {
     return null;
   }
 
+  /**
+   * Get the measurements of current device by its first measurement node. Also get the chunk
+   * metadata list and timeseries metadata offset.
+   *
+   * @param measurementNode first measurement node of the device
+   * @param excludedMeasurementIds do not deserialize chunk metadatas whose measurementId is in the
+   *     set. Notice: It only takes effect when the needChunkMetadata parameter is true.
+   * @param needChunkMetadata need to deserialize chunk metadatas or not
+   * @return measurement -> chunk metadata list -> timeseries metadata <startOffset, endOffset>
+   */
   public Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>>
       getTimeseriesMetadataOffsetByDevice(
-          MetadataIndexNode measurementNode, boolean needChunkMetadata) throws IOException {
+          MetadataIndexNode measurementNode,
+          Set<String> excludedMeasurementIds,
+          boolean needChunkMetadata)
+          throws IOException {
     Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
     List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
@@ -859,7 +873,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         while (nextBuffer.hasRemaining()) {
           int metadataStartOffset = nextBuffer.position();
           TimeseriesMetadata timeseriesMetadata =
-              TimeseriesMetadata.deserializeFrom(nextBuffer, needChunkMetadata);
+              TimeseriesMetadata.deserializeFrom(
+                  nextBuffer, excludedMeasurementIds, needChunkMetadata);
           timeseriesMetadataOffsetMap.put(
               timeseriesMetadata.getMeasurementId(),
               new Pair<>(
@@ -871,12 +886,19 @@ public class TsFileSequenceReader implements AutoCloseable {
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
-        return getTimeseriesMetadataOffsetByDevice(nextLayerMeasurementNode, needChunkMetadata);
+        return getTimeseriesMetadataOffsetByDevice(
+            nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata);
       }
     }
     return timeseriesMetadataOffsetMap;
   }
 
+  /**
+   * Get chunk metadata list by the start offset and end offset of the timeseries metadata.
+   *
+   * @param startOffset the start offset of timeseries metadata
+   * @param endOffset the end offset of timeseries metadata
+   */
   public List<IChunkMetadata> getChunkMetadataListByTimeseriesMetadataOffset(
       long startOffset, long endOffset) throws IOException {
     ByteBuffer timeseriesMetadataBuffer = readData(startOffset, endOffset);
@@ -912,7 +934,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           TimeseriesMetadata timeseriesMetadata =
               TimeseriesMetadata.deserializeFrom(
                   nextBuffer, excludedMeasurementIds, needChunkMetadata);
-          if (timeseriesMetadata != null) {
+          if (!excludedMeasurementIds.contains(timeseriesMetadata.getMeasurementId())) {
             timeseriesMetadataList.add(timeseriesMetadata);
           }
         }

@@ -2,18 +2,21 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,32 +51,44 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
   protected FastCrossCompactionWriter compactionWriter;
 
-  protected FastCompactionPerformer fastCompactionPerformer;
-
   protected int subTaskId;
 
   // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+  // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
   protected Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
+
+  Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
+
+  Map<TsFileResource, List<Modification>> modificationCacheMap;
+
+  // source files which are sorted by the start time of current device from old to new. Notice: If
+  // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
+  // does not exist.
+  List<TsFileResource> sortedSourceFiles;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
-  private boolean isAligned;
+  private final boolean isAligned;
 
   protected String deviceId;
 
   public FastCompactionPerformerSubTask(
       FastCrossCompactionWriter compactionWriter,
-      FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
+      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
+      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      List<TsFileResource> sortedSourceFiles,
       String deviceId,
       boolean isAligned,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
-    this.fastCompactionPerformer = fastCompactionPerformer;
     this.subTaskId = subTaskId;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.isAligned = isAligned;
     this.deviceId = deviceId;
+    this.readerCacheMap = readerCacheMap;
+    this.modificationCacheMap = modificationCacheMap;
+    this.sortedSourceFiles = sortedSourceFiles;
 
     this.fileList = new ArrayList<>();
     chunkMetadataQueue =
@@ -101,10 +116,10 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
       if (!isAligned) {
         // for nonAligned sensors, only after getting chunkMetadatas can we create schema to start
-        // measurement; for aligned sensors, we get all chunk metadatas before compacting because we
-        // need to get all sensors and their schemas under the current device, but since the
-        // compaction process is to read a batch of overlapped files each time, which may not
-        // contain all the sensors.
+        // measurement; for aligned sensors, we get all schemas of value sensors and
+        // startMeasurement() in the previous process, because we need to get all chunk metadatas of
+        // sensors and their schemas under the current device, but since the compaction process is
+        // to read a batch of overlapped files each time, which may not contain all the sensors.
         startMeasurement();
       }
 
@@ -484,5 +499,27 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       // find new overlapped files and deserialize them into chunk metadata queue
       deserializeFileIntoQueue(findOverlapFiles(fileList.get(0)));
     }
+  }
+
+  /**
+   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
+   *
+   * @param path name of the time series
+   */
+  protected List<Modification> getModificationsFromCache(
+      TsFileResource tsFileResource, PartialPath path) {
+    // copy from TsFileResource so queries are not affected
+    List<Modification> modifications =
+        modificationCacheMap.computeIfAbsent(
+            tsFileResource, resource -> new ArrayList<>(resource.getModFile().getModifications()));
+    List<Modification> pathModifications = new ArrayList<>();
+    Iterator<Modification> modificationIterator = modifications.iterator();
+    while (modificationIterator.hasNext()) {
+      Modification modification = modificationIterator.next();
+      if (modification.getPath().matchFullPath(path)) {
+        pathModifications.add(modification);
+      }
+    }
+    return pathModifications;
   }
 }

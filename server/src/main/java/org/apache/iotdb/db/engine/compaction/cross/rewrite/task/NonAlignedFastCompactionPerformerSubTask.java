@@ -6,8 +6,8 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -17,6 +17,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -38,15 +39,19 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
 
   public NonAlignedFastCompactionPerformerSubTask(
       FastCrossCompactionWriter compactionWriter,
-      String deviceId,
-      List<String> measurements,
-      FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
+      List<String> measurements,
+      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
+      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      List<TsFileResource> sortedSourceFiles,
+      String deviceId,
       int subTaskId) {
     super(
         compactionWriter,
-        fastCompactionPerformer,
         timeseriesMetadataOffsetMap,
+        readerCacheMap,
+        modificationCacheMap,
+        sortedSourceFiles,
         deviceId,
         false,
         subTaskId);
@@ -59,7 +64,7 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
     for (String measurement : measurements) {
       // get source files which are sorted by the startTime of current device from old to new, files
       // that do not contain the current device have been filtered out as well.
-      fastCompactionPerformer.getSortedSourceFiles().forEach(x -> fileList.add(new FileElement(x)));
+      sortedSourceFiles.forEach(x -> fileList.add(new FileElement(x)));
       currentMeasurement = measurement;
       hasStartMeasurement = false;
 
@@ -77,8 +82,8 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
     if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
       ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
       MeasurementSchema measurementSchema =
-          fastCompactionPerformer
-              .getReaderFromCache(firstChunkMetadataElement.fileElement.resource)
+          readerCacheMap
+              .get(firstChunkMetadataElement.fileElement.resource)
               .getMeasurementSchema(
                   Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
       compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
@@ -99,8 +104,8 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
         continue;
       }
       List<IChunkMetadata> iChunkMetadataList =
-          fastCompactionPerformer
-              .getReaderFromCache(resource)
+          readerCacheMap
+              .get(resource)
               .getChunkMetadataListByTimeseriesMetadataOffset(
                   timeseriesMetadataOffset.left, timeseriesMetadataOffset.right);
 
@@ -108,7 +113,7 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
         // modify chunk metadatas
         QueryUtils.modifyChunkMetaData(
             iChunkMetadataList,
-            fastCompactionPerformer.getModifications(
+            getModificationsFromCache(
                 resource,
                 new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
         if (iChunkMetadataList.size() == 0) {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,6 +37,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
