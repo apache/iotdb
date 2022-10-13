@@ -26,7 +26,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-// This classed is used for keep mlog compatible with old version
+/**
+ * This classed is used for keep mlog compatible with that of 0.14 snapshot versions. The element T
+ * will be serialized to OutputStream as format: content data length (4B) + content data (var
+ * length) + validation code (long). The validation code will be filled by a meaningless long value.
+ */
 @NotThreadSafe
 public class FakeCRC32Serializer<T> implements ISerializer<T> {
 

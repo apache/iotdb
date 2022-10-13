@@ -23,6 +23,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+/**
+ * This interface defines the behaviour of a Deserializer of T. An instance of this interface
+ * provides the ability to deserialize an instance of T from InputStream or Bytebuffer.
+ *
+ * @param <T>
+ */
 public interface IDeserializer<T> {
 
   default T deserialize(InputStream inputStream) throws IOException {

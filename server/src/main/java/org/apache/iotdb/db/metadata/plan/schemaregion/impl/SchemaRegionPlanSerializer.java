@@ -48,6 +48,10 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This class provides the ability to serialize the given SchemaRegionPlan into binary data, which
+ * is compatible with that of PhysicalPlan in 0.14 snapshot versions.
+ */
 @NotThreadSafe
 public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan> {
 

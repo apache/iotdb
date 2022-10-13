@@ -24,6 +24,12 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
+/**
+ * This interface defines the behaviour of a Serializer of T. An instance of this interface provides
+ * the ability to serialize an instance of T to InputStream or Bytebuffer.
+ *
+ * @param <T>
+ */
 public interface ISerializer<T> {
 
   default void serialize(T t, OutputStream outputStream) throws IOException {

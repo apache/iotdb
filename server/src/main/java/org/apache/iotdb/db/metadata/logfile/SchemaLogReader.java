@@ -35,6 +35,13 @@ import java.io.InputStream;
 import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 
+/**
+ * This class provides the common ability to read a log storing T. The corrupted file ending will be
+ * truncate during read process. If some middle part of the log file is corrupted, the read process
+ * will end and the file will be marked corrupted.
+ *
+ * @param <T>
+ */
 public class SchemaLogReader<T> implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaLogReader.class);
@@ -128,6 +135,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
     }
   }
 
+  /** This class provides the ability to record the num of read bytes from the nested InputStream */
   private static class RecordableInputStream extends InputStream {
 
     private final InputStream inputStream;

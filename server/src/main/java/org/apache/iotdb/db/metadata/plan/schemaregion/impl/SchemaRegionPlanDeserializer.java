@@ -51,6 +51,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This class provides the ability to deserialize a SchemaRegionPlan from binary data in given
+ * ByteBuffer, the format of which is compatible with that of PhysicalPlan in 0.14 snapshot
+ * versions.
+ */
 public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegionPlan> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionPlanDeserializer.class);

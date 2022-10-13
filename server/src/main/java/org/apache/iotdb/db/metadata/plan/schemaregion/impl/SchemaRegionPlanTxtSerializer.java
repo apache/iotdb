@@ -43,6 +43,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.stream.Collectors;
 
+/**
+ * This class provides the ability to serialize the given SchemaRegionPlan into binary data as txt
+ * format, which is used for MLogParser.
+ */
 public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionPlan> {
 
   private static final String FIELD_SEPARATOR = ", ";

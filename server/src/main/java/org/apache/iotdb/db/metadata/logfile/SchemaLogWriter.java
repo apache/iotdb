@@ -29,6 +29,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 
+/**
+ * This class provides the common ability to write a log storing T.
+ *
+ * @param <T>
+ */
 public class SchemaLogWriter<T> implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaLogWriter.class);
