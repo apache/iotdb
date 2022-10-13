@@ -64,6 +64,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -254,7 +255,7 @@ public class StorageEngine implements IService {
 
   private static void initTimePartition() {
     timePartitionInterval =
-        convertMilliWithPrecision(
+        DateTimeUtils.convertMilliTimeWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
   }
 
@@ -297,22 +298,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
-  }
-
   public static String getDeviceNameByPlan(PhysicalPlan plan) {
     if (plan instanceof InsertPlan) {
       InsertPlan physicalPlan = (InsertPlan) plan;
@@ -342,6 +327,9 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
   }
 
   public static long getTimePartition(long time) {
@@ -787,7 +775,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;

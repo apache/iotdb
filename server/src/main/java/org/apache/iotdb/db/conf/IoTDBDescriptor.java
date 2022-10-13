@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -1517,7 +1517,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 

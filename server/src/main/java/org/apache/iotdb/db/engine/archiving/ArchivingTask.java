@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -76,7 +76,7 @@ public class ArchivingTask {
     this.targetDir = targetDir;
     this.ttl = ttl;
     this.startTime = startTime;
-    this.submitTime = DatetimeUtils.currentTime();
+    this.submitTime = DateTimeUtils.currentTime();
   }
 
   public ArchivingTask(

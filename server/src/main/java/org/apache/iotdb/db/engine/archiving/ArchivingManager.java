@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.slf4j.Logger;
@@ -373,7 +373,7 @@ public class ArchivingManager {
 
       for (ArchivingTask task : archivingTasks) {
 
-        if (task.getStartTime() - DatetimeUtils.currentTime() <= 0
+        if (task.getStartTime() - DateTimeUtils.currentTime() <= 0
             && task.getStatus() == ArchivingTask.ArchivingTaskStatus.READY) {
 
           // storage group has no data

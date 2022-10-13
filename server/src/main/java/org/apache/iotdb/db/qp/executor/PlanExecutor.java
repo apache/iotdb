@@ -133,7 +133,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -1336,13 +1336,13 @@ public class PlanExecutor implements IPlanExecutor {
         ttl = null;
       }
       ZonedDateTime submitDateTime =
-          DatetimeUtils.convertMillsecondToZonedDateTime(task.getSubmitTime());
-      String submitTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(submitDateTime);
+          DateTimeUtils.convertMillsecondToZonedDateTime(task.getSubmitTime());
+      String submitTimeStr = DateTimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(submitDateTime);
       submitTime.setBinaryV(new Binary(submitTimeStr));
       if (task.getStartTime() != Long.MAX_VALUE) {
         ZonedDateTime startDate =
-            DatetimeUtils.convertMillsecondToZonedDateTime(task.getStartTime());
-        String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
+            DateTimeUtils.convertMillsecondToZonedDateTime(task.getStartTime());
+        String startTimeStr = DateTimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
         startTime = new Field(TSDataType.TEXT);
         startTime.setBinaryV(new Binary(startTimeStr));
       } else {

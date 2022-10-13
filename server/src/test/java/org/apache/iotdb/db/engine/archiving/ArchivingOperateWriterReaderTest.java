@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.archiving;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class ArchivingOperateWriterReaderTest {
     archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.PAUSE, task2));
     archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.RESUME, task2));
 
-    startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
+    startTime = DateTimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
     task1.close();
     task2.close();
   }
