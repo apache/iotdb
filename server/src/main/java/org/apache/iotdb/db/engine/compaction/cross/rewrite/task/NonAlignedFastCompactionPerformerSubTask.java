@@ -29,20 +29,17 @@ import java.util.List;
 import java.util.Map;
 
 public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerformerSubTask {
-  // the indexs of the timseries to be compacted to which the current sub thread is assigned
-  private List<Integer> pathsIndex;
+  // measurements of the current device to be compacted, which is assigned to the current sub thread
+  private final List<String> measurements;
 
-  protected List<String> allMeasurements;
-
-  protected int currentSensorIndex = 0;
+  private String currentMeasurement;
 
   boolean hasStartMeasurement = false;
 
   public NonAlignedFastCompactionPerformerSubTask(
       FastCrossCompactionWriter compactionWriter,
       String deviceId,
-      List<Integer> pathsIndex,
-      List<String> allMeasurements,
+      List<String> measurements,
       FastCompactionPerformer fastCompactionPerformer,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       int subTaskId) {
@@ -53,18 +50,17 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
         deviceId,
         false,
         subTaskId);
-    this.pathsIndex = pathsIndex;
-    this.allMeasurements = allMeasurements;
+    this.measurements = measurements;
   }
 
   @Override
   public Void call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    for (Integer index : pathsIndex) {
+    for (String measurement : measurements) {
       // get source files which are sorted by the startTime of current device from old to new, files
       // that do not contain the current device have been filtered out as well.
       fastCompactionPerformer.getSortedSourceFiles().forEach(x -> fileList.add(new FileElement(x)));
-      currentSensorIndex = index;
+      currentMeasurement = measurement;
       hasStartMeasurement = false;
 
       compactFiles();
@@ -96,7 +92,7 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
       Pair<Long, Long> timeseriesMetadataOffset =
-          timeseriesMetadataOffsetMap.get(allMeasurements.get(currentSensorIndex)).get(resource);
+          timeseriesMetadataOffsetMap.get(currentMeasurement).get(resource);
       if (timeseriesMetadataOffset == null) {
         // tsfile does not contain this timeseries
         removeFile(fileElement);

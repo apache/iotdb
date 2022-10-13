@@ -206,12 +206,12 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
-    List<Integer>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
+    List<String>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
     for (int idx = 0; idx < allMeasurements.size(); idx++) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
         measurementsForEachSubTask[idx % subTaskNums] = new ArrayList<>();
       }
-      measurementsForEachSubTask[idx % subTaskNums].add(idx);
+      measurementsForEachSubTask[idx % subTaskNums].add(allMeasurements.get(idx));
     }
 
     // construct sub tasks and start compacting measurements in parallel
@@ -224,7 +224,6 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
                       fastCrossCompactionWriter,
                       deviceID,
                       measurementsForEachSubTask[i],
-                      allMeasurements,
                       this,
                       timeseriesMetadataOffsetMap,
                       i)));

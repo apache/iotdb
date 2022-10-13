@@ -300,20 +300,31 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   private List<PageElement> findOverlapPages(PageElement page) {
     List<PageElement> elements = new ArrayList<>();
     long endTime = page.pageHeader.getEndTime();
-    Stream<PageElement> pages =
-        pageQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
-    Iterator<PageElement> it = pages.iterator();
-    while (it.hasNext()) {
-      PageElement element = it.next();
+    Iterator<PageElement> iterator = pageQueue.iterator();
+    while (iterator.hasNext()) {
+      PageElement element = iterator.next();
       if (element.startTime <= endTime) {
         if (!element.isOverlaped) {
           elements.add(element);
           element.isOverlaped = true;
         }
-      } else {
-        break;
       }
     }
+
+    //    Stream<PageElement> pages =
+    //        pageQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
+    //    Iterator<PageElement> it = pages.iterator();
+    //    while (it.hasNext()) {
+    //      PageElement element = it.next();
+    //      if (element.startTime <= endTime) {
+    //        if (!element.isOverlaped) {
+    //          elements.add(element);
+    //          element.isOverlaped = true;
+    //        }
+    //      } else {
+    //        break;
+    //      }
+    //    }
     return elements;
   }
 
@@ -321,20 +332,31 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   private List<ChunkMetadataElement> findOverlapChunkMetadatas(ChunkMetadataElement chunkMetadata) {
     List<ChunkMetadataElement> elements = new ArrayList<>();
     long endTime = chunkMetadata.chunkMetadata.getEndTime();
-    Stream<ChunkMetadataElement> chunks =
-        chunkMetadataQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
-    Iterator<ChunkMetadataElement> it = chunks.iterator();
-    while (it.hasNext()) {
-      ChunkMetadataElement element = it.next();
+    Iterator<ChunkMetadataElement> iterator = chunkMetadataQueue.iterator();
+    while (iterator.hasNext()) {
+      ChunkMetadataElement element = iterator.next();
       if (element.chunkMetadata.getStartTime() <= endTime) {
         if (!element.isOverlaped) {
           elements.add(element);
           element.isOverlaped = true;
         }
-      } else {
-        break;
       }
     }
+
+    //    Stream<ChunkMetadataElement> chunks =
+    //        chunkMetadataQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
+    //    Iterator<ChunkMetadataElement> it = chunks.iterator();
+    //    while (it.hasNext()) {
+    //      ChunkMetadataElement element = it.next();
+    //      if (element.chunkMetadata.getStartTime() <= endTime) {
+    //        if (!element.isOverlaped) {
+    //          elements.add(element);
+    //          element.isOverlaped = true;
+    //        }
+    //      } else {
+    //        break;
+    //      }
+    //    }
     return elements;
   }
 
