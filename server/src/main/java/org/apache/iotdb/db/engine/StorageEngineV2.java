@@ -155,11 +155,6 @@ public class StorageEngineV2 implements IService {
     return timePartitionIntervalForStorage;
   }
 
-  @TestOnly
-  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
-  }
-
   public static long getTimePartition(long time) {
     if (timePartitionIntervalForStorage == -1) {
       initTimePartition();
