@@ -257,7 +257,8 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
-        "ratis_snapshot_trigger_threshold", String.valueOf(ratisSnapshotTriggerThreshold));
+        "partition_region_ratis_snapshot_trigger_threshold",
+        String.valueOf(ratisSnapshotTriggerThreshold));
     return this;
   }
 
