@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,8 +71,9 @@ public class RatisConsensusTest {
                       .build())
               .setSnapshot(
                   RatisConfig.Snapshot.newBuilder()
+                      .setCreationGap(20)
                       .setAutoTriggerThreshold(100)
-                      .setTriggerSnapshotFileSize(10)
+                      .setTriggerSnapshotFileSize(4096)
                       .setTriggerSnapshotTime(5)
                       .build())
               .build();
@@ -192,11 +194,21 @@ public class RatisConsensusTest {
 
   @Test
   public void triggerSnapshotByCustomizeTest() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
-
+    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+    Thread.sleep(6000); // ensure the snapshot is taken
+    RatisConsensus consensus = (RatisConsensus) servers.get(0);
+    Assert.assertTrue(
+        Objects.requireNonNull(
+                    consensus
+                        .getServer()
+                        .getDivision(Utils.fromConsensusGroupIdToRaftGroupId(gid))
+                        .getRaftStorage()
+                        .getStorageDir()
+                        .getStateMachineDir()
+                        .list())
+                .length
+            != 0);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)

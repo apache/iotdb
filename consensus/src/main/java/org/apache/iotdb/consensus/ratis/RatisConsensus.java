@@ -111,6 +111,8 @@ class RatisConsensus implements IConsensus {
 
   private final ConsensusConfig config;
 
+  final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
   // TODO make it configurable
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
@@ -140,19 +142,26 @@ class RatisConsensus implements IConsensus {
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId))
             .build();
-
-    createSnapshotThread();
   }
 
   @Override
   public void start() throws IOException {
     server.start();
+    createSnapshotThread();
   }
 
   @Override
   public void stop() throws IOException {
     clientManager.close();
-    server.close();
+    executor.shutdown();
+    try {
+      // TODO we can param await time
+      executor.awaitTermination(20, TimeUnit.SECONDS);
+    } catch (InterruptedException i) {
+      Thread.currentThread().interrupt();
+    } finally {
+      server.close();
+    }
   }
 
   /**
@@ -587,15 +596,14 @@ class RatisConsensus implements IConsensus {
   private void triggerSnapshotByCustomize() {
     Iterable<RaftGroupId> groupIds = server.getGroupIds();
 
-    while (groupIds.iterator().hasNext()) {
-      final RaftGroupId raftGroupId = groupIds.iterator().next();
+    for (RaftGroupId raftGroupId : groupIds) {
       File currentDir = null;
 
       try {
         currentDir =
             server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
       } catch (IOException e) {
-        logger.warn(" Get division failed: ", e);
+        logger.warn("Get division failed: ", e);
       }
 
       final long currentDirLength = org.apache.iotdb.consensus.common.Utils.getFileSize(currentDir);
@@ -615,12 +623,10 @@ class RatisConsensus implements IConsensus {
   }
 
   private void createSnapshotThread() {
-    ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    Runnable command = this::triggerSnapshotByCustomize;
-    long delay = config.getRatisConfig().getSnapshot().getTriggerSnapshotTime();
+    final long delay = config.getRatisConfig().getSnapshot().getTriggerSnapshotTime();
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        executor, command, 0, delay, TimeUnit.SECONDS);
+        executor, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {
