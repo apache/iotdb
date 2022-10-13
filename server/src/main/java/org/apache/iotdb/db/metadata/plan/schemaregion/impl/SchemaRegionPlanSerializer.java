@@ -75,6 +75,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
 
     private void changeOutputStream(OutputStream out) {
       this.out = out;
+      written = 0;
     }
   }
 

@@ -47,6 +47,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
   private T nextSchemaPlan;
 
+  private long currentIndex = 0;
   private boolean isFileCorrupted = false;
 
   public SchemaLogReader(String schemaDir, String logFileName, IDeserializer<T> deserializer)
@@ -86,6 +87,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
   private void readNext() {
     try {
+      currentIndex = inputStream.getReadBytes();
       nextSchemaPlan = deserializer.deserialize(inputStream);
     } catch (EOFException e) {
       nextSchemaPlan = null;
@@ -94,16 +96,14 @@ public class SchemaLogReader<T> implements AutoCloseable {
       nextSchemaPlan = null;
       isFileCorrupted = true;
       LOGGER.error(
-          "File {} is corrupted. The uncorrupted size is {}.",
-          logFile.getPath(),
-          inputStream.getReadBytes(),
-          e);
+          "File {} is corrupted. The uncorrupted size is {}.", logFile.getPath(), currentIndex, e);
     }
   }
 
   @Override
   public void close() throws IOException {
     inputStream.close();
+    currentIndex = 0;
   }
 
   public boolean isFileCorrupted() {
@@ -113,10 +113,18 @@ public class SchemaLogReader<T> implements AutoCloseable {
   private void truncateBrokenLogs() {
     try (FileOutputStream outputStream = new FileOutputStream(logFile, true);
         FileChannel channel = outputStream.getChannel()) {
-      channel.truncate(inputStream.getReadBytes());
+      if (currentIndex != channel.size()) {
+        LOGGER.warn(
+            "The end of log file {} is corrupted. Start truncate it. The unbroken size is {}. The file size is {}.",
+            logFile.getName(),
+            currentIndex,
+            channel.size());
+        channel.truncate(currentIndex);
+        channel.force(true);
+      }
       isFileCorrupted = false;
     } catch (IOException e) {
-      LOGGER.error("Fail to truncate log file to size {}", inputStream.getReadBytes(), e);
+      LOGGER.error("Fail to truncate log file to size {}", currentIndex, e);
     }
   }
 
@@ -124,7 +132,11 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
     private final InputStream inputStream;
 
-    private int readBytes = 0;
+    private long readBytes = 0;
+
+    private long mark;
+
+    private int invokeLevel = 0;
 
     public RecordableInputStream(InputStream inputStream) {
       this.inputStream = inputStream;
@@ -132,14 +144,16 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
     @Override
     public int read() throws IOException {
-      return inputStream.read();
+      int result = inputStream.read();
+      readBytes += Byte.BYTES;
+      return result;
     }
 
     @Override
     public int read(@NotNull byte[] b) throws IOException {
-      int num = super.read(b);
-      if (num == -1) {
-        return -1;
+      int num = inputStream.read(b);
+      if (num < 0) {
+        return num;
       }
       readBytes += num;
       return num;
@@ -147,18 +161,31 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
-      int num = super.read(b, off, len);
-      if (num == -1) {
-        return -1;
+      int num = inputStream.read(b, off, len);
+      if (num < 0) {
+        return num;
       }
       readBytes += num;
       return num;
     }
 
     @Override
+    public long skip(long n) throws IOException {
+      long num = inputStream.skip(n);
+      readBytes += num;
+      return num;
+    }
+
+    @Override
+    public synchronized void mark(int readlimit) {
+      this.mark = readBytes;
+      inputStream.mark(readlimit);
+    }
+
+    @Override
     public synchronized void reset() throws IOException {
-      super.reset();
-      readBytes = 0;
+      inputStream.reset();
+      readBytes = mark;
     }
 
     @Override
@@ -167,7 +194,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
       readBytes = 0;
     }
 
-    public int getReadBytes() {
+    public long getReadBytes() {
       return readBytes;
     }
   }
