@@ -1147,7 +1147,7 @@ public class TsFileProcessor {
     while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
-        updateCompressionRatio(memTableToFlush);
+        updateCompressionRatio();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: {} flushingMemtables is empty and will close the file",
@@ -1207,25 +1207,15 @@ public class TsFileProcessor {
     }
   }
 
-  private void updateCompressionRatio(IMemTable memTableToFlush) {
+  private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
-      if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
-        logger.error(
-            "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
-            storageGroupName,
-            writer.getFile().getAbsolutePath(),
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          compressionRatio,
+          totalMemTableSize,
+          writer.getPos());
       CompressionRatio.getInstance().updateRatio(compressionRatio);
     } catch (IOException e) {
       logger.error(
