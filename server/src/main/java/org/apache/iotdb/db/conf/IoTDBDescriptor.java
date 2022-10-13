@@ -630,11 +630,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
-    conf.setChunkMetadataSizeProportionInCompaction(
+    conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
-                "chunk_metadata_size_proportion_in_compaction",
-                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -1472,12 +1472,6 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
-
-      conf.setChunkMetadataSizeProportionInWrite(
-          Double.parseDouble(
-              properties.getProperty(
-                  "chunk_metadata_size_proportion_in_write",
-                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
 
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
