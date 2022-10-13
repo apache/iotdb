@@ -52,6 +52,8 @@ public class CQScheduleTask implements Runnable {
   private final TimeoutPolicy timeoutPolicy;
   private final String queryBody;
   private final String md5;
+
+  private final String zoneId;
   private final ScheduledExecutorService executor;
 
   private final ConfigManager configManager;
@@ -74,6 +76,7 @@ public class CQScheduleTask implements Runnable {
         TimeoutPolicy.deserialize(req.timeoutPolicy),
         req.queryBody,
         md5,
+        req.zoneId,
         executor,
         configManager,
         firstExecutionTime);
@@ -89,6 +92,7 @@ public class CQScheduleTask implements Runnable {
         entry.getTimeoutPolicy(),
         entry.getQueryBody(),
         entry.getMd5(),
+        entry.getZoneId(),
         executor,
         configManager,
         entry.getLastExecutionTime() + entry.getEveryInterval());
@@ -102,6 +106,7 @@ public class CQScheduleTask implements Runnable {
       TimeoutPolicy timeoutPolicy,
       String queryBody,
       String md5,
+      String zoneId,
       ScheduledExecutorService executor,
       ConfigManager configManager,
       long executionTime) {
@@ -112,6 +117,7 @@ public class CQScheduleTask implements Runnable {
     this.timeoutPolicy = timeoutPolicy;
     this.queryBody = queryBody;
     this.md5 = md5;
+    this.zoneId = zoneId;
     this.executor = executor;
     this.configManager = configManager;
     this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval);
@@ -142,7 +148,8 @@ public class CQScheduleTask implements Runnable {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }
     } else {
-      TExecuteCQ executeCQReq = new TExecuteCQ(queryBody, startTime, endTime);
+      TExecuteCQ executeCQReq =
+          new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId);
       try {
         AsyncDataNodeInternalServiceClient client =
             AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());

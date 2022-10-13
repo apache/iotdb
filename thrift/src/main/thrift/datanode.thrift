@@ -297,6 +297,9 @@ struct TExecuteCQ {
   1: required string queryBody
   2: required i64 startTime
   3: required i64 endTime
+  4: required i64 timeout
+  5: required string zoneId
+  6: required string cqId
 }
 
 service IDataNodeRPCService {

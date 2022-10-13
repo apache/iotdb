@@ -496,13 +496,14 @@ struct TDeleteTimeSeriesReq{
 // ====================================================
 struct TCreateCQReq {
   1: required string cqId,
-  2: required i64 everyInterval,
-  3: required i64 boundaryTime,
-  4: required i64 startTimeOffset,
-  5: required i64 endTimeOffset,
-  6: required byte timeoutPolicy,
-  7: required string queryBody,
+  2: required i64 everyInterval
+  3: required i64 boundaryTime
+  4: required i64 startTimeOffset
+  5: required i64 endTimeOffset
+  6: required byte timeoutPolicy
+  7: required string queryBody
   8: required string sql
+  9: required string zoneId
 }
 
 struct TDropCQReq {

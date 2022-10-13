@@ -679,17 +679,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createCQ(TCreateCQReq req) throws TException {
+  public TSStatus createCQ(TCreateCQReq req) {
     return configManager.createCQ(req);
   }
 
   @Override
-  public TSStatus dropCQ(TDropCQReq req) throws TException {
+  public TSStatus dropCQ(TDropCQReq req) {
     return configManager.dropCQ(req);
   }
 
   @Override
-  public TShowCQResp showCQ() throws TException {
+  public TShowCQResp showCQ() {
     return configManager.showCQ();
   }
 }

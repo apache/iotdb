@@ -275,6 +275,8 @@ public class CQInfo implements SnapshotProcessor {
     private final String sql;
     private final String md5;
 
+    private final String zoneId;
+
     private CQState state;
     private long lastExecutionTime;
 
@@ -289,6 +291,7 @@ public class CQInfo implements SnapshotProcessor {
           req.queryBody,
           req.sql,
           md5,
+          req.zoneId,
           CQState.INACTIVE,
           lastExecutionTime);
     }
@@ -304,6 +307,7 @@ public class CQInfo implements SnapshotProcessor {
           other.queryBody,
           other.sql,
           other.md5,
+          other.zoneId,
           other.state,
           other.lastExecutionTime);
     }
@@ -318,6 +322,7 @@ public class CQInfo implements SnapshotProcessor {
         String queryBody,
         String sql,
         String md5,
+        String zoneId,
         CQState state,
         long lastExecutionTime) {
       this.cqId = cqId;
@@ -329,6 +334,7 @@ public class CQInfo implements SnapshotProcessor {
       this.queryBody = queryBody;
       this.sql = sql;
       this.md5 = md5;
+      this.zoneId = zoneId;
       this.state = state;
       this.lastExecutionTime = lastExecutionTime;
     }
@@ -343,6 +349,7 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(queryBody, stream);
       ReadWriteIOUtils.write(sql, stream);
       ReadWriteIOUtils.write(md5, stream);
+      ReadWriteIOUtils.write(zoneId, stream);
       ReadWriteIOUtils.write(state.getType(), stream);
       ReadWriteIOUtils.write(lastExecutionTime, stream);
     }
@@ -357,6 +364,7 @@ public class CQInfo implements SnapshotProcessor {
       String queryBody = ReadWriteIOUtils.readString(stream);
       String sql = ReadWriteIOUtils.readString(stream);
       String md5 = ReadWriteIOUtils.readString(stream);
+      String zoneId = ReadWriteIOUtils.readString(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
       long lastExecutionTime = ReadWriteIOUtils.readLong(stream);
       return new CQEntry(
@@ -369,6 +377,7 @@ public class CQInfo implements SnapshotProcessor {
           queryBody,
           sql,
           md5,
+          zoneId,
           state,
           lastExecutionTime);
     }
@@ -415,6 +424,10 @@ public class CQInfo implements SnapshotProcessor {
 
     public long getLastExecutionTime() {
       return lastExecutionTime;
+    }
+
+    public String getZoneId() {
+      return zoneId;
     }
   }
 }
