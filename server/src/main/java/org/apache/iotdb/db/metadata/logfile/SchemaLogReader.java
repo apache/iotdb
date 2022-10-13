@@ -93,17 +93,43 @@ public class SchemaLogReader<T> implements AutoCloseable {
   }
 
   private void readNext() {
+    currentIndex = inputStream.getReadBytes();
     try {
-      currentIndex = inputStream.getReadBytes();
       nextSchemaPlan = deserializer.deserialize(inputStream);
     } catch (EOFException e) {
       nextSchemaPlan = null;
+      LOGGER.warn(e.getMessage(), e);
       truncateBrokenLogs();
     } catch (IOException e) {
       nextSchemaPlan = null;
       isFileCorrupted = true;
       LOGGER.error(
           "File {} is corrupted. The uncorrupted size is {}.", logFile.getPath(), currentIndex, e);
+    } catch (Exception e) {
+      nextSchemaPlan = null;
+      try {
+        if (inputStream.available() > 0) {
+          // error occurred when deserializing some middle part of the file
+          isFileCorrupted = true;
+          LOGGER.error(
+              "File {} is corrupted. The uncorrupted size is {}.",
+              logFile.getPath(),
+              currentIndex,
+              e);
+        } else {
+          // the file has already been all read out, but error occurred during deserialize the last
+          // entry.
+          LOGGER.warn(e.getMessage(), e);
+          truncateBrokenLogs();
+        }
+      } catch (IOException ex) {
+        isFileCorrupted = true;
+        LOGGER.error(
+            "File {} is corrupted. The uncorrupted size is {}.",
+            logFile.getPath(),
+            currentIndex,
+            e);
+      }
     }
   }
 
@@ -186,6 +212,16 @@ public class SchemaLogReader<T> implements AutoCloseable {
     public synchronized void mark(int readlimit) {
       this.mark = readBytes;
       inputStream.mark(readlimit);
+    }
+
+    @Override
+    public boolean markSupported() {
+      return inputStream.markSupported();
+    }
+
+    @Override
+    public int available() throws IOException {
+      return inputStream.available();
     }
 
     @Override

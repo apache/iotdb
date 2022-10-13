@@ -65,6 +65,11 @@ public enum SchemaRegionPlanType {
   }
 
   public static SchemaRegionPlanType deserialize(ByteBuffer buffer) {
-    return PLAN_TYPE_TABLE[buffer.get()];
+    byte code = buffer.get();
+    SchemaRegionPlanType type = PLAN_TYPE_TABLE[code];
+    if (type == null) {
+      throw new IllegalArgumentException("Unrecognized SchemaRegionPlanType of " + code);
+    }
+    return type;
   }
 }
