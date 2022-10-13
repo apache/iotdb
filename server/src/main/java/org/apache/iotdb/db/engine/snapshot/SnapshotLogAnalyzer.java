@@ -25,7 +25,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -33,13 +32,14 @@ public class SnapshotLogAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLogAnalyzer.class);
   private final File snapshotLogFile;
   private final BufferedReader reader;
-  private final String snapshotId;
+  private String snapshotId;
+  private boolean complete;
   private Set<String> fileInfoSet = new HashSet<>();
 
   public SnapshotLogAnalyzer(File snapshotLogFile) throws IOException {
     this.snapshotLogFile = snapshotLogFile;
     this.reader = new BufferedReader(new FileReader(snapshotLogFile));
-    this.snapshotId = reader.readLine();
+    this.analyze();
   }
 
   public void close() {
@@ -47,14 +47,6 @@ public class SnapshotLogAnalyzer {
       reader.close();
     } catch (IOException e) {
       LOGGER.error("Exception occurs when closing log analyzer", e);
-    }
-  }
-
-  public boolean hasNext() {
-    try {
-      return reader != null && reader.ready();
-    } catch (Exception e) {
-      return false;
     }
   }
 
@@ -68,44 +60,27 @@ public class SnapshotLogAnalyzer {
    * @return
    */
   public int getTotalFileCountInSnapshot() throws IOException {
-    reader.reset();
-    String currLine;
-    int cnt = 0;
-    while ((currLine = reader.readLine()) != null && !currLine.equals(SnapshotLogger.END_FLAG)) {
-      fileInfoSet.add(currLine);
-    }
-    return cnt;
+    return fileInfoSet.size();
   }
 
   public Set<String> getFileInfoSet() {
     return fileInfoSet;
   }
 
-  /**
-   * Read the tail of the log file to see if the snapshot is complete.
-   *
-   * @return
-   */
-  public boolean isSnapshotComplete() throws IOException {
-    char[] endFlagInChar = new char[SnapshotLogger.END_FLAG.length()];
-    long fileLength = snapshotLogFile.length();
-    int endFlagLength = SnapshotLogger.END_FLAG.getBytes(StandardCharsets.UTF_8).length;
-    if (fileLength < endFlagLength) {
-      // this snapshot cannot be complete
-      return false;
+  private void analyze() throws IOException {
+    try {
+      snapshotId = reader.readLine();
+      String line;
+      while ((line = reader.readLine()) != null && !line.equals(SnapshotLogger.END_FLAG)) {
+        fileInfoSet.add(line);
+      }
+      complete = line != null;
+    } finally {
+      reader.close();
     }
-    reader.mark((int) fileLength);
-    reader.skip(
-        (int)
-            (fileLength
-                - endFlagLength
-                - snapshotId.getBytes(StandardCharsets.UTF_8).length
-                - "\n".getBytes(StandardCharsets.UTF_8).length));
-    int offset = 0;
-    do {
-      offset += reader.read(endFlagInChar, offset, endFlagLength - offset);
-    } while (offset < endFlagLength);
-    String fileEndStr = new String(endFlagInChar);
-    return fileEndStr.equals(SnapshotLogger.END_FLAG);
+  }
+
+  public boolean isSnapshotComplete() throws IOException {
+    return complete;
   }
 }

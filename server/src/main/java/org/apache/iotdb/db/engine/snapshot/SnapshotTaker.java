@@ -72,7 +72,7 @@ public class SnapshotTaker {
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
-      boolean success = true;
+      boolean success;
       snapshotLogger.logSnapshotId(snapshotDir.getName());
 
       try {

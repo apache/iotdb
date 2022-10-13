@@ -108,7 +108,6 @@ public class IoTDBSnapshotTest {
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
         Assert.assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-        analyzer.getSnapshotId();
         Assert.assertTrue(analyzer.isSnapshotComplete());
         int cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
@@ -145,7 +144,6 @@ public class IoTDBSnapshotTest {
         Assert.assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         int cnt = 0;
-        analyzer.getSnapshotId();
         Assert.assertTrue(analyzer.isSnapshotComplete());
         cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
