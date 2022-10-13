@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -39,7 +38,6 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeExcept
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -54,6 +52,8 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoDeviceMeasurementDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
@@ -61,7 +61,6 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -142,16 +141,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetPath;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -1000,368 +999,85 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       Set<PartialPath> deviceSet,
       List<Pair<Expression, String>> outputExpressions) {
-    List<Expression> outputColumns =
+    if (!queryStatement.isSelectInto()) {
+      return;
+    }
+
+    List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
+    List<Expression> sourceColumns =
         outputExpressions.stream()
             .map(Pair::getLeft)
             .collect(Collectors.toCollection(ArrayList::new));
-    boolean isAllRawSeriesQuery = checkIsAllRawSeriesQuery(outputColumns);
 
     IntoComponent intoComponent = queryStatement.getIntoComponent();
-    List<IntoItem> intoItems = intoComponent.getIntoItems();
+    intoComponent.validate(sourceDevices, sourceColumns);
 
-    List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
-    List<PartialPath> targetDevices = new ArrayList<>(sourceDevices.size());
-    if (intoComponent.isDeviceExistPlaceholder()) {
-      if (intoItems.size() > 1) {
-        throw new SemanticException("");
-      }
+    IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor =
+        new IntoDeviceMeasurementDescriptor();
+    IntoComponent.IntoDeviceMeasurementIterator intoDeviceMeasurementIterator =
+        intoComponent.getIntoDeviceMeasurementIterator();
+    for (PartialPath sourceDevice : sourceDevices) {
+      PartialPath deviceTemplate = intoDeviceMeasurementIterator.getDeviceTemplate();
+      boolean isAlignedDevice = intoDeviceMeasurementIterator.isAlignedDevice();
+      PartialPath targetDevice = constructTargetDevice(sourceDevice, deviceTemplate);
+      intoDeviceMeasurementDescriptor.specifyTargetDevice(sourceDevice, targetDevice);
+      intoDeviceMeasurementDescriptor.specifyDeviceAlignment(targetDevice, isAlignedDevice);
 
-      PartialPath deviceTemplate = intoItems.get(0).getIntoDevice();
-      for (PartialPath sourceDevice : sourceDevices) {
-        targetDevices.add(constructIntoDevice(sourceDevice, deviceTemplate));
-      }
-    } else {
-      if (intoItems.size() != sourceDevices.size()) {
-        throw new SemanticException("");
-      }
-
-      for (IntoItem intoItem : intoItems) {
-        targetDevices.add(intoItem.getIntoDevice());
-      }
-    }
-
-    PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> intoPathPatternTreeMap =
-        PatternTreeMapFactory.getIntoPathPatternTreeMap();
-
-    if (intoComponent.isMeasurementsExistPlaceholder()) {
-      if (!isAllRawSeriesQuery) {
-        throw new SemanticException("");
-      }
-
-      if (intoComponent.isDeviceExistPlaceholder()) {
-        String measurementTemplate = intoItems.get(0).getIntoMeasurements().get(0);
-        for (int i = 0; i < targetDevices.size(); i++) {
-          PartialPath targetDevice = targetDevices.get(i);
-          for (Expression outputColumn : outputColumns) {
-            PartialPath intoPath =
-                targetDevice.concatNode(
-                    constructIntoMeasurement(
-                        sourceDevices.get(i).concatNode(outputColumn.toString()),
-                        measurementTemplate));
-            intoPathPatternTreeMap.append(intoPath, outputColumn.toString());
-            if (intoPathPatternTreeMap.getOverlapped(intoPath).size() > 1) {
-              throw new SemanticException(
-                  "select into: target paths in into clause should be different.");
-            }
-          }
-        }
-      } else {
-        for (int deviceIndex = 0; deviceIndex < sourceDevices.size(); deviceIndex++) {
-          IntoItem intoItem = intoItems.get(deviceIndex);
-          List<String> intoMeasurements = intoItem.getIntoMeasurements();
-          PartialPath targetDevice = targetDevices.get(deviceIndex);
-
-          if (intoItem.isMeasurementsExistPlaceholder()) {
-            if (intoMeasurements.size() > 1) {
-              throw new SemanticException("");
-            }
-
-            String measurementTemplate = intoMeasurements.get(0);
-            for (Expression outputColumn : outputColumns) {
-              PartialPath intoPath =
-                  targetDevice.concatNode(
-                      constructIntoMeasurement(
-                          sourceDevices.get(deviceIndex).concatNode(outputColumn.toString()),
-                          measurementTemplate));
-              intoPathPatternTreeMap.append(intoPath, outputColumn.toString());
-              if (intoPathPatternTreeMap.getOverlapped(intoPath).size() > 1) {
-                throw new SemanticException(
-                    "select into: target paths in into clause should be different.");
-              }
-            }
-          } else {
-            if (intoMeasurements.size() != outputColumns.size()) {
-              throw new SemanticException(
-                  "select into: the number of source columns and the number of target paths should be the same.");
-            }
-
-            for (int measurementIndex = 0;
-                measurementIndex < intoMeasurements.size();
-                measurementIndex++) {
-              PartialPath intoPath =
-                  targetDevice.concatNode(intoMeasurements.get(measurementIndex));
-              intoPathPatternTreeMap.append(
-                  intoPath, outputColumns.get(measurementIndex).toString());
-              if (intoPathPatternTreeMap.getOverlapped(intoPath).size() > 1) {
-                throw new SemanticException(
-                    "select into: target paths in into clause should be different.");
-              }
-            }
-          }
-        }
-      }
-    } else {
-      for (int deviceIndex = 0; deviceIndex < sourceDevices.size(); deviceIndex++) {
-        IntoItem intoItem = intoItems.get(deviceIndex);
-        List<String> intoMeasurements = intoItem.getIntoMeasurements();
-        if (intoMeasurements.size() != outputColumns.size()) {
-          throw new SemanticException(
-              "select into: the number of source columns and the number of target paths should be the same.");
-        }
-
-        PartialPath targetDevice = targetDevices.get(deviceIndex);
-        for (int measurementIndex = 0;
-            measurementIndex < intoMeasurements.size();
-            measurementIndex++) {
-          PartialPath intoPath = targetDevice.concatNode(intoMeasurements.get(measurementIndex));
-          intoPathPatternTreeMap.append(intoPath, outputColumns.get(measurementIndex).toString());
-          if (intoPathPatternTreeMap.getOverlapped(intoPath).size() > 1) {
-            throw new SemanticException(
-                "select into: target paths in into clause should be different.");
-          }
-        }
-      }
-    }
-
-    if (isAllRawSeriesQuery) {
-      if (intoComponent.isDeviceExistPlaceholder()) {
-        if (intoComponent.isMeasurementsExistPlaceholder()) {
-          String measurementTemplate = intoItems.get(0).getIntoMeasurements().get(0);
-          for (int i = 0; i < targetDevices.size(); i++) {
-            PartialPath targetDevice = targetDevices.get(i);
-            for (Expression outputColumn : outputColumns) {
-              PartialPath intoPath =
-                  targetDevice.concatNode(
-                      constructIntoMeasurement(
-                          sourceDevices.get(i).concatNode(outputColumn.toString()),
-                          measurementTemplate));
-              intoPathPatternTreeMap.append(intoPath, outputColumn.toString());
-              if (intoPathPatternTreeMap.getOverlapped(intoPath).size() > 1) {
-                throw new SemanticException(
-                    "select into: target paths in into clause should be different.");
-              }
-            }
-          }
+      for (Expression sourceColumn : sourceColumns) {
+        String measurementTemplate = intoDeviceMeasurementIterator.getMeasurementTemplate();
+        String targetMeasurement;
+        if (sourceColumn instanceof TimeSeriesOperand) {
+          targetMeasurement =
+              constructTargetMeasurement(
+                  sourceDevice.concatNode(sourceColumn.toString()), measurementTemplate);
         } else {
-
+          targetMeasurement = sourceColumn.toString();
         }
+        intoDeviceMeasurementDescriptor.specifyTargetMeasurement(
+            targetDevice, sourceColumn.toString(), targetMeasurement);
+        intoDeviceMeasurementIterator.nextMeasurement();
       }
-    } else {
 
+      intoDeviceMeasurementIterator.nextDevice();
     }
-    analyzeIntoDevices(analysis, intoItems);
-    analysis.setIntoPathPatternTreeMap(intoPathPatternTreeMap);
-  }
-
-  private PartialPath constructIntoDevice(PartialPath sourceDevice, PartialPath deviceTemplate) {
-    String[] sourceNodes = sourceDevice.getNodes();
-    String[] templateNodes = deviceTemplate.getNodes();
-
-    List<String> targetNodes = new ArrayList<>();
-    for (int nodeIndex = 0; nodeIndex < templateNodes.length; nodeIndex++) {
-      String curNode = templateNodes[nodeIndex];
-      if (curNode.equals(DOUBLE_COLONS)) {
-        if (nodeIndex != templateNodes.length - 1) {
-          throw new SemanticException("");
-        }
-        for (; nodeIndex < sourceNodes.length; nodeIndex++) {
-          targetNodes.add(sourceNodes[nodeIndex]);
-        }
-        break;
-      }
-
-      String resNode = curNode;
-      Matcher matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
-      while (matcher.find()) {
-        String param = matcher.group();
-        int index;
-        try {
-          index = Integer.parseInt(param.substring(2, param.length() - 1).trim());
-        } catch (NumberFormatException e) {
-          throw new SemanticException("select into: the i of ${i} should be an integer.");
-        }
-        if (index < 1 || index >= sourceNodes.length) {
-          throw new SemanticException(
-              "select into: the i of ${i} should be greater than 0 and equal to or less than the length of queried path prefix.");
-        }
-        resNode = matcher.replaceFirst(sourceNodes[index]);
-        matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
-      }
-      targetNodes.add(resNode);
-    }
-    return new PartialPath(targetNodes.toArray(new String[0]));
+    analysis.setIntoDeviceMeasurementDescriptor(intoDeviceMeasurementDescriptor);
   }
 
   private void analyzeInto(
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
-    if (queryStatement.getIntoComponent() == null) {
+    if (!queryStatement.isSelectInto()) {
       return;
     }
 
-    List<Expression> outputColumns =
+    List<Expression> sourceColumns =
         outputExpressions.stream()
             .map(Pair::getLeft)
             .collect(Collectors.toCollection(ArrayList::new));
-    boolean isAllRawSeriesQuery = checkIsAllRawSeriesQuery(outputColumns);
 
     IntoComponent intoComponent = queryStatement.getIntoComponent();
-    List<IntoItem> intoItems = intoComponent.getIntoItems();
+    intoComponent.validate(sourceColumns);
 
-    List<PartialPath> intoPaths = new ArrayList<>();
-    PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> intoPathPatternTreeMap =
-        PatternTreeMapFactory.getIntoPathPatternTreeMap();
+    IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
+    IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
+    for (Expression sourceColumn : sourceColumns) {
+      PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
+      String measurementTemplate = intoPathIterator.getMeasurementTemplate();
+      boolean isAlignedDevice = intoPathIterator.isAlignedDevice();
 
-    if (isAllRawSeriesQuery) {
-      List<PartialPath> sourcePaths =
-          outputColumns.stream()
-              .map(expression -> ((TimeSeriesOperand) expression).getPath())
-              .collect(Collectors.toList());
-
-      if (intoComponent.isDeviceExistPlaceholder()) {
-        if (intoComponent.isMeasurementsExistPlaceholder()) {
-          if (intoItems.size() > 1) {
-            throw new SemanticException("");
-          }
-          if (intoItems.get(0).getIntoMeasurements().size() > 1) {
-            throw new SemanticException("");
-          }
-
-          PartialPath deviceTemplate = intoItems.get(0).getIntoDevice();
-          String measurementTemplate = intoItems.get(0).getIntoMeasurements().get(0);
-          for (PartialPath sourcePath : sourcePaths) {
-            intoPaths.add(constructIntoPath(sourcePath, deviceTemplate, measurementTemplate));
-          }
-        } else {
-          int sourcePathIndex = 0;
-          for (IntoItem intoItem : intoItems) {
-            PartialPath deviceTemplate = intoItem.getIntoDevice();
-            List<String> measurementList = intoItem.getIntoMeasurements();
-            for (String measurement : measurementList) {
-              intoPaths.add(
-                  constructIntoPath(sourcePaths.get(sourcePathIndex), deviceTemplate, measurement));
-              sourcePathIndex++;
-            }
-          }
-        }
+      PartialPath targetPath;
+      if (sourceColumn instanceof TimeSeriesOperand) {
+        PartialPath sourcePath = ((TimeSeriesOperand) sourceColumn).getPath();
+        targetPath = constructTargetPath(sourcePath, deviceTemplate, measurementTemplate);
       } else {
-        if (intoComponent.isMeasurementsExistPlaceholder()) {
-          if (intoItems.size() != outputColumns.size()) {
-            throw new SemanticException(
-                "select into: the number of source columns and the number of target paths should be the same.");
-          }
-
-          for (int i = 0; i < intoItems.size(); i++) {
-            if (intoItems.get(i).getIntoMeasurements().size() != 1) {
-              throw new SemanticException("");
-            }
-
-            PartialPath targetDevice = intoItems.get(i).getIntoDevice();
-            intoPaths.add(
-                targetDevice.concatNode(
-                    constructIntoMeasurement(
-                        sourcePaths.get(i), intoItems.get(0).getIntoMeasurements().get(0))));
-          }
-        } else {
-          intoPaths =
-              intoItems.stream()
-                  .map(IntoItem::getIntoPaths)
-                  .flatMap(List::stream)
-                  .collect(Collectors.toList());
-        }
+        targetPath = deviceTemplate.concatNode(measurementTemplate);
       }
-    } else {
-      // disable placeholder
-      for (IntoItem intoItem : intoItems) {
-        if (intoItem.isDeviceExistPlaceholder() || intoItem.isMeasurementsExistPlaceholder()) {
-          throw new SemanticException(
-              "select into: placeholders can only be used in raw timeseries data queries.");
-        }
-      }
-
-      intoPaths =
-          intoItems.stream()
-              .map(IntoItem::getIntoPaths)
-              .flatMap(List::stream)
-              .collect(Collectors.toList());
+      intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
+      intoPathDescriptor.specifyDeviceAlignment(targetPath.getDevicePath(), isAlignedDevice);
+      intoPathIterator.next();
     }
-
-    // check quantity consistency
-    if (intoPaths.size() != outputColumns.size()) {
-      throw new SemanticException(
-          "select into: the number of source columns and the number of target paths should be the same.");
-    }
-
-    for (int i = 0; i < intoPaths.size(); i++) {
-      intoPathPatternTreeMap.append(intoPaths.get(i), outputColumns.get(i).toString());
-      if (intoPathPatternTreeMap.getOverlapped(intoPaths.get(i)).size() > 1) {
-        throw new SemanticException(
-            "select into: target paths in into clause should be different.");
-      }
-    }
-
-    analyzeIntoDevices(analysis, intoItems);
-    analysis.setIntoPathPatternTreeMap(intoPathPatternTreeMap);
-  }
-
-  private void analyzeIntoDevices(Analysis analysis, List<IntoItem> intoItems) {
-    Map<PartialPath, Boolean> intoDeviceToAlignedMap = new HashMap<>();
-    for (IntoItem intoItem : intoItems) {
-      PartialPath devicePath = intoItem.getIntoDevice();
-      boolean isAligned = intoItem.isAligned();
-      if (intoDeviceToAlignedMap.containsKey(devicePath)
-          && intoDeviceToAlignedMap.get(devicePath) != isAligned) {
-        throw new SemanticException(
-            String.format(
-                "select into: inconsistent alignment property specified for device '%s'.",
-                devicePath));
-      }
-      intoDeviceToAlignedMap.put(devicePath, isAligned);
-    }
-    analysis.setIntoDeviceToAlignedMap(intoDeviceToAlignedMap);
-  }
-
-  private boolean checkIsAllRawSeriesQuery(List<Expression> expressions) {
-    for (Expression expression : expressions) {
-      if (!(expression instanceof TimeSeriesOperand)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private PartialPath constructIntoPath(
-      PartialPath sourcePath, PartialPath deviceTemplate, String measurementTemplate) {
-    PartialPath targetDevice = constructIntoDevice(sourcePath.getDevicePath(), deviceTemplate);
-    String targetMeasurement = constructIntoMeasurement(sourcePath, measurementTemplate);
-    return targetDevice.concatNode(targetMeasurement);
-  }
-
-  private String constructIntoMeasurement(PartialPath sourcePath, String measurementTemplate) {
-    if (measurementTemplate.equals(DOUBLE_COLONS)) {
-      return sourcePath.getMeasurement();
-    }
-
-    String[] sourceNodes = sourcePath.getNodes();
-    String resNode = measurementTemplate;
-    Matcher matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
-    while (matcher.find()) {
-      String param = matcher.group();
-      int index;
-      try {
-        index = Integer.parseInt(param.substring(2, param.length() - 1).trim());
-      } catch (NumberFormatException e) {
-        throw new SemanticException("select into: the i of ${i} should be an integer.");
-      }
-      if (index < 1 || index >= sourceNodes.length) {
-        throw new SemanticException(
-            "select into: the i of ${i} should be greater than 0 and equal to or less than the length of queried path prefix.");
-      }
-      resNode = matcher.replaceFirst(sourceNodes[index]);
-      matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
-    }
-    return resNode;
+    analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
 
   /**

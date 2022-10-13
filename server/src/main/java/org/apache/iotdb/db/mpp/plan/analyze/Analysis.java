@@ -24,8 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -33,6 +31,8 @@ import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoDeviceMeasurementDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -140,12 +140,14 @@ public class Analysis {
   private DatasetHeader respDatasetHeader;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // SELECT INTO Analysis (used in ALIGN BY DEVICE)
+  // SELECT INTO Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> intoPathPatternTreeMap;
+  // used in ALIGN BY DEVICE
+  private IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor;
 
-  private Map<PartialPath, Boolean> intoDeviceToAlignedMap;
+  // used in ALIGN BY TIME
+  private IntoPathDescriptor intoPathDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
@@ -414,21 +416,20 @@ public class Analysis {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
   }
 
-  public PatternTreeMap<String, PatternTreeMapFactory.StringSerializer>
-      getIntoPathPatternTreeMap() {
-    return intoPathPatternTreeMap;
+  public IntoDeviceMeasurementDescriptor getIntoDeviceMeasurementDescriptor() {
+    return intoDeviceMeasurementDescriptor;
   }
 
-  public void setIntoPathPatternTreeMap(
-      PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> intoPathPatternTreeMap) {
-    this.intoPathPatternTreeMap = intoPathPatternTreeMap;
+  public void setIntoDeviceMeasurementDescriptor(
+      IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor) {
+    this.intoDeviceMeasurementDescriptor = intoDeviceMeasurementDescriptor;
   }
 
-  public Map<PartialPath, Boolean> getIntoDeviceToAlignedMap() {
-    return intoDeviceToAlignedMap;
+  public IntoPathDescriptor getIntoPathDescriptor() {
+    return intoPathDescriptor;
   }
 
-  public void setIntoDeviceToAlignedMap(Map<PartialPath, Boolean> intoDeviceToAlignedMap) {
-    this.intoDeviceToAlignedMap = intoDeviceToAlignedMap;
+  public void setIntoPathDescriptor(IntoPathDescriptor intoPathDescriptor) {
+    this.intoPathDescriptor = intoPathDescriptor;
   }
 }
