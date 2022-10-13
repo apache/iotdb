@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -1949,6 +1950,10 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+  }
+
+  public void loadCQConfig(TCQConfig cqConfig) {
+    conf.setCqMinEveryIntervalInMs(cqConfig.getCqMinEveryIntervalInMs());
   }
 
   public void reclaimConsensusMemory() {

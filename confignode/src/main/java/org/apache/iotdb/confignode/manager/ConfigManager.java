@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -82,15 +83,18 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -108,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -170,6 +175,9 @@ public class ConfigManager implements IManager {
   /** Sync */
   private final SyncManager syncManager;
 
+  /** CQ */
+  private final CQManager cqManager;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -180,6 +188,7 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
+    CQInfo cqInfo = new CQInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -191,7 +200,8 @@ public class ConfigManager implements IManager {
             procedureInfo,
             udfInfo,
             triggerInfo,
-            syncInfo);
+            syncInfo,
+            cqInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -204,6 +214,7 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
+    this.cqManager = new CQManager(this);
 
     // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
     // above managers
@@ -902,6 +913,11 @@ public class ConfigManager implements IManager {
     return procedureManager;
   }
 
+  @Override
+  public CQManager getCQManager() {
+    return cqManager;
+  }
+
   /**
    * @param storageGroups the storage groups to check
    * @return List of PartialPath the storage groups that not exist
@@ -1096,6 +1112,30 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
+  }
+
+  @Override
+  public TSStatus createCQ(TCreateCQReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? cqManager.createCQ(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropCQ(TDropCQReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? cqManager.dropCQ(req)
+        : status;
+  }
+
+  @Override
+  public TShowCQResp showCQ() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? cqManager.showCQ()
+        : new TShowCQResp(status, Collections.emptyList());
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

@@ -270,6 +270,8 @@ public class ConfigNodeDescriptor {
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
       loadRatisConsensusConfig(properties);
+
+      loadCQConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -409,6 +411,19 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_rpc_leader_election_timeout_max_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
+  }
+
+  private void loadCQConfig(Properties properties) {
+    conf.setCqSubmitThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread()))));
+
+    conf.setCqMinEveryIntervalInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs()))));
   }
 
   /**

@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -174,6 +175,14 @@ public class NodeManager {
     dataSet.setRatisConfig(ratisConfig);
   }
 
+  private void setCQConfig(DataNodeRegisterResp dataSet) {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    TCQConfig cqConfig = new TCQConfig();
+    cqConfig.setCqMinEveryIntervalInMs(conf.getCqMinEveryIntervalInMs());
+
+    dataSet.setCqConfig(cqConfig);
+  }
+
   /**
    * Register DataNode
    *
@@ -205,6 +214,7 @@ public class NodeManager {
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     setRatisConfig(dataSet);
+    setCQConfig(dataSet);
     return dataSet;
   }
 
@@ -694,22 +704,28 @@ public class NodeManager {
    *
    * @return TDataNodeLocation
    */
-  public TDataNodeLocation getLowestLoadDataNode() {
-    AtomicInteger result = new AtomicInteger();
+  public Optional<TDataNodeLocation> getLowestLoadDataNode() {
+    AtomicInteger result = new AtomicInteger(-1);
     AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
 
     nodeCacheMap.forEach(
         (dataNodeId, heartbeatCache) -> {
           long score = heartbeatCache.getLoadScore();
-          if (score < lowestLoadScore.get()) {
+          if (heartbeatCache.getNodeStatus() == NodeStatus.Running
+              && score < lowestLoadScore.get()) {
             result.set(dataNodeId);
             lowestLoadScore.set(score);
           }
         });
 
-    LOGGER.info(
-        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+    if (result.get() == -1) {
+      return Optional.empty();
+    } else {
+      LOGGER.info(
+          "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+      return Optional.of(
+          configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get()));
+    }
   }
 
   public boolean isNodeRemoving(int dataNodeId) {

@@ -36,6 +36,7 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
+  7: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -69,6 +70,10 @@ struct TRatisConfig {
 
   13: required i64 schemaLeaderElectionTimeoutMax
   14: required i64 dataLeaderElectionTimeoutMax
+}
+
+struct TCQConfig {
+  1: required i64 cqMinEveryIntervalInMs
 }
 
 struct TDataNodeRemoveReq {
@@ -486,6 +491,36 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+// ====================================================
+// CQ
+// ====================================================
+struct TCreateCQReq {
+  1: required string cqId,
+  2: required i64 everyInterval,
+  3: required i64 boundaryTime,
+  4: required i64 startTimeOffset,
+  5: required i64 endTimeOffset,
+  6: required byte timeoutPolicy,
+  7: required string queryBody,
+  8: required string sql
+}
+
+struct TDropCQReq {
+  1: required string cqId
+}
+
+struct TCQEntry {
+  1: required string cqId
+  2: required string sql
+  3: required byte state
+}
+
+struct TShowCQResp {
+  1: required common.TSStatus status
+  2: required list<TCQEntry> cqList
+}
+
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -867,5 +902,28 @@ service IConfigNodeRPCService {
   /** Get the given storage group's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
+
+  // ====================================================
+  // CQ
+  // ====================================================
+
+  /**
+   * Create a CQ
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   */
+  common.TSStatus createCQ(TCreateCQReq req)
+
+  /**
+   * Drop a CQ
+   *
+   * @return SUCCESS_STATUS if the CQ was removed successfully
+   */
+  common.TSStatus dropCQ(TDropCQReq req)
+
+  /**
+   * Return the trigger table of config leader
+   */
+  TShowCQResp showCQ()
 }
 

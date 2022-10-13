@@ -180,6 +180,11 @@ public class ConfigNodeConfig {
   private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
 
+  /** CQ related */
+  private int cqSubmitThread = 2;
+
+  private long cqMinEveryIntervalInMs = 1_000;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -670,5 +675,21 @@ public class ConfigNodeConfig {
       long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
     this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
         schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public int getCqSubmitThread() {
+    return cqSubmitThread;
+  }
+
+  public void setCqSubmitThread(int cqSubmitThread) {
+    this.cqSubmitThread = cqSubmitThread;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
 }

@@ -1034,6 +1034,9 @@ public class IoTDBConfig {
   private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
+  /** CQ related */
+  private long cqMinEveryIntervalInMs = 1_000;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3427,5 +3430,13 @@ public class IoTDBConfig {
       long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
         schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
 }

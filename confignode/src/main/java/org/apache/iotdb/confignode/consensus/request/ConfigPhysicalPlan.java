@@ -47,6 +47,11 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -294,6 +299,21 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetSeriesSlotList:
           req = new GetSeriesSlotListPlan();
+          break;
+        case ACTIVE_CQ:
+          req = new ActiveCQPlan();
+          break;
+        case ADD_CQ:
+          req = new AddCQPlan();
+          break;
+        case DROP_CQ:
+          req = new DropCQPlan();
+          break;
+        case UPDATE_CQ_LAST_EXEC_TIME:
+          req = new UpdateCQLastExecTimePlan();
+          break;
+        case SHOW_CQ:
+          req = new ShowCQPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

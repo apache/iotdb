@@ -52,6 +52,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
 
@@ -280,6 +282,11 @@ public class AsyncDataNodeClientPool {
    */
   public void resetClient(TEndPoint endPoint) {
     clientManager.clear(endPoint);
+  }
+
+  public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
+      throws IOException {
+    return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 
   // TODO: Is the ClientPool must be a singleton?

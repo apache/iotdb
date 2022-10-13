@@ -47,6 +47,11 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -77,6 +82,7 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
@@ -118,6 +124,8 @@ public class ConfigPlanExecutor {
   private final TriggerInfo triggerInfo;
   private final ClusterSyncInfo syncInfo;
 
+  private final CQInfo cqInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -126,7 +134,8 @@ public class ConfigPlanExecutor {
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
-      ClusterSyncInfo syncInfo) {
+      ClusterSyncInfo syncInfo,
+      CQInfo cqInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
@@ -135,6 +144,7 @@ public class ConfigPlanExecutor {
     this.udfInfo = udfInfo;
     this.triggerInfo = triggerInfo;
     this.syncInfo = syncInfo;
+    this.cqInfo = cqInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -186,6 +196,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
+      case SHOW_CQ:
+        return cqInfo.showCQ((ShowCQPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -277,6 +289,14 @@ public class ConfigPlanExecutor {
         return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
       case SetPipeStatus:
         return syncInfo.operatePipe((SetPipeStatusPlan) physicalPlan);
+      case ADD_CQ:
+        return cqInfo.addCQ((AddCQPlan) physicalPlan);
+      case DROP_CQ:
+        return cqInfo.dropCQ((DropCQPlan) physicalPlan);
+      case ACTIVE_CQ:
+        return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
+      case UPDATE_CQ_LAST_EXEC_TIME:
+        return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

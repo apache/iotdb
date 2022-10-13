@@ -290,6 +290,15 @@ struct TOperatePipeOnDataNodeReq {
     2: required i8 operation
 }
 
+// ====================================================
+// CQ
+// ====================================================
+struct TExecuteCQ {
+  1: required string queryBody
+  2: required i64 startTime
+  3: required i64 endTime
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -539,6 +548,11 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Execute CQ on DataNode
+  */
+  common.TSStatus executeCQ(TExecuteCQ req)
 }
 
 service MPPDataExchangeService {
