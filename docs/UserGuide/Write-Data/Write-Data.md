@@ -23,7 +23,9 @@
 
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Reference/SQL-Reference.md) in [Client/Shell tools](../QuickStart/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Reference/SQL-Reference.md).
 
-This section mainly introduces the use of [INSERT SQL statement](../Reference/SQL-Reference.md) for real-time data import in the scenario.
+NOTE： This section mainly introduces the use of [INSERT SQL statement](../Reference/SQL-Reference.md) for real-time data import in the scenario.
+
+Writing a repeat timestamp covers the original timestamp data, which can be regarded as updated data.
 
 ## Use of INSERT Statements
 
