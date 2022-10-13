@@ -136,8 +136,6 @@ public class SchemaLogReader<T> implements AutoCloseable {
 
     private long mark;
 
-    private int invokeLevel = 0;
-
     public RecordableInputStream(InputStream inputStream) {
       this.inputStream = inputStream;
     }
