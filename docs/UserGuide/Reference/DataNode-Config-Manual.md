@@ -464,7 +464,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |    Name     | write\_memory\_variation\_report\_proportion                 |
 | :---------: | :----------------------------------------------------------- |
-| Description | uf memory cost of data region increased more than proportion of allocated memory for write, report to system |
+| Description | if memory cost of data region increased more than proportion of allocated memory for write, report to system |
 |    Type     | Double                                                       |
 |   Default   | 0.001                                                        |
 |  Effective  | After restarting system                                      |
