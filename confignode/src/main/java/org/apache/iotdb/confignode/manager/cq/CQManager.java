@@ -20,12 +20,14 @@ package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.cq.CQState;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.response.ShowCQResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
@@ -37,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -105,8 +108,64 @@ public class CQManager {
       res = executor;
     } finally {
       lock.readLock().unlock();
-      ;
     }
     return res;
+  }
+
+  public void startCQScheduler() {
+    lock.writeLock().lock();
+    try {
+      // 1. shutdown previous cq schedule thread pool
+      try {
+        executor.shutdown();
+      } catch (Throwable t) {
+        // just print the error log because we should make sure we can start a new cq schedule pool
+        // successfully in the next steps
+        LOGGER.error("Error happened while shutting down previous cq schedule thread pool.", t);
+      }
+
+      // 2. start a new schedule thread pool
+      executor =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(CONF.getCqSubmitThread(), "CQ-Scheduler");
+
+      // 3. get all CQs
+      List<CQInfo.CQEntry> allCQs = null;
+      // keep fetching until we get all CQEntries if this node is still leader
+      while (allCQs == null && configManager.getConsensusManager().isLeader()) {
+        ConsensusReadResponse response = configManager.getConsensusManager().read(new ShowCQPlan());
+        if (response.getDataset() != null) {
+          allCQs = ((ShowCQResp) response.getDataset()).getCqList();
+        } else {
+          // consensus layer related errors
+          LOGGER.warn(
+              "Unexpected error happened while fetching cq list: ", response.getException());
+        }
+      }
+
+      // 4. recover the scheduling of active CQs
+      if (allCQs != null) {
+        for (CQInfo.CQEntry entry : allCQs) {
+          if (entry.getState() == CQState.ACTIVE) {
+            CQScheduleTask cqScheduleTask = new CQScheduleTask(entry, executor, configManager);
+            cqScheduleTask.submitSelf();
+          }
+        }
+      }
+
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public void stopCQScheduler() {
+    ScheduledExecutorService previous;
+    lock.writeLock().lock();
+    try {
+      previous = executor;
+      executor = null;
+    } finally {
+      lock.writeLock().unlock();
+    }
+    previous.shutdown();
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
@@ -65,17 +66,56 @@ public class CQScheduleTask implements Runnable {
       String md5,
       ScheduledExecutorService executor,
       ConfigManager configManager) {
-    this.cqId = req.cqId;
-    this.everyInterval = req.everyInterval;
-    this.startTimeOffset = req.startTimeOffset;
-    this.endTimeOffset = req.endTimeOffset;
-    this.timeoutPolicy = TimeoutPolicy.deserialize(req.timeoutPolicy);
-    this.queryBody = req.queryBody;
+    this(
+        req.cqId,
+        req.everyInterval,
+        req.startTimeOffset,
+        req.endTimeOffset,
+        TimeoutPolicy.deserialize(req.timeoutPolicy),
+        req.queryBody,
+        md5,
+        executor,
+        configManager,
+        firstExecutionTime);
+  }
+
+  public CQScheduleTask(
+      CQInfo.CQEntry entry, ScheduledExecutorService executor, ConfigManager configManager) {
+    this(
+        entry.getCqId(),
+        entry.getEveryInterval(),
+        entry.getStartTimeOffset(),
+        entry.getEndTimeOffset(),
+        entry.getTimeoutPolicy(),
+        entry.getQueryBody(),
+        entry.getMd5(),
+        executor,
+        configManager,
+        entry.getLastExecutionTime() + entry.getEveryInterval());
+  }
+
+  public CQScheduleTask(
+      String cqId,
+      long everyInterval,
+      long startTimeOffset,
+      long endTimeOffset,
+      TimeoutPolicy timeoutPolicy,
+      String queryBody,
+      String md5,
+      ScheduledExecutorService executor,
+      ConfigManager configManager,
+      long executionTime) {
+    this.cqId = cqId;
+    this.everyInterval = everyInterval;
+    this.startTimeOffset = startTimeOffset;
+    this.endTimeOffset = endTimeOffset;
+    this.timeoutPolicy = timeoutPolicy;
+    this.queryBody = queryBody;
     this.md5 = md5;
     this.executor = executor;
     this.configManager = configManager;
     this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval);
-    this.executionTime = firstExecutionTime;
+    this.executionTime = executionTime;
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {

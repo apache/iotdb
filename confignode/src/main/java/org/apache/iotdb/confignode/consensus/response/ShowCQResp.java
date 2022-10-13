@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -26,18 +27,27 @@ import org.apache.iotdb.consensus.common.DataSet;
 import javax.validation.constraints.NotNull;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowCQResp implements DataSet {
 
   private final TSStatus status;
-  private final List<TCQEntry> cqList;
+  private final List<CQInfo.CQEntry> cqList;
 
-  public ShowCQResp(@NotNull TSStatus status, @NotNull List<TCQEntry> cqList) {
+  public ShowCQResp(@NotNull TSStatus status, @NotNull List<CQInfo.CQEntry> cqList) {
     this.status = status;
     this.cqList = cqList;
   }
 
   public TShowCQResp convertToRpcShowCQResp() {
-    return new TShowCQResp(status, cqList);
+    return new TShowCQResp(
+        status,
+        cqList.stream()
+            .map(entry -> new TCQEntry(entry.getCqId(), entry.getSql(), entry.getState().getType()))
+            .collect(Collectors.toList()));
+  }
+
+  public List<CQInfo.CQEntry> getCqList() {
+    return cqList;
   }
 }

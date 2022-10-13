@@ -152,6 +152,7 @@ public class PartitionRegionStateMachine
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
+      configManager.getCQManager().startCQScheduler();
     } else {
       LOGGER.info(
           "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
@@ -159,6 +160,7 @@ public class PartitionRegionStateMachine
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
+      configManager.getCQManager().stopCQScheduler();
     }
   }
 

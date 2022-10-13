@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.ShowCQResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -132,9 +131,7 @@ public class CQInfo implements SnapshotProcessor {
     try {
       return new ShowCQResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          cqMap.values().stream()
-              .map(entry -> new TCQEntry(entry.cqId, entry.sql, entry.state.getType()))
-              .collect(Collectors.toList()));
+          cqMap.values().stream().map(CQEntry::new).collect(Collectors.toList()));
     } finally {
       lock.readLock().unlock();
     }
@@ -267,7 +264,7 @@ public class CQInfo implements SnapshotProcessor {
     cqMap.clear();
   }
 
-  private static class CQEntry {
+  public static class CQEntry {
     private final String cqId;
     private final long everyInterval;
     private final long boundaryTime;
@@ -285,7 +282,7 @@ public class CQInfo implements SnapshotProcessor {
       this(
           req.cqId,
           req.everyInterval,
-          req.everyInterval,
+          req.boundaryTime,
           req.startTimeOffset,
           req.endTimeOffset,
           TimeoutPolicy.deserialize(req.timeoutPolicy),
@@ -294,6 +291,21 @@ public class CQInfo implements SnapshotProcessor {
           md5,
           CQState.INACTIVE,
           lastExecutionTime);
+    }
+
+    private CQEntry(CQEntry other) {
+      this(
+          other.cqId,
+          other.everyInterval,
+          other.boundaryTime,
+          other.startTimeOffset,
+          other.endTimeOffset,
+          other.timeoutPolicy,
+          other.queryBody,
+          other.sql,
+          other.md5,
+          other.state,
+          other.lastExecutionTime);
     }
 
     private CQEntry(
@@ -359,6 +371,50 @@ public class CQInfo implements SnapshotProcessor {
           md5,
           state,
           lastExecutionTime);
+    }
+
+    public String getCqId() {
+      return cqId;
+    }
+
+    public long getEveryInterval() {
+      return everyInterval;
+    }
+
+    public long getBoundaryTime() {
+      return boundaryTime;
+    }
+
+    public long getStartTimeOffset() {
+      return startTimeOffset;
+    }
+
+    public long getEndTimeOffset() {
+      return endTimeOffset;
+    }
+
+    public TimeoutPolicy getTimeoutPolicy() {
+      return timeoutPolicy;
+    }
+
+    public String getQueryBody() {
+      return queryBody;
+    }
+
+    public String getSql() {
+      return sql;
+    }
+
+    public String getMd5() {
+      return md5;
+    }
+
+    public CQState getState() {
+      return state;
+    }
+
+    public long getLastExecutionTime() {
+      return lastExecutionTime;
     }
   }
 }
