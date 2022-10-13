@@ -1642,24 +1642,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    String nodeName = parseNodeString(ctx.getText());
-    checkNodeName(nodeName);
-    return nodeName;
+    return parseNodeString(ctx.getText());
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    String nodeName = parseNodeString(ctx.getText());
-    checkNodeName(nodeName);
-    return nodeName;
+    return parseNodeString(ctx.getText());
   }
 
   private String parseNodeNameInIntoPath(IoTDBSqlParser.NodeNameInIntoPathContext ctx) {
-    if (ctx.DOUBLE_COLON() != null) {
-      return ctx.getText();
-    }
-    String nodeName = parseNodeString(ctx.getText());
-    checkNodeNameInIntoPath(nodeName);
-    return nodeName;
+    return parseNodeStringInIntoPath(ctx.getText());
   }
 
   private String parseNodeString(String nodeName) {
@@ -1676,6 +1667,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       return unWrapped;
     }
+    checkNodeName(nodeName);
+    return nodeName;
+  }
+
+  private String parseNodeStringInIntoPath(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.DOUBLE_COLONS)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (PathUtils.isRealNumber(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    checkNodeNameInIntoPath(nodeName);
     return nodeName;
   }
 
