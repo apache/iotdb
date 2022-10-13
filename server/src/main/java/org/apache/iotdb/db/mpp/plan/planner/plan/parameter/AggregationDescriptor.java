@@ -137,10 +137,10 @@ public class AggregationDescriptor {
           outputAggregationNames.add(AggregationType.MAX_TIME.name().toLowerCase());
           break;
         default:
-          outputAggregationNames.add(aggregationFuncName);
+          outputAggregationNames.add(aggregationFuncName.toLowerCase());
       }
     } else {
-      outputAggregationNames.add(aggregationFuncName);
+      outputAggregationNames.add(aggregationFuncName.toLowerCase());
     }
     return outputAggregationNames;
   }

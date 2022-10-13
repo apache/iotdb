@@ -179,14 +179,7 @@ public class TsFileProcessor {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
-    this.writer =
-        new RestorableTsFileIOWriter(
-            tsfile,
-            (long)
-                (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
-                    * IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getChunkMetadataSizeProportionInWrite()));
+    this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);

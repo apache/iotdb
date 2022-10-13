@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -72,6 +73,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -510,9 +512,13 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showPipeSink(
       ShowPipeSinkStatement showPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PipeSink> pipeSinkList =
-        LocalConfigNode.getInstance().showPipeSink(showPipeSinkStatement.getPipeSinkName());
-    ShowPipeSinkTask.buildTSBlockByPipeSink(pipeSinkList, future);
+    try {
+      List<PipeSink> pipeSinkList =
+          LocalConfigNode.getInstance().showPipeSink(showPipeSinkStatement.getPipeSinkName());
+      ShowPipeSinkTask.buildTSBlockByPipeSink(pipeSinkList, future);
+    } catch (PipeSinkException e) {
+      ShowPipeSinkTask.buildTSBlockByPipeSink(Collections.emptyList(), future);
+    }
     return future;
   }
 

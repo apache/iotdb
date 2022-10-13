@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -64,6 +65,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
@@ -177,6 +179,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public void validateAndSetSchema(ISchemaTree schemaTree) throws MetadataException {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo == null) {
+      throw new PathNotExistException(
+          Arrays.stream(measurements)
+              .map(s -> devicePath.getFullPath() + s)
+              .collect(Collectors.toList()));
+    }
     if (deviceSchemaInfo.isAligned() != isAligned) {
       throw new AlignedTimeseriesException(
           String.format(

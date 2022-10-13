@@ -80,6 +80,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -853,7 +854,7 @@ public class DataRegion {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowPlan.getTime())) {
-      throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
+      throw new OutOfTTLException(insertRowPlan.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     writeLock("InsertRow");
     try {
@@ -896,7 +897,7 @@ public class DataRegion {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
-      throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() - dataTTL));
+      throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
@@ -1090,7 +1091,7 @@ public class DataRegion {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (System.currentTimeMillis() - dataTTL));
+            (DateTimeUtils.currentTime() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -1156,7 +1157,7 @@ public class DataRegion {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   /**
@@ -1747,7 +1748,7 @@ public class DataRegion {
       logger.debug("{}: TTL not set, ignore the check", storageGroupName + "-" + dataRegionId);
       return;
     }
-    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         storageGroupName + "-" + dataRegionId,
@@ -2039,7 +2040,7 @@ public class DataRegion {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
@@ -3295,6 +3296,13 @@ public class DataRegion {
     return workUnsequenceTsFileProcessors.values();
   }
 
+  public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
+    if (dataTTL != Long.MAX_VALUE) {
+      dataTTL = DateTimeUtils.convertMilliTimeWithPrecision(dataTTL);
+    }
+    this.dataTTL = dataTTL;
+  }
+
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
   }
@@ -3539,8 +3547,9 @@ public class DataRegion {
                       TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
-                          new Date(insertRowNode.getTime()),
-                          new Date(System.currentTimeMillis() - dataTTL))));
+                          DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
+                          DateTimeUtils.convertMillsecondToZonedDateTime(
+                              DateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map

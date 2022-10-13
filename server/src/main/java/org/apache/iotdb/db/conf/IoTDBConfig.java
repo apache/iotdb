@@ -152,8 +152,6 @@ public class IoTDBConfig {
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
 
-  private double chunkMetadataSizeProportionInWrite = 0.1;
-
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
@@ -445,7 +443,7 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  private double chunkMetadataSizeProportionInCompaction = 0.05;
+  private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -766,10 +764,10 @@ public class IoTDBConfig {
   private boolean enablePartition = false;
 
   /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 86400000;
+  private long timePartitionIntervalForStorage = 604_800_000;
 
   /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 86400000;
+  private long timePartitionIntervalForRouting = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -3245,21 +3243,12 @@ public class IoTDBConfig {
     this.throttleThreshold = throttleThreshold;
   }
 
-  public double getChunkMetadataSizeProportionInWrite() {
-    return chunkMetadataSizeProportionInWrite;
+  public double getChunkMetadataSizeProportion() {
+    return chunkMetadataSizeProportion;
   }
 
-  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
-    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
-  }
-
-  public double getChunkMetadataSizeProportionInCompaction() {
-    return chunkMetadataSizeProportionInCompaction;
-  }
-
-  public void setChunkMetadataSizeProportionInCompaction(
-      double chunkMetadataSizeProportionInCompaction) {
-    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
+  public void setChunkMetadataSizeProportion(double chunkMetadataSizeProportion) {
+    this.chunkMetadataSizeProportion = chunkMetadataSizeProportion;
   }
 
   public long getCacheWindowTimeInMs() {
@@ -3431,5 +3420,9 @@ public class IoTDBConfig {
       long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
         schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public double getUsableCompactionMemoryProportion() {
+    return 1.0d - chunkMetadataSizeProportion;
   }
 }

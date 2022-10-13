@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -62,6 +63,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -70,6 +72,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -129,6 +133,13 @@ public interface IManager {
    * @return TriggerManager instance
    */
   TriggerManager getTriggerManager();
+
+  /**
+   * Get SyncManager
+   *
+   * @return SyncManager instance
+   */
+  SyncManager getSyncManager();
 
   /**
    * Get ProcedureManager
@@ -265,9 +276,9 @@ public interface IManager {
   /**
    * Register ConfigNode when it is first startup
    *
-   * @return TSStatus
+   * @return TConfigNodeRegisterResp
    */
-  TSStatus registerConfigNode(TConfigNodeRegisterReq req);
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
    * Create peer in new node to build consensus group.
@@ -406,9 +417,51 @@ public interface IManager {
    */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
 
+  /**
+   * Create Pipe
+   *
+   * @param pipeInfo Info about Pipe
+   * @return TSStatus
+   */
+  TSStatus createPipe(TPipeInfo pipeInfo);
+
+  /**
+   * Start Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus startPipe(String pipeName);
+
+  /**
+   * Stop Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus stopPipe(String pipeName);
+
+  /**
+   * Drop Pipe
+   *
+   * @param pipeName name of Pipe
+   * @return TSStatus
+   */
+  TSStatus dropPipe(String pipeName);
+
+  /**
+   * Get Pipe by name. If pipeName is empty, get all Pipe.
+   *
+   * @param req specify the pipeName
+   * @return TShowPipeResp contains the TShowPipeInfo
+   */
+  TShowPipeResp showPipe(TShowPipeReq req);
+
   TGetRoutingResp getRouting(GetRoutingPlan plan);
 
   TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
 
   TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+
+  TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 }

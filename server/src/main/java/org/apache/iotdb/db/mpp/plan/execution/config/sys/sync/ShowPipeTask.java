@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -28,7 +28,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -55,17 +55,17 @@ public class ShowPipeTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      List<TPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
+      List<TShowPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipeColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TPipeInfo tPipeInfo : pipeInfoList) {
+    for (TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
-          .writeBinary(new Binary(DatetimeUtils.convertLongToDate(tPipeInfo.getCreateTime())));
+          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreateTime())));
       builder.getColumnBuilder(1).writeBinary(new Binary(tPipeInfo.getPipeName()));
       builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getRole()));
       builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getRemote()));
