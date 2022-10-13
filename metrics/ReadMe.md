@@ -55,7 +55,7 @@ Metric Module
 4. MetricService
    1. Provide the start and stop method of metric service.
    2. Provide the ability to reload properties when running.
-   3. Provide the ability to load predefined metric sets.
+   3. Provide the ability to load metric sets.
    4. Provide the access of metricManager and CompositeReporter.
 
 # 2. Test Report
@@ -105,7 +105,6 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | metricReporterList         | the list of reporter                                                                   | JMX, PROMETHEUS, IOTDB              |
 | monitorType                | The type of metric manager                                                             | DROPWIZARD, MICROMETER              |
 | metricLevel                | the init level of metrics                                                              | ALL, NORMAL, IMPORTANT, CORE        |
-| predefinedMetrics          | predefined set of metrics                                                              | JVM, LOGBACK, FILE, PROCESS, SYSTEM |
 | asyncCollectPeriodInSecond | The period of the collection of some metrics in asynchronous way, such as tsfile size. | 5                                   |
 | pushPeriodInSecond         | the period time of push(used for prometheus, unit: s)                                  | 5                                   |
 
@@ -119,8 +118,7 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
 
 # 4. How to implement your own metric framework?
 1. implement your MetricService
-   1. You need to implement `enablePredefinedMetrics` to load predefined metrics.
-   2. You need to implement `reloadProperties` to reload properties when running.
+   1. You need to implement `reloadProperties` to reload properties when running.
 2. implement your MetricManager
    1. The name of MetricManager should start with `monitorType`, MetricService will init manager according to the prefix of class name.
    2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.AbstractMetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
@@ -131,9 +129,6 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
 4. implement your specific metric
    1. They are counter, gauge, histogram, histogramSnapshot, rate and timer.
    2. These metrics will be managed by your MetricManager, and reported by your reporter.
-5. extends preDefinedMetric module:
-   1. you can add value into `metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/PredefinedMetric`, such as `System` and `Thread`.
-   2. then you need to fix the implementation of `enablePredefinedMetric(PredefinedMetric metric)` in your manager.
 
 # 5. Some docs
 1. <a href = "https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Metric-Tool.html">Metric Tool</a>
