@@ -73,6 +73,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
+  private AbstractCompactionEstimator compactionEstimator;
+
   public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
@@ -80,6 +82,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     this.maxCrossCompactionFileSize =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
+    this.compactionEstimator = new RewriteCrossCompactionEstimator();
   }
 
   /**
@@ -113,10 +116,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
-      select(false);
-      if (selectedUnseqFiles.isEmpty()) {
-        select(true);
-      }
+      selectFiles();
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
@@ -147,10 +147,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
    *
-   * @param useTightBound whether is tight estimate or loop estimate
    * @throws IOException
    */
-  void select(boolean useTightBound) throws IOException {
+  void selectFiles() throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
     seqSelectedNum = 0;
@@ -189,16 +188,17 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         }
       }
 
+      List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
       for (int seqIndex : tmpSelectedSeqFiles) {
+        TsFileResource tsFileResource = resource.getSeqFiles().get(seqIndex);
+        tmpSelectedSeqFileResources.add(tsFileResource);
         totalSize += resource.getSeqFiles().get(seqIndex).getTsFileSize();
       }
       totalSize += unseqFile.getTsFileSize();
 
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
-          useTightBound
-              ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit)
-              : calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
+          compactionEstimator.estimateCrossCompactionMemory(tmpSelectedSeqFileResources, unseqFile);
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;
