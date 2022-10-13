@@ -750,6 +750,7 @@ var config = {
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
 							['Process-Data/Alerting','Alerting'],
+							['Process-Data/Archiving','Data Archiving'],
 						]
 					},
 					{
@@ -1669,6 +1670,7 @@ var config = {
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
 							['Process-Data/Alerting','告警机制'],
+							['Process-Data/Archiving','数据归档'],
 						]
 					},
 					{

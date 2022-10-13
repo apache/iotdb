@@ -19,9 +19,9 @@
 
 -->
 
-# Archiving Data
+# Data Archiving
 
-The archiving data tools consist of 5 Cli commands: `set`, `cancel`, `pause`, `continue`, and `show`. Users may use
+The data archiving tools consist of 5 Cli commands: `set`, `cancel`, `pause`, `continue`, and `show`. Users may use
 archiving tools to create archiving tasks, these archiving tasks start at the user specified date, and archives expired
 data (timestamp before expire time) into a target directory specified by user, the user can then perform other
 operations such as `pause` on the tasks.
