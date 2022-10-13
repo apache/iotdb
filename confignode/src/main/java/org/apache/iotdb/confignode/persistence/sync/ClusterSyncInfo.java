@@ -45,9 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 public class ClusterSyncInfo implements SnapshotProcessor {
 
@@ -153,18 +151,12 @@ public class ClusterSyncInfo implements SnapshotProcessor {
 
   public PipeResp showPipe(ShowPipePlan plan) {
     PipeResp resp = new PipeResp();
-    // TODO(sync): optimize logic later
-    List<PipeInfo> allPipeInfos = syncMetadata.getAllPipeInfos();
     if (StringUtils.isEmpty(plan.getPipeName())) {
-      resp.setPipeInfoList(allPipeInfos);
+      // show all
+      resp.setPipeInfoList(syncMetadata.getAllPipeInfos());
     } else {
-      List<PipeInfo> pipeInfoList = new ArrayList<>();
-      for (PipeInfo pipeInfo : allPipeInfos) {
-        if (plan.getPipeName().equals(pipeInfo.getPipeName())) {
-          pipeInfoList.add(pipeInfo);
-        }
-      }
-      resp.setPipeInfoList(pipeInfoList);
+      // show specific pipe
+      resp.setPipeInfoList(Collections.singletonList(syncMetadata.getPipeInfo(plan.getPipeName())));
     }
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return resp;

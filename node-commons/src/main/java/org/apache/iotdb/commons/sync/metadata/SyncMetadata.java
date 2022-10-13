@@ -53,7 +53,7 @@ public class SyncMetadata implements SnapshotProcessor {
   // <PipeSinkName, PipeSink>
   private Map<String, PipeSink> pipeSinks;
 
-  // <PipeName, <CreateTime, PipeInfo>>
+  // <PipeName, PipeInfo>
   private Map<String, PipeInfo> pipes;
 
   public SyncMetadata() {
@@ -158,7 +158,7 @@ public class SyncMetadata implements SnapshotProcessor {
     pipes.remove(pipeName);
   }
 
-  public void setPipeStatus(String pipeName, PipeStatus status) throws PipeException {
+  public void setPipeStatus(String pipeName, PipeStatus status) {
     pipes.get(pipeName).setStatus(status);
   }
 

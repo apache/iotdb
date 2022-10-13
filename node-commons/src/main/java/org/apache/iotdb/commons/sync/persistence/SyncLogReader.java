@@ -39,7 +39,7 @@ public class SyncLogReader {
   private static final Logger logger = LoggerFactory.getLogger(SyncLogReader.class);
   // <pipeSinkName, PipeSink>
   private final Map<String, PipeSink> pipeSinks = new ConcurrentHashMap<>();
-  // <pipeName, PipeSink>
+  // <pipeName, Pipe>
   private final Map<String, PipeInfo> pipes = new ConcurrentHashMap<>();
   private final File dir;
   private final String fileName;
