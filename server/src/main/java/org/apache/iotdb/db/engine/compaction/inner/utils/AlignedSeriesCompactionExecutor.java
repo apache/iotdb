@@ -111,6 +111,7 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
+    writer.startChunkGroup(device);
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -135,6 +136,7 @@ public class AlignedSeriesCompactionExecutor {
           chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
     }
+    writer.endChunkGroup();
     writer.checkMetadataSizeAndMayFlush();
   }
 

@@ -80,13 +80,13 @@ public class InnerSpaceCompactionUtils {
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
-        writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
+          writer.startChunkGroup(device);
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
+          writer.endChunkGroup();
         }
-        writer.endChunkGroup();
       }
 
       for (TsFileResource tsFileResource : tsFileResources) {
@@ -140,10 +140,26 @@ public class InnerSpaceCompactionUtils {
     checkThreadInterrupted(targetResource);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    if (!checkAlignedSeriesValid(readerAndChunkMetadataList)) {
+      return;
+    }
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
+  }
+
+  /** Ensure that there is at least one chunk that is not empty. */
+  private static boolean checkAlignedSeriesValid(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerMetadataPair :
+        readerAndChunkMetadataList) {
+      if (!readerMetadataPair.right.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static boolean deleteTsFilesInDisk(
