@@ -49,14 +49,6 @@ public class PatternTreeMapFactory {
         HashSet::new, (mod, set) -> set.add(mod), null, ModsSerializer.getInstance());
   }
 
-  public static PatternTreeMap<String, StringSerializer> getIntoPathPatternTreeMap() {
-    return new PatternTreeMap<>(
-        HashSet::new,
-        (columnName, set) -> set.add(columnName),
-        (columnName, set) -> set.remove(columnName),
-        StringSerializer.getInstance());
-  }
-
   public static class ModsSerializer implements PathPatternNode.Serializer<Modification> {
 
     @Override
