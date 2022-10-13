@@ -37,12 +37,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,10 +176,10 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult(){
-    if(!resultSetConsumed){
+  public Optional<ByteBuffer> getByteBufferBatchResult() {
+    if (!resultSetConsumed) {
       resultSetConsumed = true;
-      try{
+      try {
         return Optional.of(new TsBlockSerde().serialize(resultSet));
       } catch (IOException e) {
         throw new RuntimeException(e);

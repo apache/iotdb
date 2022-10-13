@@ -23,10 +23,10 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceH
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,14 +122,14 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         currSequenceId++;
         logger.info(
-                "[GetTsBlockFromQueue] TsBlock:{} size:{}",
-                currSequenceId,
-                tsBlock.getRetainedSizeInBytes());
+            "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+            currSequenceId,
+            tsBlock.getRetainedSizeInBytes());
       }
       checkAndInvokeOnFinished();
-      if(tsBlock!=null){
+      if (tsBlock != null) {
         return new TsBlockSerde().serialize(tsBlock);
-      }else{
+      } else {
         return null;
       }
     } catch (IOException e) {

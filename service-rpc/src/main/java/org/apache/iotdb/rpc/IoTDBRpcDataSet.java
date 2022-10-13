@@ -24,24 +24,18 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class IoTDBRpcDataSet {
 
@@ -73,10 +67,10 @@ public class IoTDBRpcDataSet {
   public List<ByteBuffer> queryResult;
   public TsBlock curTsBlock;
   public Long time; // used to cache the current time value
-  public int queryResultSize; //the length of queryResult
-  public int queryResultIndex; //the index of bytebuffer in queryResult
-  public int tsBlockSize; //the size of current tsBlock
-  public int tsBlockIndex; //the row index in current tsBlock
+  public int queryResultSize; // the length of queryResult
+  public int queryResultIndex; // the index of bytebuffer in queryResult
+  public int tsBlockSize; // the size of current tsBlock
+  public int tsBlockIndex; // the row index in current tsBlock
   public static final int FLAG =
       0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
@@ -185,7 +179,7 @@ public class IoTDBRpcDataSet {
       constructOneRow();
       return true;
     }
-    if(hasCachedByteBuffer()){
+    if (hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
@@ -236,20 +230,21 @@ public class IoTDBRpcDataSet {
     }
   }
 
-  public boolean hasCachedBlock(){
-    return (curTsBlock != null && tsBlockIndex < tsBlockSize-1);
-  }
-  public boolean hasCachedByteBuffer(){
-    return (queryResult != null && queryResultIndex<queryResultSize);
+  public boolean hasCachedBlock() {
+    return (curTsBlock != null && tsBlockIndex < tsBlockSize - 1);
   }
 
-  public void constructOneRow(){
+  public boolean hasCachedByteBuffer() {
+    return (queryResult != null && queryResultIndex < queryResultSize);
+  }
+
+  public void constructOneRow() {
     tsBlockIndex++;
     time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
     hasCachedRecord = true;
   }
 
-  public void constructOneTsBlock(){
+  public void constructOneTsBlock() {
     lastReadWasNull = false;
     ByteBuffer byteBuffer = queryResult.get(queryResultIndex);
     queryResultIndex++;
@@ -469,7 +464,10 @@ public class IoTDBRpcDataSet {
   }
 
   public void checkRecord() throws StatementExecutionException {
-    if (queryResultIndex>queryResultSize||tsBlockIndex>=tsBlockSize||queryResult==null||curTsBlock==null) {
+    if (queryResultIndex > queryResultSize
+        || tsBlockIndex >= tsBlockSize
+        || queryResult == null
+        || curTsBlock == null) {
       throw new StatementExecutionException("No record remains");
     }
   }

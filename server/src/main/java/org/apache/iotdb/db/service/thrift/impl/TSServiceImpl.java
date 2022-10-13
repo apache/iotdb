@@ -316,17 +316,29 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) throws TException {
+  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req)
+      throws TException {
     return null;
   }
 
   @Override
-  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req) throws TException {
+  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req)
+      throws TException {
     return null;
   }
 
   @Override
   public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSExecuteStatementResp executeRawDataQueryV2(TSRawDataQueryReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) throws TException {
     return null;
   }
 

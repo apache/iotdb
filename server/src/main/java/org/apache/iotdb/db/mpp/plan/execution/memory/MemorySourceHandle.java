@@ -22,10 +22,10 @@ package org.apache.iotdb.db.mpp.plan.execution.memory;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -67,9 +67,9 @@ public class MemorySourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() {
     hasNext = false;
-    if(result.isEmpty()){
+    if (result.isEmpty()) {
       return null;
-    }else{
+    } else {
       try {
         return new TsBlockSerde().serialize(result);
       } catch (IOException e) {

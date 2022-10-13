@@ -402,10 +402,10 @@ public class QueryExecution implements IQueryExecution {
           stateMachine.transitionToAborted();
           if (stateMachine.getFailureStatus() != null) {
             throw new IoTDBException(
-                    stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+                stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
             throw new IoTDBException(
-                    stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
           logger.info("[ResultHandleFinished]");
@@ -416,7 +416,7 @@ public class QueryExecution implements IQueryExecution {
         ListenableFuture<?> blocked = resultHandle.isBlocked();
         blocked.get();
         if (!resultHandle.isFinished()) {
-          //use the getSerializedTsBlock instead of receive to get ByteBuffer result
+          // use the getSerializedTsBlock instead of receive to get ByteBuffer result
           ByteBuffer res = resultHandle.getSerializedTsBlock();
           if (res == null) {
             continue;
@@ -429,7 +429,7 @@ public class QueryExecution implements IQueryExecution {
         stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
         if (stateMachine.getFailureStatus() != null) {
           throw new IoTDBException(
-                  stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+              stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
         }
         Throwable t = e.getCause() == null ? e : e.getCause();
         throwIfUnchecked(t);

@@ -407,14 +407,14 @@ public class SessionConnection {
     TSExecuteStatementResp execResp;
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
-      execResp = client.executeRawDataQuery(execReq);
+      execResp = client.executeRawDataQueryV2(execReq);
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          execResp = client.executeRawDataQuery(execReq);
+          execResp = client.executeRawDataQueryV2(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -446,14 +446,14 @@ public class SessionConnection {
     tsLastDataQueryReq.setTimeout(timeOut);
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
-      tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+      tsExecuteStatementResp = client.executeLastDataQueryV2(tsLastDataQueryReq);
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           tsLastDataQueryReq.setSessionId(sessionId);
           tsLastDataQueryReq.setStatementId(statementId);
-          tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+          tsExecuteStatementResp = client.executeLastDataQueryV2(tsLastDataQueryReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

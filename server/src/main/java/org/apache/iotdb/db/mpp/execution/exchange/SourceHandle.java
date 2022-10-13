@@ -67,7 +67,7 @@ public class SourceHandle implements ISourceHandle {
   private final SourceHandleListener sourceHandleListener;
 
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
-  private final Map<Integer,ByteBuffer> sequenceIdToBfBlock = new HashMap<>();
+  private final Map<Integer, ByteBuffer> sequenceIdToBfBlock = new HashMap<>();
 
   private final String threadName;
   private long retryIntervalInMs;

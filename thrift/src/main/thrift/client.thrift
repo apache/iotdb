@@ -441,8 +441,11 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeStatementV2(1:TSExecuteStatementReq req);
 
-  TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req)
+  TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
 
+  TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -456,9 +459,9 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
+  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req);
 
-  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
+  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req);
 
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
