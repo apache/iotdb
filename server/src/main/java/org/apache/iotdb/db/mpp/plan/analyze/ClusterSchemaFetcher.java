@@ -93,12 +93,21 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, false);
+  }
+
+  @Override
+  public ClusterSchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, true);
+  }
+
+  private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap));
+    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
@@ -361,6 +370,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               devicePath.concatNode(entry.getKey()),
               (MeasurementSchema) entry.getValue(),
               null,
+              null,
               template.isDirectAligned());
         }
 
@@ -450,6 +460,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           devicePath.concatNode(measurements.get(i)),
           new MeasurementSchema(
               measurements.get(i), tsDataTypes.get(i), encodings.get(i), compressors.get(i)),
+          null,
           null,
           isAligned);
     }

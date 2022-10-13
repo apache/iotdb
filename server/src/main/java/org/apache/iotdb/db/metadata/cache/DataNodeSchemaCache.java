@@ -109,6 +109,7 @@ public class DataNodeSchemaCache {
             devicePath.concatNode(
                 schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
             schemaCacheEntry.getMeasurementSchema(),
+            schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
       }
@@ -121,6 +122,7 @@ public class DataNodeSchemaCache {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
+              measurementPath.getTagMap(),
               measurementPath.isUnderAlignedEntity());
       cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
     }
@@ -168,6 +170,7 @@ public class DataNodeSchemaCache {
           entry =
               new SchemaCacheEntry(
                   (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
           cache.put(seriesPath, entry);
         }

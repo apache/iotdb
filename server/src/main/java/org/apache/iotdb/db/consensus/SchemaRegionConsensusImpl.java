@@ -58,6 +58,7 @@ public class SchemaRegionConsensusImpl {
           ConsensusFactory.getConsensusImpl(
                   conf.getSchemaRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(conf.getDataNodeId())
                       .setThisNode(
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
