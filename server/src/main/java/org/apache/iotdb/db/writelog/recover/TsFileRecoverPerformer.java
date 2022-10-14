@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -114,14 +113,7 @@ public class TsFileRecoverPerformer {
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter = null;
     try {
-      restorableTsFileIOWriter =
-          new RestorableTsFileIOWriter(
-              file,
-              (long)
-                  (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
-                      * IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .getChunkMetadataMemorySizeProportion()));
+      restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
