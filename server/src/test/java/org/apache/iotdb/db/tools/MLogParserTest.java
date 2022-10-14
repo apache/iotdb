@@ -162,13 +162,9 @@ public class MLogParserTest {
 
     IoTDB.schemaProcessor.forceMlog();
 
-    testParseStorageGroupLog();
-
     for (int i = 0; i < storageGroups.length; i++) {
       testParseMLog(storageGroups[i], storageGroupIndex[i], mlogLineNum[i]);
     }
-
-    testParseTemplateLogFile();
   }
 
   private void testNonExistingStorageGroupDir(String storageGroup) {
@@ -178,19 +174,6 @@ public class MLogParserTest {
                 + File.separator
                 + storageGroup);
     Assert.assertFalse(storageGroupDir.exists());
-  }
-
-  private void testParseStorageGroupLog() throws IOException {
-    testParseLog(config.getSchemaDir() + File.separator + MetadataConstant.STORAGE_GROUP_LOG, 7);
-  }
-
-  private void testParseTemplateLogFile() throws IOException {
-
-    testParseLog(
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + MetadataConstant.TEMPLATE_FILE,
-        1);
   }
 
   private void testParseMLog(String storageGroup, int storageGroupId, int expectedLineNum)

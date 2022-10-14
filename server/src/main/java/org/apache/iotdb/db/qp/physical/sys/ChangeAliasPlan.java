@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -31,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class ChangeAliasPlan extends PhysicalPlan {
+public class ChangeAliasPlan extends PhysicalPlan implements IChangeAliasPlan {
   private PartialPath path;
   private String alias;
 
