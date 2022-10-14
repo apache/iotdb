@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -56,7 +55,7 @@ public class CQInfoTest {
   }
 
   @Test
-  public void testSnapshot() throws TException, IOException, IllegalPathException {
+  public void testSnapshot() throws TException, IOException {
     long executionTime = System.currentTimeMillis();
     AddCQPlan addCQPlan =
         new AddCQPlan(
@@ -84,9 +83,9 @@ public class CQInfoTest {
                 0,
                 1000,
                 0,
-                (byte) 0,
-                "select s1 into root.backup.d2.s1 from root.sg.d1",
-                "create cq testCq2 BEGIN select s1 into root.backup.d2.s1 from root.sg.d1 END",
+                (byte) 1,
+                "select s1 into root.backup.d2.s1 from root.sg.d2",
+                "create cq testCq2 BEGIN select s1 into root.backup.d2.s1 from root.sg.d2 END",
                 "Asia"),
             "testCq2_md5",
             executionTime);
