@@ -168,12 +168,12 @@ public class TriggerManagementService {
   }
 
   /**
-   * @param fullPath PathPattern
+   * @param devicePath PathPattern
    * @return all the triggers that matched this Pattern
    */
   public List<List<String>> getMatchedTriggerListForPath(
-      PartialPath fullPath, List<String> measurements) {
-    return patternTreeMap.getOverlapped(fullPath, measurements);
+      PartialPath devicePath, List<String> measurements) {
+    return patternTreeMap.getOverlapped(devicePath, measurements);
   }
 
   private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
@@ -248,7 +248,7 @@ public class TriggerManagementService {
         // get trigger instance
         Trigger trigger =
             constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
-        // construct and save TriggerExecutor after successfully creating trigger instancer
+        // construct and save TriggerExecutor after successfully creating trigger instance
         TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
         executorMap.put(triggerName, triggerExecutor);
       }
