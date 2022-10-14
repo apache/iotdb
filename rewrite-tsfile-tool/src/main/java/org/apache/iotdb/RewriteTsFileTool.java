@@ -470,6 +470,17 @@ public class RewriteTsFileTool {
     }
   }
 
+  /**
+   * Read the chunk metadata first, then read the chunk according to chunk metadata
+   *
+   * @param files
+   * @param session
+   * @throws IOException
+   * @throws IllegalPathException
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   * @throws NoMeasurementException
+   */
   public static void reverseWriteTsFile(List<File> files, Session session)
       throws IOException, IllegalPathException, IoTDBConnectionException,
           StatementExecutionException, NoMeasurementException {
@@ -498,10 +509,10 @@ public class RewriteTsFileTool {
     }
   }
 
+  /** Read data from tsfile and write it to IoTDB for a single not aligned series. */
   protected static void writeSingleSeries(
       String device, MultiTsFileDeviceIterator.MeasurementIterator seriesIterator, Session session)
-      throws IllegalPathException, IOException, IoTDBConnectionException,
-          StatementExecutionException {
+      throws IllegalPathException {
     PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
     LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
         seriesIterator.getMetadataListForCurrentSeries();
@@ -521,6 +532,7 @@ public class RewriteTsFileTool {
     }
   }
 
+  /** Read and write a single chunk for not aligned series. */
   protected static void writeSingleChunk(
       String device,
       PartialPath p,
@@ -556,6 +568,7 @@ public class RewriteTsFileTool {
     }
   }
 
+  /** Collect the schema list for an aligned device. */
   private static List<IMeasurementSchema> collectSchemaFromAlignedChunkMetadataList(
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList)
       throws IOException {
@@ -592,6 +605,7 @@ public class RewriteTsFileTool {
     return schemaList;
   }
 
+  /** Read and write an aligned series. */
   protected static void writeAlignedSeries(
       String device, MultiTsFileDeviceIterator deviceIterator, Session session)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -608,28 +622,37 @@ public class RewriteTsFileTool {
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
       TsFileAlignedSeriesReaderIterator readerIterator =
           new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadataList, iSchemaList);
-      while (readerIterator.hasNext()) {
-        Tablet tablet = new Tablet(device, schemaList, 1024);
-        Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-        AlignedChunkReader alignedChunkReader = chunkReaderAndChunkSize.left;
-        while (alignedChunkReader.hasNextSatisfiedPage()) {
-          IBatchDataIterator batchDataIterator =
-              alignedChunkReader.nextPageData().getBatchDataIterator();
-          while (batchDataIterator.hasNext()) {
-            TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
-            tablet.timestamps[tablet.rowSize] = batchDataIterator.currentTime();
-            tablet.values[tablet.rowSize++] = batchDataIterator.currentValue();
-            batchDataIterator.next();
-            if (tablet.rowSize >= 1024) {
-              session.insertAlignedTablet(tablet);
-              tablet.reset();
-            }
+      writeAlignedChunk(readerIterator, device, schemaList, session);
+    }
+  }
+
+  private static void writeAlignedChunk(
+      TsFileAlignedSeriesReaderIterator readerIterator,
+      String device,
+      List<MeasurementSchema> schemaList,
+      Session session)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    while (readerIterator.hasNext()) {
+      Tablet tablet = new Tablet(device, schemaList, 1024);
+      Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
+      AlignedChunkReader alignedChunkReader = chunkReaderAndChunkSize.left;
+      while (alignedChunkReader.hasNextSatisfiedPage()) {
+        IBatchDataIterator batchDataIterator =
+            alignedChunkReader.nextPageData().getBatchDataIterator();
+        while (batchDataIterator.hasNext()) {
+          TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
+          tablet.timestamps[tablet.rowSize] = batchDataIterator.currentTime();
+          tablet.values[tablet.rowSize++] = batchDataIterator.currentValue();
+          batchDataIterator.next();
+          if (tablet.rowSize >= 1024) {
+            session.insertAlignedTablet(tablet);
+            tablet.reset();
           }
         }
-        if (tablet.rowSize > 0) {
-          session.insertAlignedTablet(tablet);
-          tablet.reset();
-        }
+      }
+      if (tablet.rowSize > 0) {
+        session.insertAlignedTablet(tablet);
+        tablet.reset();
       }
     }
   }
