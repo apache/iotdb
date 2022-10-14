@@ -87,6 +87,7 @@ public class LoadManager {
 
   /** Load statistics executor service */
   private Future<?> currentLoadStatisticsFuture;
+
   private final ScheduledExecutorService loadStatisticsExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
   private final Object scheduleMonitor = new Object();
@@ -158,7 +159,7 @@ public class LoadManager {
       if (currentLoadStatisticsFuture == null) {
         currentLoadStatisticsFuture =
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                    loadStatisticsExecutor,
+                loadStatisticsExecutor,
                 this::updateLoadStatistics,
                 0,
                 HEARTBEAT_INTERVAL,
@@ -215,9 +216,6 @@ public class LoadManager {
     if (updateLoadStatisticsPlan.isNeedUpdate()) {
       getConsensusManager().write(updateLoadStatisticsPlan);
     }
-
-
-
 
     if (existDataNodeChangesStatus.get()) {
       // The RegionRouteMap must be broadcast if some DataNodes change status

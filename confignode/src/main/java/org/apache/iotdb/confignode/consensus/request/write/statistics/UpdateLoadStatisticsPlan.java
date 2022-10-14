@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,6 +31,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
 
@@ -78,8 +78,10 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
     }
 
     ReadWriteIOUtils.write(regionGroupStatisticsMap.size(), stream);
-    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry : regionGroupStatisticsMap.entrySet()) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionGroupStatisticsEntry.getKey(), stream);
+    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+        regionGroupStatisticsMap.entrySet()) {
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
+          regionGroupStatisticsEntry.getKey(), stream);
       regionGroupStatisticsEntry.getValue().serialize(stream);
     }
   }
@@ -97,10 +99,25 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
     int regionGroupNum = buffer.getInt();
     for (int i = 0; i < regionGroupNum; i++) {
       TConsensusGroupId consensusGroupId =
-      ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
+          ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
       RegionGroupStatistics regionGroupStatistics = new RegionGroupStatistics();
       regionGroupStatistics.deserialize(buffer);
       regionGroupStatisticsMap.put(consensusGroupId, regionGroupStatistics);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    UpdateLoadStatisticsPlan that = (UpdateLoadStatisticsPlan) o;
+    return nodeStatisticsMap.equals(that.nodeStatisticsMap)
+        && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), nodeStatisticsMap, regionGroupStatisticsMap);
   }
 }

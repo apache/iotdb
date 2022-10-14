@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;
 import java.util.LinkedList;

@@ -728,6 +728,14 @@ public class PartitionInfo implements SnapshotProcessor {
         task.serialize(fileOutputStream, protocol);
       }
 
+      // serialize RegionGroupStatistics
+      ReadWriteIOUtils.write(regionGroupStatisticsMap.size(), fileOutputStream);
+      for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+          regionGroupStatisticsMap.entrySet()) {
+        regionGroupStatisticsEntry.getKey().write(protocol);
+        regionGroupStatisticsEntry.getValue().serialize(fileOutputStream);
+      }
+
       // write to file
       fileOutputStream.flush();
       fileOutputStream.close();
@@ -783,6 +791,16 @@ public class PartitionInfo implements SnapshotProcessor {
       for (int i = 0; i < length; i++) {
         RegionMaintainTask task = RegionMaintainTask.Factory.create(fileInputStream, protocol);
         regionMaintainTaskList.add(task);
+      }
+
+      // restore RegionGroupStatistics
+      length = ReadWriteIOUtils.readInt(fileInputStream);
+      for (int i = 0; i < length; i++) {
+        TConsensusGroupId groupId = new TConsensusGroupId();
+        groupId.read(protocol);
+        RegionGroupStatistics regionGroupStatistics = new RegionGroupStatistics();
+        regionGroupStatistics.deserialize(fileInputStream);
+        regionGroupStatisticsMap.put(groupId, regionGroupStatistics);
       }
     }
   }
@@ -840,12 +858,18 @@ public class PartitionInfo implements SnapshotProcessor {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
-    return storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
+    return nextRegionGroupId.equals(that.nextRegionGroupId)
+        && storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
+        && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)
         && regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPartitionTables, regionMaintainTaskList);
+    return Objects.hash(
+        nextRegionGroupId,
+        storageGroupPartitionTables,
+        regionGroupStatisticsMap,
+        regionMaintainTaskList);
   }
 }

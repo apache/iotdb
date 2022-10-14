@@ -59,6 +59,11 @@ public class NodeStatistics {
     return statusReason;
   }
 
+  public void setRemoving() {
+    this.statusReason = null;
+    this.status = NodeStatus.Removing;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(loadScore, stream);
     ReadWriteIOUtils.write(status.getStatus(), stream);

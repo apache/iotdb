@@ -295,7 +295,7 @@ public class NodeInfo implements SnapshotProcessor {
           applyConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       SystemPropertiesUtils.storeConfigNodeId(
-              applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
+          applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),

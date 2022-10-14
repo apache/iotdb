@@ -536,10 +536,6 @@ public class NodeManager {
 
   /** Start the heartbeat service */
   public void startHeartbeatService() {
-    if (getConsensusManager().isLeader()) {
-      check services
-    }
-
     synchronized (scheduleMonitor) {
       if (currentHeartbeatFuture == null) {
         currentHeartbeatFuture =
@@ -754,17 +750,17 @@ public class NodeManager {
   }
 
   public void setNodeRemovingStatus(TDataNodeLocation dataNodeLocation) {
+    SyncDataNodeClientPool.getInstance()
+        .sendSyncRequestToDataNodeWithRetry(
+            dataNodeLocation.getInternalEndPoint(),
+            NodeStatus.Removing.getStatus(),
+            DataNodeRequestType.SET_SYSTEM_STATUS);
     DataNodeHeartbeatCache cache =
         (DataNodeHeartbeatCache)
             configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
     if (cache != null) {
       cache.setRemoving();
     }
-    SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            dataNodeLocation.getInternalEndPoint(),
-            NodeStatus.Removing.getStatus(),
-            DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {

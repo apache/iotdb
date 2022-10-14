@@ -22,11 +22,12 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class RegionGroupStatistics {
 
@@ -41,14 +42,13 @@ public class RegionGroupStatistics {
     this.regionStatisticsMap = new HashMap<>();
   }
 
-  public RegionGroupStatistics(int leaderDataNodeId, RegionGroupStatus regionGroupStatus, Map<Integer, RegionStatistics> regionStatisticsMap) {
+  public RegionGroupStatistics(
+      int leaderDataNodeId,
+      RegionGroupStatus regionGroupStatus,
+      Map<Integer, RegionStatistics> regionStatisticsMap) {
     this.leaderDataNodeId = leaderDataNodeId;
     this.regionGroupStatus = regionGroupStatus;
     this.regionStatisticsMap = regionStatisticsMap;
-  }
-
-  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-
   }
 
   public int getLeaderDataNodeId() {
@@ -67,16 +67,17 @@ public class RegionGroupStatistics {
    */
   public RegionStatus getRegionStatus(int dataNodeId) {
     return regionStatisticsMap.containsKey(dataNodeId)
-            ? regionStatisticsMap.get(dataNodeId).getRegionStatus()
-            : RegionStatus.Unknown;
+        ? regionStatisticsMap.get(dataNodeId).getRegionStatus()
+        : RegionStatus.Unknown;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(leaderDataNodeId, stream);
     ReadWriteIOUtils.write(regionGroupStatus.getStatus(), stream);
 
     ReadWriteIOUtils.write(regionStatisticsMap.size(), stream);
-    for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry : regionStatisticsMap.entrySet()) {
+    for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
+        regionStatisticsMap.entrySet()) {
       ReadWriteIOUtils.write(regionStatisticsEntry.getKey(), stream);
       regionStatisticsEntry.getValue().serialize(stream);
     }
@@ -93,5 +94,20 @@ public class RegionGroupStatistics {
       regionStatistics.deserialize(buffer);
       regionStatisticsMap.put(belongedDataNodeId, regionStatistics);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RegionGroupStatistics that = (RegionGroupStatistics) o;
+    return leaderDataNodeId == that.leaderDataNodeId
+        && regionGroupStatus == that.regionGroupStatus
+        && regionStatisticsMap.equals(that.regionStatisticsMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(leaderDataNodeId, regionGroupStatus, regionStatisticsMap);
   }
 }

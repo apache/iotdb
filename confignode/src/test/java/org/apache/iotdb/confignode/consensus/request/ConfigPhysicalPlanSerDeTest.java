@@ -30,6 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -68,6 +70,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -86,8 +89,12 @@ import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTem
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
@@ -1042,5 +1049,30 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
+  }
+
+  @Test
+  public void UpdateLoadStatisticsPlanTest() throws IOException {
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan0 = new UpdateLoadStatisticsPlan();
+
+    for (int i = 0; i < 3; i++) {
+      updateLoadStatisticsPlan0.putNodeStatistics(
+          i, new NodeStatistics(i, NodeStatus.Running, null));
+    }
+
+    for (int i = 0; i < 10; i++) {
+      Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
+      for (int j = 0; j < 3; j++) {
+        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
+      }
+      updateLoadStatisticsPlan0.putRegionGroupStatistics(
+          new TConsensusGroupId(DataRegion, i),
+          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
+    }
+
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan1 =
+        (UpdateLoadStatisticsPlan)
+            ConfigPhysicalPlan.Factory.create(updateLoadStatisticsPlan0.serializeToByteBuffer());
+    Assert.assertEquals(updateLoadStatisticsPlan0, updateLoadStatisticsPlan1);
   }
 }

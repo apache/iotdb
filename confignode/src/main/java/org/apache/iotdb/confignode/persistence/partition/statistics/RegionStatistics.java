@@ -21,9 +21,10 @@ package org.apache.iotdb.confignode.persistence.partition.statistics;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RegionStatistics {
 
@@ -57,7 +58,7 @@ public class RegionStatistics {
     return regionStatus;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(versionTimestamp, stream);
     ReadWriteIOUtils.write(isLeader, stream);
     ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
@@ -67,5 +68,20 @@ public class RegionStatistics {
     this.versionTimestamp = buffer.getLong();
     this.isLeader = ReadWriteIOUtils.readBool(buffer);
     this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(buffer));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RegionStatistics that = (RegionStatistics) o;
+    return versionTimestamp == that.versionTimestamp
+        && isLeader == that.isLeader
+        && regionStatus == that.regionStatus;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(versionTimestamp, isLeader, regionStatus);
   }
 }

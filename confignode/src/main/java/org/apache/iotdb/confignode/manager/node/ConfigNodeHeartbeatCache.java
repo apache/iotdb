@@ -24,9 +24,8 @@ import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
-  private static final NodeStatistics CURRENT_NODE_STATISTICS = new NodeStatistics(
-          0, NodeStatus.Running, null
-  );
+  private static final NodeStatistics CURRENT_NODE_STATISTICS =
+      new NodeStatistics(0, NodeStatus.Running, null);
 
   private final TConfigNodeLocation configNodeLocation;
 
@@ -40,7 +39,9 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     // Skip itself
     if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
       // For first time update
-      return CURRENT_NODE_STATISTICS.equals(statistics) ? null : (statistics = CURRENT_NODE_STATISTICS);
+      return CURRENT_NODE_STATISTICS.equals(statistics)
+          ? null
+          : (statistics = CURRENT_NODE_STATISTICS);
     }
 
     long lastSendTime = 0;

@@ -93,6 +93,6 @@ public abstract class BaseNodeCache {
   }
 
   public void setRemoving() {
-    this.status = NodeStatus.Removing;
+    this.statistics.setRemoving();
   }
 }

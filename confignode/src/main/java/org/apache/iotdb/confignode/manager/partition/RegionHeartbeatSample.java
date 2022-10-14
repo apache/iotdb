@@ -32,10 +32,7 @@ public class RegionHeartbeatSample {
   // TODO: Add load sample
 
   public RegionHeartbeatSample(
-      long sendTimestamp,
-      long receiveTimestamp,
-      boolean isLeader,
-      RegionStatus status) {
+      long sendTimestamp, long receiveTimestamp, boolean isLeader, RegionStatus status) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
 

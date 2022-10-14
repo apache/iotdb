@@ -752,7 +752,7 @@ public class PartitionManager {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
             if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-              int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+              int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
               if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
                 result.put(consensusGroupId, -1);
               } else {
@@ -771,7 +771,7 @@ public class PartitionManager {
     } else {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
-            int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+            int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
             if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
               result.put(consensusGroupId, -1);
             } else {
@@ -800,7 +800,10 @@ public class PartitionManager {
                       .anyMatch(
                           s ->
                               s.equals(
-                                  regionGroupCacheMap.get(regionGroupId).getRegionGroupStatus()));
+                                  regionGroupCacheMap
+                                      .get(regionGroupId)
+                                      .getStatistics()
+                                      .getRegionGroupStatus()));
             })
         .collect(Collectors.toList());
   }
@@ -814,7 +817,7 @@ public class PartitionManager {
    */
   public RegionStatus getRegionStatus(TConsensusGroupId consensusGroupId, int dataNodeId) {
     return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getRegionStatus(dataNodeId)
+        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionStatus(dataNodeId)
         : RegionStatus.Unknown;
   }
 
@@ -826,15 +829,17 @@ public class PartitionManager {
    */
   public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
     return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getRegionGroupStatus()
+        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionGroupStatus()
         : RegionGroupStatus.Disabled;
   }
 
   public void cacheHeartbeatSample(
-      TConsensusGroupId regionGroupId, RegionHeartbeatSample regionHeartbeatSample) {
+      int belongedDataNodeId,
+      TConsensusGroupId regionGroupId,
+      RegionHeartbeatSample regionHeartbeatSample) {
     regionGroupCacheMap
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-        .cacheHeartbeatSample(regionHeartbeatSample);
+        .cacheHeartbeatSample(belongedDataNodeId, regionHeartbeatSample);
     regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
   }
 
