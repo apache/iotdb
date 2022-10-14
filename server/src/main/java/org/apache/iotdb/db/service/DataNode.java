@@ -102,16 +102,16 @@ public class DataNode implements DataNodeMBean {
 
   private final TEndPoint thisNode = new TEndPoint();
 
+  /** Hold the information of trigger, udf...... */
+  private final ResourcesInformationHolder resourcesInformationHolder =
+      new ResourcesInformationHolder();
+
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   private static final RegisterManager registerManager = new RegisterManager();
   public static ServiceProvider serviceProvider;
-
-  /** Hold the information of trigger, udf...... */
-  private final ResourcesInformationHolder resourcesInformationHolder =
-      new ResourcesInformationHolder();
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
