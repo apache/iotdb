@@ -151,7 +151,7 @@ public class TagAggregationOperator implements ProcessOperator {
 
       for (int i = 0; i < group.size(); i++) {
         if (group.get(i) == null) {
-          columnBuilders[i].writeBinary(new Binary("NULL"));
+          columnBuilders[i].appendNull();
         } else {
           columnBuilders[i].writeBinary(new Binary(group.get(i)));
         }

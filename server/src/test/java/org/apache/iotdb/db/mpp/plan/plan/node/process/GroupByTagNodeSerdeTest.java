@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,10 +45,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class GroupByTagNodeSerdeTest {
 
@@ -85,8 +86,8 @@ public class GroupByTagNodeSerdeTest {
             AggregationType.AVG.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
-    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+    SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
+        tagValuesToAggregationDescriptors = new TreeMap<>(GroupByTagNode::tagValuesComparator);
     tagValuesToAggregationDescriptors.put(
         Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, s1Avg));
     GroupByTagNode expectedNode =
@@ -118,5 +119,35 @@ public class GroupByTagNodeSerdeTest {
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
     Assert.assertEquals(expectedNode, PlanNodeDeserializeHelper.deserialize(buffer));
+  }
+
+  @Test
+  public void testTagValueComparator() {
+    List<Pair<List<String>, List<String>>> testCases =
+        Arrays.asList(
+            new Pair<>(Arrays.asList("x", "y", "z"), Arrays.asList("A", "B", "C")),
+            new Pair<>(Arrays.asList("x", "y", "z"), Arrays.asList("x", null, "z")),
+            new Pair<>(Arrays.asList(null, "y", "z"), Arrays.asList("x", null, null)),
+            new Pair<>(Arrays.asList(null, null, null), Arrays.asList(null, null, null)),
+            new Pair<>(Arrays.asList("x", "y", "z"), Arrays.asList("x", "y", "z")),
+            new Pair<>(Arrays.asList("x", "yz"), Arrays.asList("x", "y")));
+    int[] expected = new int[] {1, -1, 1, 0, 0, 1};
+    for (int i = 0; i < testCases.size(); i++) {
+      Pair<List<String>, List<String>> testCase = testCases.get(i);
+      if (expected[i] == 0) {
+        Assert.assertEquals(
+            testCase.toString(),
+            expected[i],
+            GroupByTagNode.tagValuesComparator(testCase.left, testCase.right));
+      } else if (expected[i] > 0) {
+        Assert.assertTrue(
+            testCase.toString(),
+            GroupByTagNode.tagValuesComparator(testCase.left, testCase.right) > 0);
+      } else {
+        Assert.assertTrue(
+            testCase.toString(),
+            GroupByTagNode.tagValuesComparator(testCase.left, testCase.right) < 0);
+      }
+    }
   }
 }

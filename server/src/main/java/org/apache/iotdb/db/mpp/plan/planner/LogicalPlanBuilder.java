@@ -98,6 +98,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -650,8 +652,8 @@ public class LogicalPlanBuilder {
       AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+    SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
+        tagValuesToAggregationDescriptors = new TreeMap<>(GroupByTagNode::tagValuesComparator);
     for (List<String> tagValues : tagValuesToGroupedTimeseriesOperands.keySet()) {
       LinkedHashMap<Expression, List<Expression>> groupedTimeseriesOperands =
           tagValuesToGroupedTimeseriesOperands.get(tagValues);

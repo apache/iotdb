@@ -36,18 +36,23 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class GroupByTagNode extends MultiChildNode {
 
   private final List<String> tagKeys;
-  private final Map<List<String>, List<CrossSeriesAggregationDescriptor>>
+
+  /**
+   * the tag values should be in a deterministic order so that the output is deterministic as well.
+   */
+  private final SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
       tagValuesToAggregationDescriptors;
+
   private final List<String> outputColumnNames;
 
   // The parameter of `group by time`.
@@ -62,7 +67,8 @@ public class GroupByTagNode extends MultiChildNode {
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder,
       List<String> tagKeys,
-      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors,
+      SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
+          tagValuesToAggregationDescriptors,
       List<String> outputColumnNames) {
     super(id, children);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -77,7 +83,8 @@ public class GroupByTagNode extends MultiChildNode {
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder,
       List<String> tagKeys,
-      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors,
+      SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
+          tagValuesToAggregationDescriptors,
       List<String> outputColumnNames) {
     super(id);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -217,7 +224,7 @@ public class GroupByTagNode extends MultiChildNode {
     return tagKeys;
   }
 
-  public Map<List<String>, List<CrossSeriesAggregationDescriptor>>
+  public SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
       getTagValuesToAggregationDescriptors() {
     return tagValuesToAggregationDescriptors;
   }
@@ -228,8 +235,8 @@ public class GroupByTagNode extends MultiChildNode {
 
     // Tag values to aggregation descriptors.
     int numOfEntries = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
-        new HashMap<>();
+    SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
+        tagValuesToAggregationDescriptors = new TreeMap<>(GroupByTagNode::tagValuesComparator);
     while (numOfEntries > 0) {
       List<String> tagValues = ReadWriteIOUtils.readStringList(byteBuffer);
       List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
@@ -308,5 +315,41 @@ public class GroupByTagNode extends MultiChildNode {
             .flatMap(
                 list -> list.stream().map(CrossSeriesAggregationDescriptor::getInputExpressions))
             .collect(Collectors.toList()));
+  }
+
+  /**
+   * The comparator of tag values in GROUP BY tag query, it uses the following rules to sort:
+   *
+   * <p>1. As each group of tag values must have the same length, so there's no need to compare the
+   * size of the lists.
+   *
+   * <p>2. Let v1(i) be the ith element in v1, then v1 < v2 iff there exists any i (0 <= i <
+   * len(v1)) that
+   *
+   * <ul>
+   *   <li>a. v1(j) == v2(j) when 0 <= j < i, and
+   *   <li>b. v1(i) < v2(i) in natual order of String, or
+   *       <ul>
+   *         <li>b1. v1(i) != null and v2(i) == null.
+   *       </ul>
+   * </ul>
+   *
+   * <p>The NULL value will be output in the last of every in-series aggregation group.
+   */
+  public static int tagValuesComparator(List<String> v1, List<String> v2) {
+    Validate.isTrue(v1.size() == v2.size());
+    for (int i = 0; i < v1.size(); i++) {
+      if (Objects.equals(v1.get(i), v2.get(i))) {
+        continue;
+      }
+      if (v2.get(i) == null) {
+        return -1;
+      }
+      if (v1.get(i) == null) {
+        return 1;
+      }
+      return v1.get(i).compareTo(v2.get(i));
+    }
+    return 0;
   }
 }

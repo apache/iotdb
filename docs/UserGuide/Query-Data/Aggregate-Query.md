@@ -540,7 +540,7 @@ The results are
 +--------+------------------+
 | Beijing|104.04666697184244|
 |Shanghai|107.85000076293946|
-|    NULL| 50.84999910990397|
+|    null| 50.84999910990397|
 +--------+------------------+
 Total line number = 3
 It costs 0.231s
@@ -549,7 +549,7 @@ It costs 0.231s
 From the results we can see that the differences between aggregation by tags query and aggregation by time or level query are:
 1. Aggregation query by tags will no longer remove wildcard to raw timeseries, but do the aggregation through the data of multiple timeseries, which have the same tag value.
 2. Except for the aggregate result column, the result set contains the key-value column of the grouped tag. The column name is the tag key, and the values in the column are tag values which present in the searched timeseries.
-If some searched timeseries doesn't have the grouped tag, a `NULL` value in the key-value column of the grouped tag will be presented, which means the aggregation of all the timeseries lacking the tagged key.
+If some searched timeseries doesn't have the grouped tag, a null value in the key-value column of the grouped tag will be presented, which means the aggregation of all the timeseries lacking the tagged key.
 
 ### Aggregation query by multiple tags
 
@@ -571,11 +571,11 @@ The results
 +--------+--------+------------------+
 |    city|workshop|  avg(temperature)|
 +--------+--------+------------------+
-|    NULL|    NULL| 50.84999910990397|
-|Shanghai|      w1|113.01666768391927|
-| Beijing|      w2| 104.4000004359654|
-|Shanghai|      w2|100.10000038146973|
 | Beijing|      w1|103.73750019073486|
+| Beijing|      w2| 104.4000004359654|
+|Shanghai|      w1|113.01666768391927|
+|Shanghai|      w2|100.10000038146973|
+|    null|    null| 50.84999910990397|
 +--------+--------+------------------+
 Total line number = 5
 It costs 0.027s
@@ -601,16 +601,51 @@ The results
 +-----------------------------+--------+--------+------------------+
 |                         Time|    city|workshop|  avg(temperature)|
 +-----------------------------+--------+--------+------------------+
-|1970-01-01T08:00:01.000+08:00|    NULL|    NULL| 50.91999893188476|
-|1970-01-01T08:00:01.000+08:00|Shanghai|      w1|113.20000076293945|
-|1970-01-01T08:00:01.000+08:00| Beijing|      w2|             103.4|
-|1970-01-01T08:00:01.000+08:00|Shanghai|      w2| 100.1999994913737|
 |1970-01-01T08:00:01.000+08:00| Beijing|      w1|103.81666692097981|
-|1970-01-01T08:00:06.000+08:00|    NULL|    NULL|              50.5|
-|1970-01-01T08:00:06.000+08:00|Shanghai|      w1| 112.6500015258789|
-|1970-01-01T08:00:06.000+08:00| Beijing|      w2| 106.9000015258789|
-|1970-01-01T08:00:06.000+08:00|Shanghai|      w2| 99.80000305175781|
+|1970-01-01T08:00:01.000+08:00| Beijing|      w2|             103.4|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w1|113.20000076293945|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w2| 100.1999994913737|
+|1970-01-01T08:00:01.000+08:00|    null|    null| 50.91999893188476|
 |1970-01-01T08:00:06.000+08:00| Beijing|      w1|             103.5|
+|1970-01-01T08:00:06.000+08:00| Beijing|      w2| 106.9000015258789|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w1| 112.6500015258789|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w2| 99.80000305175781|
+|1970-01-01T08:00:06.000+08:00|    null|    null|              50.5|
++-----------------------------+--------+--------+------------------+
+```
+
+### The Order of the Output of Aggregation Query by Tags
+
+Under one aggregate time window, the tag values are compared one by one according to the keys' order specified in `GROUP BY TAGS`. 
+The order is the one of value string comparison. The string comparison is implemented by [`String::compareTo`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#compareTo-java.lang.String-) in Java.
+
+When executing an aggregation query based on time window, the `ORDER BY TIME` clause can be added to indicate the time output order. 
+Different time windows will be output in the specified order, and the records in each window will be output in the tag comparison order.
+
+The above query can be output in a time descending order.
+
+SQL
+
+```SQL
+SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop) ORDER BY TIME DESC;
+```
+
+The results
+
+```
++-----------------------------+--------+--------+------------------+
+|                         Time|    city|workshop|  avg(temperature)|
++-----------------------------+--------+--------+------------------+
+|1970-01-01T08:00:06.000+08:00| Beijing|      w1|             103.5|
+|1970-01-01T08:00:06.000+08:00| Beijing|      w2| 106.9000015258789|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w1| 112.6500015258789|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w2| 99.80000305175781|
+|1970-01-01T08:00:06.000+08:00|    null|    null|              50.5|
+|1970-01-01T08:00:01.000+08:00| Beijing|      w1|103.81666692097981|
+|1970-01-01T08:00:01.000+08:00| Beijing|      w2|             103.4|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w1|113.20000076293945|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w2| 100.1999994913737|
+|1970-01-01T08:00:01.000+08:00|    null|    null| 50.91999893188476|
 +-----------------------------+--------+--------+------------------+
 ```
 
@@ -623,10 +658,9 @@ As this feature is still under development, some queries have not been completed
 
 > 1. Temporarily not support `HAVING` clause to filter the results.
 > 2. Temporarily not support ordering by tag values.
-> 3. Temporarily not support `LIMIT`，`OFFSET`，`SLIMIT`，`SOFFSET`.
-> 4. Temporarily not support `ALIGN BY DEVICE`.
-> 5. Temporarily not support expressions as aggregation function parameter，e.g. `count(s+1)`.
-> 6. Not support the value filter, which stands the same with the `GROUP BY LEVEL` query.
+> 3. Temporarily not support `ALIGN BY DEVICE`.
+> 4. Temporarily not support expressions as aggregation function parameter，e.g. `count(s+1)`.
+> 5. Not support the value filter, which stands the same with the `GROUP BY LEVEL` query.
 
 ## Aggregate result filtering
 
