@@ -26,6 +26,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
@@ -256,7 +257,7 @@ public class ImportCsvTestIT extends AbstractScript {
    * @throws IOException
    * @throws ClassNotFoundException
    */
-  @Test
+  @Ignore
   public void testWithDataType() throws IOException, ClassNotFoundException {
     assertTrue(generateTestCSV(false, false, false, false, true));
     String[] params = {"-f", CSV_FILE};
@@ -286,7 +287,7 @@ public class ImportCsvTestIT extends AbstractScript {
    * @throws IOException
    * @throws ClassNotFoundException
    */
-  @Test
+  @Ignore
   public void testWithException() throws IOException, ClassNotFoundException {
     assertTrue(generateTestCSV(false, false, false, true, true));
     String[] params = {"-f", CSV_FILE};
