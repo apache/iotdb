@@ -13,12 +13,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class SessionDatasetTest {
 
@@ -117,36 +115,12 @@ public class SessionDatasetTest {
     long timestamp = System.currentTimeMillis();
     for (int row = 0; row < ROW_NUMBER; row++) {
 
-      LONG_DATA = new Random().nextLong();
-      INT_DATA = new Random().nextInt();
-      FLOAT_DATA = new Random().nextFloat();
-      DOUBLE_DATA = new Random().nextDouble();
-      BOOLEAN_DATA = new Random().nextBoolean();
-      TEXT_DATA = RandomStringUtils.random(10) + "str";
-      longData[row] = LONG_DATA;
-      intData[row] = INT_DATA;
-      floatData[row] = FLOAT_DATA;
-      doubleData[row] = DOUBLE_DATA;
-      booleanData[row] = BOOLEAN_DATA;
-      textData[row] = TEXT_DATA;
-      times[row] = timestamp;
-
-      int r = tablet.rowSize++;
-      tablet.addTimestamp(r, timestamp);
-      tablet.addValue(schemaList.get(0).getMeasurementId(), r, INT_DATA);
-      tablet.addValue(schemaList.get(1).getMeasurementId(), r, LONG_DATA);
-      tablet.addValue(schemaList.get(2).getMeasurementId(), r, FLOAT_DATA);
-      tablet.addValue(schemaList.get(3).getMeasurementId(), r, DOUBLE_DATA);
-      tablet.addValue(schemaList.get(4).getMeasurementId(), r, BOOLEAN_DATA);
-      tablet.addValue(schemaList.get(5).getMeasurementId(), r, TEXT_DATA);
-
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
         tablet.reset();
       }
       timestamp++;
     }
-
     if (tablet.rowSize != 0) {
       session.insertTablet(tablet);
       tablet.reset();
