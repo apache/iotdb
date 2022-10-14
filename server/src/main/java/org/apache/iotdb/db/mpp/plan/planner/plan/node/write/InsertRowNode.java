@@ -62,6 +62,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertRowNode extends InsertNode implements WALEntryValue {
 
@@ -184,6 +185,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       throws QueryProcessException, MetadataException {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo == null) {
+      throw new PathNotExistException(
+          Arrays.stream(measurements)
+              .map(s -> devicePath.getFullPath() + s)
+              .collect(Collectors.toList()));
+    }
     if (deviceSchemaInfo.isAligned() != isAligned) {
       throw new AlignedTimeseriesException(
           String.format(

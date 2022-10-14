@@ -152,13 +152,15 @@ public class IoTDBConfig {
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
 
-  private double chunkMetadataSizeProportionInWrite = 0.1;
-
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+  /**
+   * If memory cost of data region increased more than proportion of {@linkplain
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
+   * report to system.
+   */
+  private double writeMemoryVariationReportProportion = 0.001;
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
@@ -441,7 +443,7 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  private double chunkMetadataSizeProportionInCompaction = 0.05;
+  private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -1782,12 +1784,12 @@ public class IoTDBConfig {
     this.rejectProportion = rejectProportion;
   }
 
-  public long getStorageGroupSizeReportThreshold() {
-    return storageGroupSizeReportThreshold;
+  public double getWriteMemoryVariationReportProportion() {
+    return writeMemoryVariationReportProportion;
   }
 
-  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
-    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
+  public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
+    this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
   }
 
   public long getAllocateMemoryForStorageEngine() {
@@ -3241,21 +3243,12 @@ public class IoTDBConfig {
     this.throttleThreshold = throttleThreshold;
   }
 
-  public double getChunkMetadataSizeProportionInWrite() {
-    return chunkMetadataSizeProportionInWrite;
+  public double getChunkMetadataSizeProportion() {
+    return chunkMetadataSizeProportion;
   }
 
-  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
-    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
-  }
-
-  public double getChunkMetadataSizeProportionInCompaction() {
-    return chunkMetadataSizeProportionInCompaction;
-  }
-
-  public void setChunkMetadataSizeProportionInCompaction(
-      double chunkMetadataSizeProportionInCompaction) {
-    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
+  public void setChunkMetadataSizeProportion(double chunkMetadataSizeProportion) {
+    this.chunkMetadataSizeProportion = chunkMetadataSizeProportion;
   }
 
   public long getCacheWindowTimeInMs() {
@@ -3427,5 +3420,9 @@ public class IoTDBConfig {
       long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
         schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public double getUsableCompactionMemoryProportion() {
+    return 1.0d - chunkMetadataSizeProportion;
   }
 }

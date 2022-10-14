@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -27,12 +28,10 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -40,40 +39,38 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowPipeTask implements IConfigTask {
+public class GetTimeSlotListTask implements IConfigTask {
 
-  private final ShowPipeStatement showPipeStatement;
+  private final GetTimeSlotListStatement getTimeSlotListStatement;
 
-  public ShowPipeTask(ShowPipeStatement showPipeStatement) {
-    this.showPipeStatement = showPipeStatement;
+  public GetTimeSlotListTask(GetTimeSlotListStatement getTimeSlotListStatement) {
+    this.getTimeSlotListStatement = getTimeSlotListStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.showPipe(showPipeStatement);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return configTaskExecutor.getTimeSlotList(getTimeSlotListStatement);
+  }
+
+  public static void buildTsBlock(TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeLong(timePartitionSlot.getStartTime());
+    builder.declarePosition();
   }
 
   public static void buildTSBlock(
-      List<TShowPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
+      TGetTimeSlotListResp getTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showPipeColumnHeaders.stream()
+        ColumnHeaderConstant.getTimeSlotListColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TShowPipeInfo tPipeInfo : pipeInfoList) {
-      builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreateTime())));
-      builder.getColumnBuilder(1).writeBinary(new Binary(tPipeInfo.getPipeName()));
-      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getRole()));
-      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getRemote()));
-      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getStatus()));
-      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getMessage()));
-      builder.declarePosition();
-    }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
+
+    getTimeSlotListResp.getTimeSlotList().forEach(e -> buildTsBlock(builder, e));
+
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetTimeSlotListHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

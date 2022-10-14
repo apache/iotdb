@@ -166,7 +166,8 @@ public class DataPartitionTable {
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param timeSlotId TimePartitionSlot
-   * @return the timePartition's corresponding dataRegionIds
+   * @return the timePartition's corresponding dataRegionIds, if timeSlotId == -1, then return all
+   *     the seriesSlot's dataRegionIds
    */
   public List<TConsensusGroupId> getRouting(
       TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {

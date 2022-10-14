@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Set;
 
-import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
+import static org.apache.iotdb.db.qp.utils.DateTimeUtils.MS_TO_MONTH;
 
 public abstract class IFill {
 

@@ -17,10 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.db.service;
 
-public enum RemoveConfigNodeState {
-  REMOVE_PEER,
-  DELETE_PEER,
-  STOP_CONFIG_NODE
+import org.apache.iotdb.commons.trigger.TriggerInformation;
+
+import java.util.List;
+
+public class ResourcesInformationHolder {
+  private static final int JAR_NUM_OF_ONE_RPC = 10;
+
+  /** store the list when registering in config node for preparing trigger related resources */
+  private List<TriggerInformation> triggerInformationList;
+
+  public static int getJarNumOfOneRpc() {
+    return JAR_NUM_OF_ONE_RPC;
+  }
+
+  public List<TriggerInformation> getTriggerInformationList() {
+    return triggerInformationList;
+  }
+
+  public void setTriggerInformationList(List<TriggerInformation> triggerInformationList) {
+    this.triggerInformationList = triggerInformationList;
+  }
 }
