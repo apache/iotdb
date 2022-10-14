@@ -26,26 +26,29 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** The storageGroupInfo records the total memory cost of the Storage Group. */
-public class StorageGroupInfo {
+public class DataRegionInfo {
 
-  private DataRegion dataRegion;
+  private final DataRegion dataRegion;
 
   /**
    * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
    * primitive arrays and TEXT values
    */
-  private AtomicLong memoryCost;
+  private final AtomicLong memoryCost;
 
   /** The threshold of reporting it's size to SystemInfo */
-  private long storageGroupSizeReportThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
+  private final long storageGroupSizeReportThreshold =
+      (long)
+          (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
+              * IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
+              * IoTDBDescriptor.getInstance().getConfig().getWriteProportion());
 
-  private AtomicLong lastReportedSize = new AtomicLong();
+  private final AtomicLong lastReportedSize = new AtomicLong();
 
   /** A set of all unclosed TsFileProcessors in this SG */
-  private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
+  private final List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
-  public StorageGroupInfo(DataRegion dataRegion) {
+  public DataRegionInfo(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
     memoryCost = new AtomicLong();
   }

@@ -294,11 +294,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-    conf.setStorageGroupSizeReportThreshold(
-        Long.parseLong(
+    conf.setWriteMemoryVariationReportProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "storage_group_report_threshold",
-                Long.toString(conf.getStorageGroupSizeReportThreshold()))));
+                "write_memory_variation_report_proportion",
+                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
