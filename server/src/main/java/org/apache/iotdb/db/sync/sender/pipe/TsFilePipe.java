@@ -59,12 +59,6 @@ public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
   // <DataRegionId, ISyncManager>
   private final Map<String, ISyncManager> syncManagerMap = new ConcurrentHashMap<>();
-  /**
-   * Write lock needs to be added to block the real-time data collection process when collecting
-   * historical data, otherwise data may be lost. Because historical data collection operations are
-   * rare, it will not affect write performance.
-   */
-  private final ReentrantReadWriteLock syncManagerReadWriteLock = new ReentrantReadWriteLock(false);
 
   private final TsFilePipeInfo pipeInfo;
 
@@ -81,6 +75,13 @@ public class TsFilePipe implements Pipe {
 
   /* whether finish collect history file. If false, no need to collect realtime file*/
   private boolean isCollectFinished;
+  /**
+   * Write lock needs to be added to block the real-time data collection process when collecting
+   * historical data, otherwise data may be lost. Because historical data collection operations are
+   * rare, it will not affect write performance.
+   */
+  private final ReentrantReadWriteLock isCollectFinishedReadWriteLock =
+      new ReentrantReadWriteLock(false);
 
   //  private long maxSerialNumber;
   private AtomicLong maxSerialNumber;
@@ -137,37 +138,35 @@ public class TsFilePipe implements Pipe {
     if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
+    // init sync manager
+    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    for (DataRegion dataRegion : dataRegions) {
+      logger.info(
+          logFormat(
+              "init syncManager for %s-%s",
+              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+      getOrCreateSyncManager(dataRegion.getDataRegionId());
+    }
     try {
-      syncManagerReadWriteLock.writeLock().lock();
-      // init sync manager
-      List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
-      for (DataRegion dataRegion : dataRegions) {
-        logger.info(
-            logFormat(
-                "init syncManager for %s-%s",
-                dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
-        getOrCreateSyncManager(dataRegion.getDataRegionId());
+      isCollectFinishedReadWriteLock.writeLock().lock();
+      if (!isCollectFinished) {
+        pipeLog.clear();
+        collectHistoryData();
+        pipeLog.finishCollect();
+        isCollectFinished = true;
       }
-      try {
-        if (!isCollectFinished) {
-          pipeLog.clear();
-          collectHistoryData();
-          pipeLog.finishCollect();
-          isCollectFinished = true;
-        }
 
-        pipeInfo.setStatus(PipeStatus.RUNNING);
-        senderManager.start();
-      } catch (IOException e) {
-        logger.error(
-            logFormat(
-                "Clear pipe dir %s error.",
-                SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
-            e);
-        throw new PipeException("Start error, can not clear pipe log.");
-      }
+      pipeInfo.setStatus(PipeStatus.RUNNING);
+      senderManager.start();
+    } catch (IOException e) {
+      logger.error(
+          logFormat(
+              "Clear pipe dir %s error.",
+              SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
+          e);
+      throw new PipeException("Start error, can not clear pipe log.");
     } finally {
-      syncManagerReadWriteLock.writeLock().unlock();
+      isCollectFinishedReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -295,20 +294,15 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public ISyncManager getOrCreateSyncManager(String dataRegionId) {
-    try {
-      //
-      syncManagerReadWriteLock.readLock().lock();
-      return syncManagerMap.computeIfAbsent(
-          dataRegionId,
-          id -> {
-            registerDataRegion(id);
-            return new LocalSyncManager(
-                StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
-                this);
-          });
-    } finally {
-      syncManagerReadWriteLock.readLock().unlock();
-    }
+    // Only need to deal with pipe that has finished history file collection,
+    return syncManagerMap.computeIfAbsent(
+        dataRegionId,
+        id -> {
+          registerDataRegion(id);
+          return new LocalSyncManager(
+              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+              this);
+        });
   }
 
   private void registerDataRegion(String dataRegionId) {
@@ -338,7 +332,12 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public boolean isHistoryCollectFinished() {
-    return isCollectFinished;
+    try {
+      isCollectFinishedReadWriteLock.readLock().lock();
+      return isCollectFinished;
+    } finally {
+      isCollectFinishedReadWriteLock.readLock().unlock();
+    }
   }
 
   @Override

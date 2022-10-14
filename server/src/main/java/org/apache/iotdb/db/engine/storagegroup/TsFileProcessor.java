@@ -1000,14 +1000,14 @@ public class TsFileProcessor {
               : workMemTable;
 
       try {
-        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
-        // flushing memTable in System module.
-        addAMemtableIntoFlushingList(tmpMemTable);
         for (ISyncManager syncManager :
             SyncService.getInstance()
                 .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
           syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
+        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
+        // flushing memTable in System module.
+        addAMemtableIntoFlushingList(tmpMemTable);
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
       } catch (Exception e) {
