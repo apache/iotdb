@@ -133,11 +133,10 @@ public class MemTableFlushTask {
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        if (series.count() != 0) {
-          isAllChunkInChunkGroupEmpty = false;
-        } else {
+        if (series.count() == 0) {
           continue;
         }
+        isAllChunkInChunkGroupEmpty = false;
         /*
          * sort task (first task of flush pipeline)
          */
