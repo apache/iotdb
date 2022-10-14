@@ -177,6 +177,14 @@ public class NodeManager {
     ratisConfig.setSchemaLeaderElectionTimeoutMax(
         conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
 
+    ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
+    ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
+
+    ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
+    ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
+    ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
