@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.service.metric.enums;
 public enum Tag {
   TYPE,
   NAME,
+  REGION,
   STATUS;
 
   @Override

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.multileader;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -44,9 +43,11 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             impl,
             MultiLeaderServerImpl::getIndex,
             Tag.NAME.toString(),
-            formatEndPoint(impl.getThisNode().getEndpoint()),
+            "multiLeaderServer",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "currentIndex");
+            "searchIndex");
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.MULTI_LEADER.toString(),
@@ -54,7 +55,9 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             impl,
             MultiLeaderServerImpl::getCurrentSafelyDeletedSearchIndex,
             Tag.NAME.toString(),
-            formatEndPoint(impl.getThisNode().getEndpoint()),
+            "multiLeaderServer",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "safeIndex");
   }
@@ -66,20 +69,20 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            formatEndPoint(impl.getThisNode().getEndpoint()),
+            "multiLeaderServer",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "currentIndex");
+            "searchIndex");
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            formatEndPoint(impl.getThisNode().getEndpoint()),
+            "multiLeaderServer",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "safeIndex");
-  }
-
-  private String formatEndPoint(TEndPoint endPoint) {
-    return endPoint.getIp() + ":" + endPoint.getPort();
   }
 }

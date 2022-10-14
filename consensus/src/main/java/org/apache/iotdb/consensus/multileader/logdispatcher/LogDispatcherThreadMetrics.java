@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -43,43 +42,28 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
         .getOrCreateAutoGauge(
-            Metric.LOG_DISPATCHER.toString(),
-            MetricLevel.IMPORTANT,
-            logDispatcherThread,
-            LogDispatcher.LogDispatcherThread::getPendingRequestSize,
-            Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
-            Tag.TYPE.toString(),
-            "PendingRequestSize");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.LOG_DISPATCHER.toString(),
-            MetricLevel.IMPORTANT,
-            logDispatcherThread,
-            LogDispatcher.LogDispatcherThread::getBufferRequestSize,
-            Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
-            Tag.TYPE.toString(),
-            "BufferRequestSize");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.LOG_DISPATCHER.toString(),
+            Metric.MULTI_LEADER.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
             LogDispatcher.LogDispatcherThread::getCurrentSyncIndex,
             Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
+            formatName(),
+            Tag.REGION.toString(),
+            consensusGroupId.toString(),
             Tag.TYPE.toString(),
-            "currentIndex");
+            "searchIndex");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.MULTI_LEADER.toString(),
+            MetricLevel.IMPORTANT,
+            logDispatcherThread,
+            x -> x.getPendingRequestSize() + x.getBufferRequestSize(),
+            Tag.NAME.toString(),
+            formatName(),
+            Tag.REGION.toString(),
+            consensusGroupId.toString(),
+            Tag.TYPE.toString(),
+            "pendingRequestSize");
   }
 
   @Override
@@ -87,39 +71,29 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.LOG_DISPATCHER.toString(),
+            Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
+            formatName(),
+            Tag.REGION.toString(),
+            consensusGroupId.toString(),
             Tag.TYPE.toString(),
-            "PendingRequestSize");
+            "searchIndex");
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.LOG_DISPATCHER.toString(),
+            Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
+            formatName(),
+            Tag.REGION.toString(),
+            consensusGroupId.toString(),
             Tag.TYPE.toString(),
-            "BufferRequestSize");
-    MetricService.getInstance()
-        .remove(
-            MetricType.GAUGE,
-            Metric.LOG_DISPATCHER.toString(),
-            Tag.NAME.toString(),
-            "[DataRegion-"
-                + consensusGroupId
-                + "]"
-                + formatEndPoint(logDispatcherThread.getPeer().getEndpoint()),
-            Tag.TYPE.toString(),
-            "currentIndex");
+            "pendingRequestSize");
   }
 
-  private String formatEndPoint(TEndPoint endPoint) {
-    return endPoint.getIp() + ":" + endPoint.getPort();
+  private String formatName() {
+    return "logDispatcher-"
+        + logDispatcherThread.getPeer().getEndpoint().getIp()
+        + ":"
+        + logDispatcherThread.getPeer().getEndpoint().getPort();
   }
 }

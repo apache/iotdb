@@ -133,9 +133,9 @@ public class MultiLeaderServerImpl {
   }
 
   public void start() {
+    MetricService.getInstance().addMetricSet(this.metrics);
     stateMachine.start();
     logDispatcher.start();
-    MetricService.getInstance().addMetricSet(this.metrics);
   }
 
   public void stop() {
