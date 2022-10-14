@@ -304,6 +304,8 @@ enum TTriggerState {
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
+  // The intermediate state of Transfer trigger, the cluster is in the process of transferring the trigger.
+  TRANSFERRING
 }
 
 struct TCreateTriggerReq {
