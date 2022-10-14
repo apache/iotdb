@@ -187,6 +187,11 @@ struct TDropTriggerInstanceReq {
   2: required bool needToDeleteJarFile
 }
 
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -459,6 +464,13 @@ service IDataNodeRPCService {
    * @param trigger name, whether need to delete jar
    **/
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
+  /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
 
   /**
    * Config node will invalidate permission Info cache.
