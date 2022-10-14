@@ -135,7 +135,6 @@ public class MemTableFlushTask {
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
         if (series.count() != 0) {
           isAllChunkInChunkGroupEmpty = false;
-          continue;
         }
         /*
          * sort task (first task of flush pipeline)
