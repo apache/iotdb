@@ -677,7 +677,7 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) throws TException {
+  public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
   }
 

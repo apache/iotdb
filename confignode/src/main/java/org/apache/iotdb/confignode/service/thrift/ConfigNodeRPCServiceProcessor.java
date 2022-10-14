@@ -443,7 +443,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) {
+  public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage(
@@ -458,6 +458,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage("remove ConsensusGroup success.");
   }
