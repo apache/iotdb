@@ -609,7 +609,11 @@ public class IoTDBClusterPartitionIT {
       // Create SchemaPartitions
       buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
       schemaPartitionReq = new TSchemaPartitionReq(buffer);
-      client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
+      TSchemaPartitionTableResp schemaPartitionTableResp =
+          client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
+      TSeriesPartitionSlot schemaSlot =
+          new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
+              .get(0);
 
       TDataPartitionReq dataPartitionReq;
       TDataPartitionTableResp dataPartitionTableResp;
@@ -649,11 +653,42 @@ public class IoTDBClusterPartitionIT {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(0);
       TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(0L);
 
-      getRoutingReq = new TGetRoutingReq(sg0, seriesPartitionSlot, timePartitionSlot);
+      getRoutingReq = new TGetRoutingReq(sg0, TConsensusGroupType.DataRegion, seriesPartitionSlot);
+      getRoutingReq.setTimeSlotId(timePartitionSlot);
       getRoutingResp = client.getRouting(getRoutingReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
       Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.setType(TConsensusGroupType.SchemaRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRoutingResp.status.getCode());
+
+      getRoutingReq.setType(TConsensusGroupType.PartitionRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRoutingResp.status.getCode());
+
+      getRoutingReq.unsetTimeSlotId();
+      getRoutingReq.setType(TConsensusGroupType.DataRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.setSeriesSlotId(schemaSlot);
+      getRoutingReq.setType(TConsensusGroupType.SchemaRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(1, getRoutingResp.getDataRegionIdListSize());
+
+      getRoutingReq.setType(TConsensusGroupType.PartitionRegion);
+      getRoutingResp = client.getRouting(getRoutingReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRoutingResp.status.getCode());
+      Assert.assertEquals(0, getRoutingResp.getDataRegionIdListSize());
 
       // Test GetTimeSlotList api
       TGetTimeSlotListReq getTimeSlotListReq;

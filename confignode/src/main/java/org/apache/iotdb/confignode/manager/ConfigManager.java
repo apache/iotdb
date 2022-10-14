@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -1075,7 +1074,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(GetRoutingPlan plan) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1084,7 +1082,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1093,11 +1090,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
-    resp.setStatus(status);
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
@@ -1129,11 +1123,11 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // get all storage groups and slots by getting schema partition
+    // Get all storage groups and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
-    // construct request for getting data partition
+    // Construct request for getting data partition
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
         new HashMap<>();
     schemaPartitionTable.forEach(
@@ -1143,12 +1137,12 @@ public class ConfigManager implements IManager {
           partitionSlotsMap.put(key, slotListMap);
         });
 
-    // get all data partitions
+    // Get all data partitions
     GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
-    // get all region replicaset of target data partitions
+    // Get all region replicaset of target data partitions
     List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
     Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()

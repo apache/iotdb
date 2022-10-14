@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -650,15 +651,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(TGetRoutingReq req) {
+    if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
+      return new TGetRoutingResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
+    }
+    TTimePartitionSlot timePartitionSlot =
+        req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);
     GetRoutingPlan plan =
-        new GetRoutingPlan(req.getStorageGroup(), req.getSeriesSlotId(), req.getTimeSlotId());
+        new GetRoutingPlan(
+            req.getStorageGroup(), req.getType(), req.getSeriesSlotId(), timePartitionSlot);
     return configManager.getRouting(plan);
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
     long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
     long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
@@ -668,7 +673,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     TConsensusGroupType type =
         req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;

@@ -630,11 +630,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
-    conf.setChunkMetadataSizeProportionInCompaction(
+    conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
-                "chunk_metadata_size_proportion_in_compaction",
-                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -1005,7 +1005,8 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     conf.setTimePartitionIntervalForStorage(
-        DateTimeUtils.convertMilliTimeWithPrecision(conf.getTimePartitionIntervalForStorage()));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1473,12 +1474,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      conf.setChunkMetadataSizeProportionInWrite(
-          Double.parseDouble(
-              properties.getProperty(
-                  "chunk_metadata_size_proportion_in_write",
-                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
-
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(
@@ -1918,7 +1913,8 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setTimePartitionIntervalForRouting(
-        DateTimeUtils.convertMilliTimeWithPrecision(globalConfig.timePartitionInterval));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 

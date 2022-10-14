@@ -3298,7 +3298,9 @@ public class DataRegion {
 
   public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
-      dataTTL = DateTimeUtils.convertMilliTimeWithPrecision(dataTTL);
+      dataTTL =
+          DateTimeUtils.convertMilliTimeWithPrecision(
+              dataTTL, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
   }
