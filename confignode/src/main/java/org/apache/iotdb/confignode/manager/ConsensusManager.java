@@ -57,12 +57,12 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final int SEED_CONFIG_NODE_Id = 0;
 
   private final IManager configManager;
 
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
-  private final int seedConfigNodeId = 0;
 
   public ConsensusManager(IManager configManager, PartitionRegionStateMachine stateMachine)
       throws IOException {
@@ -152,7 +152,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                  seedConfigNodeId,
+                  SEED_CONFIG_NODE_Id,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }
