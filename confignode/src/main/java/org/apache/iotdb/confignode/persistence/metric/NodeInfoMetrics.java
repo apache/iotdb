@@ -34,7 +34,7 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOT
 
 public class NodeInfoMetrics implements IMetricSet {
 
-  private NodeInfo nodeInfo;
+  private final NodeInfo nodeInfo;
 
   public NodeInfoMetrics(NodeInfo nodeInfo) {
     this.nodeInfo = nodeInfo;

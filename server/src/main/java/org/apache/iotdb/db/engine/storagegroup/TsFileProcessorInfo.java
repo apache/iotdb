@@ -24,37 +24,37 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 public class TsFileProcessorInfo {
 
   /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
-  private StorageGroupInfo storageGroupInfo;
+  private DataRegionInfo dataRegionInfo;
 
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
   private long memCost;
 
-  public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
-    this.storageGroupInfo = storageGroupInfo;
+  public TsFileProcessorInfo(DataRegionInfo dataRegionInfo) {
+    this.dataRegionInfo = dataRegionInfo;
     this.memCost = 0L;
-    if (null != storageGroupInfo.getDataRegion()) {
+    if (null != dataRegionInfo.getDataRegion()) {
       MetricService.getInstance()
           .addMetricSet(
               new TsFileProcessorInfoMetrics(
-                  storageGroupInfo.getDataRegion().getStorageGroupName(), memCost));
+                  dataRegionInfo.getDataRegion().getStorageGroupName(), memCost));
     }
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
-    storageGroupInfo.addStorageGroupMemCost(cost);
+    dataRegionInfo.addStorageGroupMemCost(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
-    storageGroupInfo.releaseStorageGroupMemCost(cost);
+    dataRegionInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
   }
 
   /** called when closing TSP */
   public void clear() {
-    storageGroupInfo.releaseStorageGroupMemCost(memCost);
+    dataRegionInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
   }
 }

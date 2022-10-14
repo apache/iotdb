@@ -28,7 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -85,7 +85,7 @@ public class GroupByLevelNodeSerdeTest {
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(seriesAggregationScanNode1, seriesAggregationScanNode2),
             Collections.singletonList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(

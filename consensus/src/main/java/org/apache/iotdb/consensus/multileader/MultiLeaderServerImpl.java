@@ -360,7 +360,8 @@ public class MultiLeaderServerImpl {
               client.buildSyncLogChannel(
                   new TBuildSyncLogChannelReq(
                       targetPeer.getGroupId().convertToTConsensusGroupId(),
-                      targetPeer.getEndpoint()));
+                      targetPeer.getEndpoint(),
+                      targetPeer.getNodeId()));
           if (!isSuccess(res.status)) {
             throw new ConsensusGroupAddPeerException(
                 String.format("build sync log channel failed from %s to %s", peer, targetPeer));
@@ -402,7 +403,8 @@ public class MultiLeaderServerImpl {
               client.removeSyncLogChannel(
                   new TRemoveSyncLogChannelReq(
                       targetPeer.getGroupId().convertToTConsensusGroupId(),
-                      targetPeer.getEndpoint()));
+                      targetPeer.getEndpoint(),
+                      targetPeer.getNodeId()));
           if (!isSuccess(res.status)) {
             throw new ConsensusGroupAddPeerException(
                 String.format("remove sync log channel failed from %s to %s", peer, targetPeer));

@@ -232,13 +232,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         if (queryStatement.isGroupByLevel()) {
           planBuilder =
               planBuilder.planGroupByLevel(
-                  analysis.getGroupByLevelExpressions(),
+                  analysis.getCrossGroupByExpressions(),
                   analysis.getGroupByTimeParameter(),
                   queryStatement.getResultTimeOrder());
         }
       } else {
         curStep =
-            (analysis.getGroupByLevelExpressions() != null
+            (analysis.getCrossGroupByExpressions() != null
                     || (analysis.getGroupByTimeParameter() != null
                         && analysis.getGroupByTimeParameter().hasOverlap()))
                 ? AggregationStep.PARTIAL
@@ -253,7 +253,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
-                    analysis.getGroupByLevelExpressions())
+                    analysis.getCrossGroupByExpressions(),
+                    analysis.getTagKeys(),
+                    analysis.getTagValuesToGroupedTimeseriesOperands())
                 : planBuilder.planAggregationSourceWithIndexAdjust(
                     curStep,
                     queryStatement.getResultTimeOrder(),
@@ -261,7 +263,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
-                    analysis.getGroupByLevelExpressions(),
+                    analysis.getCrossGroupByExpressions(),
                     deviceViewInputIndexes);
       }
     }
@@ -632,7 +634,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planSchemaFetchSource(
             storageGroupList,
             schemaFetchStatement.getPatternTree(),
-            schemaFetchStatement.getTemplateMap())
+            schemaFetchStatement.getTemplateMap(),
+            schemaFetchStatement.isWithTags())
         .getRoot();
   }
 

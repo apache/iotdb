@@ -69,9 +69,13 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   static LocalConfigNode configNode;
+  private static final int dataNodeId = 0;
 
   @BeforeClass
   public static void setUpBeforeClass() throws IOException, MetadataException {
+    // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
+    conf.setDataNodeId(dataNodeId);
+
     IoTDB.configManager.init();
     configNode = LocalConfigNode.getInstance();
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
@@ -332,7 +336,8 @@ public class DataNodeInternalRPCServiceImplTest {
 
     // construct fragmentInstance
     return new TRegionReplicaSet(
-        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0), dataNodeList);
+        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, conf.getDataNodeId()),
+        dataNodeList);
   }
 
   private List<Peer> genSchemaRegionPeerList(TRegionReplicaSet regionReplicaSet) {
@@ -341,6 +346,7 @@ public class DataNodeInternalRPCServiceImplTest {
       peerList.add(
           new Peer(
               new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
+              node.getDataNodeId(),
               node.getSchemaRegionConsensusEndPoint()));
     }
     return peerList;

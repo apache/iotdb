@@ -87,7 +87,9 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @Before
   public void before() throws IOException {
-    processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
+    ConfigManager configManager = new ConfigManager();
+    configManager.initConsensusManager();
+    processor = new ConfigNodeRPCServiceProcessor(configManager);
     processor.getConsensusManager().singleCopyMayWaitUntilLeaderReady();
   }
 
