@@ -97,6 +97,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.DataNode;
@@ -605,20 +606,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
 
       // 1. add time filter in where
+      Expression timeFilter =
+          new BetweenExpression(
+              new TimestampOperand(),
+              new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime)),
+              new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime)));
       if (s.getWhereCondition() != null) {
-        Expression predicate = s.getWhereCondition().getPredicate();
-        Expression timeFilter =
-            new BetweenExpression(
-                new TimestampOperand(),
-                new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime)),
-                new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime)));
-        if (predicate == null) {
-          s.getWhereCondition().setPredicate(timeFilter);
-        } else {
-          s.getWhereCondition()
-              .setPredicate(
-                  new LogicAndExpression(timeFilter, s.getWhereCondition().getPredicate()));
-        }
+        s.getWhereCondition()
+            .setPredicate(new LogicAndExpression(timeFilter, s.getWhereCondition().getPredicate()));
+      } else {
+        s.setWhereCondition(new WhereCondition(timeFilter));
       }
 
       // 2. add time rage in group by time
