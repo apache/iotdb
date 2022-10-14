@@ -785,7 +785,7 @@ public class ImportCsv extends AbstractCsvTool {
       if (matcher.find()) {
         type = matcher.group();
         headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
-        headerNameMap.put(headerNameWithoutType, headerName);
+        headerNameMap.put(headerName, headerNameWithoutType);
         headerTypeMap.put(headerNameWithoutType, getType(type));
       } else {
         headerNameWithoutType = headerName;
