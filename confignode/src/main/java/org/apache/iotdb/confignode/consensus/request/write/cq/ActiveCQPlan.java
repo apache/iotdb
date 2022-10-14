@@ -26,6 +26,7 @@ import org.apache.commons.lang3.Validate;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.ACTIVE_CQ;
 
@@ -66,5 +67,19 @@ public class ActiveCQPlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
     md5 = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    ActiveCQPlan that = (ActiveCQPlan) o;
+    return cqId.equals(that.cqId) && md5.equals(that.md5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), cqId, md5);
   }
 }

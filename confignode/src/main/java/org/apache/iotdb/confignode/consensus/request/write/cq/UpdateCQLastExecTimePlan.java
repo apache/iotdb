@@ -26,6 +26,7 @@ import org.apache.commons.lang3.Validate;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.UPDATE_CQ_LAST_EXEC_TIME;
 
@@ -76,5 +77,19 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
     cqId = ReadWriteIOUtils.readString(buffer);
     executionTime = ReadWriteIOUtils.readLong(buffer);
     md5 = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    UpdateCQLastExecTimePlan that = (UpdateCQLastExecTimePlan) o;
+    return executionTime == that.executionTime && cqId.equals(that.cqId) && md5.equals(that.md5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), cqId, executionTime, md5);
   }
 }

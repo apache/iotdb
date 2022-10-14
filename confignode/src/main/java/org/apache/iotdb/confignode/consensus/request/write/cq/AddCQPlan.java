@@ -28,6 +28,7 @@ import org.apache.commons.lang3.Validate;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.ADD_CQ;
 
@@ -77,5 +78,21 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     req = ThriftCommonsSerDeUtils.deserializeTCreateCQReq(buffer);
     md5 = ReadWriteIOUtils.readString(buffer);
     firstExecutionTime = ReadWriteIOUtils.readLong(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    AddCQPlan addCQPlan = (AddCQPlan) o;
+    return firstExecutionTime == addCQPlan.firstExecutionTime
+        && Objects.equals(req, addCQPlan.req)
+        && Objects.equals(md5, addCQPlan.md5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), req, md5, firstExecutionTime);
   }
 }

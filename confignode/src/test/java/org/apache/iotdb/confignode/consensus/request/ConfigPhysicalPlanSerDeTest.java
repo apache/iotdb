@@ -62,6 +62,11 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -90,6 +95,7 @@ import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -997,6 +1003,71 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         updateTriggerStateInTablePlan0.getTriggerState(),
         updateTriggerStateInTablePlan1.getTriggerState());
+  }
+
+  @Test
+  public void ActiveCQPlanTest() throws IOException {
+    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCq_md5");
+    ActiveCQPlan activeCQPlan1 =
+        (ActiveCQPlan) ConfigPhysicalPlan.Factory.create(activeCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(activeCQPlan0, activeCQPlan1);
+  }
+
+  @Test
+  public void AddCQPlanTest() throws IOException {
+    long executionTime = System.currentTimeMillis();
+    AddCQPlan addCQPlan0 =
+        new AddCQPlan(
+            new TCreateCQReq(
+                "testCq1",
+                1000,
+                0,
+                1000,
+                0,
+                (byte) 0,
+                "select s1 into root.backup.d1.s1 from root.sg.d1",
+                "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
+                "Asia"),
+            "testCq1_md5",
+            executionTime);
+    AddCQPlan addCQPlan1 =
+        (AddCQPlan) ConfigPhysicalPlan.Factory.create(addCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(addCQPlan0, addCQPlan1);
+  }
+
+  @Test
+  public void DropCQPlanTest() throws IOException {
+    DropCQPlan dropCQPlan0 = new DropCQPlan("testCq1");
+    DropCQPlan dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+
+    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1_md5");
+    dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+  }
+
+  @Test
+  public void ShowCQPlanTest() throws IOException {
+    ShowCQPlan showCQPlan0 = new ShowCQPlan();
+    ShowCQPlan showCQPlan1 =
+        (ShowCQPlan) ConfigPhysicalPlan.Factory.create(showCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(showCQPlan0, showCQPlan1);
+  }
+
+  @Test
+  public void UpdateCQLastExecTimePlanTest() throws IOException {
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
+        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan1 =
+        (UpdateCQLastExecTimePlan)
+            ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
   }
 
   @Test

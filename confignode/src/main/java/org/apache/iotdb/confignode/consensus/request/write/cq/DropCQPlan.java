@@ -26,6 +26,7 @@ import org.apache.commons.lang3.Validate;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.DROP_CQ;
@@ -74,5 +75,19 @@ public class DropCQPlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
     md5 = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    DropCQPlan that = (DropCQPlan) o;
+    return cqId.equals(that.cqId) && Objects.equals(md5, that.md5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), cqId, md5);
   }
 }

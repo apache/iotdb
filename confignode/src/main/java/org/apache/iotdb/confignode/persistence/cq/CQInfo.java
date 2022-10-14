@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -264,6 +265,19 @@ public class CQInfo implements SnapshotProcessor {
     cqMap.clear();
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CQInfo cqInfo = (CQInfo) o;
+    return Objects.equals(cqMap, cqInfo.cqMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(cqMap);
+  }
+
   public static class CQEntry {
     private final String cqId;
     private final long everyInterval;
@@ -428,6 +442,42 @@ public class CQInfo implements SnapshotProcessor {
 
     public String getZoneId() {
       return zoneId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      CQEntry cqEntry = (CQEntry) o;
+      return everyInterval == cqEntry.everyInterval
+          && boundaryTime == cqEntry.boundaryTime
+          && startTimeOffset == cqEntry.startTimeOffset
+          && endTimeOffset == cqEntry.endTimeOffset
+          && lastExecutionTime == cqEntry.lastExecutionTime
+          && Objects.equals(cqId, cqEntry.cqId)
+          && timeoutPolicy == cqEntry.timeoutPolicy
+          && Objects.equals(queryBody, cqEntry.queryBody)
+          && Objects.equals(sql, cqEntry.sql)
+          && Objects.equals(md5, cqEntry.md5)
+          && Objects.equals(zoneId, cqEntry.zoneId)
+          && state == cqEntry.state;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(
+          cqId,
+          everyInterval,
+          boundaryTime,
+          startTimeOffset,
+          endTimeOffset,
+          timeoutPolicy,
+          queryBody,
+          sql,
+          md5,
+          zoneId,
+          state,
+          lastExecutionTime);
     }
   }
 }
