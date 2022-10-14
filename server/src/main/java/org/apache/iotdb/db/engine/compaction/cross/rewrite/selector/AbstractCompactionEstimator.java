@@ -30,7 +30,7 @@ import java.util.Map;
  * Estimate the memory cost of one compaction task with specific source files based on its
  * corresponding implementation.
  */
-public abstract class AbstractCompactionEstimator {
+public abstract class AbstractCompactionEstimator implements AutoCloseable {
 
   protected Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
@@ -54,7 +54,8 @@ public abstract class AbstractCompactionEstimator {
     return reader;
   }
 
-  public void clear() throws IOException {
+  @Override
+  public void close() throws Exception {
     for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
       sequenceReader.close();
     }
