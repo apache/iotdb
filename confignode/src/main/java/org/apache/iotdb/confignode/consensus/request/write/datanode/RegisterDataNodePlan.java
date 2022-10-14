@@ -30,30 +30,30 @@ import java.util.Objects;
 
 public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
-  private TDataNodeConfiguration info;
+  private TDataNodeConfiguration dataNodeConfiguration;
 
   public RegisterDataNodePlan() {
     super(ConfigPhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(TDataNodeConfiguration info) {
+  public RegisterDataNodePlan(TDataNodeConfiguration dataNodeConfiguration) {
     this();
-    this.info = info;
+    this.dataNodeConfiguration = dataNodeConfiguration;
   }
 
-  public TDataNodeConfiguration getInfo() {
-    return info;
+  public TDataNodeConfiguration getDataNodeConfiguration() {
+    return dataNodeConfiguration;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(dataNodeConfiguration, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    info = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
+    dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
   }
 
   @Override
@@ -61,11 +61,11 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegisterDataNodePlan that = (RegisterDataNodePlan) o;
-    return info.equals(that.info);
+    return dataNodeConfiguration.equals(that.dataNodeConfiguration);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(info);
+    return Objects.hash(dataNodeConfiguration);
   }
 }

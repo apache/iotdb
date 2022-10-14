@@ -55,6 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -133,7 +134,7 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     TSStatus result;
-    TDataNodeConfiguration info = registerDataNodePlan.getInfo();
+    TDataNodeConfiguration info = registerDataNodePlan.getDataNodeConfiguration();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
 
@@ -495,5 +496,22 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
     registeredConfigNodes.clear();
+    nodeStatisticsMap.clear();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    NodeInfo nodeInfo = (NodeInfo) o;
+    return registeredConfigNodes.equals(nodeInfo.registeredConfigNodes)
+        && nextNodeId.equals(nodeInfo.nextNodeId)
+        && registeredDataNodes.equals(nodeInfo.registeredDataNodes)
+        && nodeStatisticsMap.equals(nodeInfo.nodeStatisticsMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeStatisticsMap);
   }
 }

@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -298,6 +299,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetSeriesSlotList:
           req = new GetSeriesSlotListPlan();
+          break;
+        case UpdateLoadStatistics:
+          req = new UpdateLoadStatisticsPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

@@ -851,6 +851,7 @@ public class PartitionInfo implements SnapshotProcessor {
     nextRegionGroupId.set(-1);
     storageGroupPartitionTables.clear();
     regionMaintainTaskList.clear();
+    regionGroupStatisticsMap.clear();
   }
 
   @Override

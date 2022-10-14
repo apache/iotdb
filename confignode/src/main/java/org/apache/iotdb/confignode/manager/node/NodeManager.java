@@ -191,12 +191,16 @@ public class NodeManager {
     DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
     TSStatus status = new TSStatus();
 
-    if (nodeInfo.isRegisteredDataNode(registerDataNodePlan.getInfo().getLocation())) {
+    if (nodeInfo.isRegisteredDataNode(
+        registerDataNodePlan.getDataNodeConfiguration().getLocation())) {
       status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
-    } else if (registerDataNodePlan.getInfo().getLocation().getDataNodeId() < 0) {
+    } else if (registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId() < 0) {
       // Generating a new dataNodeId only when current DataNode doesn't exist yet
-      registerDataNodePlan.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
+      registerDataNodePlan
+          .getDataNodeConfiguration()
+          .getLocation()
+          .setDataNodeId(nodeInfo.generateNextNodeId());
       getConsensusManager().write(registerDataNodePlan);
 
       // Adjust the maximum RegionGroup number of each StorageGroup
@@ -207,7 +211,8 @@ public class NodeManager {
     }
 
     dataSet.setStatus(status);
-    dataSet.setDataNodeId(registerDataNodePlan.getInfo().getLocation().getDataNodeId());
+    dataSet.setDataNodeId(
+        registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     setRatisConfig(dataSet);

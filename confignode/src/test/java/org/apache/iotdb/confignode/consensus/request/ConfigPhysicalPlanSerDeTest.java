@@ -63,6 +63,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
@@ -1074,5 +1075,33 @@ public class ConfigPhysicalPlanSerDeTest {
         (UpdateLoadStatisticsPlan)
             ConfigPhysicalPlan.Factory.create(updateLoadStatisticsPlan0.serializeToByteBuffer());
     Assert.assertEquals(updateLoadStatisticsPlan0, updateLoadStatisticsPlan1);
+  }
+
+  @Test
+  public void RemoveDataNodePlanTest() throws IOException {
+    List<TDataNodeLocation> locations = new ArrayList<>();
+    TDataNodeLocation location1 = new TDataNodeLocation();
+    location1.setDataNodeId(1);
+    location1.setInternalEndPoint(new TEndPoint("192.168.12.1", 6661));
+    location1.setClientRpcEndPoint(new TEndPoint("192.168.12.1", 6662));
+    location1.setDataRegionConsensusEndPoint(new TEndPoint("192.168.12.1", 6663));
+    location1.setSchemaRegionConsensusEndPoint(new TEndPoint("192.168.12.1", 6664));
+    location1.setMPPDataExchangeEndPoint(new TEndPoint("192.168.12.1", 6665));
+    locations.add(location1);
+
+    TDataNodeLocation location2 = new TDataNodeLocation();
+    location2.setDataNodeId(2);
+    location2.setInternalEndPoint(new TEndPoint("192.168.12.2", 6661));
+    location2.setClientRpcEndPoint(new TEndPoint("192.168.12.2", 6662));
+    location2.setDataRegionConsensusEndPoint(new TEndPoint("192.168.12.2", 6663));
+    location2.setSchemaRegionConsensusEndPoint(new TEndPoint("192.168.12.2", 6664));
+    location2.setMPPDataExchangeEndPoint(new TEndPoint("192.168.12.2", 6665));
+    locations.add(location2);
+
+    RemoveDataNodePlan removeDataNodePlan0 = new RemoveDataNodePlan(new ArrayList<>(locations));
+    RemoveDataNodePlan removeDataNodePlan1 =
+        (RemoveDataNodePlan)
+            ConfigPhysicalPlan.Factory.create(removeDataNodePlan0.serializeToByteBuffer());
+    Assert.assertEquals(removeDataNodePlan0, removeDataNodePlan1);
   }
 }

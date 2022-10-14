@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 public class RegionStatisticsTest {
 
   @Test
-  public void RegionStatisticsSerDeTest() throws IOException {
+  public void RegionStatisticsSerDeTest1() throws IOException {
     RegionStatistics statistics0 = new RegionStatistics(20000522, true, RegionStatus.Running);
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();

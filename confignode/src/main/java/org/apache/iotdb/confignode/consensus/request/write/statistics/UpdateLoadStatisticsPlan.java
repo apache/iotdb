@@ -71,6 +71,8 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.UpdateLoadStatistics.ordinal(), stream);
+
     ReadWriteIOUtils.write(nodeStatisticsMap.size(), stream);
     for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
       ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), stream);

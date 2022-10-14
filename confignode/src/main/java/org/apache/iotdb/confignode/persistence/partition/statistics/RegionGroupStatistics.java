@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -83,6 +84,21 @@ public class RegionGroupStatistics {
     }
   }
 
+  // Deserializer for snapshot
+  public void deserialize(InputStream inputStream) throws IOException {
+    this.leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+    this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(inputStream));
+
+    int regionNum = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < regionNum; i++) {
+      int belongedDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+      RegionStatistics regionStatistics = new RegionStatistics();
+      regionStatistics.deserialize(inputStream);
+      regionStatisticsMap.put(belongedDataNodeId, regionStatistics);
+    }
+  }
+
+  // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
     this.leaderDataNodeId = buffer.getInt();
     this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(buffer));

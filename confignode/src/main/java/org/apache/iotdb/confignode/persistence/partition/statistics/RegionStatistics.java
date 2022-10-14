@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -64,6 +65,14 @@ public class RegionStatistics {
     ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
   }
 
+  // Deserializer for snapshot
+  public void deserialize(InputStream inputStream) throws IOException {
+    this.versionTimestamp = ReadWriteIOUtils.readLong(inputStream);
+    this.isLeader = ReadWriteIOUtils.readBool(inputStream);
+    this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(inputStream));
+  }
+
+  // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
     this.versionTimestamp = buffer.getLong();
     this.isLeader = ReadWriteIOUtils.readBool(buffer);
