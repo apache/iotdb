@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -34,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class DeleteTimeSeriesPlan extends PhysicalPlan {
+public class DeleteTimeSeriesPlan extends PhysicalPlan implements IDeleteTimeSeriesPlan {
 
   private List<PartialPath> deletePathList;
   private Map<Integer, TSStatus> results = new TreeMap<>();
@@ -56,6 +57,11 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
+    return deletePathList;
+  }
+
+  @Override
+  public List<PartialPath> getDeletePathList() {
     return deletePathList;
   }
 

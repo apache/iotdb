@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -35,6 +36,8 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;
 
+  private TConsensusGroupType partitionType;
+
   private TSeriesPartitionSlot seriesSlotId;
 
   private TTimePartitionSlot timeSlotId;
@@ -44,8 +47,12 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
   }
 
   public GetRoutingPlan(
-      String storageGroup, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+      String storageGroup,
+      TConsensusGroupType partitionType,
+      TSeriesPartitionSlot seriesSlotId,
+      TTimePartitionSlot timeSlotId) {
     this();
+    this.partitionType = partitionType;
     this.storageGroup = storageGroup;
     this.seriesSlotId = seriesSlotId;
     this.timeSlotId = timeSlotId;
@@ -53,6 +60,10 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
 
   public String getStorageGroup() {
     return storageGroup;
+  }
+
+  public TConsensusGroupType getPartitionType() {
+    return partitionType;
   }
 
   public TSeriesPartitionSlot getSeriesSlotId() {
@@ -67,6 +78,7 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
     ReadWriteIOUtils.write(storageGroup, stream);
+    stream.writeInt(partitionType.ordinal());
     ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
     ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
   }
@@ -74,6 +86,7 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.storageGroup = ReadWriteIOUtils.readString(buffer);
+    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
     this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
     this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
   }
