@@ -109,10 +109,9 @@ public class DataNode implements DataNodeMBean {
   private static final RegisterManager registerManager = new RegisterManager();
   public static ServiceProvider serviceProvider;
 
-  /** store the list when registering in config node for preparing trigger related resources */
-  private List<TriggerInformation> triggerInformationList;
-
-  private static final int JAR_NUM_OF_ONE_RPC = 10;
+  /** Hold the information of trigger, udf...... */
+  private final ResourcesInformationHolder resourcesInformationHolder =
+      new ResourcesInformationHolder();
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
@@ -147,8 +146,6 @@ public class DataNode implements DataNodeMBean {
       prepareDataNode();
       // register current DataNode to ConfigNode
       registerInConfigNode();
-      // get resources for trigger,udf...
-      prepareResources();
       // active DataNode
       active();
       // setup rpc service
@@ -295,6 +292,9 @@ public class DataNode implements DataNodeMBean {
   private void setUp() throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB DataNode...");
 
+    // get resources for trigger,udf...
+    prepareResources();
+
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     initServiceProvider();
@@ -420,17 +420,19 @@ public class DataNode implements DataNodeMBean {
 
   private void prepareTriggerResources() throws StartupException {
     initTriggerRelatedInstance();
-    if (triggerInformationList == null || triggerInformationList.isEmpty()) {
+    if (resourcesInformationHolder.getTriggerInformationList() == null
+        || resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
       return;
     }
 
     // get jars from config node
-    List<TriggerInformation> triggerNeedJarList = getTriggerNeedJarList();
+    List<TriggerInformation> triggerNeedJarList = getJarListForTrigger();
     int index = 0;
     while (index < triggerNeedJarList.size()) {
       List<TriggerInformation> curList = new ArrayList<>();
       int offset = 0;
-      while (offset < JAR_NUM_OF_ONE_RPC && index + offset < triggerNeedJarList.size()) {
+      while (offset < ResourcesInformationHolder.getJarNumOfOneRpc()
+          && index + offset < triggerNeedJarList.size()) {
         curList.add(triggerNeedJarList.get(index + offset));
         offset++;
       }
@@ -440,7 +442,8 @@ public class DataNode implements DataNodeMBean {
 
     // create instances of triggers and do registration
     try {
-      for (TriggerInformation triggerInformation : triggerInformationList) {
+      for (TriggerInformation triggerInformation :
+          resourcesInformationHolder.getTriggerInformationList()) {
         TriggerManagementService.getInstance().doRegister(triggerInformation);
       }
     } catch (Exception e) {
@@ -470,7 +473,7 @@ public class DataNode implements DataNodeMBean {
         throw new StartupException("Failed to get trigger jar from config node.");
       }
       List<ByteBuffer> jarList = resp.getJarList();
-      for (int i = 0, n = triggerInformationList.size(); i < n; i++) {
+      for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
             .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
@@ -479,9 +482,11 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  private List<TriggerInformation> getTriggerNeedJarList() {
+  /** Generate a list for triggers that do not have jar on this node. */
+  private List<TriggerInformation> getJarListForTrigger() {
     List<TriggerInformation> res = new ArrayList<>();
-    for (TriggerInformation triggerInformation : triggerInformationList) {
+    for (TriggerInformation triggerInformation :
+        resourcesInformationHolder.getTriggerInformationList()) {
       if (triggerInformation.isStateful()) {
         // jar of stateful trigger is not needed
         continue;
@@ -510,7 +515,7 @@ public class DataNode implements DataNodeMBean {
       for (ByteBuffer triggerInformationByteBuffer : allTriggerInformation) {
         list.add(TriggerInformation.deserialize(triggerInformationByteBuffer));
       }
-      this.triggerInformationList = list;
+      resourcesInformationHolder.setTriggerInformationList(list);
     }
   }
 
