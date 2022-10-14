@@ -58,9 +58,9 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     try {
       switch (state) {
         case ADD_CONFIG_NODE_PREPARE:
-          setNextState(AddConfigNodeState.ADD_CONSENSUS_GROUP);
+          setNextState(AddConfigNodeState.CREATE_PEER);
           break;
-        case ADD_CONSENSUS_GROUP:
+        case CREATE_PEER:
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
           LOG.info("Add consensus group {}", tConfigNodeLocation);
@@ -97,8 +97,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   protected void rollbackState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
       throws ProcedureException {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
-        env.removeConsensusGroup(tConfigNodeLocation);
+      case CREATE_PEER:
+        env.deleteConfigNodePeer(tConfigNodeLocation);
         LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
         break;
       case ADD_PEER:
@@ -111,7 +111,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   @Override
   protected boolean isRollbackSupported(AddConfigNodeState state) {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
+      case CREATE_PEER:
       case ADD_PEER:
         return true;
     }

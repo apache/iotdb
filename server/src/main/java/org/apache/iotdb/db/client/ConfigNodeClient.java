@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -68,6 +67,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -678,7 +679,7 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) throws TException {
+  public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
   }
 
@@ -936,6 +937,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTriggerJarResp resp = client.getTriggerJar(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1160,7 +1177,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(TGetRoutingReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1177,7 +1193,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1194,7 +1209,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

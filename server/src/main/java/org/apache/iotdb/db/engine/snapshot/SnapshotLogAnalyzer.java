@@ -18,25 +18,28 @@
  */
 package org.apache.iotdb.db.engine.snapshot;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SnapshotLogAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLogAnalyzer.class);
-  private File snapshotLogFile;
-  private BufferedReader reader;
+  private final File snapshotLogFile;
+  private final BufferedReader reader;
+  private String snapshotId;
+  private boolean complete;
+  private Set<String> fileInfoSet = new HashSet<>();
 
-  public SnapshotLogAnalyzer(File snapshotLogFile) throws FileNotFoundException {
+  public SnapshotLogAnalyzer(File snapshotLogFile) throws IOException {
     this.snapshotLogFile = snapshotLogFile;
     this.reader = new BufferedReader(new FileReader(snapshotLogFile));
+    this.analyze();
   }
 
   public void close() {
@@ -47,33 +50,37 @@ public class SnapshotLogAnalyzer {
     }
   }
 
-  public boolean hasNext() {
-    try {
-      return reader != null && reader.ready();
-    } catch (Exception e) {
-      return false;
-    }
+  public String getSnapshotId() {
+    return snapshotId;
   }
 
   /**
-   * @return The next pair of files recorded in the log. The left one is the path of source file,
-   *     the right one is the path of target file
+   * Return the total num of file in this snapshot.
+   *
+   * @return
    */
-  public Pair<String, String> getNextPairs() {
-    if (reader == null) {
-      return null;
-    }
+  public int getTotalFileCountInSnapshot() throws IOException {
+    return fileInfoSet.size();
+  }
+
+  public Set<String> getFileInfoSet() {
+    return fileInfoSet;
+  }
+
+  private void analyze() throws IOException {
     try {
-      String fileInfo = reader.readLine();
-      String[] filesPath = fileInfo.split(SnapshotLogger.SPLIT_CHAR);
-      if (filesPath.length != 2) {
-        LOGGER.warn("Illegal file info: {} in snapshot log", fileInfo);
-        return null;
+      snapshotId = reader.readLine();
+      String line;
+      while ((line = reader.readLine()) != null && !line.equals(SnapshotLogger.END_FLAG)) {
+        fileInfoSet.add(line);
       }
-      return new Pair<>(filesPath[0], filesPath[1]);
-    } catch (IOException e) {
-      LOGGER.error("Exception occurs when analyzing snapshot log", e);
-      return null;
+      complete = line != null;
+    } finally {
+      reader.close();
     }
+  }
+
+  public boolean isSnapshotComplete() throws IOException {
+    return complete;
   }
 }
