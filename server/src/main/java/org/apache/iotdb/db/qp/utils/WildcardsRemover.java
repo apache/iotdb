@@ -72,7 +72,7 @@ public class WildcardsRemover {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
           IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
-              path, currentLimit, currentOffset, isPrefixMatch);
+              path, currentLimit, currentOffset, isPrefixMatch, false);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);
       currentLimit -= pair.left.size();
@@ -123,7 +123,11 @@ public class WildcardsRemover {
     return remainingExpressions;
   }
 
-  /** @return should break the loop or not */
+  /**
+   * Check whether the path number is over limit.
+   *
+   * @return should break the loop or not
+   */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
     if (resultColumns.size()

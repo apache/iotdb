@@ -250,18 +250,18 @@ public class ConfigNodeProcedureEnv {
   /**
    * Remove Consensus Group in removed node
    *
-   * @param tConfigNodeLocation config node location
+   * @param removedConfigNode config node location
    * @throws ProcedureException if failed status
    */
-  public void removeConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+  public void deleteConfigNodePeer(TConfigNodeLocation removedConfigNode)
       throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
-                    tConfigNodeLocation.getInternalEndPoint(),
-                    tConfigNodeLocation,
-                    ConfigNodeRequestType.REMOVE_CONSENSUS_GROUP);
+                    removedConfigNode.getInternalEndPoint(),
+                    removedConfigNode,
+                    ConfigNodeRequestType.DELETE_CONFIG_NODE_PEER);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }

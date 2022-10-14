@@ -799,13 +799,13 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 0.8 |
 |改后生效方式|重启服务生效|
 
-* storage\_group\_report\_threshold
+* write\_memory\_variation\_report\_proportion
 
-|名字| storage\_group\_report\_threshold |
+|名字| write\_memory\_variation\_report\_proportion |
 |:---:|:---|
-|描述| 如果存储组的内存（以字节byte为单位）增加超过此阈值，则向系统报告。默认值为16MB |
-|类型| Int32 |
-|默认值| 16777216 |
+|描述| 如果 DataRegion 的内存增加超过写入可用内存的一定比例，则向系统报告。默认值为0.001 |
+|类型| Double |
+|默认值| 0.001 |
 |改后生效方式|重启服务生效|
 
 * max\_deduplicated\_path\_num

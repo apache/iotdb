@@ -41,7 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
@@ -169,7 +169,7 @@ public class SyncService implements IService {
 
   public synchronized void addPipe(PipeInfo pipeInfo) throws PipeException {
     logger.info("Execute CREATE PIPE {}", pipeInfo.getPipeName());
-    long currentTime = DatetimeUtils.currentTime();
+    long currentTime = DateTimeUtils.currentTime();
     if (pipeInfo instanceof TsFilePipeInfo) {
       // TODO(sync): move check logic to PipeInfo#validate()
       // check statement
@@ -177,9 +177,9 @@ public class SyncService implements IService {
         throw new PipeException(
             String.format(
                 "Start time %s is later than current time %s, this is not supported yet.",
-                DatetimeUtils.convertLongToDate(
+                DateTimeUtils.convertLongToDate(
                     ((TsFilePipeInfo) pipeInfo).getDataStartTimestamp()),
-                DatetimeUtils.convertLongToDate(currentTime)));
+                DateTimeUtils.convertLongToDate(currentTime)));
       }
     }
     // add pipe
@@ -362,7 +362,7 @@ public class SyncService implements IService {
         try {
           RowRecord record = new RowRecord(0);
           record.addField(
-              Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())),
+              Binary.valueOf(DateTimeUtils.convertLongToDate(pipe.getCreateTime())),
               TSDataType.TEXT);
           record.addField(Binary.valueOf(pipe.getPipeName()), TSDataType.TEXT);
           record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
@@ -403,7 +403,7 @@ public class SyncService implements IService {
       // TODO(sync): Removing duplicate rows
       RowRecord record = new RowRecord(0);
       record.addField(
-          Binary.valueOf(DatetimeUtils.convertLongToDate(identityInfo.getCreateTime())),
+          Binary.valueOf(DateTimeUtils.convertLongToDate(identityInfo.getCreateTime())),
           TSDataType.TEXT);
       record.addField(Binary.valueOf(identityInfo.getPipeName()), TSDataType.TEXT);
       record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);

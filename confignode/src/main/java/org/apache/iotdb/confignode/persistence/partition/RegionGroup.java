@@ -81,7 +81,7 @@ public class RegionGroup {
         }));
   }
 
-  public long getSeriesSlotCount() {
+  public int getSeriesSlotCount() {
     return slotCountMap.size();
   }
 

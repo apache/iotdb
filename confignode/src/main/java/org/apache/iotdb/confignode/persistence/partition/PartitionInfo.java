@@ -796,7 +796,8 @@ public class PartitionInfo implements SnapshotProcessor {
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetRoutingResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        sgPartitionTable.getRouting(plan.getSeriesSlotId(), plan.getTimeSlotId()));
+        sgPartitionTable.getRouting(
+            plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId()));
   }
 
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {

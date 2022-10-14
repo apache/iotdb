@@ -369,8 +369,14 @@ public class StorageGroupPartitionTable {
   }
 
   public List<TConsensusGroupId> getRouting(
-      TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
-    return dataPartitionTable.getRouting(seriesSlotId, timeSlotId);
+      TConsensusGroupType type, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    if (type == TConsensusGroupType.DataRegion) {
+      return dataPartitionTable.getRouting(seriesSlotId, timeSlotId);
+    } else if (type == TConsensusGroupType.SchemaRegion) {
+      return schemaPartitionTable.getRouting(seriesSlotId);
+    } else {
+      return new ArrayList<>();
+    }
   }
 
   public List<TTimePartitionSlot> getTimeSlotList(

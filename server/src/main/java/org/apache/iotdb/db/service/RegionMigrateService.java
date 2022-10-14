@@ -271,7 +271,9 @@ public class RegionMigrateService implements IService {
           if (!addPeerSucceed) {
             Thread.sleep(SLEEP_MILLIS);
           }
-          resp = addRegionPeer(regionId, new Peer(regionId, newPeerNode));
+          resp =
+              addRegionPeer(
+                  regionId, new Peer(regionId, selectedDataNode.getDataNodeId(), newPeerNode));
           addPeerSucceed = true;
         } catch (Throwable e) {
           addPeerSucceed = false;
@@ -378,7 +380,9 @@ public class RegionMigrateService implements IService {
           if (!removePeerSucceed) {
             Thread.sleep(SLEEP_MILLIS);
           }
-          resp = removeRegionPeer(regionId, new Peer(regionId, oldPeerNode));
+          resp =
+              removeRegionPeer(
+                  regionId, new Peer(regionId, selectedDataNode.getDataNodeId(), oldPeerNode));
           removePeerSucceed = true;
         } catch (Throwable e) {
           removePeerSucceed = false;

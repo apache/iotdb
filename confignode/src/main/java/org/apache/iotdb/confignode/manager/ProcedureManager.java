@@ -199,7 +199,7 @@ public class ProcedureManager {
     RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
     this.executor.submitProcedure(removeConfigNodeProcedure);
-    LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
+    LOGGER.info("Submit RemoveConfigNodeProcedure successfully: {}", removeConfigNodePlan);
   }
 
   /** Generate RemoveDataNodeProcedures, and serially execute all the RemoveDataNodeProcedure */

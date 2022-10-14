@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
@@ -138,7 +139,8 @@ public enum PlanNodeType {
   PATHS_USING_TEMPLATE_SCAN((short) 54),
   LOAD_TSFILE((short) 55),
   CONSTRUCT_SCHEMA_BLACK_LIST_NODE((short) 56),
-  ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57);
+  ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57),
+  GROUP_BY_TAG((short) 58);
 
   public static final int BYTES = Short.BYTES;
 
@@ -303,6 +305,8 @@ public enum PlanNodeType {
         return ConstructSchemaBlackListNode.deserialize(buffer);
       case 57:
         return RollbackSchemaBlackListNode.deserialize(buffer);
+      case 58:
+        return GroupByTagNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

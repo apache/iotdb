@@ -24,17 +24,22 @@ import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Map;
+
 public class SchemaCacheEntry {
 
   private final MeasurementSchema measurementSchema;
 
+  private final Map<String, String> tagMap;
   private final boolean isAligned;
 
   private volatile ILastCacheContainer lastCacheContainer = null;
 
-  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned) {
+  SchemaCacheEntry(
+      MeasurementSchema measurementSchema, Map<String, String> tagMap, boolean isAligned) {
     this.measurementSchema = measurementSchema;
     this.isAligned = isAligned;
+    this.tagMap = tagMap;
   }
 
   public String getSchemaEntryId() {
@@ -43,6 +48,10 @@ public class SchemaCacheEntry {
 
   public MeasurementSchema getMeasurementSchema() {
     return measurementSchema;
+  }
+
+  public Map<String, String> getTagMap() {
+    return tagMap;
   }
 
   public TSDataType getTsDataType() {

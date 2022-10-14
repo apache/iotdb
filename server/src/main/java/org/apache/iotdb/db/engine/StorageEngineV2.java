@@ -104,8 +104,6 @@ public class StorageEngineV2 implements IService {
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
-  private final boolean enableMemControl = config.isEnableMemControl();
-
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
@@ -155,11 +153,6 @@ public class StorageEngineV2 implements IService {
       initTimePartition();
     }
     return timePartitionIntervalForStorage;
-  }
-
-  @TestOnly
-  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
   }
 
   public static long getTimePartition(long time) {
@@ -480,7 +473,7 @@ public class StorageEngineV2 implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
-    dataRegion.setDataTTL(ttl);
+    dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
     return dataRegion;
@@ -566,7 +559,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(dataTTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }
@@ -700,7 +693,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(req.TTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(req.TTL);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
