@@ -22,10 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;

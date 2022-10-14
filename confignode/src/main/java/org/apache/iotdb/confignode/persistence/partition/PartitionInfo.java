@@ -35,11 +35,12 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -104,7 +106,9 @@ public class PartitionInfo implements SnapshotProcessor {
   private final AtomicInteger nextRegionGroupId;
 
   // Map<StorageGroupName, StorageGroupPartitionInfo>
-  private final ConcurrentHashMap<String, StorageGroupPartitionTable> storageGroupPartitionTables;
+  private final Map<String, StorageGroupPartitionTable> storageGroupPartitionTables;
+
+  private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
 
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
@@ -114,6 +118,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
+    this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
     this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
   }
 
@@ -499,6 +504,11 @@ public class PartitionInfo implements SnapshotProcessor {
     return sgPartitionTableOptional
         .map(StorageGroupPartitionTable::getStorageGroupName)
         .orElse(null);
+  }
+
+  public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
+    regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   // ======================================================

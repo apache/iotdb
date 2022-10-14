@@ -20,36 +20,27 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
+
+  private static final NodeStatistics CURRENT_NODE_STATISTICS = new NodeStatistics(
+          0, NodeStatus.Running, null
+  );
 
   private final TConfigNodeLocation configNodeLocation;
 
   public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
+    super();
     this.configNodeLocation = configNodeLocation;
   }
 
   @Override
-  public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
-    synchronized (slidingWindow) {
-      // Only sequential heartbeats are accepted.
-      // And un-sequential heartbeats will be discarded.
-      if (slidingWindow.size() == 0
-          || slidingWindow.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
-        slidingWindow.add(newHeartbeatSample);
-      }
-
-      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
-        slidingWindow.removeFirst();
-      }
-    }
-  }
-
-  @Override
-  public boolean updateNodeStatus() {
+  public NodeStatistics updateNodeStatistics() {
+    // Skip itself
     if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
-      this.status = NodeStatus.Running;
-      return false;
+      // For first time update
+      return CURRENT_NODE_STATISTICS.equals(statistics) ? null : (statistics = CURRENT_NODE_STATISTICS);
     }
 
     long lastSendTime = 0;
@@ -59,20 +50,19 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       }
     }
 
-    String originStatus = status.getStatus();
-
+    // Update Node status
+    NodeStatus status;
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;
     }
-    return !status.getStatus().equals(originStatus);
-  }
 
-  @Override
-  public long getLoadScore() {
-    // The ConfigNode whose status isn't Running will get the highest loadScore
-    return status == NodeStatus.Running ? 0 : Long.MAX_VALUE;
+    // Update loadScore
+    long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
+
+    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
+    return newStatistics.equals(statistics) ? null : (statistics = newStatistics);
   }
 }

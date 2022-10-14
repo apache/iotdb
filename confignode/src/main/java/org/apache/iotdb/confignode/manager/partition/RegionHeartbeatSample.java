@@ -26,7 +26,6 @@ public class RegionHeartbeatSample {
   private final long sendTimestamp;
   private final long receiveTimestamp;
 
-  private final int belongedDataNodeId;
   private final boolean isLeader;
   private final RegionStatus status;
 
@@ -35,13 +34,11 @@ public class RegionHeartbeatSample {
   public RegionHeartbeatSample(
       long sendTimestamp,
       long receiveTimestamp,
-      int belongedDataNodeId,
       boolean isLeader,
       RegionStatus status) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
 
-    this.belongedDataNodeId = belongedDataNodeId;
     this.isLeader = isLeader;
     this.status = status;
   }
@@ -52,10 +49,6 @@ public class RegionHeartbeatSample {
 
   public long getReceiveTimestamp() {
     return receiveTimestamp;
-  }
-
-  public int getBelongedDataNodeId() {
-    return belongedDataNodeId;
   }
 
   public boolean isLeader() {

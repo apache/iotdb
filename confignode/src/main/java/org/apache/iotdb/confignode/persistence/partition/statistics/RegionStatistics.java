@@ -18,5 +18,54 @@
  */
 package org.apache.iotdb.confignode.persistence.partition.statistics;
 
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class RegionStatistics {
+
+  // For confirm the leadership.
+  // The Region who claim itself as the leader and
+  // has the maximum versionTimestamp is considered as the true leader
+  private long versionTimestamp;
+  private boolean isLeader;
+
+  private RegionStatus regionStatus;
+
+  public RegionStatistics() {
+    // Empty constructor
+  }
+
+  public RegionStatistics(long versionTimestamp, boolean isLeader, RegionStatus regionStatus) {
+    this.versionTimestamp = versionTimestamp;
+    this.isLeader = isLeader;
+    this.regionStatus = regionStatus;
+  }
+
+  public long getVersionTimestamp() {
+    return versionTimestamp;
+  }
+
+  public boolean isLeader() {
+    return isLeader;
+  }
+
+  public RegionStatus getRegionStatus() {
+    return regionStatus;
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(versionTimestamp, stream);
+    ReadWriteIOUtils.write(isLeader, stream);
+    ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    this.versionTimestamp = buffer.getLong();
+    this.isLeader = ReadWriteIOUtils.readBool(buffer);
+    this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(buffer));
+  }
 }

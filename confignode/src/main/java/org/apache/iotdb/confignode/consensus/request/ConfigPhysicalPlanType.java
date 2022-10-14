@@ -90,5 +90,6 @@ public enum ConfigPhysicalPlanType {
   UpdateTriggerStateInTable,
   GetRouting,
   GetSeriesSlotList,
-  GetTimeSlotList
+  GetTimeSlotList,
+  UpdateLoadStatistics
 }

@@ -27,10 +27,11 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -51,15 +52,11 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -285,7 +282,9 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
 
-      registeredConfigNodes.put(applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(), applyConfigNodePlan.getConfigNodeLocation());
+      registeredConfigNodes.put(
+          applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
+          applyConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
@@ -344,6 +343,10 @@ public class NodeInfo implements SnapshotProcessor {
 
   public int generateNextNodeId() {
     return nextNodeId.incrementAndGet();
+  }
+
+  public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
+    nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
   }
 
   @Override
@@ -408,7 +411,8 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void serializeNodeStatistics(OutputStream outputStream, TProtocol protocol) throws IOException {
+  private void serializeNodeStatistics(OutputStream outputStream, TProtocol protocol)
+      throws IOException {
     ReadWriteIOUtils.write(nodeStatisticsMap.size(), outputStream);
   }
 

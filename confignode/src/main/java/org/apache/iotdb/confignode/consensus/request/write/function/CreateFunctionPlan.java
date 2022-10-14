@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.function;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -26,32 +26,61 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
-public class DropFunctionPlan extends ConfigPhysicalPlan {
+public class CreateFunctionPlan extends ConfigPhysicalPlan {
 
   private String functionName;
+  private String className;
+  private List<String> uris;
 
-  public DropFunctionPlan() {
-    super(ConfigPhysicalPlanType.DropFunction);
+  public CreateFunctionPlan() {
+    super(ConfigPhysicalPlanType.CreateFunction);
   }
 
-  public DropFunctionPlan(String functionName) {
-    super(ConfigPhysicalPlanType.DropFunction);
+  public CreateFunctionPlan(String functionName, String className, List<String> uris) {
+    super(ConfigPhysicalPlanType.CreateFunction);
     this.functionName = functionName;
+    this.className = className;
+    this.uris = uris;
   }
 
   public String getFunctionName() {
     return functionName;
   }
 
+  public String getClassName() {
+    return className;
+  }
+
+  public List<String> getUris() {
+    return uris;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
+
     ReadWriteIOUtils.write(functionName, stream);
+    ReadWriteIOUtils.write(className, stream);
+
+    final int size = uris.size();
+    ReadWriteIOUtils.write(size, stream);
+    for (String uri : uris) {
+      ReadWriteIOUtils.write(uri, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     functionName = ReadWriteIOUtils.readString(buffer);
+    className = ReadWriteIOUtils.readString(buffer);
+
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    uris = new ArrayList<>(size);
+    for (int i = 0; i < size; ++i) {
+      uris.add(ReadWriteIOUtils.readString(buffer));
+    }
   }
 }

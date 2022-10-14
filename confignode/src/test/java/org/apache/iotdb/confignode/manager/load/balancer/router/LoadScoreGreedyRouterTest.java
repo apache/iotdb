@@ -69,7 +69,7 @@ public class LoadScoreGreedyRouterTest {
                   new THeartbeatResp(currentTimeMillis - i * 1000, NodeStatus.Running.getStatus()),
                   currentTimeMillis - i * 1000));
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatus);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatistics);
 
     /* Get the loadScoreMap */
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

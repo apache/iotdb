@@ -19,15 +19,36 @@
 package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class NodeStatistics {
 
-  private final NodeStatus status;
-  private final String statusReason;
+  // For guiding queries, the higher the score the higher the load
+  private long loadScore;
 
-  public NodeStatistics(NodeStatus status, String statusReason) {
+  // The current status of the Node
+  private NodeStatus status;
+  // The reason why lead to the current NodeStatus (for showing cluster)
+  // Notice: Default is null
+  private String statusReason;
+
+  public NodeStatistics() {
+    // Empty constructor
+  }
+
+  public NodeStatistics(long loadScore, NodeStatus status, String statusReason) {
+    this.loadScore = loadScore;
     this.status = status;
     this.statusReason = statusReason;
+  }
+
+  public long getLoadScore() {
+    return loadScore;
   }
 
   public NodeStatus getStatus() {
@@ -36,5 +57,41 @@ public class NodeStatistics {
 
   public String getStatusReason() {
     return statusReason;
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(loadScore, stream);
+    ReadWriteIOUtils.write(status.getStatus(), stream);
+    if (statusReason != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(statusReason, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    loadScore = buffer.getLong();
+    status = NodeStatus.parse(ReadWriteIOUtils.readString(buffer));
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      statusReason = ReadWriteIOUtils.readString(buffer);
+    } else {
+      statusReason = null;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    NodeStatistics that = (NodeStatistics) o;
+    return loadScore == that.loadScore
+        && status == that.status
+        && Objects.equals(statusReason, that.statusReason);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(loadScore, status, statusReason);
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 
 import org.junit.After;
 import org.junit.AfterClass;

@@ -17,58 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.function;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class UpdateProcedurePlan extends ConfigPhysicalPlan {
+public class DropFunctionPlan extends ConfigPhysicalPlan {
 
-  private Procedure procedure;
+  private String functionName;
 
-  public Procedure getProcedure() {
-    return procedure;
+  public DropFunctionPlan() {
+    super(ConfigPhysicalPlanType.DropFunction);
   }
 
-  public void setProcedure(Procedure procedure) {
-    this.procedure = procedure;
+  public DropFunctionPlan(String functionName) {
+    super(ConfigPhysicalPlanType.DropFunction);
+    this.functionName = functionName;
   }
 
-  public UpdateProcedurePlan() {
-    super(ConfigPhysicalPlanType.UpdateProcedure);
+  public String getFunctionName() {
+    return functionName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.UpdateProcedure.ordinal());
-    if (procedure != null) {
-      procedure.serialize(stream);
-    }
+    stream.writeInt(getType().ordinal());
+    ReadWriteIOUtils.write(functionName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    Procedure procedure = ProcedureFactory.getInstance().create(buffer);
-    this.procedure = procedure;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    UpdateProcedurePlan that = (UpdateProcedurePlan) o;
-    return Objects.equals(procedure, that.procedure);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(procedure);
+    functionName = ReadWriteIOUtils.readString(buffer);
   }
 }

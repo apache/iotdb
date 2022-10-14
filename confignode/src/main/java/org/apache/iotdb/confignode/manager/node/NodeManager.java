@@ -43,10 +43,10 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -56,8 +56,8 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
+import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -508,6 +508,10 @@ public class NodeManager {
 
   /** Start the heartbeat service */
   public void startHeartbeatService() {
+    if (getConsensusManager().isLeader()) {
+      check services
+    }
+
     synchronized (scheduleMonitor) {
       if (currentHeartbeatFuture == null) {
         currentHeartbeatFuture =
@@ -543,8 +547,8 @@ public class NodeManager {
     /* Generate heartbeat request */
     THeartbeatReq heartbeatReq = new THeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.currentTimeMillis());
-    // We update RegionGroups' leadership in every 5 heartbeat loop
-    heartbeatReq.setNeedJudgeLeader(heartbeatCounter.get() % 5 == 0);
+    // Always sample RegionGroups' leadership as the Region heartbeat
+    heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
 

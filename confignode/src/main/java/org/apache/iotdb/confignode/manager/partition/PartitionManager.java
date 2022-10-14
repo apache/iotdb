@@ -45,9 +45,9 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -835,7 +835,7 @@ public class PartitionManager {
     regionGroupCacheMap
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
         .cacheHeartbeatSample(regionHeartbeatSample);
-    regionGroupCacheMap.get(regionGroupId).updateRegionStatistics();
+    regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
   }
 
   public ScheduledExecutorService getRegionMaintainer() {
