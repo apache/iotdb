@@ -285,4 +285,12 @@ public abstract class AbstractMetricService {
       metricSets.add(metricSet);
     }
   }
+
+  /** remove metrics */
+  public void removeMetricSet(IMetricSet metricSet) {
+    if (metricSets.contains(metricSet)) {
+      metricSet.unbindFrom(this);
+      metricSets.remove(metricSet);
+    }
+  }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.multileader;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -94,6 +95,7 @@ public class MultiLeaderServerImpl {
   private boolean active;
   private String latestSnapshotId;
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
+  private final MultiLeaderServerMetrics metrics;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -123,6 +125,7 @@ public class MultiLeaderServerImpl {
       reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     }
     this.index = new AtomicLong(currentSearchIndex);
+    this.metrics = new MultiLeaderServerMetrics(this);
   }
 
   public IStateMachine getStateMachine() {
@@ -132,11 +135,13 @@ public class MultiLeaderServerImpl {
   public void start() {
     stateMachine.start();
     logDispatcher.start();
+    MetricService.getInstance().addMetricSet(this.metrics);
   }
 
   public void stop() {
     logDispatcher.stop();
     stateMachine.stop();
+    MetricService.getInstance().removeMetricSet(this.metrics);
   }
 
   /**
