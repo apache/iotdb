@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -33,31 +36,41 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class CountStorageGroupTask implements IConfigTask {
+public class GetRegionTask implements IConfigTask {
 
-  private final CountStorageGroupStatement countStorageGroupStatement;
+  private final GetRegionStatement getRegionStatement;
 
-  public CountStorageGroupTask(CountStorageGroupStatement countStorageGroupStatement) {
-    this.countStorageGroupStatement = countStorageGroupStatement;
+  public GetRegionTask(GetRegionStatement getRegionStatement) {
+    this.getRegionStatement = getRegionStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.countStorageGroup(countStorageGroupStatement);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return configTaskExecutor.getRegion(getRegionStatement);
   }
 
-  public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+  public static void buildTsBlock(TsBlockBuilder builder, TConsensusGroupId tConsensusGroupId) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeInt(storageGroupNum);
+    builder.getColumnBuilder(0).writeInt(tConsensusGroupId.getId());
     builder.declarePosition();
-    ColumnHeader storageGroupColumnHeader =
-        new ColumnHeader(IoTDBConstant.COLUMN_COUNT, TSDataType.INT32);
-    DatasetHeader datasetHeader =
-        new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
+  }
+
+  public static void buildTSBlock(
+      TGetRoutingResp getRoutingResp, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.getRoutingColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+
+    getRoutingResp.getDataRegionIdList().forEach(e -> buildTsBlock(builder, e));
+
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetRegionHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
