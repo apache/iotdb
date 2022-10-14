@@ -686,9 +686,8 @@ public class DateTimeUtils {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond), ZoneId.systemDefault());
   }
 
-  public static long convertMilliTimeWithPrecision(long milliTime) {
+  public static long convertMilliTimeWithPrecision(long milliTime, String timePrecision) {
     long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         result = milliTime * 1000_000L;
