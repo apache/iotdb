@@ -125,6 +125,10 @@ public class MemTableFlushTask {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
 
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      // skip the empty device/chunk group
+      if (value.isEmpty()) {
+        continue;
+      }
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
