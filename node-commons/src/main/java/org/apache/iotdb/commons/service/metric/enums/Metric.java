@@ -59,7 +59,8 @@ public enum Metric {
   SLOT,
   THRIFT_CONNECTIONS,
   THRIFT_ACTIVE_THREADS,
-  MULTI_LEADER;
+  MULTI_LEADER,
+  LOG_DISPATCHER;
 
   @Override
   public String toString() {

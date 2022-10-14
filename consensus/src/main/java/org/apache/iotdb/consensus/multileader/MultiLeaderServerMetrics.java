@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.multileader;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -43,7 +44,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             impl,
             MultiLeaderServerImpl::getIndex,
             Tag.NAME.toString(),
-            impl.getThisNode().getEndpoint().toString(),
+            formatEndPoint(impl.getThisNode().getEndpoint()),
             Tag.TYPE.toString(),
             "currentIndex");
     MetricService.getInstance()
@@ -53,7 +54,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             impl,
             MultiLeaderServerImpl::getCurrentSafelyDeletedSearchIndex,
             Tag.NAME.toString(),
-            impl.getThisNode().getEndpoint().toString(),
+            formatEndPoint(impl.getThisNode().getEndpoint()),
             Tag.TYPE.toString(),
             "safeIndex");
   }
@@ -65,7 +66,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            impl.getThisNode().getEndpoint().toString(),
+            formatEndPoint(impl.getThisNode().getEndpoint()),
             Tag.TYPE.toString(),
             "currentIndex");
     MetricService.getInstance()
@@ -73,8 +74,12 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            impl.getThisNode().getEndpoint().toString(),
+            formatEndPoint(impl.getThisNode().getEndpoint()),
             Tag.TYPE.toString(),
             "safeIndex");
+  }
+
+  private String formatEndPoint(TEndPoint endPoint) {
+    return endPoint.getIp() + ":" + endPoint.getPort();
   }
 }
