@@ -129,9 +129,14 @@ public class MemTableFlushTask {
       if (value.isEmpty()) {
         continue;
       }
+      boolean isAllChunkInChunkGroupEmpty = true;
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
+        if (series.count() != 0) {
+          isAllChunkInChunkGroupEmpty = false;
+          continue;
+        }
         /*
          * sort task (first task of flush pipeline)
          */
@@ -140,7 +145,9 @@ public class MemTableFlushTask {
         encodingTaskQueue.put(series);
       }
 
-      encodingTaskQueue.put(new EndChunkGroupIoTask());
+      if (!isAllChunkInChunkGroupEmpty) {
+        encodingTaskQueue.put(new EndChunkGroupIoTask());
+      }
     }
     encodingTaskQueue.put(new TaskEnd());
     LOGGER.debug(
