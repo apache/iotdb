@@ -136,12 +136,15 @@ public interface IMTreeBelowSG {
    * collected and return.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param limit the limit of query result.
+   * @param offset the offset.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param withTags whether returns all the tags of each timeseries as well.
    * @return Pair.left contains all the satisfied path Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
 
   /**

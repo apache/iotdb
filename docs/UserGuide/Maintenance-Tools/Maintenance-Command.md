@@ -78,9 +78,9 @@ IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 ```
 
 
-## Timeout
+## Kill Query
 
-IoTDB supports session and query level timeout.
+IoTDB supports setting session connection timeouts and query timeouts, and also allows to stop the executing query manually.
 
 ### Session timeout
 

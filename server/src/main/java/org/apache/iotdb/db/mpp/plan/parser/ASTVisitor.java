@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -67,6 +69,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
@@ -100,6 +103,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -150,10 +156,13 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagClauseContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagStatementContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -169,7 +178,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -974,6 +982,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
     }
 
+    if (ctx.TAGS() != null) {
+      List<String> tagKeys = new ArrayList<>();
+      for (IdentifierContext identifierContext : ctx.identifier()) {
+        tagKeys.add(identifierContext.getText());
+      }
+      queryStatement.setGroupByTagComponent(new GroupByTagComponent(tagKeys));
+    }
+
     // parse fill clause
     if (ctx.fillClause() != null) {
       parseFillClause(ctx.fillClause());
@@ -1021,7 +1037,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** parse time range (startTime and endTime) in group by query. */
   private void parseTimeRange(
       IoTDBSqlParser.TimeRangeContext timeRange, GroupByTimeComponent groupByClauseComponent) {
-    long currentTime = DatetimeUtils.currentTime();
+    long currentTime = DateTimeUtils.currentTime();
     long startTime = parseTimeValue(timeRange.timeValue(0), currentTime);
     long endTime = parseTimeValue(timeRange.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
@@ -1046,7 +1062,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         groupByTimeComponent.setSlidingStepByMonth(true);
       }
     }
-    return DatetimeUtils.convertDurationStrToLong(duration);
+    return DateTimeUtils.convertDurationStrToLong(duration);
   }
 
   // Group By Level Clause
@@ -1093,6 +1109,31 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Expression predicate =
         parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
     queryStatement.setHavingCondition(new HavingCondition(predicate));
+  }
+
+  @Override
+  public Statement visitGroupByTagStatement(GroupByTagStatementContext ctx) {
+    // parse group by tag clause
+    parseGroupByTagClause(ctx.groupByTagClause());
+
+    // parse order by time
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
+    }
+
+    return queryStatement;
+  }
+
+  public void parseGroupByTagClause(GroupByTagClauseContext ctx) {
+    Set<String> tagKeys = new LinkedHashSet<>();
+    for (IdentifierContext identifierContext : ctx.identifier()) {
+      String key = parseIdentifier(identifierContext.getText());
+      if (tagKeys.contains(key)) {
+        throw new SemanticException("duplicated key in GROUP BY TAGS: " + key);
+      }
+      tagKeys.add(key);
+    }
+    queryStatement.setGroupByTagComponent(new GroupByTagComponent(new ArrayList<>(tagKeys)));
   }
 
   // Fill Clause
@@ -1405,10 +1446,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             throw new SemanticException("need timestamps when insert multi rows");
           }
           valueList.add(insertMultiValues.get(i).timeValue().getText());
-          timestamp = DatetimeUtils.currentTime();
+          timestamp = DateTimeUtils.currentTime();
         } else {
           timestamp =
-              parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
+              parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
         }
       } else {
         if (!isTimeDefault) {
@@ -1602,10 +1643,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      return DatetimeUtils.currentTime();
+      return DateTimeUtils.currentTime();
     }
     try {
-      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SQLParserException(
           String.format(
@@ -1624,7 +1665,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return currentTime;
     }
     try {
-      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SQLParserException(
           String.format(
@@ -1804,7 +1845,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void checkGrantRevokePrivileges(String[] privileges, List<PartialPath> nodeNameList) {
     if (nodeNameList.isEmpty()) {
-      nodeNameList.addAll(Collections.singletonList(new PartialPath(ALL_RESULT_NODES)));
+      nodeNameList.add(new PartialPath(ALL_RESULT_NODES));
       return;
     }
     boolean pathRelevant = true;
@@ -2000,8 +2041,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
-    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
-    return showClusterStatement;
+    return new ShowClusterStatement();
   }
 
   @Override
@@ -2334,9 +2374,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       }
     }
     return time;
@@ -2347,9 +2387,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       }
     }
     return time;
@@ -2575,10 +2615,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
     String name = parseIdentifier(parseIdentifier(ctx.templateName.getText()));
-    List<List<String>> measurementsList = new ArrayList<List<String>>();
-    List<List<TSDataType>> dataTypesList = new ArrayList<List<TSDataType>>();
-    List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
-    List<List<CompressionType>> compressorsList = new ArrayList<List<CompressionType>>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> dataTypesList = new ArrayList<>();
+    List<List<TSEncoding>> encodingsList = new ArrayList<>();
+    List<List<CompressionType>> compressorsList = new ArrayList<>();
 
     if (ctx.ALIGNED() != null) {
       // aligned
@@ -2912,8 +2952,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowPipeSinkType(IoTDBSqlParser.ShowPipeSinkTypeContext ctx) {
-    ShowPipeSinkTypeStatement showPipeSinkTypeStatement = new ShowPipeSinkTypeStatement();
-    return showPipeSinkTypeStatement;
+    return new ShowPipeSinkTypeStatement();
   }
 
   @Override
@@ -2956,5 +2995,48 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Not support for this sql in DROPPIPESINK, please enter pipesinkname.");
     }
     return dropPipeSinkStatement;
+  }
+
+  @Override
+  public Statement visitGetRegion(IoTDBSqlParser.GetRegionContext ctx) {
+    TConsensusGroupType type =
+        ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
+    GetRegionStatement getRegionStatement =
+        new GetRegionStatement(
+            ctx.prefixPath().getText(),
+            type,
+            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    if (ctx.timeSlot != null) {
+      getRegionStatement.setTimeSlotId(
+          new TTimePartitionSlot(Integer.parseInt(ctx.timeSlot.getText())));
+    }
+    return getRegionStatement;
+  }
+
+  @Override
+  public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
+    GetSeriesSlotListStatement getSeriesSlotListStatement =
+        new GetSeriesSlotListStatement(ctx.prefixPath().getText());
+    if (ctx.DATA() != null) {
+      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.DataRegion);
+    } else if (ctx.SCHEMA() != null) {
+      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.SchemaRegion);
+    }
+    return getSeriesSlotListStatement;
+  }
+
+  @Override
+  public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
+    GetTimeSlotListStatement getTimeSlotListStatement =
+        new GetTimeSlotListStatement(
+            ctx.prefixPath().getText(),
+            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    if (ctx.startTime != null) {
+      getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+    }
+    if (ctx.endTime != null) {
+      getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+    }
+    return getTimeSlotListStatement;
   }
 }

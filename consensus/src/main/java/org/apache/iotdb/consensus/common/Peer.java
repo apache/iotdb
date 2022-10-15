@@ -21,20 +21,28 @@ package org.apache.iotdb.consensus.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class Peer {
 
+  private final Logger LOGGER = LoggerFactory.getLogger(Peer.class);
   private final ConsensusGroupId groupId;
   private final TEndPoint endpoint;
+  private final int nodeId;
 
-  public Peer(ConsensusGroupId groupId, TEndPoint endpoint) {
+  public Peer(ConsensusGroupId groupId, int nodeId, TEndPoint endpoint) {
     this.groupId = groupId;
+    this.nodeId = nodeId;
     this.endpoint = endpoint;
   }
 
@@ -46,16 +54,26 @@ public class Peer {
     return endpoint;
   }
 
+  public int getNodeId() {
+    return nodeId;
+  }
+
   public void serialize(DataOutputStream stream) {
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
-        groupId.convertToTConsensusGroupId(), stream);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
+    try {
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
+          groupId.convertToTConsensusGroupId(), stream);
+      BasicStructureSerDeUtil.write(nodeId, stream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
+    } catch (IOException e) {
+      LOGGER.error("Failed to serialize Peer", e);
+    }
   }
 
   public static Peer deserialize(ByteBuffer buffer) {
     return new Peer(
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
             ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer)),
+        BasicStructureSerDeUtil.readInt(buffer),
         ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer));
   }
 

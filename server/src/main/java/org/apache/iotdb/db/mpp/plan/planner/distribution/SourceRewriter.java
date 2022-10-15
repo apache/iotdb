@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -54,7 +55,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
@@ -594,6 +595,23 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return newRoot;
   }
 
+  @Override
+  public PlanNode visitGroupByTag(GroupByTagNode root, DistributionPlanContext context) {
+    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+    Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+    boolean containsSlidingWindow =
+        root.getChildren().size() == 1
+            && root.getChildren().get(0) instanceof SlidingWindowAggregationNode;
+
+    // TODO: use 2 phase aggregation to optimize the query
+    return containsSlidingWindow
+        ? groupSourcesForGroupByTagWithSlidingWindow(
+            root, (SlidingWindowAggregationNode) root.getChildren().get(0), sourceGroup, context)
+        : groupSourcesForGroupByTag(root, sourceGroup, context);
+  }
+
   // If the Aggregation Query contains value filter, we need to use the naive query plan
   // for it. That is, do the raw data query and then do the aggregation operation.
   // Currently, the method to judge whether the query should use naive query plan is whether
@@ -709,8 +727,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       GroupByLevelNode handle = (GroupByLevelNode) node;
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
-      List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
-      for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
+      List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
+      for (CrossSeriesAggregationDescriptor originalDescriptor :
+          handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
         for (String childColumn : childrenOutputColumns) {
           // If this condition matched, the childColumn should come from GroupByLevelNode
@@ -727,7 +746,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         if (descriptorExpressions.size() == 0) {
           continue;
         }
-        GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
+        CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
@@ -736,6 +755,70 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
+  }
+
+  private GroupByTagNode groupSourcesForGroupByTagWithSlidingWindow(
+      GroupByTagNode root,
+      SlidingWindowAggregationNode slidingWindowNode,
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
+      DistributionPlanContext context) {
+    GroupByTagNode newRoot = (GroupByTagNode) root.clone();
+    sourceGroup.forEach(
+        (dataRegion, sourceNodes) -> {
+          SlidingWindowAggregationNode parentOfGroup =
+              (SlidingWindowAggregationNode) slidingWindowNode.clone();
+          parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          List<AggregationDescriptor> childDescriptors = new ArrayList<>();
+          sourceNodes.forEach(
+              n ->
+                  n.getAggregationDescriptorList()
+                      .forEach(
+                          v -> {
+                            childDescriptors.add(
+                                new AggregationDescriptor(
+                                    v.getAggregationFuncName(),
+                                    AggregationStep.INTERMEDIATE,
+                                    v.getInputExpressions()));
+                          }));
+          parentOfGroup.setAggregationDescriptorList(childDescriptors);
+          if (sourceNodes.size() == 1) {
+            parentOfGroup.addChild(sourceNodes.get(0));
+          } else {
+            PlanNode timeJoinNode =
+                new TimeJoinNode(
+                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
+            sourceNodes.forEach(timeJoinNode::addChild);
+            parentOfGroup.addChild(timeJoinNode);
+          }
+          newRoot.addChild(parentOfGroup);
+        });
+    return newRoot;
+  }
+
+  private GroupByTagNode groupSourcesForGroupByTag(
+      GroupByTagNode root,
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
+      DistributionPlanContext context) {
+    GroupByTagNode newRoot = (GroupByTagNode) root.clone();
+    final boolean[] addParent = {false};
+    sourceGroup.forEach(
+        (dataRegion, sourceNodes) -> {
+          if (sourceNodes.size() == 1) {
+            newRoot.addChild(sourceNodes.get(0));
+          } else {
+            if (!addParent[0]) {
+              sourceNodes.forEach(newRoot::addChild);
+              addParent[0] = true;
+            } else {
+              PlanNode timeJoinNode =
+                  new TimeJoinNode(
+                      context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
+              sourceNodes.forEach(timeJoinNode::addChild);
+              newRoot.addChild(timeJoinNode);
+            }
+          }
+        });
+    return newRoot;
   }
 
   // TODO: (xingtanzjr) need to confirm the logic when processing UDF
