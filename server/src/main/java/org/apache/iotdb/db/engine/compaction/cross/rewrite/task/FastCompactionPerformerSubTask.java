@@ -56,14 +56,14 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
   protected Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
-  Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
+  protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  Map<TsFileResource, List<Modification>> modificationCacheMap;
+  private final Map<TsFileResource, List<Modification>> modificationCacheMap;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
   // does not exist.
-  List<TsFileResource> sortedSourceFiles;
+  protected List<TsFileResource> sortedSourceFiles;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
@@ -194,29 +194,23 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
       PageElement firstPageElement = pageQueue.peek();
-      List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
-      boolean isPageOverlap = overlappedPages.size() > 1;
       int modifiedStatus = isPageModified(firstPageElement);
 
-      switch (modifiedStatus) {
-        case -1:
-          // no data on this page has been deleted
-          if (isPageOverlap) {
-            // has overlap pages, deserialize it
-            compactWithOverlapPages(overlappedPages);
-          } else {
-            // has none overlap pages,  flush it to chunk writer directly
-            compactWithNonOverlapPage(firstPageElement);
-          }
-          break;
-        case 0:
-          // there is data on this page been deleted, deserialize it
-          compactWithOverlapPages(overlappedPages);
-          break;
-        case 1:
-          // all data on this page has been deleted, remove it
-          removePage(firstPageElement);
-          break;
+      if (modifiedStatus == 1) {
+        // all data on this page has been deleted, remove it
+        removePage(firstPageElement);
+        continue;
+      }
+
+      List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
+      boolean isPageOverlap = overlappedPages.size() > 1;
+
+      if (isPageOverlap || modifiedStatus == 0) {
+        // has overlap or modified pages, then deserialize it
+        compactWithOverlapPages(overlappedPages);
+      } else {
+        // has none overlap or modified pages, flush it to chunk writer directly
+        compactWithNonOverlapPage(firstPageElement);
       }
     }
   }
@@ -286,31 +280,24 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
           }
         }
 
-        boolean isNextPageOverlap =
-            pointPriorityReader.currentPoint().left <= nextPageElement.pageHeader.getEndTime()
-                || isPageOverlap(nextPageElement);
+        int nextPageModifiedStatus = isPageModified(nextPageElement);
 
-        switch (isPageModified(nextPageElement)) {
-          case -1:
-            // no data on this page has been deleted
-            if (isNextPageOverlap) {
-              // has overlap with other pages, deserialize it
-              pointPriorityReader.addNewPage(nextPageElement);
-            } else {
-              // has none overlap, flush it to chunk writer directly
-              compactWithNonOverlapPage(nextPageElement);
-            }
-            break;
-          case 0:
-            // there is data on this page been deleted, deserialize it
+        if (nextPageModifiedStatus == 1) {
+          // all data on next page has been deleted, remove it
+          removePage(nextPageElement);
+        } else {
+          boolean isNextPageOverlap =
+              pointPriorityReader.currentPoint().left <= nextPageElement.pageHeader.getEndTime()
+                  || isPageOverlap(nextPageElement);
+
+          if (isNextPageOverlap || nextPageModifiedStatus == 0) {
+            // has overlap or modified pages, then deserialize it
             pointPriorityReader.addNewPage(nextPageElement);
-            break;
-          case 1:
-            // all data on this page has been deleted, remove it
-            removePage(nextPageElement);
-            break;
+          } else {
+            // has none overlap or modified pages, flush it to chunk writer directly
+            compactWithNonOverlapPage(nextPageElement);
+          }
         }
-
         overlappedPages.remove(0);
       }
 
