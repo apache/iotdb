@@ -276,7 +276,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> getRoutingColumnHeaders =
+  public static final List<ColumnHeader> getRegionIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =

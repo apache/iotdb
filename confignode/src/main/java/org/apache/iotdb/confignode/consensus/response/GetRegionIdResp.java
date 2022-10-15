@@ -21,19 +21,19 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
-public class GetRoutingResp implements DataSet {
+public class GetRegionIdResp implements DataSet {
 
   private TSStatus status;
 
   private final List<TConsensusGroupId> dataRegionIdList;
 
-  public GetRoutingResp(TSStatus status, List<TConsensusGroupId> dataRegionIdList) {
+  public GetRegionIdResp(TSStatus status, List<TConsensusGroupId> dataRegionIdList) {
     this.status = status;
     this.dataRegionIdList = dataRegionIdList;
   }
@@ -46,8 +46,8 @@ public class GetRoutingResp implements DataSet {
     this.status = status;
   }
 
-  public TGetRoutingResp convertToRpcGetRoutingResp() {
-    TGetRoutingResp resp = new TGetRoutingResp();
+  public TGetRegionIdResp convertToRpcGetRegionIdResp() {
+    TGetRegionIdResp resp = new TGetRegionIdResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -129,8 +129,8 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 
-  public static DatasetHeader getGetRegionHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.getRoutingColumnHeaders, true);
+  public static DatasetHeader getGetRegionIdHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getRegionIdColumnHeaders, true);
   }
 
   public static DatasetHeader getGetSeriesSlotListHeader() {

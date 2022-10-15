@@ -47,7 +47,7 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | getRegion | getTimeSlotList | getSeriesSlotList
+    | getRegionId | getTimeSlotList | getSeriesSlotList
     ;
 
 dmlStatement
@@ -226,8 +226,8 @@ dropSchemaTemplate
     : DROP SCHEMA? TEMPLATE templateName=identifier
     ;
 
-// Get Region
-getRegion
+// Get Region Id
+getRegionId
     : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE SERIESSLOTID operator_eq
         seriesSlot=INTEGER_LITERAL (OPERATOR_AND TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL)?
     ;
