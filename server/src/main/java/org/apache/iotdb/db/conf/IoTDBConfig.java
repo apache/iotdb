@@ -401,10 +401,10 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
@@ -474,16 +474,16 @@ public class IoTDBConfig {
   private int maxInnerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in cross space compaction */
-  private int maxCrossCompactionCandidateFileNum = 1000;
+  private int maxCrossCompactionCandidateFileNum = 10000;
 
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleIntervalInMs = 60_000L;
+  private long compactionScheduleIntervalInMs = 5_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
+  private long compactionSubmissionIntervalInMs = 5_000L;
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works

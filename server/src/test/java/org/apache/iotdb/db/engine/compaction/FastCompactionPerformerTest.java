@@ -17,6 +17,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -41,6 +42,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,6 +64,7 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    validateSeqFiles();
     super.tearDown();
     for (TsFileResource tsFileResource : seqResources) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
@@ -3823,5 +3826,15 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
         }
       }
     }
+  }
+
+  private void validateSeqFiles() {
+    List<File> files = new ArrayList<>();
+    for (TsFileResource resource : seqResources) {
+      files.add(resource.getTsFile());
+    }
+    TsFileValidationTool.findUncorrectFiles(files);
+    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap();
   }
 }

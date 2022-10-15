@@ -107,7 +107,7 @@ public class PointPriorityReader {
           pointQueue.add(pointElement);
         } else {
           // end page
-          removePage.call(pointElement.pageElement, newOverlappedPages);
+          removePage.call(pointElement.pageElement);
         }
       }
     }
@@ -125,7 +125,11 @@ public class PointPriorityReader {
     isNewPoint = true;
   }
 
-  public void setNewOverlappedPages(List<PageElement> newOverlappedPages) {
+  public void updateNewOverlappedPages(List<PageElement> newOverlappedPages) {
     this.newOverlappedPages = newOverlappedPages;
+  }
+
+  public List<PageElement> getNewOverlappedPages() {
+    return newOverlappedPages;
   }
 }

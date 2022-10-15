@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -164,6 +165,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetTsfileResourceList,
             timePartition,
             true);
+
+        List<File> files = new ArrayList<>();
+        for (TsFileResource resource : targetTsfileResourceList) {
+          files.add(resource.getTsFile());
+        }
+        TsFileValidationTool.findUncorrectFiles(files);
+        if (TsFileValidationTool.badFileNum > 0) {
+          throw new RuntimeException("------There is unseq data after compaction");
+        }
+        TsFileValidationTool.clearMap();
 
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);

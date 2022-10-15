@@ -566,6 +566,7 @@ public class TsFileValidationTool {
   }
 
   public static void clearMap() {
+    badFileNum = 0;
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();
