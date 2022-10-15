@@ -79,7 +79,7 @@ IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 
 ## 终止查询
 
-IoTDB 支持 Session 超时和查询超时。
+IoTDB 支持设置 Session 连接超时和查询超时时间，并支持手动终止正在执行的查询。
 
 ### Session 超时
 
