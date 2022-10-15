@@ -28,7 +28,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 
-public class DeviceViewIntoDescriptor {
+public class DeviceViewIntoPathDescriptor {
 
   // sourceDevice -> targetPathToSourceMap (for each device)
   //  targetPathToSourceMap: targetDevice -> { targetMeasurement -> sourceColumn }
@@ -42,7 +42,7 @@ public class DeviceViewIntoDescriptor {
   private final Map<PartialPath, Map<String, Pair<PartialPath, String>>>
       globalTargetPathToSourceMap;
 
-  public DeviceViewIntoDescriptor() {
+  public DeviceViewIntoPathDescriptor() {
     this.sourceDeviceToTargetPathMap = new HashMap<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
     this.globalTargetPathToSourceMap = new HashMap<>();
