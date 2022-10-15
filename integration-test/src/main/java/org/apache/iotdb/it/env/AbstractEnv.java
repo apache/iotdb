@@ -391,7 +391,17 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public void restartDataNode(int index) {
+  public void startConfigNode(int index) {
+    configNodeWrapperList.get(index).start();
+  }
+
+  @Override
+  public void shutdownConfigNode(int index) {
+    configNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public void startDataNode(int index) {
     dataNodeWrapperList.get(index).start();
   }
 

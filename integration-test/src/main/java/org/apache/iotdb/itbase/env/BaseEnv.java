@@ -132,7 +132,11 @@ public interface BaseEnv {
     return session;
   }
 
-  void restartDataNode(int index);
+  void startConfigNode(int index);
+
+  void shutdownConfigNode(int index);
+
+  void startDataNode(int index);
 
   void shutdownDataNode(int index);
 }

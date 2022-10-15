@@ -542,7 +542,7 @@ public class IoTDBClusterPartitionIT {
       // since there exists one DataNode is shutdown
       Assert.assertEquals(unknownCnt * 2, runningCnt);
 
-      EnvFactory.getEnv().restartDataNode(testDataNodeId);
+      EnvFactory.getEnv().startDataNode(testDataNodeId);
       // Wait for heartbeat check
       while (true) {
         boolean containUnknown = false;
