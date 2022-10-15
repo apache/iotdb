@@ -28,14 +28,24 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 
-public class IntoDeviceMeasurementDescriptor {
+public class DeviceViewIntoDescriptor {
 
-  private final Map<PartialPath, Map<String, Pair<PartialPath, String>>> targetPathToSourceMap;
-  protected final Map<PartialPath, Boolean> deviceToAlignedMap;
+  // sourceDevice -> targetPathToSourceMap (for each device)
+  //  targetPathToSourceMap: targetDevice -> { targetMeasurement -> sourceColumn }
+  private final Map<String, Map<PartialPath, Map<String, String>>> sourceDeviceToTargetPathMap;
 
-  public IntoDeviceMeasurementDescriptor() {
-    this.targetPathToSourceMap = new HashMap<>();
-    this.deviceToAlignedMap = new HashMap<>();
+  // targetDevice -> isAlignedDevice
+  private final Map<PartialPath, Boolean> targetDeviceToAlignedMap;
+
+  // only used to check if the target path is duplicated
+  // targetDevice -> { targetMeasurement -> ( sourceDevice, sourceColumn) }
+  private final Map<PartialPath, Map<String, Pair<PartialPath, String>>>
+      globalTargetPathToSourceMap;
+
+  public DeviceViewIntoDescriptor() {
+    this.sourceDeviceToTargetPathMap = new HashMap<>();
+    this.targetDeviceToAlignedMap = new HashMap<>();
+    this.globalTargetPathToSourceMap = new HashMap<>();
   }
 
   public void specifyTargetDeviceMeasurement(
@@ -44,19 +54,24 @@ public class IntoDeviceMeasurementDescriptor {
       String sourceColumn,
       String targetMeasurement) {
     Map<String, Pair<PartialPath, String>> measurementToSourceColumnMap =
-        targetPathToSourceMap.computeIfAbsent(targetDevice, key -> new HashMap<>());
+        globalTargetPathToSourceMap.computeIfAbsent(targetDevice, key -> new HashMap<>());
     if (measurementToSourceColumnMap.containsKey(targetMeasurement)) {
       throw new SemanticException(DUPLICATE_TARGET_PATH_ERROR_MSG);
     }
     measurementToSourceColumnMap.put(targetMeasurement, new Pair<>(sourceDevice, sourceColumn));
+
+    sourceDeviceToTargetPathMap
+        .computeIfAbsent(sourceDevice.toString(), key -> new HashMap<>())
+        .computeIfAbsent(targetDevice, key -> new HashMap<>())
+        .put(targetMeasurement, sourceColumn);
   }
 
   public void specifyDeviceAlignment(PartialPath targetDevice, boolean isAligned) {
-    if (deviceToAlignedMap.containsKey(targetDevice)
-        && deviceToAlignedMap.get(targetDevice) != isAligned) {
+    if (targetDeviceToAlignedMap.containsKey(targetDevice)
+        && targetDeviceToAlignedMap.get(targetDevice) != isAligned) {
       throw new SemanticException(
           "select into: alignment property must be the same for the same device.");
     }
-    deviceToAlignedMap.put(targetDevice, isAligned);
+    targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
 }

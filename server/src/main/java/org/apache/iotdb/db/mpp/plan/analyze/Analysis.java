@@ -29,9 +29,9 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoDeviceMeasurementDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -164,7 +164,7 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // used in ALIGN BY DEVICE
-  private IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor;
+  private DeviceViewIntoDescriptor deviceViewIntoDescriptor;
 
   // used in ALIGN BY TIME
   private IntoPathDescriptor intoPathDescriptor;
@@ -449,13 +449,12 @@ public class Analysis {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
   }
 
-  public IntoDeviceMeasurementDescriptor getIntoDeviceMeasurementDescriptor() {
-    return intoDeviceMeasurementDescriptor;
+  public DeviceViewIntoDescriptor getDeviceViewIntoDescriptor() {
+    return deviceViewIntoDescriptor;
   }
 
-  public void setIntoDeviceMeasurementDescriptor(
-      IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor) {
-    this.intoDeviceMeasurementDescriptor = intoDeviceMeasurementDescriptor;
+  public void setDeviceViewIntoDescriptor(DeviceViewIntoDescriptor deviceViewIntoDescriptor) {
+    this.deviceViewIntoDescriptor = deviceViewIntoDescriptor;
   }
 
   public IntoPathDescriptor getIntoPathDescriptor() {

@@ -53,9 +53,9 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoDeviceMeasurementDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -1110,15 +1110,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     IntoComponent intoComponent = queryStatement.getIntoComponent();
     intoComponent.validate(sourceDevices, sourceColumns);
 
-    IntoDeviceMeasurementDescriptor intoDeviceMeasurementDescriptor =
-        new IntoDeviceMeasurementDescriptor();
+    DeviceViewIntoDescriptor deviceViewIntoDescriptor = new DeviceViewIntoDescriptor();
     IntoComponent.IntoDeviceMeasurementIterator intoDeviceMeasurementIterator =
         intoComponent.getIntoDeviceMeasurementIterator();
     for (PartialPath sourceDevice : sourceDevices) {
       PartialPath deviceTemplate = intoDeviceMeasurementIterator.getDeviceTemplate();
       boolean isAlignedDevice = intoDeviceMeasurementIterator.isAlignedDevice();
       PartialPath targetDevice = constructTargetDevice(sourceDevice, deviceTemplate);
-      intoDeviceMeasurementDescriptor.specifyDeviceAlignment(targetDevice, isAlignedDevice);
+      deviceViewIntoDescriptor.specifyDeviceAlignment(targetDevice, isAlignedDevice);
 
       for (Expression sourceColumn : sourceColumns) {
         String measurementTemplate = intoDeviceMeasurementIterator.getMeasurementTemplate();
@@ -1130,14 +1129,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         } else {
           targetMeasurement = measurementTemplate;
         }
-        intoDeviceMeasurementDescriptor.specifyTargetDeviceMeasurement(
+        deviceViewIntoDescriptor.specifyTargetDeviceMeasurement(
             sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
         intoDeviceMeasurementIterator.nextMeasurement();
       }
 
       intoDeviceMeasurementIterator.nextDevice();
     }
-    analysis.setIntoDeviceMeasurementDescriptor(intoDeviceMeasurementDescriptor);
+    analysis.setDeviceViewIntoDescriptor(deviceViewIntoDescriptor);
   }
 
   private void analyzeInto(

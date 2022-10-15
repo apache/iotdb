@@ -29,12 +29,15 @@ import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUP
 
 public class IntoPathDescriptor {
 
+  // targetDevice -> { targetMeasurement -> sourceColumn }
   protected final Map<PartialPath, Map<String, String>> targetPathToSourceMap;
-  protected final Map<PartialPath, Boolean> deviceToAlignedMap;
+
+  // targetDevice -> isAlignedDevice
+  protected final Map<PartialPath, Boolean> targetDeviceToAlignedMap;
 
   public IntoPathDescriptor() {
     this.targetPathToSourceMap = new HashMap<>();
-    this.deviceToAlignedMap = new HashMap<>();
+    this.targetDeviceToAlignedMap = new HashMap<>();
   }
 
   public void specifyTargetPath(String sourceColumn, PartialPath targetPath) {
@@ -50,11 +53,11 @@ public class IntoPathDescriptor {
   }
 
   public void specifyDeviceAlignment(PartialPath targetDevice, boolean isAligned) {
-    if (deviceToAlignedMap.containsKey(targetDevice)
-        && deviceToAlignedMap.get(targetDevice) != isAligned) {
+    if (targetDeviceToAlignedMap.containsKey(targetDevice)
+        && targetDeviceToAlignedMap.get(targetDevice) != isAligned) {
       throw new SemanticException(
           "select into: alignment property must be the same for the same device.");
     }
-    deviceToAlignedMap.put(targetDevice, isAligned);
+    targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
 }
