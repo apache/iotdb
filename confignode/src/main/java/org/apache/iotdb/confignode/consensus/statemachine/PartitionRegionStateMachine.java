@@ -48,12 +48,10 @@ public class PartitionRegionStateMachine
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private final TEndPoint currentNodeTEndPoint;
-  private final int currentNodeId;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
-    this.currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     this.currentNodeTEndPoint =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
@@ -149,8 +147,12 @@ public class PartitionRegionStateMachine
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the PartitionRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     TConfigNodeLocation newLeaderConfigNodeLocation =
-        configManager.getConfigNodeLocation(currentNodeId);
+        configManager.getConfigNodeLocation(newLeaderId);
+
     if (currentNodeId == newLeaderId) {
       LOGGER.info(
           "Current node [nodeId: {}, ip:port: {}] becomes Leader",
