@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -77,14 +76,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
 
     // try to remove corrupted part of the TsFile
     try {
-      writer =
-          new RestorableTsFileIOWriter(
-              tsFile,
-              (long)
-                  (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
-                      * IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .getChunkMetadataSizeProportionInWrite()));
+      writer = new RestorableTsFileIOWriter(tsFile);
     } catch (NotCompatibleTsFileException e) {
       boolean result = tsFile.delete();
       logger.warn(

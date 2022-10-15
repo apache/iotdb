@@ -62,4 +62,8 @@ public class TriggerExecutor {
                 methodName, System.lineSeparator())
             + e);
   }
+
+  public TriggerInformation getTriggerInformation() {
+    return triggerInformation;
+  }
 }

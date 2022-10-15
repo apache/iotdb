@@ -87,6 +87,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
+        configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
