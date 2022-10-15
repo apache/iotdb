@@ -113,7 +113,7 @@ public class ConstantOperand extends LeafOperand {
 
   @Override
   public String getExpressionStringInternal() {
-    return valueString;
+    return dataType.equals(TSDataType.TEXT) ? String.format("\"%s\"", valueString) : valueString;
   }
 
   @Override
