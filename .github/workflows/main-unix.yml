@@ -14,8 +14,6 @@ on:
   pull_request:
     branches:
       - master
-      # TODO: Don't forget to delete this line after bug fixed~
-      - confignode_restart_fix
       - 'rel/*'
       - "new_*"
     paths-ignore:
