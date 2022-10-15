@@ -344,9 +344,6 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       PageElement element = it.next();
       if (element.startTime <= endTime) {
         if (!element.isOverlaped) {
-          if (element.startTime == 1544736623832L) {
-            System.out.println("SSSSStop");
-          }
           elements.add(element);
           element.isOverlaped = true;
         }
