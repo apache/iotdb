@@ -112,6 +112,7 @@ public class ConfigNodeRemoveCheck {
       }
 
       if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode()) {
+        LOGGER.warn("Execute removeConfigNode failed for: {}", status.getMessage());
         break;
       }
     }
