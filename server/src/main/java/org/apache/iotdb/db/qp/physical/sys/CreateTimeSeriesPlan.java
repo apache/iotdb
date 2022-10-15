@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -37,7 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesPlan extends PhysicalPlan {
+public class CreateTimeSeriesPlan extends PhysicalPlan implements ICreateTimeSeriesPlan {
 
   private PartialPath path;
   private TSDataType dataType;

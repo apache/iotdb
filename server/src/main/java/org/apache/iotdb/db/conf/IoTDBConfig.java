@@ -155,8 +155,12 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+  /**
+   * If memory cost of data region increased more than proportion of {@linkplain
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
+   * report to system.
+   */
+  private double writeMemoryVariationReportProportion = 0.001;
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
@@ -1780,12 +1784,12 @@ public class IoTDBConfig {
     this.rejectProportion = rejectProportion;
   }
 
-  public long getStorageGroupSizeReportThreshold() {
-    return storageGroupSizeReportThreshold;
+  public double getWriteMemoryVariationReportProportion() {
+    return writeMemoryVariationReportProportion;
   }
 
-  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
-    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
+  public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
+    this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
   }
 
   public long getAllocateMemoryForStorageEngine() {

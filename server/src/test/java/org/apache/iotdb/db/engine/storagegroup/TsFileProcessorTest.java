@@ -72,7 +72,7 @@ public class TsFileProcessorTest {
   private TsFileProcessor processor;
   private String storageGroup = "root.vehicle";
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
-  private StorageGroupInfo sgInfo;
+  private DataRegionInfo sgInfo;
   private String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
@@ -89,7 +89,7 @@ public class TsFileProcessorTest {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     EnvironmentUtils.envSetUp();
-    sgInfo = new StorageGroupInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
+    sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }

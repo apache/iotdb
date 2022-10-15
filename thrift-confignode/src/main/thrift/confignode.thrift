@@ -36,6 +36,7 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
+  7: optional list<binary> allTriggerInformation
 }
 
 struct TGlobalConfig {
@@ -335,6 +336,16 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+// Get jars of the corresponding trigger
+struct TGetTriggerJarReq {
+  1: required list<string> jarNameList
+}
+
+struct TGetTriggerJarResp {
+  1: required common.TSStatus status
+  2: required list<binary> jarList
 }
 
 // Show datanodes
@@ -700,13 +711,13 @@ service IConfigNodeRPCService {
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /**
-   * Let the specific ConfigNode remove the ConsensusGroup
+   * Let the specific ConfigNode delete the peer
    *
-   * @return SUCCESS_STATUS if remove ConsensusGroup successfully
+   * @return SUCCESS_STATUS if delete peer  successfully
    *         REMOVE_CONFIGNODE_FAILED if the specific ConfigNode doesn't exist in the current cluster
    *                                  or Ratis internal failure
    */
-  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -759,6 +770,11 @@ service IConfigNodeRPCService {
      * Return the trigger table of config leader
      */
   TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the trigger jar list of the trigger name list
+     */
+  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
 
   // ======================================================
   // Maintenance Tools

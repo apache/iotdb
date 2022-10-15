@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -33,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class AutoCreateDeviceMNodePlan extends PhysicalPlan {
+public class AutoCreateDeviceMNodePlan extends PhysicalPlan implements IAutoCreateDeviceMNodePlan {
 
   private static final Logger logger = LoggerFactory.getLogger(AutoCreateDeviceMNodePlan.class);
   protected PartialPath path;
@@ -54,6 +55,11 @@ public class AutoCreateDeviceMNodePlan extends PhysicalPlan {
 
   public PartialPath getPath() {
     return path;
+  }
+
+  @Override
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   @Override
