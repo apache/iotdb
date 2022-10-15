@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -101,6 +100,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
@@ -224,8 +225,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
-      dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+      triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      try {
+        dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
+        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+        dataSet.setTriggerInformation(triggerManager.getTriggerTable().getAllTriggerInformation());
+      } finally {
+        triggerManager.getTriggerInfo().releaseTriggerTableLock();
+      }
     } else {
       dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
@@ -795,7 +802,15 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerTable()
-        : new TGetTriggerTableResp().setStatus(status);
+        : new TGetTriggerTableResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.getTriggerJar(req)
+        : new TGetTriggerJarResp(status, Collections.emptyList());
   }
 
   @Override
@@ -1075,7 +1090,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetRoutingResp getRouting(GetRoutingPlan plan) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1084,7 +1098,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1093,11 +1106,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  @TestOnly
   public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
-    resp.setStatus(status);
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
@@ -1129,11 +1139,11 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // get all storage groups and slots by getting schema partition
+    // Get all storage groups and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
-    // construct request for getting data partition
+    // Construct request for getting data partition
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
         new HashMap<>();
     schemaPartitionTable.forEach(
@@ -1143,12 +1153,12 @@ public class ConfigManager implements IManager {
           partitionSlotsMap.put(key, slotListMap);
         });
 
-    // get all data partitions
+    // Get all data partitions
     GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
 
-    // get all region replicaset of target data partitions
+    // Get all region replicaset of target data partitions
     List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
     Set<TConsensusGroupId> groupIdSet =
         dataPartitionTable.values().stream()

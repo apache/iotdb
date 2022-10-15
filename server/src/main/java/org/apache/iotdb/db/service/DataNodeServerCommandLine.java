@@ -45,7 +45,7 @@ import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class DataNodeServerCommandLine extends ServerCommandLine {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeServerCommandLine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeServerCommandLine.class);
 
   // join an established cluster
   private static final String MODE_START = "-s";
@@ -76,15 +76,15 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     try {
       dataNode.serverCheckAndInit();
     } catch (ConfigurationException | IOException e) {
-      logger.error("Meet error when doing start checking", e);
+      LOGGER.error("Meet error when doing start checking", e);
       return -1;
     }
     String mode = args[0];
-    logger.info("Running mode {}", mode);
+    LOGGER.info("Running mode {}", mode);
 
     // initialize the current node and its services
     if (!dataNode.initLocalEngines()) {
-      logger.error("Init local engines error, stop process!");
+      LOGGER.error("Init local engines error, stop process!");
       return -1;
     }
 
@@ -92,9 +92,9 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
-      doRemoveNode(args);
+      doRemoveDataNode(args);
     } else {
-      logger.error("Unrecognized mode {}", mode);
+      LOGGER.error("Unrecognized mode {}", mode);
     }
     return 0;
   }
@@ -104,29 +104,31 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
    *
    * @param args id or ip:rpc_port for removed datanode
    */
-  private void doRemoveNode(String[] args) throws BadNodeUrlException, TException, IoTDBException {
+  private void doRemoveDataNode(String[] args)
+      throws BadNodeUrlException, TException, IoTDBException {
 
-    logger.info("Start to remove DataNode from cluster");
     if (args.length != 2) {
-      logger.info("Usage: <node-id>/<ip>:<rpc-port>");
+      LOGGER.info("Usage: <node-id>/<ip>:<rpc-port>");
       return;
     }
+
+    LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
 
     ConfigNodeInfo.getInstance().loadConfigNodeList();
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");
     }
-    logger.info("Start to remove datanode, removed datanode: {}", dataNodeLocations);
+    LOGGER.info("Start to remove datanode, removed datanode endpoints: {}", dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
-      logger.info("Remove result {} ", removeResp.toString());
+      LOGGER.info("Remove result {} ", removeResp.toString());
       if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }
-      logger.info(
+      LOGGER.info(
           "Submit remove-datanode request successfully, "
               + "more details are shown in the logs of confignode-leader and removed-datanode, "
               + "and after the process of removing datanode is over, "
@@ -148,7 +150,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     // Now support only single datanode deletion
     if (args.split(",").length > 1) {
-      logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
+      LOGGER.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
       return dataNodeLocations;
     }
 
@@ -162,13 +164,13 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
                 .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
                 .collect(Collectors.toList());
       } catch (TException e) {
-        logger.error("Get data node locations failed", e);
+        LOGGER.error("Get data node locations failed", e);
       }
     } catch (BadNodeUrlException e) {
       try (ConfigNodeClient client = new ConfigNodeClient()) {
         for (String id : args.split(",")) {
           if (!isNumeric(id)) {
-            logger.warn("Incorrect id format {}, skipped...", id);
+            LOGGER.warn("Incorrect id format {}, skipped...", id);
             continue;
           }
           List<TDataNodeLocation> nodeLocationResult =
@@ -177,7 +179,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
                   .map(TDataNodeConfiguration::getLocation)
                   .collect(Collectors.toList());
           if (nodeLocationResult.isEmpty()) {
-            logger.warn("DataNode {} is not in cluster, skipped...", id);
+            LOGGER.warn("DataNode {} is not in cluster, skipped...", id);
             continue;
           }
           if (!dataNodeLocations.contains(nodeLocationResult.get(0))) {
@@ -185,7 +187,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
           }
         }
       } catch (TException e1) {
-        logger.error("Get data node locations failed", e);
+        LOGGER.error("Get data node locations failed", e);
       }
     }
     return dataNodeLocations;

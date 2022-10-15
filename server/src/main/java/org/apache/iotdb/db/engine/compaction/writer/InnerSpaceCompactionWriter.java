@@ -48,9 +48,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                * IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getChunkMetadataSizeProportionInCompaction());
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
     isEmptyFile = true;
     resource = targetFileResource;

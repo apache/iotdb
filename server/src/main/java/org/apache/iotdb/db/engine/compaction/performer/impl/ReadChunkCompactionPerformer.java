@@ -69,9 +69,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                * IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getChunkMetadataSizeProportionInCompaction());
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
             new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {

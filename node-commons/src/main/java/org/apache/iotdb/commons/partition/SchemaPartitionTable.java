@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,6 +131,13 @@ public class SchemaPartitionTable {
         });
 
     return result;
+  }
+
+  public List<TConsensusGroupId> getRouting(TSeriesPartitionSlot seriesSlotId) {
+    if (!schemaPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    return Collections.singletonList(schemaPartitionMap.get(seriesSlotId));
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList() {
