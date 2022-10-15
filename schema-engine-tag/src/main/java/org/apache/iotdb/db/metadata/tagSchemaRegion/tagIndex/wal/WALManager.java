@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaConfig;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.context.RequestContext;

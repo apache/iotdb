@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;

@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.idtable.IDTableHashmapImpl;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
@@ -134,7 +134,8 @@ public class TagSchemaRegion implements ISchemaRegion {
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
     this.storageGroupMNode = storageGroupMNode;
     this.seriesNumerLimiter = seriesNumerLimiter;
-    idTable = IDTableManager.getInstance().getIDTable(storageGroup);
+    File schemaRegionDir = new File(schemaRegionDirPath);
+    idTable = new IDTableHashmapImpl(schemaRegionDir);
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
     deviceIDList = new DeviceIDList(schemaRegionDirPath);
     init();

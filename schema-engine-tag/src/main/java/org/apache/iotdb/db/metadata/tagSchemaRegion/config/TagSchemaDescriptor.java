@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.config;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
