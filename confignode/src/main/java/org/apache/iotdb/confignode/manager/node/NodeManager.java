@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -251,6 +252,14 @@ public class NodeManager {
 
     LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
     return dataSet;
+  }
+
+  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
+
+    getConsensusManager().write(updateDataNodePlan);
+
+    return nodeInfo.updateDataNode(updateDataNodePlan);
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {

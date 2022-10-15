@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -187,6 +188,18 @@ public class NodeInfo implements SnapshotProcessor {
         "{}, There are {} data node in cluster after executed remove-datanode.sh",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus updateDataNode(UpdateDataNodePlan req) {
+    try {
+      dataNodeInfoReadWriteLock.writeLock().lock();
+      registeredDataNodes
+          .get(req.getDataNodeLocation().getDataNodeId())
+          .setLocation(req.getDataNodeLocation());
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

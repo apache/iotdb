@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -38,6 +39,8 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -133,7 +136,11 @@ public class DataNode implements DataNodeMBean {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
       // register current DataNode to ConfigNode
-      registerInConfigNode();
+      if (IoTDBStartCheck.getInstance().isUpdate()) {
+        updateDataNodeInConfigNode();
+      } else {
+        registerInConfigNode();
+      }
       // active DataNode
       active();
       // setup rpc service
@@ -163,6 +170,50 @@ public class DataNode implements DataNodeMBean {
     // set the mpp mode to true
     config.setMppMode(true);
     config.setClusterMode(true);
+  }
+
+  private void updateDataNodeInConfigNode() throws StartupException {
+    int retry = DEFAULT_JOIN_RETRY;
+    TDataNodeLocation newDataNodeLocation = generateDataNodeLocation();
+    while (retry > 0) {
+      logger.info("Start updating datanode in the cluster.");
+      TDataNodeUpdateReq req = new TDataNodeUpdateReq();
+      req.setDataNodeLocation(newDataNodeLocation);
+
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+        TDataNodeUpdateResp resp = configNodeClient.updateDataNode(req);
+        logger.info("Update result {}", resp.toString());
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBException(resp.getStatus().toString(), resp.getStatus().getCode());
+        }
+
+        IoTDBStartCheck.getInstance().serializeNewDataNode(newDataNodeLocation);
+
+        logger.info("Update datanode in the cluster successfully.");
+        return;
+      } catch (TException | IoTDBException e) {
+        // read config nodes from system.properties
+        logger.warn("Cannot update datanode, because: {}", e.getMessage());
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
+      } catch (IOException e) {
+        logger.error("Cannot serialize new datanode location, because: {}", e.getMessage());
+      }
+      try {
+        // wait 5s to start the next try
+        Thread.sleep(config.getJoinClusterTimeOutMs());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Unexpected interruption when waiting to register to the cluster", e);
+        break;
+      }
+
+      // start the next try
+      retry--;
+    }
+
+    // all tries failed
+    logger.error("Cannot update datanode after {} retries", DEFAULT_JOIN_RETRY);
+    throw new StartupException("Cannot update datanode.");
   }
 
   /** register DataNode with ConfigNode */
@@ -350,13 +401,7 @@ public class DataNode implements DataNodeMBean {
     initProtocols();
   }
 
-  /**
-   * generate dataNodeConfiguration
-   *
-   * @return TDataNodeConfiguration
-   */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
-    // Set DataNodeLocation
+  private TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -368,6 +413,17 @@ public class DataNode implements DataNodeMBean {
         new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
         new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
+    return location;
+  }
+
+  /**
+   * generate dataNodeConfiguration
+   *
+   * @return TDataNodeConfiguration
+   */
+  private TDataNodeConfiguration generateDataNodeConfiguration() {
+    // Set DataNodeLocation
+    TDataNodeLocation location = generateDataNodeLocation();
 
     // Set NodeResource
     TNodeResource resource = new TNodeResource();

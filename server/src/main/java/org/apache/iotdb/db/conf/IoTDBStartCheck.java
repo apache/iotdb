@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -118,6 +119,18 @@ public class IoTDBStartCheck {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
+
+  private static final String INTERNAL_PORT = "internal_port";
+  private static String internalPort = String.valueOf(config.getInternalPort());
+
+  private static final String RPC_ADDRESS = "rpc_address";
+  private static String rpcAddress = config.getRpcAddress();
+
+  private static final String RPC_PORT = "rpc_port";
+  private static String rpcPort = String.valueOf(config.getRpcPort());
+
+  private static final String MPP_DATA_EXCHANGE_PORT = "mpp_data_exchange_port";
+  private static String mppDataExchangePort = String.valueOf(config.getMppDataExchangePort());
 
   public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -500,6 +513,37 @@ public class IoTDBStartCheck {
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
+  public void serializeNewDataNode(TDataNodeLocation dataNodeLocation) throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    reloadProperties();
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(
+          INTERNAL_PORT, String.valueOf(dataNodeLocation.getInternalEndPoint().getPort()));
+      properties.setProperty(
+          RPC_ADDRESS, String.valueOf(dataNodeLocation.getClientRpcEndPoint().getIp()));
+      properties.setProperty(
+          RPC_PORT, String.valueOf(dataNodeLocation.getClientRpcEndPoint().getPort()));
+      properties.setProperty(
+          MPP_DATA_EXCHANGE_PORT,
+          String.valueOf(dataNodeLocation.getMPPDataExchangeEndPoint().getPort()));
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+  }
+
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL);
@@ -508,6 +552,22 @@ public class IoTDBStartCheck {
     }
 
     logger.error("Unexpected consensus group type");
+    return false;
+  }
+
+  public boolean isUpdate() {
+    if (!(properties.getProperty(INTERNAL_PORT).equals(internalPort))) {
+      return true;
+    }
+    if (!(properties.getProperty(RPC_ADDRESS).equals(rpcAddress))) {
+      return true;
+    }
+    if (!(properties.getProperty(RPC_PORT).equals(rpcPort))) {
+      return true;
+    }
+    if (!(properties.getProperty(MPP_DATA_EXCHANGE_PORT).equals(mppDataExchangePort))) {
+      return true;
+    }
     return false;
   }
 }

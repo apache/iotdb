@@ -46,6 +46,7 @@ public class ConfigNodeConstant {
   public static final String METRIC_STATUS_UNKNOWN = "Unknown";
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
+  public static final String UPDATE_DATANODE_PROCESS = "[UPDATE_DATANODE_PROCESS]";
 
   private ConfigNodeConstant() {
     // empty constructor

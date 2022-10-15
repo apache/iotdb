@@ -71,6 +71,14 @@ struct TRatisConfig {
   14: required i64 dataLeaderElectionTimeoutMax
 }
 
+struct TDataNodeUpdateReq{
+  1: required common.TDataNodeLocation dataNodeLocation
+}
+
+struct TDataNodeUpdateResp{
+  1: required common.TSStatus status
+}
+
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
 }
@@ -515,6 +523,8 @@ service IConfigNodeRPCService {
    *         NODE_DELETE_FAILED_ERROR if failed to submit the DataNodeRemoveProcedure
    */
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
+
+  TDataNodeUpdateResp updateDataNode(TDataNodeUpdateReq req)
 
   /**
    * Get one or more DataNodes' configuration
