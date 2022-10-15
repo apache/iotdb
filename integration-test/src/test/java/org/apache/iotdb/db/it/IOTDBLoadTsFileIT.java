@@ -258,8 +258,7 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(
-          String.format("load \"%s\" sglevel=2,autoregister=true", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -290,6 +289,226 @@ public class IOTDBLoadTsFileIT {
       } catch (Exception e) {
         e.printStackTrace();
         Assert.fail("Parse result set error.");
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithOnSuccess() throws Exception {
+    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    File file2 = new File(tmpDir, "2-0-0-0.tsfile");
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_0),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_1),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    long writtenPoint2 = 0;
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          String.format("load \"%s\" sglevel=2 onSuccess=none", file1.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+      Assert.assertTrue(file1.exists());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          String.format("load \"%s\" sglevel=2 onSuccess=delete", file2.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+      Assert.assertFalse(file2.exists());
+    }
+  }
+
+  @Test
+  public void testLoadWithLastCache() throws Exception {
+    registerSchema();
+
+    String device = SchemaConfig.DEVICE_0;
+    String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementId();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          String.format("insert into %s(timestamp, %s) values(100, 100)", device, measurement));
+
+      try (ResultSet resultSet =
+          statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
+        if (resultSet.next()) {
+          String lastValue = resultSet.getString("value");
+          Assert.assertEquals("100", lastValue);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+
+    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    File file2 = new File(tmpDir, "2-0-0-0.tsfile");
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_0),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_1),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    long writtenPoint2 = 0;
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
+        if (resultSet.next()) {
+          String lastTime = resultSet.getString("Time");
+          Assert.assertEquals("9999", lastTime);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithOnNonStandardTsFileName() throws Exception {
+    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    File file2 = new File(tmpDir, "a-1.tsfile");
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_0),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_1),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    long writtenPoint2 = 0;
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
       }
     }
   }

@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -72,7 +72,7 @@ public class TsFileProcessorTest {
   private TsFileProcessor processor;
   private String storageGroup = "root.vehicle";
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
-  private StorageGroupInfo sgInfo;
+  private DataRegionInfo sgInfo;
   private String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
@@ -89,7 +89,7 @@ public class TsFileProcessorTest {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     EnvironmentUtils.envSetUp();
-    sgInfo = new StorageGroupInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
+    sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }

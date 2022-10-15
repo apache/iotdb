@@ -29,13 +29,13 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-            <td rowspan="1">0.14.0-preview2</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip">Cluster</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip">Sources</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip.asc">ASC</a></td>
+            <td rowspan="1">0.14.0-preview3</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip">Cluster</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip">Sources</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip.asc">ASC</a></td>
             <td rowspan="1"><a href="https://raw.githubusercontent.com/apache/iotdb/master/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>

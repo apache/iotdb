@@ -19,23 +19,25 @@
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.util.HashMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
 @NotThreadSafe
 public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
-  // todo: Maintain a PatternTree: PathPattern -> List<String> triggerNames
-  // Given a PathPattern, return the triggerNames of triggers whose PathPatterns match the given
-  // one.
-
   public TriggerTable() {
-    triggerTable = new HashMap<>();
+    triggerTable = new ConcurrentHashMap<>();
   }
 
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
@@ -45,6 +47,19 @@ public class TriggerTable {
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public TriggerInformation removeTriggerInformation(String triggerName) {
+    return triggerTable.remove(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -54,30 +69,40 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
-  public TriggerInformation getTriggerInformation(String triggerName) {
-    return triggerTable.get(triggerName);
-  }
-
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
-  }
-
-  // for showTrigger
-  public Map<String, TTriggerState> getAllTriggerStates() {
-    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
-    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
-    return allTriggerStates;
-  }
   // for getTriggerTable
-  public Map<String, TriggerInformation> getTable() {
-    return triggerTable;
+  public List<TriggerInformation> getAllTriggerInformation() {
+    return new ArrayList<>(triggerTable.values());
   }
 
   public boolean isEmpty() {
     return triggerTable.isEmpty();
+  }
+
+  public Map<String, TriggerInformation> getTable() {
+    return triggerTable;
+  }
+
+  public void serializeTriggerTable(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(triggerTable.size(), outputStream);
+    for (TriggerInformation triggerInformation : triggerTable.values()) {
+      ReadWriteIOUtils.write(triggerInformation.serialize(), outputStream);
+    }
+  }
+
+  public void deserializeTriggerTable(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      TriggerInformation triggerInformation = TriggerInformation.deserialize(inputStream);
+      triggerTable.put(triggerInformation.getTriggerName(), triggerInformation);
+      size--;
+    }
+  }
+
+  public void clear() {
+    triggerTable.clear();
   }
 }

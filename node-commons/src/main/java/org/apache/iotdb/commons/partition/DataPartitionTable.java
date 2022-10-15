@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -160,18 +161,34 @@ public class DataPartitionTable {
     return result;
   }
 
-  public static DataPartitionTable convertFromPlainMap(
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-          dataPartitionMap) {
-    DataPartitionTable result = new DataPartitionTable();
+  /**
+   * Query a timePartition's corresponding dataRegionIds
+   *
+   * @param seriesSlotId SeriesPartitionSlot
+   * @param timeSlotId TimePartitionSlot
+   * @return the timePartition's corresponding dataRegionIds, if timeSlotId == -1, then return all
+   *     the seriesSlot's dataRegionIds
+   */
+  public List<TConsensusGroupId> getRouting(
+      TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+    return seriesPartitionTable.getRouting(timeSlotId);
+  }
 
-    dataPartitionMap.forEach(
-        (seriesPartitionSlot, seriesPartitionMap) ->
-            result
-                .getDataPartitionMap()
-                .put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap)));
+  public List<TTimePartitionSlot> getTimeSlotList(
+      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
+    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+    return seriesPartitionTable.getTimeSlotList(startTime, endTime);
+  }
 
-    return result;
+  public List<TSeriesPartitionSlot> getSeriesSlotList() {
+    return new ArrayList<>(dataPartitionMap.keySet());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

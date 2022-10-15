@@ -147,24 +147,7 @@ public class StorageEngine implements IService {
 
   private static void initTimePartition() {
     timePartitionInterval =
-        convertMilliWithPrecision(
-            IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
-  }
-
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
   public static long getTimePartitionInterval() {
@@ -590,7 +573,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;

@@ -23,8 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -33,10 +34,15 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
+
+import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class ConfigNodeRemoveCheck {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
@@ -50,7 +56,7 @@ public class ConfigNodeRemoveCheck {
     systemProperties = new Properties();
   }
 
-  public TConfigNodeLocation removeCheck(TEndPoint endPoint) {
+  public TConfigNodeLocation removeCheck(String args) {
     TConfigNodeLocation nodeLocation = new TConfigNodeLocation();
     if (!systemPropertiesFile.exists()) {
       LOGGER.error("The system properties file is not exists. IoTDB-ConfigNode is shutdown.");
@@ -58,11 +64,26 @@ public class ConfigNodeRemoveCheck {
     }
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
-      nodeLocation =
-          getConfigNodeList().stream()
-              .filter(e -> e.getInternalEndPoint().equals(endPoint))
-              .findFirst()
-              .orElse(null);
+      if (isNumeric(args)) {
+        int id = Integer.parseInt(args);
+        nodeLocation =
+            getConfigNodeList().stream()
+                .filter(e -> e.getConfigNodeId() == id)
+                .findFirst()
+                .orElse(null);
+      } else {
+        try {
+          TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args);
+          nodeLocation =
+              getConfigNodeList().stream()
+                  .filter(e -> e.getInternalEndPoint().equals(endPoint))
+                  .findFirst()
+                  .orElse(null);
+        } catch (BadNodeUrlException e2) {
+          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          return nodeLocation;
+        }
+      }
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
@@ -73,7 +94,12 @@ public class ConfigNodeRemoveCheck {
   public void removeConfigNode(TConfigNodeLocation removedNode)
       throws BadNodeUrlException, IOException {
     TSStatus status = new TSStatus();
-    for (TConfigNodeLocation configNodeLocation : getConfigNodeList()) {
+    // Using leader ConfigNode id firstly
+    List<TConfigNodeLocation> configNodeList =
+        getConfigNodeList().stream()
+            .sorted(Comparator.comparing(TConfigNodeLocation::getConfigNodeId))
+            .collect(Collectors.toList());
+    for (TConfigNodeLocation configNodeLocation : configNodeList) {
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
@@ -84,10 +110,15 @@ public class ConfigNodeRemoveCheck {
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }
+
+      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode()) {
+        break;
+      }
     }
+
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(status.getMessage());
-      throw new IOException("Remove ConfigNode failed:");
+      throw new IOException("Remove ConfigNode failed: " + status.getMessage());
     }
   }
 

@@ -20,12 +20,12 @@ package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -136,12 +136,15 @@ public interface IMTreeBelowSG {
    * collected and return.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param limit the limit of query result.
+   * @param offset the offset.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param withTags whether returns all the tags of each timeseries as well.
    * @return Pair.left contains all the satisfied path Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
 
   /**

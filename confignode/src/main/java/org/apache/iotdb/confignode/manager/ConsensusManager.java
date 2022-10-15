@@ -38,8 +38,11 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.SizeInBytes;
+import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,12 +57,12 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final int SEED_CONFIG_NODE_Id = 0;
 
   private final IManager configManager;
 
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
-  private final int seedConfigNodeId = 0;
 
   public ConsensusManager(IManager configManager, PartitionRegionStateMachine stateMachine)
       throws IOException {
@@ -81,7 +84,49 @@ public class ConsensusManager {
         ConsensusFactory.getConsensusImpl(
                 CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(CONF.getConfigNodeId())
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                    .setRatisConfig(
+                        RatisConfig.newBuilder()
+                            .setLeaderLogAppender(
+                                RatisConfig.LeaderLogAppender.newBuilder()
+                                    .setBufferByteLimit(
+                                        CONF
+                                            .getPartitionRegionRatisConsensusLogAppenderBufferSize())
+                                    .build())
+                            .setSnapshot(
+                                RatisConfig.Snapshot.newBuilder()
+                                    .setAutoTriggerThreshold(
+                                        CONF.getPartitionRegionRatisSnapshotTriggerThreshold())
+                                    .build())
+                            .setLog(
+                                RatisConfig.Log.newBuilder()
+                                    .setUnsafeFlushEnabled(
+                                        CONF.isPartitionRegionRatisLogUnsafeFlushEnable())
+                                    .setSegmentCacheSizeMax(
+                                        SizeInBytes.valueOf(
+                                            CONF.getPartitionRegionRatisLogSegmentSizeMax()))
+                                    .build())
+                            .setGrpc(
+                                RatisConfig.Grpc.newBuilder()
+                                    .setFlowControlWindow(
+                                        SizeInBytes.valueOf(
+                                            CONF.getPartitionRegionRatisGrpcFlowControlWindow()))
+                                    .build())
+                            .setRpc(
+                                RatisConfig.Rpc.newBuilder()
+                                    .setTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF
+                                                .getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF
+                                                .getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .build())
+                            .build())
                     .setStorageDir(CONF.getConsensusDir())
                     .build(),
                 gid -> stateMachine)
@@ -107,7 +152,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                  seedConfigNodeId,
+                  SEED_CONFIG_NODE_Id,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }
@@ -128,7 +173,11 @@ public class ConsensusManager {
 
     List<Peer> peerList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
+      peerList.add(
+          new Peer(
+              consensusGroupId,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
     }
     consensusImpl.createPeer(consensusGroupId, peerList);
   }
@@ -144,7 +193,10 @@ public class ConsensusManager {
         consensusImpl
             .addPeer(
                 consensusGroupId,
-                new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()))
+                new Peer(
+                    consensusGroupId,
+                    configNodeLocation.getConfigNodeId(),
+                    configNodeLocation.getConsensusEndPoint()))
             .isSuccess();
 
     if (!result) {
@@ -163,7 +215,10 @@ public class ConsensusManager {
     return consensusImpl
         .removePeer(
             consensusGroupId,
-            new Peer(consensusGroupId, tConfigNodeLocation.getConsensusEndPoint()))
+            new Peer(
+                consensusGroupId,
+                tConfigNodeLocation.getConfigNodeId(),
+                tConfigNodeLocation.getConsensusEndPoint()))
         .isSuccess();
   }
 
@@ -190,7 +245,7 @@ public class ConsensusManager {
             getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
             registeredConfigNodes.stream()
-                .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
+                .filter(leader -> leader.getConfigNodeId() == leaderPeer.getNodeId())
                 .findFirst()
                 .orElse(null);
         if (leaderLocation != null) {

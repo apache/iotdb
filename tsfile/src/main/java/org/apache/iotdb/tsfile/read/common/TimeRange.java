@@ -303,9 +303,7 @@ public class TimeRange implements Comparable<TimeRange> {
     while (iterator.hasNext()) {
       TimeRange rangeNext = iterator.next();
       if (rangeCurr.intersects(rangeNext)) {
-        rangeCurr.set(
-            Math.min(rangeCurr.getMin(), rangeNext.getMin()),
-            Math.max(rangeCurr.getMax(), rangeNext.getMax()));
+        rangeCurr.merge(rangeNext);
       } else {
         unionResult.add(rangeCurr);
         rangeCurr = rangeNext;
@@ -313,6 +311,10 @@ public class TimeRange implements Comparable<TimeRange> {
     }
     unionResult.add(rangeCurr);
     return unionResult;
+  }
+
+  public void merge(TimeRange rhs) {
+    set(Math.min(getMin(), rhs.getMin()), Math.max(getMax(), rhs.getMax()));
   }
 
   /**

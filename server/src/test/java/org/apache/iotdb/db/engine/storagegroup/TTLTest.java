@@ -23,6 +23,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -88,8 +88,9 @@ public class TTLTest {
 
   @Before
   public void setUp() throws MetadataException, DataRegionException {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
+    prevPartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(86400000);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -98,7 +99,9 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTimePartitionIntervalForStorage(prevPartitionInterval);
   }
 
   private void createSchemas() throws MetadataException, DataRegionException {

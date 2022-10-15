@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -30,10 +31,12 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -118,7 +121,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
 
@@ -130,7 +134,8 @@ public class LoadManager {
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap) {
+          unassignedDataPartitionSlotsMap)
+      throws NotAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
@@ -245,12 +250,13 @@ public class LoadManager {
     LOGGER.info("[latestRegionRouteMap] Begin to broadcast RegionRouteMap:");
     long broadcastTime = System.currentTimeMillis();
     printRegionRouteMap(broadcastTime, latestRegionRouteMap);
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
-            dataNodeLocationMap,
+
+    AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            null);
+            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
+            dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     LOGGER.info("[latestRegionRouteMap] Broadcast the latest RegionRouteMap finished.");
   }
 

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.compaction.performer.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -37,8 +39,6 @@ import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -187,25 +188,32 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
-      throws IOException, InterruptedException, IllegalPathException, ExecutionException {
-    MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
-        deviceIterator.iterateNotAlignedSeries(device, false);
-    List<String> allMeasurements =
-        new ArrayList<>(deviceIterator.getAllSchemasOfCurrentDevice().keySet());
+      throws IOException, InterruptedException, ExecutionException {
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     // construct sub tasks and start compacting measurements in parallel
-    compactionWriter.startChunkGroup(device, false);
-    for (int taskCount = 0; taskCount < allMeasurements.size(); ) {
+    if (subTaskNums > 0) {
+      // assign the measurements for each subtask
+      List<String>[] measurementListArray = new List[subTaskNums];
+      for (int i = 0, size = allMeasurements.size(); i < size; ++i) {
+        int index = i % subTaskNums;
+        if (measurementListArray[index] == null) {
+          measurementListArray[index] = new LinkedList<>();
+        }
+        measurementListArray[index].add(allMeasurements.get(i));
+      }
+
+      compactionWriter.startChunkGroup(device, false);
       List<Future<Void>> futures = new ArrayList<>();
-      for (int i = 0; i < subTaskNums && taskCount < allMeasurements.size(); i++) {
+      for (int i = 0; i < subTaskNums; ++i) {
         futures.add(
             CompactionTaskManager.getInstance()
                 .submitSubTask(
                     new ReadPointPerformerSubTask(
                         device,
-                        Collections.singletonList(allMeasurements.get(taskCount++)),
+                        measurementListArray[i],
                         fragmentInstanceContext,
                         queryDataSource,
                         compactionWriter,
@@ -215,11 +223,9 @@ public class ReadPointCompactionPerformer
       for (Future<Void> future : futures) {
         future.get();
       }
-      // sync all the subtask, and check the writer chunk metadata size
       compactionWriter.checkAndMayFlushChunkMetadata();
+      compactionWriter.endChunkGroup();
     }
-
-    compactionWriter.endChunkGroup();
   }
 
   private static void updateDeviceStartTimeAndEndTime(
@@ -294,10 +300,20 @@ public class ReadPointCompactionPerformer
             tsBlock.getPositionCount());
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
+        TimeValuePair timeValuePair = null;
+        boolean updateFirstTime = false;
         while (pointReader.hasNextTimeValuePair()) {
-          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+          timeValuePair = pointReader.nextTimeValuePair();
+          if (!updateFirstTime) {
+            // update start time
+            writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
+            updateFirstTime = true;
+          }
           writer.write(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        }
+        // update end time
+        if (timeValuePair != null) {
           writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
         }
       }

@@ -47,6 +47,7 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
+    | getRegion | getTimeSlotList | getSeriesSlotList
     ;
 
 dmlStatement
@@ -197,7 +198,7 @@ deleteStorageGroup
 
 // Delete Timeseries
 deleteTimeseries
-    : DELETE TIMESERIES prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Partition
@@ -223,6 +224,24 @@ dropContinuousQuery
 // Drop Schema Template
 dropSchemaTemplate
     : DROP SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Get Region
+getRegion
+    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE SERIESSLOTID operator_eq
+        seriesSlot=INTEGER_LITERAL (OPERATOR_AND TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL)?
+    ;
+
+// Get Time Slot List
+getTimeSlotList
+    : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+    ;
+
+// Get Series Slot List
+getSeriesSlotList
+    : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
     ;
 
 // Set TTL
@@ -394,6 +413,7 @@ specialClause
     | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
     | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
     | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTagClause orderByClause? #groupByTagStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -440,6 +460,8 @@ groupByTimeClause
     : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? fillClause? RR_BRACKET
     | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
+    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    COMMA TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 groupByFillClause
@@ -449,6 +471,10 @@ groupByFillClause
 
 groupByLevelClause
     : GROUP BY LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
+    ;
+
+groupByTagClause
+    : GROUP BY TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 fillClause
@@ -709,9 +735,9 @@ loadFile
     ;
 
 loadFilesClause
-    : AUTOREGISTER operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
-    | SGLEVEL operator_eq INTEGER_LITERAL (COMMA loadFilesClause)?
-    | VERIFY operator_eq BOOLEAN_LITERAL (COMMA loadFilesClause)?
+    : SGLEVEL operator_eq INTEGER_LITERAL (loadFilesClause)?
+    | VERIFY operator_eq BOOLEAN_LITERAL (loadFilesClause)?
+    | ONSUCCESS operator_eq (DELETE|NONE) (loadFilesClause)?
     ;
 
 // Remove TsFile

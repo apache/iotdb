@@ -36,7 +36,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
@@ -293,11 +294,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-    conf.setStorageGroupSizeReportThreshold(
-        Long.parseLong(
+    conf.setWriteMemoryVariationReportProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "storage_group_report_threshold",
-                Long.toString(conf.getStorageGroupSizeReportThreshold()))));
+                "write_memory_variation_report_proportion",
+                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
@@ -404,12 +405,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "avg_series_point_number_threshold",
                 Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
-
-    conf.setMaxChunkRawSizeThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "max_chunk_raw_size_threshold",
-                Long.toString(conf.getMaxChunkRawSizeThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -635,11 +630,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
-    conf.setChunkMetadataSizeProportionInCompaction(
+    conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
-                "chunk_metadata_size_proportion_in_compaction",
-                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -895,11 +890,6 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
 
-    conf.setPartitionInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "partition_interval", String.valueOf(conf.getPartitionInterval()))));
-
     conf.setTimePartitionIntervalForStorage(
         Long.parseLong(
             properties.getProperty(
@@ -1013,6 +1003,10 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
+
+    conf.setTimePartitionIntervalForStorage(
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1480,12 +1474,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      conf.setChunkMetadataSizeProportionInWrite(
-          Double.parseDouble(
-              properties.getProperty(
-                  "chunk_metadata_size_proportion_in_write",
-                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
-
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(
@@ -1583,12 +1571,15 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        conf.setAllocateMemoryForConsensus(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       }
     }
 
-    logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
-    logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+    logger.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
+    logger.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
+    logger.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+    logger.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
@@ -1824,7 +1815,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 
@@ -1921,18 +1912,45 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
-    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
-    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
-    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
-    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
-    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
-    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
-    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
+    conf.setDataRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getDataAppenderBufferSize());
+    conf.setSchemaRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getSchemaAppenderBufferSize());
+
+    conf.setDataRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getDataSnapshotTriggerThreshold());
+    conf.setSchemaRatisConsensusSnapshotTriggerThreshold(
+        ratisConfig.getSchemaSnapshotTriggerThreshold());
+
+    conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
+    conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
+    conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
+    conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
+
+    conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
+    conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getDataLeaderElectionTimeoutMin());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMin());
+
+    conf.setDataRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getDataLeaderElectionTimeoutMax());
+    conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
+        ratisConfig.getSchemaLeaderElectionTimeoutMax());
+  }
+
+  public void reclaimConsensusMemory() {
+    conf.setAllocateMemoryForStorageEngine(
+        conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
+    SystemInfo.getInstance().allocateWriteMemory();
   }
 
   public void initClusterSchemaMemoryAllocate() {

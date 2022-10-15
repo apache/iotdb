@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;

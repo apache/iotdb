@@ -692,6 +692,22 @@ public class ReadWriteIOUtils {
     return map;
   }
 
+  public static Map<String, String> readMap(InputStream inputStream) throws IOException {
+    int length = readInt(inputStream);
+    if (length == NO_BYTE_TO_READ) {
+      return null;
+    }
+    Map<String, String> map = new HashMap<>(length);
+    for (int i = 0; i < length; i++) {
+      // key
+      String key = readString(inputStream);
+      // value
+      String value = readString(inputStream);
+      map.put(key, value);
+    }
+    return map;
+  }
+
   public static LinkedHashMap<String, String> readLinkedHashMap(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == NO_BYTE_TO_READ) {
@@ -828,7 +844,7 @@ public class ReadWriteIOUtils {
     int size = list.size();
     buffer.putInt(size);
     for (String s : list) {
-      buffer.put(s.getBytes());
+      write(s, buffer);
     }
   }
 

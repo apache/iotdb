@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.sync.datasource;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;

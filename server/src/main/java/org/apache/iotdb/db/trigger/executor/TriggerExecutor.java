@@ -46,6 +46,14 @@ public class TriggerExecutor {
     }
   }
 
+  public void onDrop() {
+    try {
+      trigger.onDrop();
+    } catch (Exception e) {
+      onTriggerExecutionError("drop", e);
+    }
+  }
+
   private void onTriggerExecutionError(String methodName, Exception e)
       throws TriggerExecutionException {
     throw new TriggerExecutionException(
@@ -53,5 +61,9 @@ public class TriggerExecutor {
                 "Error occurred during executing Trigger#%s: %s",
                 methodName, System.lineSeparator())
             + e);
+  }
+
+  public TriggerInformation getTriggerInformation() {
+    return triggerInformation;
   }
 }

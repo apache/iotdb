@@ -104,8 +104,6 @@ public class StorageEngineV2 implements IService {
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
-  private final boolean enableMemControl = config.isEnableMemControl();
-
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
@@ -147,24 +145,7 @@ public class StorageEngineV2 implements IService {
 
   private static void initTimePartition() {
     timePartitionIntervalForStorage =
-        convertMilliWithPrecision(
-            IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage() * 1000L);
-  }
-
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
   }
 
   public static long getTimePartitionIntervalForStorage() {
@@ -172,11 +153,6 @@ public class StorageEngineV2 implements IService {
       initTimePartition();
     }
     return timePartitionIntervalForStorage;
-  }
-
-  @TestOnly
-  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
   }
 
   public static long getTimePartition(long time) {
@@ -497,7 +473,7 @@ public class StorageEngineV2 implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
-    dataRegion.setDataTTL(ttl);
+    dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
     return dataRegion;
@@ -583,7 +559,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(dataTTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }
@@ -717,7 +693,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(req.TTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(req.TTL);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -763,18 +739,24 @@ public class StorageEngineV2 implements IService {
       switch (loadCommand) {
         case EXECUTE:
           if (loadTsFileManager.loadAll(uuid)) {
-            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(String.format("No uuid %s recorded.", uuid));
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
           }
           break;
         case ROLLBACK:
           if (loadTsFileManager.deleteAll(uuid)) {
-            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(String.format("No uuid %s recorded.", uuid));
+            status.setMessage(
+                String.format(
+                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    uuid, loadCommand));
           }
           break;
         default:
@@ -782,14 +764,16 @@ public class StorageEngineV2 implements IService {
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
     } catch (IOException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (LoadFileException e) {
+      logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
 
-    return RpcUtils.SUCCESS_STATUS;
+    return status;
   }
 
   static class InstanceHolder {

@@ -44,7 +44,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
-  public static final String COLUMN_TTL = "ttl";
+  public static final String COLUMN_TTL = "ttl(ms)";
   public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";
@@ -77,12 +77,12 @@ public class ColumnHeaderConstant {
 
   // column names for show triggers statement
   public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
-  public static final String COLUMN_TRIGGER_EVENT = "Trigger Event";
-  public static final String COLUMN_TRIGGER_TYPE = "Trigger Type";
-  public static final String COLUMN_TRIGGER_STATE = "Trigger STATE";
-  public static final String COLUMN_TRIGGER_PATTERN = "Trigger PathPattern";
-  public static final String COLUMN_TRIGGER_CLASSNAME = "Trigger ClassName";
-  public static final String COLUMN_TRIGGER_LOCATION = "Trigger Location";
+  public static final String COLUMN_TRIGGER_EVENT = "Event";
+  public static final String COLUMN_TRIGGER_TYPE = "Type";
+  public static final String COLUMN_TRIGGER_STATE = "STATE";
+  public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
+  public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
+  public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
 
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
@@ -207,7 +207,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
+          new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32),
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
@@ -252,6 +252,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TRIGGER_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_STATE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_PATTERN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_CLASSNAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TRIGGER_LOCATION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
@@ -274,4 +275,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> getRoutingColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32));
+
+  public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64));
+
+  public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32));
 }

@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -42,6 +44,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -61,7 +66,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -72,6 +76,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -367,12 +372,8 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       Map<PartialPath, Long> allStorageGroupToTTL =
           LocalConfigNode.getInstance().getStorageGroupsTTL();
       if (showTTLStatement.isAll()) {
-        allStorageGroupToTTL
-            .entrySet()
-            .forEach(
-                (entry) -> {
-                  storageGroupToTTL.put(entry.getKey().getFullPath(), entry.getValue());
-                });
+        allStorageGroupToTTL.forEach(
+            (key, value) -> storageGroupToTTL.put(key.getFullPath(), value));
       } else {
         for (PartialPath storageGroupPath : storageGroupPaths) {
           List<PartialPath> matchedStorageGroupPaths =
@@ -487,7 +488,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -501,7 +502,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -510,9 +511,13 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showPipeSink(
       ShowPipeSinkStatement showPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PipeSink> pipeSinkList =
-        LocalConfigNode.getInstance().showPipeSink(showPipeSinkStatement.getPipeSinkName());
-    ShowPipeSinkTask.buildTSBlock(pipeSinkList, future);
+    try {
+      List<PipeSink> pipeSinkList =
+          LocalConfigNode.getInstance().showPipeSink(showPipeSinkStatement.getPipeSinkName());
+      ShowPipeSinkTask.buildTSBlockByPipeSink(pipeSinkList, future);
+    } catch (PipeSinkException e) {
+      ShowPipeSinkTask.buildTSBlockByPipeSink(Collections.emptyList(), future);
+    }
     return future;
   }
 
@@ -523,7 +528,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -535,7 +540,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -547,7 +552,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -559,7 +564,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -580,6 +585,38 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing delete timeseries is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing getRegion is not supported in standalone mode",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getSeriesSlotList(
+      GetSeriesSlotListStatement getSeriesSlotListStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing getSeriesSlotList is not supported in standalone mode",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getTimeSlotList(
+      GetTimeSlotListStatement getTimeSlotListStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing getTimeSlotList is not supported in standalone mode",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }

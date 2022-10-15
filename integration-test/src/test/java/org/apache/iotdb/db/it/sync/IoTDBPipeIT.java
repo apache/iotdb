@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.sync;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
@@ -37,7 +38,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPipeIT {
   private static String ip;
   private static int port;

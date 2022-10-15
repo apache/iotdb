@@ -238,46 +238,11 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
     void write(T t, ByteBuffer buffer);
 
-    void write(T t, PublicBAOS buffer) throws IOException;
+    void write(T t, PublicBAOS stream) throws IOException;
 
-    void write(T t, DataOutputStream buffer) throws IOException;
+    void write(T t, DataOutputStream stream) throws IOException;
 
     T read(ByteBuffer buffer);
-  }
-
-  public static class StringSerializer implements PathPatternNode.Serializer<String> {
-
-    private static class StringSerializerHolder {
-      private static final StringSerializer INSTANCE = new StringSerializer();
-
-      private StringSerializerHolder() {}
-    }
-
-    public static StringSerializer getInstance() {
-      return StringSerializerHolder.INSTANCE;
-    }
-
-    private StringSerializer() {}
-
-    @Override
-    public void write(String s, ByteBuffer buffer) {
-      ReadWriteIOUtils.write(s, buffer);
-    }
-
-    @Override
-    public void write(String s, PublicBAOS buffer) throws IOException {
-      ReadWriteIOUtils.write(s, buffer);
-    }
-
-    @Override
-    public void write(String s, DataOutputStream buffer) throws IOException {
-      ReadWriteIOUtils.write(s, buffer);
-    }
-
-    @Override
-    public String read(ByteBuffer buffer) {
-      return ReadWriteIOUtils.readString(buffer);
-    }
   }
 
   public static class VoidSerializer implements PathPatternNode.Serializer<Void> {
@@ -298,10 +263,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     public void write(Void unused, ByteBuffer buffer) {}
 
     @Override
-    public void write(Void unused, PublicBAOS buffer) {}
+    public void write(Void unused, PublicBAOS stream) {}
 
     @Override
-    public void write(Void unused, DataOutputStream buffer) {}
+    public void write(Void unused, DataOutputStream stream) {}
 
     @Override
     public Void read(ByteBuffer buffer) {

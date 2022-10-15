@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,11 +33,9 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -61,7 +61,7 @@ public interface IDTable {
    * @param plan create aligned timeseries plan
    * @throws MetadataException if the device is not aligned, throw it
    */
-  void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
+  void createAlignedTimeseries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * create timeseries
@@ -69,7 +69,7 @@ public interface IDTable {
    * @param plan create timeseries plan
    * @throws MetadataException if the device is aligned, throw it
    */
-  void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
+  void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * Delete all timeseries matching the given paths

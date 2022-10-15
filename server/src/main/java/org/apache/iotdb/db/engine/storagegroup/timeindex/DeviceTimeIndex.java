@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,6 +38,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -80,6 +84,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);
@@ -148,6 +153,24 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
+  }
+
+  /**
+   * Deserialize TimeIndex and get devices only.
+   *
+   * @param inputStream inputStream
+   * @return device name
+   */
+  public static Set<String> getDevices(InputStream inputStream) throws IOException {
+    int deviceNum = ReadWriteIOUtils.readInt(inputStream);
+    inputStream.skip(2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
+    Set<String> devices = new HashSet<>();
+    for (int i = 0; i < deviceNum; i++) {
+      String path = ReadWriteIOUtils.readString(inputStream).intern();
+      inputStream.skip(ReadWriteIOUtils.INT_LEN);
+      devices.add(path);
+    }
+    return devices;
   }
 
   @Override
@@ -336,5 +359,34 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean mayContainsDevice(String device) {
     return deviceToIndex.containsKey(device);
+  }
+
+  @Override
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+    boolean hasMatchedDevice = false;
+    long startTime = Long.MAX_VALUE;
+    long endTime = Long.MIN_VALUE;
+    for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
+      try {
+        if (devicePattern.matchFullPath(new PartialPath(entry.getKey()))) {
+          hasMatchedDevice = true;
+          if (startTimes[entry.getValue()] < startTime) {
+            startTime = startTimes[entry.getValue()];
+          }
+          if (endTimes[entry.getValue()] > endTime) {
+            endTime = endTimes[entry.getValue()];
+          }
+        }
+      } catch (IllegalPathException e) {
+        // won't reach here
+      }
+    }
+
+    return hasMatchedDevice ? new Pair<>(startTime, endTime) : null;
+  }
+
+  @Override
+  public byte getTimeIndexType() {
+    return ITimeIndex.DEVICE_TIME_INDEX_TYPE;
   }
 }

@@ -31,14 +31,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
 
@@ -107,6 +111,31 @@ public class SeriesPartitionTable {
           .getOrDefault(predecessorSlot, Collections.singletonList(null))
           .get(0);
     }
+  }
+
+  /**
+   * Query a timePartition's corresponding dataRegionIds
+   *
+   * @param timeSlotId Time partition's timeSlotId
+   * @return the timePartition's corresponding dataRegionIds
+   */
+  List<TConsensusGroupId> getRouting(TTimePartitionSlot timeSlotId) {
+    if (timeSlotId.getStartTime() >= 0) {
+      if (!seriesPartitionMap.containsKey(timeSlotId)) {
+        return new ArrayList<>();
+      }
+      return seriesPartitionMap.get(timeSlotId);
+    } else {
+      Set<TConsensusGroupId> result = new HashSet<>();
+      seriesPartitionMap.values().forEach(result::addAll);
+      return new ArrayList<>(result);
+    }
+  }
+
+  List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {
+    return seriesPartitionMap.keySet().stream()
+        .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+        .collect(Collectors.toList());
   }
 
   /**

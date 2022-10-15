@@ -51,8 +51,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * {@link LoadTsFileScheduler} is used for scheduling {@link LoadSingleTsFileNode} and {@link
@@ -62,10 +65,12 @@ import java.util.concurrent.Future;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
+  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
+
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
   private final MPPQueryContext queryContext;
-  private QueryStateMachine stateMachine;
+  private final QueryStateMachine stateMachine;
   private LoadTsFileDispatcherImpl dispatcher;
   private List<LoadSingleTsFileNode> tsFileNodeList;
   private PlanFragmentId fragmentId;
@@ -95,6 +100,8 @@ public class LoadTsFileScheduler implements IScheduler {
     for (LoadSingleTsFileNode node : tsFileNodeList) {
       if (!node.needDecodeTsFile()) {
         boolean isLoadLocallySuccess = loadLocally(node);
+
+        node.clean();
         if (!isLoadLocallySuccess) {
           return;
         }
@@ -107,6 +114,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
       boolean isFirstPhaseSuccess = firstPhase(node);
       boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+
+      node.clean();
       if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
         return;
       }
@@ -140,7 +149,9 @@ public class LoadTsFileScheduler implements IScheduler {
             dispatcher.dispatch(Collections.singletonList(instance));
 
         try {
-          FragInstanceDispatchResult result = dispatchResultFuture.get();
+          FragInstanceDispatchResult result =
+              dispatchResultFuture.get(
+                  LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
           if (!result.isSuccessful()) {
             // TODO: retry.
             logger.error(
@@ -162,11 +173,18 @@ public class LoadTsFileScheduler implements IScheduler {
             stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
             return false;
           }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException | ExecutionException | CancellationException e) {
           if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
           }
           logger.warn("Interrupt or Execution error.", e);
+          stateMachine.transitionToFailed(e);
+          return false;
+        } catch (TimeoutException e) {
+          dispatchResultFuture.cancel(true);
+          logger.error(
+              String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()),
+              e);
           stateMachine.transitionToFailed(e);
           return false;
         }
