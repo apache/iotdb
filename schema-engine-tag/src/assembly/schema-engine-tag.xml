@@ -30,7 +30,6 @@
         <dependencySet>
             <outputDirectory>/lib/tag-schema-region</outputDirectory>
             <includes>
-                <include>org.apache.iotdb:iotdb-lsm</include>
                 <include>org.roaringbitmap:RoaringBitmap</include>
                 <include>org.apache.iotdb:schema-engine-tag</include>
             </includes>

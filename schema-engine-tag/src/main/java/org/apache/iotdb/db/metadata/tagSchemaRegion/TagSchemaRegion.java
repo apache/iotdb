@@ -34,10 +34,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.idtable.IDTableHashmapImpl;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
@@ -50,8 +47,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist.DeviceIDList;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist.IDeviceIDList;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.TagInvertedIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.MeasurementPathUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.PathTagConverterUtils;
@@ -114,11 +110,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   // tag inverted index
   private final TagInvertedIndex tagInvertedIndex;
 
-  // manager device id -> INT32 id
-  private final IDeviceIDList deviceIDList;
-
-  // manager timeSeries
-  private final IDTable idTable;
+  // manager timeSeries, and use a deviceID list manager device id -> INT32 id
+  private final IDTableWithDeviceIDListImpl idTableWithDeviceIDList;
 
   private final ISeriesNumerLimiter seriesNumerLimiter;
 
@@ -135,9 +128,8 @@ public class TagSchemaRegion implements ISchemaRegion {
     this.storageGroupMNode = storageGroupMNode;
     this.seriesNumerLimiter = seriesNumerLimiter;
     File schemaRegionDir = new File(schemaRegionDirPath);
-    idTable = new IDTableHashmapImpl(schemaRegionDir);
+    idTableWithDeviceIDList = new IDTableWithDeviceIDListImpl(schemaRegionDir);
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
-    deviceIDList = new DeviceIDList(schemaRegionDirPath);
     init();
   }
 
@@ -168,7 +160,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   public void clear() {
     try {
       tagInvertedIndex.clear();
-      deviceIDList.clear();
+      idTableWithDeviceIDList.clear();
     } catch (IOException e) {
       logger.error("clear tag inverted index failed", e);
     }
@@ -208,16 +200,14 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   private void createTagInvertedIndex(PartialPath devicePath) {
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
     Map<String, String> tagsMap =
         PathTagConverterUtils.pathToTags(storageGroupFullPath, devicePath.getFullPath());
-    synchronized (deviceIDList) {
-      deviceIDList.add(deviceID);
-      tagInvertedIndex.addTags(tagsMap, deviceIDList.size() - 1);
+    synchronized (idTableWithDeviceIDList) {
+      tagInvertedIndex.addTags(tagsMap, idTableWithDeviceIDList.size() - 1);
     }
   }
 
-  private List<Integer> getDeviceIDsByInvertedIndex(PartialPath path) {
+  private List<Integer> getDeviceIDsFromInvertedIndex(PartialPath path) {
     Map<String, String> tags =
         PathTagConverterUtils.pathToTags(storageGroupFullPath, path.getFullPath());
     return tagInvertedIndex.getMatchedIDs(tags);
@@ -256,7 +246,7 @@ public class TagSchemaRegion implements ISchemaRegion {
                 + plan.getPath().getMeasurement());
     plan.setPath(path);
     devicePath = plan.getPath().getDevicePath();
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath.getFullPath());
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath.getFullPath());
     if (deviceEntry != null) {
       if (deviceEntry.isAligned()) {
         throw new AlignedTimeseriesException(
@@ -267,7 +257,7 @@ public class TagSchemaRegion implements ISchemaRegion {
             devicePath.getFullPath() + "." + plan.getPath().getMeasurement());
       }
     }
-    idTable.createTimeseries(plan);
+    idTableWithDeviceIDList.createTimeseries(plan);
     // write the device path for the first time
     if (deviceEntry == null) {
       createTagInvertedIndex(devicePath);
@@ -283,7 +273,7 @@ public class TagSchemaRegion implements ISchemaRegion {
                 storageGroupFullPath, devicePath.getFullPath()));
     plan.setPrefixPath(path);
     devicePath = plan.getPrefixPath();
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath.getFullPath());
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath.getFullPath());
     if (deviceEntry != null) {
       if (!deviceEntry.isAligned()) {
         throw new AlignedTimeseriesException(
@@ -295,7 +285,7 @@ public class TagSchemaRegion implements ISchemaRegion {
           throw new PathAlreadyExistException(devicePath.getFullPath());
       }
     }
-    idTable.createAlignedTimeseries(plan);
+    idTableWithDeviceIDList.createAlignedTimeseries(plan);
     // write the device path for the first time
     if (deviceEntry == null) {
       createTagInvertedIndex(devicePath);
@@ -371,7 +361,12 @@ public class TagSchemaRegion implements ISchemaRegion {
     int res = 0;
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
     for (IDeviceID deviceID : deviceIDs) {
-      res += idTable.getDeviceEntry(deviceID.toStringID()).getMeasurementMap().keySet().size();
+      res +=
+          idTableWithDeviceIDList
+              .getDeviceEntry(deviceID.toStringID())
+              .getMeasurementMap()
+              .keySet()
+              .size();
     }
     return res;
   }
@@ -411,11 +406,11 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    synchronized (deviceIDList) {
+    synchronized (idTableWithDeviceIDList) {
       if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
-        return deviceIDList.size();
+        return idTableWithDeviceIDList.size();
       } else {
-        return getDeviceIDsByInvertedIndex(pathPattern).size();
+        return getDeviceIDsFromInvertedIndex(pathPattern).size();
       }
     }
   }
@@ -460,7 +455,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     String devicePath = pathPattern.getFullPath();
     // exact query
     if (!devicePath.endsWith(TAIL) && !devicePath.equals(storageGroupFullPath)) {
-      DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
+      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath);
       if (deviceEntry != null) {
         matchedDevices.add(pathPattern);
       }
@@ -478,7 +473,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     if (config.getDeviceIDTransformationMethod().equals("SHA256")) {
       List<SchemaEntry> schemaEntries = new ArrayList<>();
       for (IDeviceID deviceID : deviceIDS) {
-        DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
+        DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(deviceID.toStringID());
         Map<String, SchemaEntry> map = deviceEntry.getMeasurementMap();
         // For each device, only one SchemaEntry needs to be obtained
         for (Map.Entry<String, SchemaEntry> entry : map.entrySet()) {
@@ -486,7 +481,8 @@ public class TagSchemaRegion implements ISchemaRegion {
           break;
         }
       }
-      List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+      List<DiskSchemaEntry> diskSchemaEntries =
+          idTableWithDeviceIDList.getDiskSchemaEntries(schemaEntries);
       for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
         devicePaths.add(diskSchemaEntry.getDevicePath());
       }
@@ -501,7 +497,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   private List<SchemaEntry> getSchemaEntries(List<IDeviceID> deviceIDS) {
     List<SchemaEntry> schemaEntries = new ArrayList<>();
     for (IDeviceID deviceID : deviceIDS) {
-      DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
+      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(deviceID.toStringID());
       Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
       for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
         schemaEntries.add(entry.getValue());
@@ -515,7 +511,8 @@ public class TagSchemaRegion implements ISchemaRegion {
     List<MeasurementPath> measurementPaths = new ArrayList<>();
     if (config.getDeviceIDTransformationMethod().equals("SHA256")) {
       List<SchemaEntry> schemaEntries = getSchemaEntries(deviceIDS);
-      List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+      List<DiskSchemaEntry> diskSchemaEntries =
+          idTableWithDeviceIDList.getDiskSchemaEntries(schemaEntries);
       for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
         MeasurementPath measurementPath =
             MeasurementPathUtils.generateMeasurementPath(diskSchemaEntry);
@@ -523,7 +520,7 @@ public class TagSchemaRegion implements ISchemaRegion {
       }
     } else {
       for (IDeviceID deviceID : deviceIDS) {
-        DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
+        DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(deviceID.toStringID());
         Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
         for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
           MeasurementPath measurementPath =
@@ -558,7 +555,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     List<MeasurementPath> measurementPaths = new LinkedList<>();
     String path =
         PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, devicePath.getFullPath());
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(path);
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path);
     if (deviceEntry == null) return measurementPaths;
     Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
     for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
@@ -600,7 +597,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     // point query
     if (!path.endsWith(TAIL)) {
       path = PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, path);
-      DeviceEntry deviceEntry = idTable.getDeviceEntry(path);
+      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path);
       if (deviceEntry != null) {
         Map<String, SchemaEntry> measurementMap = deviceEntry.getMeasurementMap();
         for (String m : measurementMap.keySet()) {
@@ -623,13 +620,14 @@ public class TagSchemaRegion implements ISchemaRegion {
   private void getTimeSeriesResultOfDeviceFromIDTable(
       List<ShowTimeSeriesResult> ShowTimeSeriesResults, IDeviceID deviceID) {
     Map<String, SchemaEntry> measurementMap =
-        idTable.getDeviceEntry(deviceID.toStringID()).getMeasurementMap();
+        idTableWithDeviceIDList.getDeviceEntry(deviceID.toStringID()).getMeasurementMap();
     if (deviceID instanceof SHA256DeviceID) {
       for (String m : measurementMap.keySet()) {
         SchemaEntry schemaEntry = measurementMap.get(m);
         List<SchemaEntry> schemaEntries = new ArrayList<>();
         schemaEntries.add(schemaEntry);
-        List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+        List<DiskSchemaEntry> diskSchemaEntries =
+            idTableWithDeviceIDList.getDiskSchemaEntries(schemaEntries);
         DiskSchemaEntry diskSchemaEntry = diskSchemaEntries.get(0);
         ShowTimeSeriesResults.add(
             ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
@@ -652,15 +650,15 @@ public class TagSchemaRegion implements ISchemaRegion {
       path = path.substring(0, path.length() - TAIL.length());
       devicePath = new PartialPath(path);
     }
-    synchronized (deviceIDList) {
+    synchronized (idTableWithDeviceIDList) {
       if (devicePath.getFullPath().length() <= storageGroupFullPath.length()) {
-        return deviceIDList.getAllDeviceIDS();
+        return idTableWithDeviceIDList.getAllDeviceIDS();
       } else {
         List<IDeviceID> IDS = new LinkedList<>();
-        List<Integer> ids = getDeviceIDsByInvertedIndex(devicePath);
+        List<Integer> ids = getDeviceIDsFromInvertedIndex(devicePath);
         if (ids.size() > 0) {
           for (int id : ids) {
-            IDS.add(deviceIDList.get(id));
+            IDS.add(idTableWithDeviceIDList.get(id));
           }
         }
         return IDS;
@@ -676,7 +674,7 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(path.getFullPath());
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path.getFullPath());
     if (deviceEntry == null) throw new PathNotExistException(path.getFullPath());
     return new EntityMNode(storageGroupMNode, path.getFullPath());
   }
@@ -745,7 +743,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     checkAlignedAndAutoCreateSeries(plan);
     IMNode deviceMNode = getDeviceNode(devicePath);
     IMeasurementMNode measurementMNode;
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath.getFullPath());
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath.getFullPath());
     Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
     for (int i = 0; i < measurementList.length; i++) {
       SchemaEntry schemaEntry = schemaMap.get(measurementList[i]);
@@ -820,7 +818,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   private SchemaEntry getSchemaEntry(String devicePath, String measurementName) {
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
+    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath);
     if (deviceEntry == null) return null;
     return deviceEntry.getSchemaEntry(measurementName);
   }
