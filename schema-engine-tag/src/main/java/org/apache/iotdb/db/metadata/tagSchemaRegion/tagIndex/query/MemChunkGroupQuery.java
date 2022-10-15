@@ -46,7 +46,7 @@ public class MemChunkGroupQuery extends QueryLevelProcess<MemChunkGroup, MemChun
   }
 
   /**
-   * the insert method corresponding to the MemChunkGroup node
+   * the query method corresponding to the MemChunkGroup node
    *
    * @param memNode memory node
    * @param context query request context

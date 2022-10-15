@@ -201,9 +201,12 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     try {
       for (Map.Entry<String, String> tag : tags.entrySet()) {
         RoaringBitmap rb = getMatchedIDs(memTables, tag.getKey(), tag.getValue());
-        if (i == 0) roaringBitmap = rb;
-        else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
-        i++;
+        if (rb == null) continue;
+        else {
+          if (i == 0) roaringBitmap = rb;
+          else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
+          i++;
+        }
       }
     } catch (Exception e) {
       logger.error(e.getMessage());

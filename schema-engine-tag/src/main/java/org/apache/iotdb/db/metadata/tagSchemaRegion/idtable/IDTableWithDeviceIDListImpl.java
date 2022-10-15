@@ -33,8 +33,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * an idTable implementation，manager timeSeries, and use a deviceID list manager device id -> INT32
+ * id
+ */
 public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
 
+  // use a deviceID list manager device id -> INT32 id
   private List<IDeviceID> deviceIDS;
 
   public IDTableWithDeviceIDListImpl(File storageGroupDir) {
@@ -64,6 +69,7 @@ public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
   public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
     String devicePath = plan.getPrefixPath().getFullPath();
+    // This device path is created for the first time, append it to deviceIdList
     if (deviceEntryNotExist(devicePath)) {
       IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
       deviceIDS.add(deviceID);
@@ -71,9 +77,16 @@ public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
     super.createAlignedTimeseries(plan);
   }
 
+  /**
+   * create timeseries
+   *
+   * @param plan create timeseries plan
+   * @throws MetadataException
+   */
   @Override
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     String devicePath = plan.getPath().getDevicePath().getFullPath();
+    // This device path is created for the first time, append it to deviceIdList
     if (deviceEntryNotExist(devicePath)) {
       IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
       deviceIDS.add(deviceID);
@@ -96,6 +109,7 @@ public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
     if (deviceIDS == null) {
       deviceIDS = new ArrayList<>();
     }
+    // This device path is created for the first time, append it to deviceIdList
     if (deviceEntryNotExist(devicePath)) {
       IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
       deviceIDS.add(deviceID);
