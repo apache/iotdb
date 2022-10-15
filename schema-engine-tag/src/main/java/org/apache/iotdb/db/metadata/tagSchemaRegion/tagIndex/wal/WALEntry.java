@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** represents a record in the wal file */
-public class WALEntry extends WALRecord {
+public class WALEntry implements WALRecord {
 
   // can be insertion(1) or deletion(2)
   private int type;
@@ -80,6 +80,20 @@ public class WALEntry extends WALRecord {
     for (int i = 0; i < length; i++) {
       String key = ReadWriteIOUtils.readString(stream);
       keys.add(key);
+    }
+  }
+
+  /**
+   * generate wal record using prototyping pattern
+   *
+   * @return wal record
+   */
+  @Override
+  public WALRecord clone() {
+    try {
+      return (WALRecord) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError(e.getMessage());
     }
   }
 

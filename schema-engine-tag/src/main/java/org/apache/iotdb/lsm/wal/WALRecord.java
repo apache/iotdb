@@ -23,14 +23,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** represents a wal record, which can be extended to implement more complex wal records */
-public abstract class WALRecord implements Cloneable {
+public interface WALRecord extends Cloneable {
 
   /**
    * serialize the wal record
    *
    * @param buffer byte buffer
    */
-  public abstract void serialize(ByteBuffer buffer);
+  void serialize(ByteBuffer buffer);
 
   /**
    * deserialize via input stream
@@ -38,14 +38,8 @@ public abstract class WALRecord implements Cloneable {
    * @param stream data input stream
    * @throws IOException
    */
-  public abstract void deserialize(DataInputStream stream) throws IOException;
+  void deserialize(DataInputStream stream) throws IOException;
 
-  @Override
-  public WALRecord clone() {
-    try {
-      return (WALRecord) super.clone();
-    } catch (CloneNotSupportedException e) {
-      throw new AssertionError(e.getMessage());
-    }
-  }
+  // generate wal record using prototyping pattern
+  WALRecord clone();
 }
