@@ -46,15 +46,14 @@ import java.util.Map;
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
-  private static final boolean printDetail = true;
+  private static boolean printDetail = false;
 
   @SuppressWarnings({
     "squid:S3776",
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename =
-        "/Users/bensonchou/PersonalFiles/IOTDB/projects/choubenson/iotdb/server/target/data/sequence/root.compactionTest/0/0/1665563670143-2-0-1.tsfile";
+    String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -74,7 +73,6 @@ public class TsFileSequenceRead {
       List<long[]> timeBatch = new ArrayList<>();
       int pageIndex = 0;
       byte marker;
-      String deviceID = "";
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -177,7 +175,6 @@ public class TsFileSequenceRead {
             System.out.println("Chunk Group Header position: " + reader.position());
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             System.out.println("device: " + chunkGroupHeader.getDeviceID());
-            deviceID = chunkGroupHeader.getDeviceID();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
