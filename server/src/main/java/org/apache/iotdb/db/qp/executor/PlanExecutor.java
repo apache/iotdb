@@ -1713,15 +1713,27 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException("Fail to cancel archiving task.");
       }
     } else {
+      List<PartialPath> storageGroupPaths;
       try {
-        List<PartialPath> storageGroupPaths =
+        storageGroupPaths =
             IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup(), plan.isPrefixMatch());
-        for (PartialPath storagePath : storageGroupPaths) {
-          StorageEngine.getInstance()
-              .setArchiving(storagePath, plan.getTargetDir(), plan.getTTL(), plan.getStartTime());
-        }
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
+      }
+
+      List<String> failedStorageGroups = new ArrayList<>();
+      for (PartialPath storagePath : storageGroupPaths) {
+        boolean success =
+            StorageEngine.getInstance()
+                .setArchiving(storagePath, plan.getTargetDir(), plan.getTTL(), plan.getStartTime());
+        if (!success) {
+          failedStorageGroups.add(storagePath.getFullPath());
+        }
+      }
+      if (!failedStorageGroups.isEmpty()) {
+        throw new QueryProcessException(
+            String.format(
+                "Fail to set archiving tasks for %s", String.join(", ", failedStorageGroups)));
       }
     }
   }

@@ -212,11 +212,14 @@ public class ArchivingManager {
 
       // check if there are duplicates
       for (ArchivingTask archivingTask : archivingTasks) {
-        if (archivingTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
+        if (archivingTask.isActive()
+            && archivingTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
             && archivingTask.getTargetDir().equals(targetDir)
             && archivingTask.getTTL() == ttl
             && archivingTask.getStartTime() == startTime) {
-          logger.warn("archiving task already equals archiving task {}", archivingTask.getTaskId());
+          logger.warn(
+              "Fail to set archiving task, it's same as the archiving task {}",
+              archivingTask.getTaskId());
           return false;
         }
       }

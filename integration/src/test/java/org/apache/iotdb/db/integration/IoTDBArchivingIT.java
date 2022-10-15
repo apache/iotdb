@@ -293,7 +293,7 @@ public class IoTDBArchivingIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testSetArchive() throws SQLException {
+  public void testSetArchiving() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
@@ -340,6 +340,48 @@ public class IoTDBArchivingIT {
           assertEquals("CANCELED", resultSet.getString(4));
         }
       }
+    }
+  }
+
+  @Test
+  @Category({ClusterTest.class})
+  public void testReSubmitArchiving() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
+
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG4");
+
+      statement.execute(
+          "SET ARCHIVING TO root.ARCHIVING_SG4 3000-12-13 100 '" + testTargetDir.getPath() + "'");
+      ResultSet resultSet = statement.executeQuery("SHOW ARCHIVING");
+      boolean flag = false;
+      while (resultSet.next()) {
+        if (resultSet.getString(3).equals("root.ARCHIVING_SG4")) {
+          flag = true;
+          assertEquals("READY", resultSet.getString(4));
+          assertTrue(resultSet.getString(5).startsWith("3000-12-13"));
+          assertEquals(100, resultSet.getLong(6));
+          assertEquals(testTargetDir.getPath(), resultSet.getString(7));
+        }
+      }
+      assertTrue(flag);
+
+      statement.execute("CANCEL ARCHIVING 0");
+      statement.execute(
+          "SET ARCHIVING TO root.ARCHIVING_SG4 3000-12-13 100 '" + testTargetDir.getPath() + "'");
+      resultSet = statement.executeQuery("SHOW ARCHIVING");
+      flag = false;
+      while (resultSet.next()) {
+        if (resultSet.getString(3).equals("root.ARCHIVING_SG4")) {
+          flag = true;
+          assertEquals("READY", resultSet.getString(4));
+          assertTrue(resultSet.getString(5).startsWith("3000-12-13"));
+          assertEquals(100, resultSet.getLong(6));
+          assertEquals(testTargetDir.getPath(), resultSet.getString(7));
+        }
+      }
+      assertTrue(flag);
     }
   }
 }

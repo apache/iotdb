@@ -1316,13 +1316,8 @@ public class StorageEngine implements IService {
   }
 
   /** push the archiving info to archivingManager */
-  public void setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    boolean result = archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
-    if (result) {
-      logger.info("set archiving task successfully.");
-    } else {
-      logger.info("set archiving task failed.");
-    }
+  public boolean setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    return archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
   }
 
   public boolean operateArchiving(
