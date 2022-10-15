@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -150,8 +149,6 @@ public class PartitionRegionStateMachine
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the PartitionRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
-    TConfigNodeLocation newLeaderConfigNodeLocation =
-        configManager.getConfigNodeLocation(newLeaderId);
 
     if (currentNodeId == newLeaderId) {
       LOGGER.info(
@@ -164,11 +161,10 @@ public class PartitionRegionStateMachine
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}, ip:port: {}]",
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
-          newLeaderId,
-          newLeaderConfigNodeLocation.getInternalEndPoint());
+          newLeaderId);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
