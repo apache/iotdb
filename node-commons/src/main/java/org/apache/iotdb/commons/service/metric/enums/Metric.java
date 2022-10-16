@@ -60,7 +60,7 @@ public enum Metric {
   THRIFT_CONNECTIONS,
   THRIFT_ACTIVE_THREADS,
   MULTI_LEADER,
-  LOG_DISPATCHER;
+  STAGE;
 
   @Override
   public String toString() {

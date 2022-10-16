@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -48,6 +50,7 @@ import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -148,8 +151,15 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
+    long startTime = System.currentTimeMillis();
     stateMachineLock.lock();
     try {
+      long getStateMachineLockTime = System.currentTimeMillis();
+      // statistic the time of acquiring stateMachine lock
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "StateMachineLock")
+          .update(getStateMachineLockTime - startTime);
       if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
@@ -169,8 +179,14 @@ public class MultiLeaderServerImpl {
           Thread.currentThread().interrupt();
         }
       }
+      long startWriteTime = System.currentTimeMillis();
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      // statistic the time of checking write block
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "checkBlock")
+          .update(startWriteTime - getStateMachineLockTime);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
@@ -180,6 +196,12 @@ public class MultiLeaderServerImpl {
       }
       // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
+      long finishWriteTime = System.currentTimeMillis();
+      // statistic the time of writing request into stateMachine
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "writeStateMachine")
+          .update(finishWriteTime - startWriteTime);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
@@ -191,6 +213,11 @@ public class MultiLeaderServerImpl {
           logDispatcher.offer(indexedConsensusRequest);
           index.incrementAndGet();
         }
+        // statistic the time of offering request into queue
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "offerQueue")
+            .update(System.currentTimeMillis() - finishWriteTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -198,6 +225,11 @@ public class MultiLeaderServerImpl {
             indexedConsensusRequest.getSearchIndex(),
             result.getCode());
       }
+      // statistic the time of total write process
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "totalWrite")
+          .update(System.currentTimeMillis() - startTime);
       return result;
     } finally {
       stateMachineLock.unlock();
