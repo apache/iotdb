@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -97,6 +98,9 @@ public class QueryStatement extends Statement {
 
   // `GROUP BY TAG` clause
   protected GroupByTagComponent groupByTagComponent;
+
+  // `INTO` clause
+  protected IntoComponent intoComponent;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -254,6 +258,10 @@ public class QueryStatement extends Statement {
     return groupByTimeComponent != null;
   }
 
+  public boolean isAlignByTime() {
+    return resultSetFormat == ResultSetFormat.ALIGN_BY_TIME;
+  }
+
   public boolean isAlignByDevice() {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }
@@ -274,6 +282,14 @@ public class QueryStatement extends Statement {
     return orderByComponent != null && orderByComponent.isOrderByDevice();
   }
 
+  public IntoComponent getIntoComponent() {
+    return intoComponent;
+  }
+
+  public void setIntoComponent(IntoComponent intoComponent) {
+    this.intoComponent = intoComponent;
+  }
+
   public Ordering getResultTimeOrder() {
     if (orderByComponent == null || !orderByComponent.isOrderByTime()) {
       return Ordering.ASC;
@@ -286,6 +302,10 @@ public class QueryStatement extends Statement {
       return Collections.emptyList();
     }
     return orderByComponent.getSortItemList();
+  }
+
+  public boolean isSelectInto() {
+    return intoComponent != null;
   }
 
   public void semanticCheck() {
@@ -383,6 +403,21 @@ public class QueryStatement extends Statement {
       if (isOrderByDevice()) {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+      }
+    }
+
+    if (isSelectInto()) {
+      if (getSeriesLimit() > 0) {
+        throw new SemanticException("select into: slimit clauses are not supported.");
+      }
+      if (getSeriesOffset() > 0) {
+        throw new SemanticException("select into: soffset clauses are not supported.");
+      }
+      if (disableAlign()) {
+        throw new SemanticException("select into: disable align clauses are not supported.");
+      }
+      if (isLastQuery()) {
+        throw new SemanticException("select into: last clauses are not supported.");
       }
     }
   }
