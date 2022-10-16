@@ -71,7 +71,7 @@ public interface BaseEnv {
 
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
-  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
+  IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(

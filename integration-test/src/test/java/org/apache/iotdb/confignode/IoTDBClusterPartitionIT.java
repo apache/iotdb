@@ -161,7 +161,7 @@ public class IoTDBClusterPartitionIT {
     final String allSg1 = "root.sg1.**";
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status;
       ByteBuffer buffer;
       TSchemaPartitionReq schemaPartitionReq;
@@ -296,7 +296,7 @@ public class IoTDBClusterPartitionIT {
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status;
       TDataPartitionReq dataPartitionReq;
       TDataPartitionTableResp dataPartitionTableResp;
@@ -334,7 +334,8 @@ public class IoTDBClusterPartitionIT {
             for (int retry = 0; retry < 5; retry++) {
               // Build new Client since it's unstable
               try (SyncConfigNodeIServiceClient configNodeClient =
-                  (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+                  (SyncConfigNodeIServiceClient)
+                      EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
                 dataPartitionTableResp =
                     configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
                 if (dataPartitionTableResp != null) {
@@ -401,7 +402,7 @@ public class IoTDBClusterPartitionIT {
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       final String sg0 = sg + 0;
       final String sg1 = sg + 1;
 
@@ -422,7 +423,7 @@ public class IoTDBClusterPartitionIT {
       for (int retry = 0; retry < 5; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
@@ -501,7 +502,7 @@ public class IoTDBClusterPartitionIT {
       for (int retry = 0; retry < 5; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
@@ -596,7 +597,7 @@ public class IoTDBClusterPartitionIT {
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       ByteBuffer buffer;
       TSchemaPartitionReq schemaPartitionReq;
 
@@ -632,7 +633,7 @@ public class IoTDBClusterPartitionIT {
         for (int retry = 0; retry < 5; retry++) {
           // Build new Client since it's unstable
           try (SyncConfigNodeIServiceClient configNodeClient =
-              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
             dataPartitionTableResp =
                 configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
             if (dataPartitionTableResp != null) {

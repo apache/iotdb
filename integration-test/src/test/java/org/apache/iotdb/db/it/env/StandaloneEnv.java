@@ -131,7 +131,7 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() {
     return null;
   }
 

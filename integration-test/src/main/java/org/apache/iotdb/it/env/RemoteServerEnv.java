@@ -147,7 +147,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
     return null;
   }
 
