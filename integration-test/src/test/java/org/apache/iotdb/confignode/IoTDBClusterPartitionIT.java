@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -751,6 +753,37 @@ public class IoTDBClusterPartitionIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(seriesPartitionBatchSize, getSeriesSlotListResp.getSeriesSlotListSize());
+    }
+  }
+
+  @Test
+  public void testGetSchemaNodeManagementPartition()
+      throws IOException, TException, IllegalPathException {
+    final String sg = "root.sg";
+    final int storageGroupNum = 2;
+
+    TSStatus status;
+    TSchemaNodeManagementReq nodeManagementReq;
+    TSchemaNodeManagementResp nodeManagementResp;
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // set StorageGroups
+      for (int i = 0; i < storageGroupNum; i++) {
+        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+        status = client.setStorageGroup(setReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+
+      ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
+      nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
+      nodeManagementReq.setLevel(-1);
+      nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+      Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
+      Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
+      Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
     }
   }
 }
