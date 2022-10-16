@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -44,7 +45,13 @@ import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
@@ -56,15 +63,10 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -237,7 +239,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     PartialPath devicePath = plan.getPath().getDevicePath();
     PartialPath path =
         new PartialPath(
@@ -265,14 +267,14 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    PartialPath devicePath = plan.getPrefixPath();
+  public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    PartialPath devicePath = plan.getDevicePath();
     PartialPath path =
         new PartialPath(
             PathTagConverterUtils.pathToTagsSortPath(
                 storageGroupFullPath, devicePath.getFullPath()));
-    plan.setPrefixPath(path);
-    devicePath = plan.getPrefixPath();
+    plan.setDevicePath(path);
+    devicePath = plan.getDevicePath();
     DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath.getFullPath());
     if (deviceEntry != null) {
       if (!deviceEntry.isAligned()) {
@@ -292,8 +294,14 @@ public class TagSchemaRegion implements ISchemaRegion {
     }
   }
 
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    throw new UnsupportedOperationException("checkMeasurementExistence");
+  }
+
   private void filterExistingMeasurements(
-      CreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
+      ICreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
     List<String> measurements = plan.getMeasurements();
     List<TSDataType> dataTypes = plan.getDataTypes();
     List<TSEncoding> encodings = plan.getEncodings();
@@ -335,7 +343,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
     throw new UnsupportedOperationException("fetchSchemaBlackList");
   }
@@ -346,9 +354,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("autoCreateDeviceMNode");
-  }
+  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {}
 
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
@@ -540,14 +546,30 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException {
     PartialPath devicePath = pathPattern.getDevicePath();
     if (devicePath.getFullPath().endsWith(TAIL)) {
       return getMeasurementPathsWithBatchQuery(devicePath, isPrefixMatch);
     } else {
       return getMeasurementPathsWithPointQuery(devicePath, isPrefixMatch);
     }
+  }
+
+  @Override
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
+      throws MetadataException {
+    List<MeasurementPath> res = getMeasurementPaths(pathPattern, isPrefixMatch, false);
+    Pair<List<MeasurementPath>, Integer> result = new Pair<>(res, 0);
+    return result;
+  }
+
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    return null;
   }
 
   private List<MeasurementPath> getMeasurementPathsWithPointQuery(
@@ -571,21 +593,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       PartialPath devicePath, boolean isPrefixMatch) throws MetadataException {
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(devicePath);
     return getMeasurementPaths(deviceIDs);
-  }
-
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
-      throws MetadataException {
-    List<MeasurementPath> res = getMeasurementPaths(pathPattern, isPrefixMatch);
-    Pair<List<MeasurementPath>, Integer> result = new Pair<>(res, 0);
-    return result;
-  }
-
-  @Override
-  public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
-    throw new UnsupportedOperationException("fetchSchema");
   }
 
   @Override
@@ -907,22 +914,22 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
+  public void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
     throw new UnsupportedOperationException("setSchemaTemplate");
   }
 
   @Override
-  public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
+  public void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
     throw new UnsupportedOperationException("unsetSchemaTemplate");
   }
 
   @Override
-  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
     throw new UnsupportedOperationException("setUsingSchemaTemplate");
   }
 
   @Override
-  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+  public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     throw new UnsupportedOperationException("activateSchemaTemplate");
   }

@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -150,24 +150,24 @@ public class TagSchemaRegionTest {
   private void getMeasurementPathsTest() throws Exception {
     PartialPath pathPattern = new PartialPath(storageGroup + ".tag1.a.tag2.b.s0");
     List<MeasurementPath> measurementPaths =
-        tagSchemaRegion.getMeasurementPaths(pathPattern, false);
+        tagSchemaRegion.getMeasurementPaths(pathPattern, false, false);
     assertEquals(measurementPaths.size(), 1);
     assertEquals(measurementPaths.get(0).getFullPath(), storageGroup + ".tag1.a.tag2.b.s0");
 
     pathPattern = new PartialPath(storageGroup + ".tag1.a.**.s");
-    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false);
+    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false, false);
     assertEquals(measurementPaths.size(), 5);
 
     pathPattern = new PartialPath(storageGroup + ".tag2.b.**.s");
-    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false);
+    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false, false);
     assertEquals(measurementPaths.size(), 1);
 
     pathPattern = new PartialPath(storageGroup + ".tag3.b.**.s");
-    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false);
+    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false, false);
     assertEquals(measurementPaths.size(), 3);
 
     pathPattern = new PartialPath(storageGroup + ".tag2.y.tag1.x.**.s");
-    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false);
+    measurementPaths = tagSchemaRegion.getMeasurementPaths(pathPattern, false, false);
     assertEquals(measurementPaths.size(), 3);
   }
 

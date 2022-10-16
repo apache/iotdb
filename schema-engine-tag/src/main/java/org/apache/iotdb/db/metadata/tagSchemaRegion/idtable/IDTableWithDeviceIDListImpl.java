@@ -25,8 +25,8 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,9 +66,9 @@ public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
    * @throws MetadataException
    */
   @Override
-  public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
+  public synchronized void createAlignedTimeseries(ICreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
-    String devicePath = plan.getPrefixPath().getFullPath();
+    String devicePath = plan.getDevicePath().getFullPath();
     // This device path is created for the first time, append it to deviceIdList
     if (deviceEntryNotExist(devicePath)) {
       IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
@@ -84,7 +84,7 @@ public class IDTableWithDeviceIDListImpl extends IDTableHashmapImpl {
    * @throws MetadataException
    */
   @Override
-  public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+  public synchronized void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException {
     String devicePath = plan.getPath().getDevicePath().getFullPath();
     // This device path is created for the first time, append it to deviceIdList
     if (deviceEntryNotExist(devicePath)) {
