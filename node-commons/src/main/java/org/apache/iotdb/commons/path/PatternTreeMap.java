@@ -134,7 +134,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param node current PathPatternNode
    * @param pathNodes pathNodes of key
    * @param pos current index of pathNodes
-   * @param resultSet result list
+   * @param resultSet result set
    */
   private void searchOverlapped(
       PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, Set<V> resultSet) {
