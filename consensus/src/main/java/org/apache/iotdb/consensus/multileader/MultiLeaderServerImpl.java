@@ -185,7 +185,7 @@ public class MultiLeaderServerImpl {
       // statistic the time of checking write block
       MetricService.getInstance()
           .getOrCreateHistogram(
-              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "checkBlock")
+              Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "checkWriteBlock")
           .update(startWriteTime - getStateMachineLockTime);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
