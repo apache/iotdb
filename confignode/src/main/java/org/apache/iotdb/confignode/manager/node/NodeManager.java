@@ -265,7 +265,7 @@ public class NodeManager {
             .setConfigNodeId(ERROR_STATUS_NODE_ID);
       }
 
-      int nodeId = generateNodeId();
+      int nodeId = nodeInfo.generateNextNodeId();
       req.getConfigNodeLocation().setConfigNodeId(nodeId);
 
       configManager.getProcedureManager().addConfigNode(req);
@@ -777,9 +777,5 @@ public class NodeManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
-  }
-
-  public int generateNodeId() {
-    return nodeInfo.generateNextNodeId();
   }
 }

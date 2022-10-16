@@ -147,7 +147,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
     return null;
   }
 
@@ -159,7 +159,17 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void restartDataNode(int index) {
+  public void startConfigNode(int index) {
+    getConfigNodeWrapperList().get(index).start();
+  }
+
+  @Override
+  public void shutdownConfigNode(int index) {
+    getConfigNodeWrapperList().get(index).stop();
+  }
+
+  @Override
+  public void startDataNode(int index) {
     getDataNodeWrapperList().get(index).start();
   }
 
