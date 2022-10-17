@@ -525,7 +525,7 @@ public class ConfigManager implements IManager {
           partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
-              getLoadManager().genLatestRegionRouteMap());
+              getLoadManager().getLatestRegionRouteMap());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -860,7 +860,7 @@ public class ConfigManager implements IManager {
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().genLatestRegionRouteMap());
+      resp.setRegionRouteMap(getLoadManager().getLatestRegionRouteMap());
     }
 
     return resp;

@@ -54,7 +54,7 @@ public class RouteBalancer {
     this.lazyGreedyRouter = new LazyGreedyRouter();
   }
 
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
       List<TRegionReplicaSet> regionReplicaSets) {
     List<TRegionReplicaSet> schemaRegionGroups = new ArrayList<>();
     List<TRegionReplicaSet> dataRegionGroups = new ArrayList<>();
@@ -73,10 +73,10 @@ public class RouteBalancer {
 
     // Generate SchemaRegionRouteMap
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        genRouter(TConsensusGroupType.SchemaRegion).genLatestRegionRouteMap(schemaRegionGroups);
+        genRouter(TConsensusGroupType.SchemaRegion).getLatestRegionRouteMap(schemaRegionGroups);
     // Generate DataRegionRouteMap
     result.putAll(
-        genRouter(TConsensusGroupType.DataRegion).genLatestRegionRouteMap(dataRegionGroups));
+        genRouter(TConsensusGroupType.DataRegion).getLatestRegionRouteMap(dataRegionGroups));
     return result;
   }
 
