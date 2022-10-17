@@ -41,7 +41,7 @@ public class ClusterAlertingExample implements Trigger {
   private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
   private final AlertManagerConfiguration alertManagerConfiguration =
-      new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+      new AlertManagerConfiguration("http://192.168.130.8:9093/api/v2/alerts");
 
   private String alertname;
 

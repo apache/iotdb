@@ -44,10 +44,10 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param deleteFunction define the split logic of delete value
    */
   public PatternTreeMap(
-          Supplier<? extends Set<V>> supplier,
-          BiConsumer<V, Set<V>> appendFunction,
-          BiConsumer<V, Set<V>> deleteFunction,
-          VSerializer serializer) {
+      Supplier<? extends Set<V>> supplier,
+      BiConsumer<V, Set<V>> appendFunction,
+      BiConsumer<V, Set<V>> deleteFunction,
+      VSerializer serializer) {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier, serializer);
     this.supplier = supplier;
     this.appendFunction = appendFunction;
@@ -101,7 +101,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @return true if current PathPatternNode can be removed
    */
   private boolean deletePathNode(
-          PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, V value) {
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, V value) {
     if (node == null) {
       return false;
     }
@@ -137,7 +137,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param resultSet result set
    */
   private void searchOverlapped(
-          PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, Set<V> resultSet) {
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, Set<V> resultSet) {
     if (pos == pathNodes.length - 1) {
       resultSet.addAll(node.getValues());
       return;
@@ -181,11 +181,11 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param resultSet result set
    */
   private void searchOverlapped(
-          PathPatternNode<V, VSerializer> node,
-          String[] deviceNodes,
-          int pos,
-          List<String> measurements,
-          List<Set<V>> resultSet) {
+      PathPatternNode<V, VSerializer> node,
+      String[] deviceNodes,
+      int pos,
+      List<String> measurements,
+      List<Set<V>> resultSet) {
     if (pos == deviceNodes.length - 1) {
       for (int i = 0; i < measurements.size(); i++) {
         for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(measurements.get(i))) {
