@@ -1519,10 +1519,11 @@ public class VirtualStorageGroupProcessor {
         resource.remove();
         tsFileManager.remove(resource, isSeq);
         logger.info(
-            "Removed a file {} before {} by ttl ({}ms)",
+            "Removed a file {} before {} by ttl ({} {})",
             resource.getTsFilePath(),
             new Date(ttlLowerBound),
-            dataTTL);
+            dataTTL,
+            config.getTimestampPrecision());
       } finally {
         resource.writeUnlock();
       }
