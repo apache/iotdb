@@ -736,7 +736,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     outputExpressions.clear();
     for (String tagKey : tagKeys) {
-      Expression tagKeyExpression = TimeSeriesOperand.constructColumnHeaderExpression(tagKey);
+      Expression tagKeyExpression =
+          TimeSeriesOperand.constructColumnHeaderExpression(tagKey, TSDataType.TEXT);
       analyzeExpression(analysis, tagKeyExpression);
       outputExpressions.add(new Pair<>(tagKeyExpression, null));
     }

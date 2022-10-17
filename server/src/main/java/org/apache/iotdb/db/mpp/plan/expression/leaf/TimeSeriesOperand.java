@@ -50,9 +50,10 @@ public class TimeSeriesOperand extends LeafOperand {
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
   }
 
-  public static TimeSeriesOperand constructColumnHeaderExpression(String columnName) {
+  public static TimeSeriesOperand constructColumnHeaderExpression(
+      String columnName, TSDataType dataType) {
     MeasurementPath measurementPath =
-        new MeasurementPath(new PartialPath(columnName, false), TSDataType.TEXT);
+        new MeasurementPath(new PartialPath(columnName, false), dataType);
     return new TimeSeriesOperand(measurementPath);
   }
 
