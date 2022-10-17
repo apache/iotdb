@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
@@ -158,7 +157,10 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
-    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+    Chunk chunk =
+        readerCacheMap
+            .get(chunkMetadataElement.fileElement.resource)
+            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
     ChunkReader chunkReader = new ChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
     ChunkHeader chunkHeader = chunk.getHeader();

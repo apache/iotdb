@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -48,7 +48,14 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {}
 
-  public boolean flushChunkToFileWriter(IChunkMetadata iChunkMetadata, int subTaskId)
+  /**
+   * Flush chunk to tsfile directly. Return whether the chunk is flushed to tsfile successfully or
+   * not. Return false if the unsealed chunk is too small or the end time of chunk exceeds the end
+   * time of file, else return true. Notice: if sub-value measurement is null, then flush empty
+   * value chunk.
+   */
+  public boolean flushChunkToFileWriter(
+      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
       throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(iChunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
@@ -72,7 +79,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) iChunkMetadata;
         // flush time chunk
         ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-        tsFileIOWriter.writeChunk(ChunkCache.getInstance().get(chunkMetadata), chunkMetadata);
+        tsFileIOWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
         // flush value chunks
         for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
           IChunkMetadata valueChunkMetadata =
@@ -91,11 +98,11 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
             continue;
           }
           chunkMetadata = (ChunkMetadata) valueChunkMetadata;
-          tsFileIOWriter.writeChunk(ChunkCache.getInstance().get(chunkMetadata), chunkMetadata);
+          tsFileIOWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
         }
       } else {
         ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
-        tsFileIOWriter.writeChunk(ChunkCache.getInstance().get(chunkMetadata), chunkMetadata);
+        tsFileIOWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
       }
     }
     isDeviceExistedInTargetFiles[fileIndex] = true;
@@ -103,6 +110,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     return true;
   }
 
+  /**
+   * Flush aligned page to tsfile directly. Return whether the page is flushed to tsfile
+   * successfully or not. Return false if the unsealed page is too small or the end time of page
+   * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
+   * flush empty value page.
+   */
   public boolean flushAlignedPageToChunkWriter(
       ByteBuffer compressedTimePageData,
       PageHeader timePageHeader,
@@ -118,7 +131,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     if (!isUnsealedPageLargeEnough
         || (timePageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
             && fileIndex != targetFileWriters.size() - 1)) {
-      // page.endTime > file.endTime, then deserialize the page
+      // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
@@ -149,6 +162,11 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     return true;
   }
 
+  /**
+   * Flush nonAligned page to tsfile directly. Return whether the page is flushed to tsfile
+   * successfully or not. Return false if the unsealed page is too small or the end time of page
+   * exceeds the end time of file, else return true.
+   */
   public boolean flushPageToChunkWriter(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
@@ -160,7 +178,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     if (!isUnsealedPageLargeEnough
         || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
             && fileIndex != targetFileWriters.size() - 1)) {
-      // page.endTime > file.endTime, then deserialize the page
+      // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 

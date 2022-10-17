@@ -245,7 +245,6 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
       compressedValuePageDatas.add(new ArrayList<>());
       while (chunkDataBuffer.remaining() > 0) {
         // deserialize a PageHeader from chunkDataBuffer
-
         PageHeader pageHeader;
         if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
           pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
@@ -290,7 +289,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
    * 1 means that all data on this page has been deleted.
    *
    * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
-   * if value page has no data or all data has been deleted.
+   * if value page has no data or all data being deleted.
    */
   protected int isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;

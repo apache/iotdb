@@ -113,8 +113,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   public abstract void endFile() throws IOException;
 
   /**
-   * Update startTime and endTime of current device in each target resources, and check whether to
-   * flush chunk metadatas or not.
+   * Update startTime and endTime of the current device in each target resources, and check whether
+   * to flush chunk metadatas or not.
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 

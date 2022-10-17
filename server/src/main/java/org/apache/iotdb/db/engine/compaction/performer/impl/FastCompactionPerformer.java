@@ -59,7 +59,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   private List<TsFileResource> unseqFiles;
 
-  private List<TsFileResource> sortedSourceFiles;
+  private List<TsFileResource> sortedSourceFiles = new ArrayList<>();
 
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
@@ -86,16 +86,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
-    // Todo: use one tsfileSequenceReader，instead of opening a new reader in device iterator.
-    try (FastCrossCompactionWriter compactionWriter =
-            new FastCrossCompactionWriter(targetFiles, seqFiles);
-        MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap)) {
-      // iterate each device
-      // Todo: to decrease memory, get device in batch on one node instead of getting all at one
-      // time.
-      // Todo: use tsfile resource to get device in memory instead of getting them with I/O
-      // readings.
+    try (MultiTsFileDeviceIterator deviceIterator =
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
+        FastCrossCompactionWriter compactionWriter =
+            new FastCrossCompactionWriter(targetFiles, seqFiles)) {
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -106,7 +100,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
         // actually exist but the judgment return device being existed.
-        sortedSourceFiles = new ArrayList<>(seqFiles);
+        sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
         sortedSourceFiles.removeIf(x -> !x.mayContainsDevice(device));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
@@ -120,19 +114,18 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         }
 
         compactionWriter.endChunkGroup();
-        // update resource and check whether to flush chunk metadata or not
+        // update resource of the current device and check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
+        sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      // close all readers of source files
-      for (TsFileSequenceReader reader : readerCacheMap.values()) {
-        reader.close();
-      }
+      // readers of source files have been closed in MultiTsFileDeviceIterator
       // clean cache
+      sortedSourceFiles = null;
       readerCacheMap = null;
       modificationCache = null;
     }
@@ -151,9 +144,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     // Get all value measurements and their schemas of the current device. Also get start offset and
     // end offset of each timeseries metadata, in order to facilitate the reading of chunkMetadata
     // directly by this offset later. Instead of deserializing chunk metadata later, we need to
-    // deserialize chunk metadata here to get the schemas of all value measurements, because
-    // compaction process is to read a batch of overlapped files each time, and we cannot make sure
-    // if the first batch of overlapped tsfiles contain all the value measurements.
+    // deserialize chunk metadata here to get the schemas of all value measurements, because we
+    // should get schemas of all value measurement to startMeasruement() and compaction process is
+    // to read a batch of overlapped files each time, and we cannot make sure if the first batch of
+    // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
       if (!entry.getKey().equals("")) {

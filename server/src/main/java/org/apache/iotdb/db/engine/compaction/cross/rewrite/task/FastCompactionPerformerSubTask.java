@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Callable;
-import java.util.stream.Stream;
 
 public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   private static final Logger LOGGER =
@@ -186,12 +185,15 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /**
-   * Flush chunk to target file directly. If the end time of chunk exceeds the end time of file,
-   * then deserialize it.
+   * Flush chunk to target file directly. If the end time of chunk exceeds the end time of file or
+   * the unsealed chunk is too small, then deserialize it.
    */
   private void compactWithNonOverlapChunks(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    if (compactionWriter.flushChunkToFileWriter(chunkMetadataElement.chunkMetadata, subTaskId)) {
+    if (compactionWriter.flushChunkToFileWriter(
+        chunkMetadataElement.chunkMetadata,
+        readerCacheMap.get(chunkMetadataElement.fileElement.resource),
+        subTaskId)) {
       // flush chunk successfully
       removeChunk(chunkMetadataQueue.peek());
     } else {
@@ -204,6 +206,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   abstract void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
 
+  /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
   abstract void deserializeFileIntoQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException;
 
@@ -292,7 +295,10 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
               subTaskId);
           pointPriorityReader.next();
           if (overlappedPages.size() > oldSize) {
-            // find the new overlapped pages, next page may be changed
+            // during the process of writing overlapped points, if the first page is compacted
+            // completely or a new chunk is deserialized, there may be new pages overlapped with the
+            // first page in page queue which are added into the list. If so, the next overlapped
+            // page in the list may be changed, so we should re-get next overlap page here.
             oldSize = overlappedPages.size();
             nextPageElement = overlappedPages.get(0);
           }
@@ -328,8 +334,8 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
             subTaskId);
         pointPriorityReader.next();
         if (overlappedPages.size() > 0) {
-          // finish compacting the first page and find the new overlapped pages, then start
-          // compacting them with new first page
+          // finish compacting the first page or there are new chunks being deserialized and find
+          // the new overlapped pages, then start compacting them
           break;
         }
       }
@@ -337,77 +343,50 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /**
-   * Find overlaped pages which has not been selected with the specific page. Notice: We must ensure
-   * that the returned list is ordered according to the startTime of the page from small to large,
-   * so that each page can be compacted in order.
+   * Find overlaped pages which have not been selected. Notice: We must ensure that the returned
+   * list is ordered according to the startTime of the page from small to large, so that each page
+   * can be compacted in order.
    */
   private List<PageElement> findOverlapPages(PageElement page) {
     List<PageElement> elements = new ArrayList<>();
     long endTime = page.pageHeader.getEndTime();
-    //    Iterator<PageElement> iterator = pageQueue.iterator();
-    //    while (iterator.hasNext()) {
-    //      PageElement element = iterator.next();
-    //      if (element.startTime <= endTime) {
-    //        if (!element.isOverlaped) {
-    //          elements.add(element);
-    //          element.isOverlaped = true;
-    //        }
-    //      }
-    //    }
-
-    Stream<PageElement> pages =
-        pageQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
-    Iterator<PageElement> it = pages.iterator();
-    while (it.hasNext()) {
-      PageElement element = it.next();
+    for (PageElement element : pageQueue) {
       if (element.startTime <= endTime) {
         if (!element.isOverlaped) {
           elements.add(element);
           element.isOverlaped = true;
         }
-      } else {
-        break;
       }
     }
+    elements.sort(Comparator.comparingLong(o -> o.startTime));
     return elements;
   }
 
   /**
-   * Find overlapped chunks which has not been selected with the specific chunk. Notice: We must
-   * ensure that the returned list is ordered according to the startTime of the chunk from small to
-   * large, so that each chunk can be compacted in order.
+   * Find overlapped chunks which have not been selected. Notice: We must ensure that the returned
+   * list is ordered according to the startTime of the chunk from small to large, so that each chunk
+   * can be compacted in order.
    */
   private List<ChunkMetadataElement> findOverlapChunkMetadatas(ChunkMetadataElement chunkMetadata) {
     List<ChunkMetadataElement> elements = new ArrayList<>();
     long endTime = chunkMetadata.chunkMetadata.getEndTime();
-    //    Iterator<ChunkMetadataElement> iterator = chunkMetadataQueue.iterator();
-    //    while (iterator.hasNext()) {
-    //      ChunkMetadataElement element = iterator.next();
-    //      if (element.chunkMetadata.getStartTime() <= endTime) {
-    //        if (!element.isOverlaped) {
-    //          elements.add(element);
-    //          element.isOverlaped = true;
-    //        }
-    //      }
-    //    }
-
-    Stream<ChunkMetadataElement> chunks =
-        chunkMetadataQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
-    Iterator<ChunkMetadataElement> it = chunks.iterator();
-    while (it.hasNext()) {
-      ChunkMetadataElement element = it.next();
+    for (ChunkMetadataElement element : chunkMetadataQueue) {
       if (element.chunkMetadata.getStartTime() <= endTime) {
         if (!element.isOverlaped) {
           elements.add(element);
           element.isOverlaped = true;
         }
-      } else {
-        break;
       }
     }
+    elements.sort(Comparator.comparingLong(o -> o.startTime));
     return elements;
   }
 
+  /**
+   * Find overlapped files which have not been selected. Notice: We must ensure that the returned
+   * list is ordered according to the startTime of the current device in the file from small to
+   * large, so that each file can be compacted in order.
+   */
   private List<FileElement> findOverlapFiles(FileElement file) {
     List<FileElement> overlappedFiles = new ArrayList<>();
     long endTime = file.resource.getEndTime(deviceId);
@@ -424,23 +403,18 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
     return overlappedFiles;
   }
 
-  private boolean isChunkOverlap(ChunkMetadataElement chunkMetadataElement) {
-    return false;
-  }
-
   /** Check is the page overlap with other pages later then the specific page in queue or not. */
   private boolean isPageOverlap(PageElement pageElement) {
     long endTime = pageElement.pageHeader.getEndTime();
-    Stream<PageElement> pages =
-        pageQueue.stream().sorted(Comparator.comparingLong(o -> o.startTime));
-    Iterator<PageElement> it = pages.iterator();
-    while (it.hasNext()) {
-      PageElement element = it.next();
-      // only check pages later then the specific page
-      if (element.equals(pageElement) || element.startTime < pageElement.startTime) {
+    long startTime = pageElement.startTime;
+    for (PageElement element : pageQueue) {
+      if (element.equals(pageElement)) {
         continue;
       }
-      return element.startTime <= endTime;
+      // only check pages later than the specific page
+      if (element.startTime >= startTime && element.startTime <= endTime) {
+        return true;
+      }
     }
     return false;
   }
@@ -487,7 +461,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * this chunk has been compacted completely, we should remove this chunk. When removing chunks,
    * there may be new overlapped chunks being deserialized and their pages are put into pageQueue.
    * Therefore, when the removed page is the first page or when new chunks are deserialized and
-   * their pages are put into the queue, it is necessary to re-find all pages that overlap with the
+   * their pages are put into the queue, it is necessary to re-find new pages that overlap with the
    * first page in the current queue, and put them put into list.
    */
   private void removePage(PageElement pageElement) throws IOException, IllegalPathException {
@@ -513,32 +487,13 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-  private void insertList(List<PageElement> oldSortedList, List<PageElement> newSortedList) {
-    int startIndex = 0;
-    int endIndex = oldSortedList.size() - 1;
-    for (PageElement pageElement : newSortedList) {
-      while (startIndex + 1 != endIndex) {
-        int pos = (startIndex + endIndex) / 2;
-        if (oldSortedList.get(pos).startTime <= pageElement.startTime) {
-          startIndex = pos;
-        } else {
-          endIndex = pos;
-        }
-      }
-      // find the position to insert
-      oldSortedList.add(startIndex + 1, pageElement);
-      startIndex++;
-      endIndex = oldSortedList.size();
-    }
-  }
-
   /**
    * Remove chunk metadata from chunk metadata queue. If the chunk metadata to be removed is the
    * last chunk of file, it means this file has been compacted completely, we should remove this
    * file. When removing file, there may be new overlapped files being deserialized and their chunk
    * metadatas are put into chunk metadata queue. Therefore, when the removed chunk is the first
    * chunk or when new files are deserialized and their chunk metadatas are put into the queue, it
-   * is necessary to re-find all chunk metadatas that overlap with the first chunk metadata in the
+   * is necessary to re-find new chunk metadatas that overlap with the first chunk metadata in the
    * current queue, deserialize them into pages and put them into page queue.
    *
    * @return has new overlapped chunks or not
