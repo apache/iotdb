@@ -61,19 +61,22 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           setNextState(AddConfigNodeState.CREATE_PEER);
           break;
         case CREATE_PEER:
+          LOG.info("Executing createPeerForConsensusGroup on {}...", tConfigNodeLocation);
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
-          LOG.info("Add consensus group {}", tConfigNodeLocation);
+          LOG.info("Successfully createPeerForConsensusGroup on {}", tConfigNodeLocation);
           break;
         case ADD_PEER:
+          LOG.info("Executing addPeer {}...", tConfigNodeLocation);
           env.addConfigNodePeer(tConfigNodeLocation);
           setNextState(AddConfigNodeState.REGISTER_SUCCESS);
-          LOG.info("Add Peer of {}", tConfigNodeLocation);
+          LOG.info("Successfully addPeer {}", tConfigNodeLocation);
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation);
           env.broadCastTheLatestConfigNodeGroup();
+          LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
