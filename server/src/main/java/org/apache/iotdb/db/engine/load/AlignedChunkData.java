@@ -44,9 +44,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +54,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedChunkData implements ChunkData {
-  private static final Logger logger = LoggerFactory.getLogger(AlignedChunkData.class);
   private static final int DEFAULT_INT32 = 0;
   private static final long DEFAULT_INT64 = 0L;
   private static final float DEFAULT_FLOAT = 0;
