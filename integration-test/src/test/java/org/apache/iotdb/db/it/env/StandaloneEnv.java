@@ -131,7 +131,7 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() {
     return null;
   }
 
@@ -178,7 +178,17 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public void restartDataNode(int index) {
+  public void startConfigNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void shutdownConfigNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void startDataNode(int index) {
     // Do nothing
   }
 

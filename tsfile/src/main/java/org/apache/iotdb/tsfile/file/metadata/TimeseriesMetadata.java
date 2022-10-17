@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
@@ -243,6 +244,12 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   public List<IChunkMetadata> getChunkMetadataList() {
     return chunkMetadataList;
+  }
+
+  public List<IChunkMetadata> getCopiedChunkMetadataList() {
+    return chunkMetadataList.stream()
+        .map(chunkMetadata -> new ChunkMetadata((ChunkMetadata) chunkMetadata))
+        .collect(Collectors.toList());
   }
 
   @Override
