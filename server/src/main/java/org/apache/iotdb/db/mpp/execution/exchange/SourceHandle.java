@@ -125,7 +125,7 @@ public class SourceHandle implements ISourceHandle {
       }
 
       ByteBuffer byteBuffer = sequenceIdToBfBlock.remove(currSequenceId);
-      if(byteBuffer == null){
+      if (byteBuffer == null) {
         return null;
       }
       TsBlock tsBlock = serde.deserialize(byteBuffer);
