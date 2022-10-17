@@ -124,10 +124,12 @@ public class SourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
 
-      TsBlock tsBlock = serde.deserialize(sequenceIdToBfBlock.remove(currSequenceId));
-      if (tsBlock == null) {
+      ByteBuffer byteBuffer = sequenceIdToBfBlock.remove(currSequenceId);
+      if(byteBuffer == null){
         return null;
       }
+      TsBlock tsBlock = serde.deserialize(byteBuffer);
+
       long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
       logger.info("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
       currSequenceId += 1;
