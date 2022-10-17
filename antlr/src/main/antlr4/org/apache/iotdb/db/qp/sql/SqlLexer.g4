@@ -162,6 +162,10 @@ DATANODES
     : D A T A N O D E S
     ;
 
+DEACTIVATE
+    : D E A C T I V A T E
+    ;
+
 DEBUG
     : D E B U G
     ;
