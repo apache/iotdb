@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
@@ -122,7 +123,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
    * @param pipeInfo pipe info
    * @throws PipeException if there is Pipe with the same name exists or PipeSink does not exist
    */
-  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
     syncMetadata.checkAddPipe(pipeInfo);
   }
 

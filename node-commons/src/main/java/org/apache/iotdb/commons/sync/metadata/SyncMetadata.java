@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.sync.metadata;
 
+import org.apache.iotdb.commons.exception.sync.PipeAlreadyExistException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkAlreadyExistException;
@@ -134,19 +135,15 @@ public class SyncMetadata implements SnapshotProcessor {
   // region Implement of Pipe
   // ======================================================
 
-  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
     // check PipeSink exists
     if (!isPipeSinkExist(pipeInfo.getPipeSinkName())) {
-      throw new PipeException(
-          String.format("Can not find PIPESINK [%s].", pipeInfo.getPipeSinkName()));
+      throw new PipeSinkNotExistException(pipeInfo.getPipeSinkName());
     }
     // check Pipe does not exist
     if (pipes.containsKey(pipeInfo.getPipeName())) {
       PipeInfo runningPipe = pipes.get(pipeInfo.getPipeName());
-      throw new PipeException(
-          String.format(
-              "PIPE [%s] is %s, please retry after drop it.",
-              runningPipe.getPipeName(), runningPipe.getStatus().name()));
+      throw new PipeAlreadyExistException(runningPipe.getPipeName(), runningPipe.getStatus());
     }
   }
 

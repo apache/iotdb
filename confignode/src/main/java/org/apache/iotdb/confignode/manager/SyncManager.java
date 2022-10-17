@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -112,7 +113,7 @@ public class SyncManager {
   // region Implement of Pipe
   // ======================================================
 
-  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
     clusterSyncInfo.checkAddPipe(pipeInfo);
   }
 

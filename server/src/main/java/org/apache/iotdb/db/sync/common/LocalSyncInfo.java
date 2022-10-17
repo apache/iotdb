@@ -104,7 +104,7 @@ public class LocalSyncInfo {
 
   // region Implement of Pipe
 
-  public void addPipe(PipeInfo pipeInfo) throws PipeException, IOException {
+  public void addPipe(PipeInfo pipeInfo) throws PipeException, IOException, PipeSinkException {
     syncMetadata.checkAddPipe(pipeInfo);
     syncMetadata.addPipe(pipeInfo);
     syncLogWriter.addPipe(pipeInfo);

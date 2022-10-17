@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.sync.metedata;
 
+import org.apache.iotdb.commons.exception.sync.PipeAlreadyExistException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkAlreadyExistException;
@@ -118,8 +119,8 @@ public class SyncMetadataTest {
     try {
       syncMetadata.checkAddPipe(pipeInfo1);
       Assert.fail();
-    } catch (PipeException e) {
-      Assert.assertTrue(e.getMessage().contains("Can not find PIPESINK"));
+    } catch (Exception e) {
+      Assert.assertTrue(e instanceof PipeSinkNotExistException);
     }
     try {
       syncMetadata.checkIfPipeExist(PIPE_NAME_1);
@@ -131,7 +132,7 @@ public class SyncMetadataTest {
     syncMetadata.addPipeSink(ioTDBPipeSink2);
     try {
       syncMetadata.checkAddPipe(pipeInfo1);
-    } catch (PipeException e) {
+    } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
     syncMetadata.addPipe(pipeInfo1);
@@ -139,7 +140,8 @@ public class SyncMetadataTest {
       syncMetadata.checkAddPipe(
           new TsFilePipeInfo(PIPE_NAME_1, PIPESINK_NAME_2, System.currentTimeMillis(), 99, false));
       Assert.fail();
-    } catch (PipeException e) {
+    } catch (Exception e) {
+      Assert.assertTrue(e instanceof PipeAlreadyExistException);
       Assert.assertTrue(e.getMessage().contains("please retry after drop it"));
     }
     syncMetadata.addPipe(pipeInfo2);
