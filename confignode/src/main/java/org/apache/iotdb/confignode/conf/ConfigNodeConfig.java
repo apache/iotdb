@@ -32,7 +32,7 @@ public class ConfigNodeConfig {
   /**
    * the config node id for cluster mode, the default value -1 should be changed after join cluster
    */
-  private int configNodeId = 0;
+  private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
   private String internalAddress = "0.0.0.0";
