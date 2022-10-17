@@ -148,12 +148,18 @@ public class CQScheduleTask implements Runnable {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }
     } else {
+      LOGGER.info(
+          "[StartExecuteCQ] {}, time range is [{}, {}), current time is {}",
+          cqId,
+          startTime,
+          endTime,
+          System.currentTimeMillis());
       TExecuteCQ executeCQReq =
           new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId);
       try {
         AsyncDataNodeInternalServiceClient client =
             AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());
-        client.executeCQ(executeCQReq, new AsyncExecuteCQCallback());
+        client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
       } catch (Throwable t) {
         LOGGER.warn("Execute CQ {} failed", cqId, t);
         if (needSubmit()) {
@@ -190,9 +196,24 @@ public class CQScheduleTask implements Runnable {
 
   private class AsyncExecuteCQCallback implements AsyncMethodCallback<TSStatus> {
 
+    private final long startTime;
+    private final long endTime;
+
+    public AsyncExecuteCQCallback(long startTime, long endTime) {
+      this.startTime = startTime;
+      this.endTime = endTime;
+    }
+
     @Override
     public void onComplete(TSStatus response) {
       if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+        LOGGER.info(
+            "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}",
+            cqId,
+            startTime,
+            endTime,
+            System.currentTimeMillis());
 
         ConsensusWriteResponse result =
             configManager
@@ -203,6 +224,10 @@ public class CQScheduleTask implements Runnable {
           if (needSubmit()) {
             updateExecutionTime();
             submitSelf();
+          } else {
+            LOGGER.info(
+                "Stop submitting CQ {} because current node is not leader or current scheduled thread pool is shut down.",
+                cqId);
           }
         } else {
           LOGGER.warn(
