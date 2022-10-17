@@ -156,6 +156,8 @@ public class TSFileConfig implements Serializable {
   /** Maximum number of lines in a single TsBlock */
   private int maxTsBlockLineNumber = 1000;
 
+  private int patternMatchingThreshold = 1000000;
+
   public TSFileConfig() {}
 
   public int getGroupSizeInByte() {
@@ -452,5 +454,13 @@ public class TSFileConfig implements Serializable {
 
   public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
     this.maxTsBlockLineNumber = maxTsBlockLineNumber;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
   }
 }

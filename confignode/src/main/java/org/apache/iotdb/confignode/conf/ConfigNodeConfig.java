@@ -32,7 +32,7 @@ public class ConfigNodeConfig {
   /**
    * the config node id for cluster mode, the default value -1 should be changed after join cluster
    */
-  private int configNodeId = 0;
+  private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
   private String internalAddress = "0.0.0.0";
@@ -134,6 +134,9 @@ public class ConfigNodeConfig {
 
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
+
+  /** The unknown DataNode detect interval in milliseconds */
+  private long unknownDataNodeDetectInterval = heartbeatInterval;
 
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
@@ -473,6 +476,14 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatInterval(long heartbeatInterval) {
     this.heartbeatInterval = heartbeatInterval;
+  }
+
+  public long getUnknownDataNodeDetectInterval() {
+    return unknownDataNodeDetectInterval;
+  }
+
+  public void setUnknownDataNodeDetectInterval(long unknownDataNodeDetectInterval) {
+    this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
   public String getRoutingPolicy() {
