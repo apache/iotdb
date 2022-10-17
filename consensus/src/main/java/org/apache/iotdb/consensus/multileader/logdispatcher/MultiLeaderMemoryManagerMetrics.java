@@ -27,7 +27,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class MultiLeaderMemoryManagerMetrics implements IMetricSet {
-  private MultiLeaderMemoryManager multiLeaderMemoryManager;
+  private final MultiLeaderMemoryManager multiLeaderMemoryManager;
 
   public MultiLeaderMemoryManagerMetrics(MultiLeaderMemoryManager multiLeaderMemoryManager) {
     this.multiLeaderMemoryManager = multiLeaderMemoryManager;
@@ -41,12 +41,12 @@ public class MultiLeaderMemoryManagerMetrics implements IMetricSet {
         multiLeaderMemoryManager,
         MultiLeaderMemoryManager::getMemorySizeInByte,
         Tag.NAME.toString(),
-        "MultiLeader");
+        "MultiLeaderConsensus");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "MultiLeader");
+        MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "MultiLeaderConsensus");
   }
 }

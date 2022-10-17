@@ -171,10 +171,6 @@ public class LogDispatcher {
     }
   }
 
-  public String getSelfPeerId() {
-    return selfPeerId;
-  }
-
   public class LogDispatcherThread implements Runnable {
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
     private static final long START_INDEX = 1;
@@ -210,7 +206,7 @@ public class LogDispatcher {
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
-      this.metrics = new LogDispatcherThreadMetrics(peer.getGroupId(), this);
+      this.metrics = new LogDispatcherThreadMetrics(this);
     }
 
     public IndexController getController() {
@@ -303,10 +299,7 @@ public class LogDispatcher {
           }
           MetricService.getInstance()
               .getOrCreateHistogram(
-                  Metric.STAGE.toString(),
-                  MetricLevel.CORE,
-                  Tag.TYPE.toString(),
-                  "asyncConstructBatch")
+                  Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "constructBatch")
               .update((System.currentTimeMillis() - startTime) / batch.getBatches().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);

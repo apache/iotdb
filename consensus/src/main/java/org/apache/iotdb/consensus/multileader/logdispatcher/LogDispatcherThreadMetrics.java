@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -29,12 +28,9 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class LogDispatcherThreadMetrics implements IMetricSet {
-  private final ConsensusGroupId consensusGroupId;
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
 
-  public LogDispatcherThreadMetrics(
-      ConsensusGroupId consensusGroupId, LogDispatcher.LogDispatcherThread logDispatcherThread) {
-    this.consensusGroupId = consensusGroupId;
+  public LogDispatcherThreadMetrics(LogDispatcher.LogDispatcherThread logDispatcherThread) {
     this.logDispatcherThread = logDispatcherThread;
   }
 
@@ -49,9 +45,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
-            consensusGroupId.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "searchIndex");
+            "currentSyncIndex");
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.MULTI_LEADER.toString(),
@@ -61,9 +57,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
-            consensusGroupId.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "pendingRequestSize");
+            "cachedRequestInMemoryQueue");
   }
 
   @Override
@@ -75,9 +71,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
-            consensusGroupId.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "searchIndex");
+            "currentSyncIndex");
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
@@ -85,15 +81,15 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
-            consensusGroupId.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "pendingRequestSize");
+            "cachedRequestInMemoryQueue");
   }
 
   private String formatName() {
-    return "logDispatcher-"
-        + logDispatcherThread.getPeer().getEndpoint().getIp()
-        + ":"
-        + logDispatcherThread.getPeer().getEndpoint().getPort();
+    return String.format(
+        "logDispatcher-%s:%s",
+        logDispatcherThread.getPeer().getEndpoint().getIp(),
+        logDispatcherThread.getPeer().getEndpoint().getPort());
   }
 }
