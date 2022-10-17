@@ -125,6 +125,21 @@ public class ConsensusManager {
                                             CONF
                                                 .getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setRequestTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getPartitionRegionRatisRequestTimeoutMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .build())
+                            .setRatisConsensus(
+                                RatisConfig.RatisConsensus.newBuilder()
+                                    .setClientRequestTimeoutMillis(
+                                        CONF.getPartitionRegionRatisRequestTimeoutMs())
+                                    .setClientMaxRetryAttempt(
+                                        CONF.getPartitionRegionRatisMaxRetryAttempts())
+                                    .setClientRetryInitialSleepTimeMs(
+                                        CONF.getPartitionRegionRatisInitialSleepTimeMs())
+                                    .setClientRetryMaxSleepTimeMs(
+                                        CONF.getPartitionRegionRatisMaxSleepTimeMs())
                                     .build())
                             .build())
                     .setStorageDir(CONF.getConsensusDir())

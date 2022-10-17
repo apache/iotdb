@@ -70,6 +70,16 @@ struct TRatisConfig {
 
   13: required i64 schemaLeaderElectionTimeoutMax
   14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
 }
 
 struct TDataNodeRemoveReq {
