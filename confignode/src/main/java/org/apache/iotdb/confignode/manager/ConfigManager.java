@@ -1188,4 +1188,10 @@ public class ConfigManager implements IManager {
     }
     return null;
   }
+
+  public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
+    LOGGER.info("start Transfer of {}", newUnknownDataList);
+    // transfer trigger
+    return triggerManager.transferTrigger(newUnknownDataList);
+  }
 }

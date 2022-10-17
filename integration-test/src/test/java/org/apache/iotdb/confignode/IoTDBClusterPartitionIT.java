@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -161,7 +163,7 @@ public class IoTDBClusterPartitionIT {
     final String allSg1 = "root.sg1.**";
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status;
       ByteBuffer buffer;
       TSchemaPartitionReq schemaPartitionReq;
@@ -296,7 +298,7 @@ public class IoTDBClusterPartitionIT {
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status;
       TDataPartitionReq dataPartitionReq;
       TDataPartitionTableResp dataPartitionTableResp;
@@ -334,7 +336,8 @@ public class IoTDBClusterPartitionIT {
             for (int retry = 0; retry < 5; retry++) {
               // Build new Client since it's unstable
               try (SyncConfigNodeIServiceClient configNodeClient =
-                  (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+                  (SyncConfigNodeIServiceClient)
+                      EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
                 dataPartitionTableResp =
                     configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
                 if (dataPartitionTableResp != null) {
@@ -401,7 +404,7 @@ public class IoTDBClusterPartitionIT {
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       final String sg0 = sg + 0;
       final String sg1 = sg + 1;
 
@@ -422,7 +425,7 @@ public class IoTDBClusterPartitionIT {
       for (int retry = 0; retry < 5; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
@@ -501,7 +504,7 @@ public class IoTDBClusterPartitionIT {
       for (int retry = 0; retry < 5; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
@@ -542,7 +545,7 @@ public class IoTDBClusterPartitionIT {
       // since there exists one DataNode is shutdown
       Assert.assertEquals(unknownCnt * 2, runningCnt);
 
-      EnvFactory.getEnv().restartDataNode(testDataNodeId);
+      EnvFactory.getEnv().startDataNode(testDataNodeId);
       // Wait for heartbeat check
       while (true) {
         boolean containUnknown = false;
@@ -596,7 +599,7 @@ public class IoTDBClusterPartitionIT {
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       ByteBuffer buffer;
       TSchemaPartitionReq schemaPartitionReq;
 
@@ -632,7 +635,7 @@ public class IoTDBClusterPartitionIT {
         for (int retry = 0; retry < 5; retry++) {
           // Build new Client since it's unstable
           try (SyncConfigNodeIServiceClient configNodeClient =
-              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
             dataPartitionTableResp =
                 configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
             if (dataPartitionTableResp != null) {
@@ -751,6 +754,37 @@ public class IoTDBClusterPartitionIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(seriesPartitionBatchSize, getSeriesSlotListResp.getSeriesSlotListSize());
+    }
+  }
+
+  @Test
+  public void testGetSchemaNodeManagementPartition()
+      throws IOException, TException, IllegalPathException {
+    final String sg = "root.sg";
+    final int storageGroupNum = 2;
+
+    TSStatus status;
+    TSchemaNodeManagementReq nodeManagementReq;
+    TSchemaNodeManagementResp nodeManagementResp;
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // set StorageGroups
+      for (int i = 0; i < storageGroupNum; i++) {
+        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+        status = client.setStorageGroup(setReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+
+      ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
+      nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
+      nodeManagementReq.setLevel(-1);
+      nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+      Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
+      Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
+      Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
     }
   }
 }
