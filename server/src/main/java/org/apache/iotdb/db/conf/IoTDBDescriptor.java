@@ -949,6 +949,13 @@ public class IoTDBDescriptor {
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
                 properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));

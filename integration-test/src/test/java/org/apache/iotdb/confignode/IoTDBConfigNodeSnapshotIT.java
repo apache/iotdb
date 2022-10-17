@@ -126,7 +126,7 @@ public class IoTDBConfigNodeSnapshotIT {
     final int timePartitionSlotsNum = 10;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       List<TCreateTriggerReq> createTriggerReqs = createTrigger(client);
 

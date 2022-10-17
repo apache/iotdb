@@ -828,6 +828,8 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
+  private int patternMatchingThreshold = 1000000;
+
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-datanode.properties
@@ -3434,6 +3436,14 @@ public class IoTDBConfig {
 
   public double getUsableCompactionMemoryProportion() {
     return 1.0d - chunkMetadataSizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
   }
 
   public long getDataRatisConsensusRequestTimeoutMs() {
