@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,6 +45,7 @@ public class ShowCQResp implements DataSet {
         status,
         cqList.stream()
             .map(entry -> new TCQEntry(entry.getCqId(), entry.getSql(), entry.getState().getType()))
+            .sorted(Comparator.comparing(entry -> entry.cqId))
             .collect(Collectors.toList()));
   }
 
