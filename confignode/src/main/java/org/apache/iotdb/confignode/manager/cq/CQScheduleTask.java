@@ -125,8 +125,12 @@ public class CQScheduleTask implements Runnable {
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {
-    // TODO may need to consider nano precision
     long now = System.currentTimeMillis();
+    return getFirstExecutionTime(boundaryTime, everyInterval, now);
+  }
+
+  public static long getFirstExecutionTime(long boundaryTime, long everyInterval, long now) {
+    // TODO may need to consider nano precision
     if (now <= boundaryTime) {
       return boundaryTime;
     } else {
