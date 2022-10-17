@@ -172,12 +172,14 @@ Execute the remove-confignode shell on an active ConfigNode.
 
 Remove on Linux:
 ```
-./confignode/sbin/remove-confignode.sh <id>/<internal_address>:<internal_port>
+./confignode/sbin/remove-confignode.sh <id>
+./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
 ```
 
 Remove on Windows:
 ```
-confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
+confignode\sbin\remove-confignode.bat <id>
+confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 ```
 
 ### Remove DataNode

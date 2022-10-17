@@ -410,3 +410,101 @@ The Region statuses are defined as follows:
 - **Running**: The Region is running properly and can be read and written
 - **Removing**: The DataNode where the Region located is being removed from the cluster, the Region cannot be read or written
 - **Unknown**: The DataNode where the Region located doesn't report heartbeat properly, the ConfigNode considers the Region as unreadable and un-writable
+
+## Monitoring tool for cluster slots routing
+
+A cluster uses partitions for data and metadata arrangement, with a storage group's metadata partitions defined as series slot, and data partitions as <series slot, time slot> pair. To acquire this part of information, you can use the following SQLs for query:
+
+### Trace data partition's regionid
+
+Trace a data partition (or data partitions under the same series slot)'s assigned regions:
+- `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+
+Eg:
+```
+IoTDB> show data regionid of root.sg where seriesslotid=5286 and timeslotid=0
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show data regionid of root.sg where seriesslotid=5286
++--------+
+|RegionId|
++--------+
+|       1|
+|       2|
++--------+
+Total line number = 2
+It costs 0.006s
+```
+
+### Trace schema partition's regionid
+Trace a schema partition's assigned regions:
+- `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+
+Eg:
+```
+IoTDB> show schema regionid of root.sg where seriesslotid=5286
++--------+
+|RegionId|
++--------+
+|       0|
++--------+
+Total line number = 1
+It costs 0.007s
+```
+### Trace series slot's time slots
+Show the time slots under particular series slot in a storage group.
+- `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
+
+Eg:
+```
+IoTDB> show timeslotid of root.sg where seriesslotid=5286
++---------+
+|Timeslots|
++---------+
+|        0|
+|     1000|
++---------+
+Total line number = 1
+It costs 0.007s
+```
+### Trace storage group's series slots
+Show the data/schema/whole series slots related to a storage group:
+- `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
+
+Eg:
+```
+IoTDB> show data seriesslotid of root.sg
++-----------+
+|SeriesSlots|
++-----------+
+|       5286|
++-----------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> show schema seriesslotid of root.sg
++-----------+
+|SeriesSlots|
++-----------+
+|       5286|
++-----------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show seriesslotid of root.sg
++-----------+
+|SeriesSlots|
++-----------+
+|       5286|
++-----------+
+Total line number = 1
+It costs 0.006s
+```
+#### Note:
+Normally, the data and schema series slots are the same in the storage group. Yet you can still use these to check in case they're not, like when there are unexpected occasions.
