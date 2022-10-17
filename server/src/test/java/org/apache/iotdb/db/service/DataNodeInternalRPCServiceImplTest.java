@@ -88,7 +88,7 @@ public class DataNodeInternalRPCServiceImplTest {
   public void setUp() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     SchemaRegionConsensusImpl.getInstance()
-        .createConsensusGroup(
+        .createPeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
     dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
@@ -98,7 +98,7 @@ public class DataNodeInternalRPCServiceImplTest {
   public void tearDown() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     SchemaRegionConsensusImpl.getInstance()
-        .deleteConsensusGroup(
+        .deletePeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()));
     FileUtils.deleteFully(new File(conf.getConsensusDir()));
   }

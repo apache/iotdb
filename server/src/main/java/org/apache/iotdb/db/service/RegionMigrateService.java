@@ -470,9 +470,9 @@ public class RegionMigrateService implements IService {
       ConsensusGenericResponse resp;
       try {
         if (regionId instanceof DataRegionId) {
-          resp = DataRegionConsensusImpl.getInstance().deleteConsensusGroup(regionId);
+          resp = DataRegionConsensusImpl.getInstance().deletePeer(regionId);
         } else {
-          resp = SchemaRegionConsensusImpl.getInstance().deleteConsensusGroup(regionId);
+          resp = SchemaRegionConsensusImpl.getInstance().deletePeer(regionId);
         }
       } catch (Throwable e) {
         taskLogger.error("DeleteOldRegionPeer error, regionId: {}", regionId, e);
