@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.example;
+package org.apache.iotdb.trigger;
 
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class AlertingTrigger implements Trigger {
+public class LoggerTrigger implements Trigger {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlertingTrigger.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoggerTrigger.class);
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
