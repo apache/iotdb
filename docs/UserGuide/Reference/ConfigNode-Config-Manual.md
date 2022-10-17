@@ -251,7 +251,7 @@ The global configuration of cluster is in ConfigNode.
 |Description| Time partition interval of data when ConfigNode allocate data |
 |Type| Long                                                          |
 |Unit| ms |
-|Default| 86400000                                                      |
+|Default| 604800000                                                      |
 |Effective| Only allowed to be modified in first start up                 |
 
 

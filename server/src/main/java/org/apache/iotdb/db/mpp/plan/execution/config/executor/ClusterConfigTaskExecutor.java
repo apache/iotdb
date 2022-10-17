@@ -41,7 +41,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
@@ -64,6 +70,9 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
@@ -81,6 +90,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -994,7 +1006,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
             ConfigNodeInfo.partitionRegionId)) {
-      TSStatus tsStatus = null;
+      TSStatus tsStatus;
       do {
         try {
           tsStatus = client.deleteTimeSeries(req);
@@ -1022,6 +1034,85 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (TException | IOException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TGetRoutingResp resp = new TGetRoutingResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetRoutingReq tGetRoutingReq =
+          new TGetRoutingReq(
+              getRegionStatement.getStorageGroup(),
+              getRegionStatement.getPartitionType(),
+              getRegionStatement.getSeriesSlotId());
+      if (getRegionStatement.getTimeSlotId() != null) {
+        tGetRoutingReq.setTimeSlotId(getRegionStatement.getTimeSlotId());
+      }
+      resp = configNodeClient.getRouting(tGetRoutingReq);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+        return future;
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    GetRegionTask.buildTSBlock(resp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getSeriesSlotList(
+      GetSeriesSlotListStatement getSeriesSlotListStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TGetSeriesSlotListResp resp = new TGetSeriesSlotListResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetSeriesSlotListReq tGetSeriesSlotListReq =
+          new TGetSeriesSlotListReq(getSeriesSlotListStatement.getStorageGroup());
+      if (getSeriesSlotListStatement.getPartitionType() != null) {
+        tGetSeriesSlotListReq.setType(getSeriesSlotListStatement.getPartitionType());
+      }
+      resp = configNodeClient.getSeriesSlotList(tGetSeriesSlotListReq);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+        return future;
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    GetSeriesSlotListTask.buildTSBlock(resp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> getTimeSlotList(
+      GetTimeSlotListStatement getTimeSlotListStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TGetTimeSlotListResp resp = new TGetTimeSlotListResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetTimeSlotListReq tGetTimeSlotListReq =
+          new TGetTimeSlotListReq(
+              getTimeSlotListStatement.getStorageGroup(),
+              getTimeSlotListStatement.getSeriesSlotId());
+      if (getTimeSlotListStatement.getStartTime() != -1) {
+        tGetTimeSlotListReq.setStartTime(getTimeSlotListStatement.getStartTime());
+      }
+      if (getTimeSlotListStatement.getEndTime() != -1) {
+        tGetTimeSlotListReq.setEndTime(getTimeSlotListStatement.getEndTime());
+      }
+      resp = configNodeClient.getTimeSlotList(tGetTimeSlotListReq);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+        return future;
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    GetTimeSlotListTask.buildTSBlock(resp, future);
     return future;
   }
 }

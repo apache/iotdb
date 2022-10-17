@@ -179,7 +179,7 @@ public class IoTDBConfigNodeIT {
     List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // add ConfigNode
       for (int i = 0; i < 2; i++) {
         ConfigNodeWrapper configNodeWrapper =
@@ -251,7 +251,7 @@ public class IoTDBConfigNodeIT {
     List<TDataNodeInfo> dataNodeInfos;
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // add DataNode
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
@@ -375,7 +375,7 @@ public class IoTDBConfigNodeIT {
   @Test
   public void showClusterAndNodesTest() {
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       TShowClusterResp clusterNodes;
       TShowConfigNodesResp showConfigNodesResp;
@@ -526,7 +526,7 @@ public class IoTDBConfigNodeIT {
     paths.add("root.ln.**");
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       cleanUserAndRole(client);
 
       // create user

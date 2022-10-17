@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -56,7 +56,7 @@ public class GroupByLevelNode extends MultiChildNode {
 
   // The list of aggregate descriptors
   // each GroupByLevelDescriptor will be output as one or two column of result TsBlock
-  protected List<GroupByLevelDescriptor> groupByLevelDescriptors;
+  protected List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
@@ -67,7 +67,7 @@ public class GroupByLevelNode extends MultiChildNode {
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,
-      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     super(id, children);
@@ -78,7 +78,7 @@ public class GroupByLevelNode extends MultiChildNode {
 
   public GroupByLevelNode(
       PlanNodeId id,
-      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     super(id);
@@ -108,11 +108,12 @@ public class GroupByLevelNode extends MultiChildNode {
         getPlanNodeId(), getGroupByLevelDescriptors(), this.groupByTimeParameter, this.scanOrder);
   }
 
-  public List<GroupByLevelDescriptor> getGroupByLevelDescriptors() {
+  public List<CrossSeriesAggregationDescriptor> getGroupByLevelDescriptors() {
     return groupByLevelDescriptors;
   }
 
-  public void setGroupByLevelDescriptors(List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+  public void setGroupByLevelDescriptors(
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors) {
     this.groupByLevelDescriptors = groupByLevelDescriptors;
   }
 
@@ -133,7 +134,7 @@ public class GroupByLevelNode extends MultiChildNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
     ReadWriteIOUtils.write(groupByLevelDescriptors.size(), byteBuffer);
-    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+    for (CrossSeriesAggregationDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
       groupByLevelDescriptor.serialize(byteBuffer);
     }
     if (groupByTimeParameter == null) {
@@ -149,7 +150,7 @@ public class GroupByLevelNode extends MultiChildNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.GROUP_BY_LEVEL.serialize(stream);
     ReadWriteIOUtils.write(groupByLevelDescriptors.size(), stream);
-    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+    for (CrossSeriesAggregationDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
       groupByLevelDescriptor.serialize(stream);
     }
     if (groupByTimeParameter == null) {
@@ -163,9 +164,9 @@ public class GroupByLevelNode extends MultiChildNode {
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
+    List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
     while (descriptorSize > 0) {
-      groupByLevelDescriptors.add(GroupByLevelDescriptor.deserialize(byteBuffer));
+      groupByLevelDescriptors.add(CrossSeriesAggregationDescriptor.deserialize(byteBuffer));
       descriptorSize--;
     }
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);

@@ -345,12 +345,12 @@ public class IoTDBStatement implements Statement {
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           allSuccess = false;
-          message.append(
-              execResp.getSubStatus().get(i).message
-                  + " for SQL: \""
-                  + batchSQLList.get(i)
-                  + "\""
-                  + System.lineSeparator());
+          message
+              .append(execResp.getSubStatus().get(i).message)
+              .append(" for SQL: \"")
+              .append(batchSQLList.get(i))
+              .append("\"")
+              .append(System.lineSeparator());
         }
       } else {
         allSuccess =
@@ -467,8 +467,7 @@ public class IoTDBStatement implements Statement {
     for (int i = 0; i < listAlias.size(); i++) {
       byteAlias[i] = listAlias.get(i);
     }
-    BitSet aliasColumn = BitSet.valueOf(byteAlias);
-    return aliasColumn;
+    return BitSet.valueOf(byteAlias);
   }
 
   private void deepCopyResp(TSExecuteStatementResp queryRes) {

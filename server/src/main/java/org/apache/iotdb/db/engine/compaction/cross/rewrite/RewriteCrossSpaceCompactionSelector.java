@@ -81,8 +81,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.memoryBudget =
-        SystemInfo.getInstance().getMemorySizeForCompaction()
-            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+        (long)
+            ((double)
+                    (SystemInfo.getInstance().getMemorySizeForCompaction()
+                        / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
+                * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     this.maxCrossCompactionFileSize =

@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -294,11 +294,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-    conf.setStorageGroupSizeReportThreshold(
-        Long.parseLong(
+    conf.setWriteMemoryVariationReportProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "storage_group_report_threshold",
-                Long.toString(conf.getStorageGroupSizeReportThreshold()))));
+                "write_memory_variation_report_proportion",
+                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
@@ -630,11 +630,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
-    conf.setChunkMetadataSizeProportionInCompaction(
+    conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
-                "chunk_metadata_size_proportion_in_compaction",
-                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -949,6 +949,13 @@ public class IoTDBDescriptor {
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
                 properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
@@ -1005,6 +1012,8 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     conf.setTimePartitionIntervalForStorage(
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
         convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
 
     if (!conf.isClusterMode()) {
@@ -1477,12 +1486,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      conf.setChunkMetadataSizeProportionInWrite(
-          Double.parseDouble(
-              properties.getProperty(
-                  "chunk_metadata_size_proportion_in_write",
-                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
-
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(
@@ -1824,7 +1827,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 
@@ -1922,7 +1925,8 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setTimePartitionIntervalForRouting(
-        convertMilliWithPrecision(globalConfig.timePartitionInterval));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
@@ -1993,22 +1997,6 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
-  }
-
-  public long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = conf.getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   private static class IoTDBDescriptorHolder {
