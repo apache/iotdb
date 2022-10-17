@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -46,6 +48,12 @@ public class TimeSeriesOperand extends LeafOperand {
 
   public TimeSeriesOperand(ByteBuffer byteBuffer) {
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+  }
+
+  public static TimeSeriesOperand constructColumnHeaderExpression(String columnName) {
+    MeasurementPath measurementPath =
+        new MeasurementPath(new PartialPath(columnName, false), TSDataType.TEXT);
+    return new TimeSeriesOperand(measurementPath);
   }
 
   public PartialPath getPath() {
