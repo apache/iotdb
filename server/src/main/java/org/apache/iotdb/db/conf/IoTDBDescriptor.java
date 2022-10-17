@@ -1952,6 +1952,17 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    conf.setDataRatisConsensusRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    conf.setSchemaRatisConsensusRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    conf.setDataRatisConsensusMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    conf.setDataRatisConsensusInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    conf.setDataRatisConsensusMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
   }
 
   public void reclaimConsensusMemory() {

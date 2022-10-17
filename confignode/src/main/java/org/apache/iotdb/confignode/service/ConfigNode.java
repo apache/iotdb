@@ -91,6 +91,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
+        LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeId());
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
@@ -100,10 +102,18 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+        LOGGER.info(
+            "The current {} is now starting as the Seed-ConfigNode.",
+            ConfigNodeConstant.GLOBAL_NAME);
+
+        // Init consensusGroup
+        CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
+        // Persistence system parameters after the consensusGroup is built,
+        // or the consensusGroup will not be initialized successfully otherwise.
         SystemPropertiesUtils.storeSystemParameters();
-        SystemPropertiesUtils.storeConfigNodeId(SEED_CONFIG_NODE_ID);
+
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
@@ -242,9 +252,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
         CONF.setConfigNodeId(resp.getConfigNodeId());
-
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
