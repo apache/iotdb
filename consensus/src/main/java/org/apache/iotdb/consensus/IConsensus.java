@@ -100,7 +100,7 @@ public interface IConsensus {
    * Tell the group to update an active Peer.The modifiable part of {@link Peer} is TEndPoint.
    *
    * @param groupId the consensus group this peer belongs
-   * @param peer the peer to be updated
+   * @param peer the modified peer
    */
   // TODO: @SzyWilliam @SpriCoder Please implement this method
   ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer peer);
