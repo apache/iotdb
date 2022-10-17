@@ -148,7 +148,7 @@ public class ChunkReader implements IChunkReader {
     return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
-  public void skipBytesInStreamByLength(int length) {
+  private void skipBytesInStreamByLength(int length) {
     chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }
 
@@ -170,7 +170,7 @@ public class ChunkReader implements IChunkReader {
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
 
-  public PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
+  private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
 

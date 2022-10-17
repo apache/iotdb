@@ -19,25 +19,14 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,11 +34,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -110,7 +96,6 @@ public class CompactionUtils {
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
    */
-  // Todo: improve performance
   public static void combineModsInCrossCompaction(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
@@ -227,29 +212,6 @@ public class CompactionUtils {
     }
   }
 
-  public static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, List<TsFileIOWriter> targetFileWriters) {
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource fileResource = targetResources.get(i);
-      // The tmp target file may does not have any data points written due to the existence of the
-      // mods file, and it will be deleted after compaction. So skip the target file that has been
-      // deleted.
-      if (!fileResource.getTsFile().exists()
-          || fileIOWriter.getDeviceTimeseriesMetadataMap() == null) {
-        continue;
-      }
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
-          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
-    }
-  }
-
   public static void updatePlanIndexes(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqResources,
@@ -275,85 +237,5 @@ public class CompactionUtils {
         targetResource.updatePlanIndexes(seqResource);
       }
     }
-  }
-
-  public static List<TsFileResource> sortSourceFiles(
-      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    List<TsFileResource> allResources = new LinkedList<>(seqFiles);
-    allResources.addAll(unseqFiles);
-    // sort the tsfile by version, from the newest to oldest
-    allResources.sort(
-        (o1, o2) -> {
-          try {
-            TsFileNameGenerator.TsFileName n1 =
-                TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
-            TsFileNameGenerator.TsFileName n2 =
-                TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-            return (int) (n2.getVersion() - n1.getVersion());
-          } catch (IOException e) {
-            return 0;
-          }
-        });
-    return allResources;
-  }
-
-  public static Map<String, MeasurementSchema> getMeasurementSchema(
-      String device,
-      Set<String> measurements,
-      List<TsFileResource> allResources,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
-      throws IllegalPathException, IOException {
-    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
-    for (String measurement : measurements) {
-      if (measurement.equals("")) {
-        continue;
-      }
-      for (TsFileResource tsFileResource : allResources) {
-        if (!tsFileResource.mayContainsDevice(device)) {
-          continue;
-        }
-        TsFileSequenceReader reader;
-        if (readerCacheMap == null) {
-          // get reader from fileReaderManager, used by readPointCompactionPerformer
-          reader = FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
-        } else {
-          reader =
-              readerCacheMap.computeIfAbsent(
-                  tsFileResource,
-                  resource -> {
-                    try {
-                      return new TsFileSequenceReader(resource.getTsFilePath());
-                    } catch (IOException e) {
-                      throw new RuntimeException(
-                          String.format(
-                              "Failed to construct sequence reader for %s", tsFileResource));
-                    }
-                  });
-        }
-        MeasurementSchema schema =
-            getMeasurementSchemaFromReader(tsFileResource, reader, device, measurement);
-        if (schema != null) {
-          schemaMap.put(measurement, schema);
-          break;
-        }
-      }
-    }
-    return schemaMap;
-  }
-
-  private static MeasurementSchema getMeasurementSchemaFromReader(
-      TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
-      throws IllegalPathException, IOException {
-    List<ChunkMetadata> chunkMetadata =
-        reader.getChunkMetadataList(new PartialPath(device, measurement));
-    if (chunkMetadata.size() > 0) {
-      chunkMetadata.get(chunkMetadata.size() - 1).setFilePath(resource.getTsFilePath());
-      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(chunkMetadata.size() - 1));
-      // Chunk chunk = reader.readMemChunk(chunkMetadata.get(chunkMetadata.size() - 1));
-      ChunkHeader header = chunk.getHeader();
-      return new MeasurementSchema(
-          measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());
-    }
-    return null;
   }
 }

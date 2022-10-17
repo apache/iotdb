@@ -265,14 +265,8 @@ public class ReadPointCompactionPerformer
       int subTaskId,
       boolean isAligned)
       throws IOException {
-    long startTime = Long.MAX_VALUE;
-    long endTime = Long.MIN_VALUE;
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
-      if (startTime == Long.MAX_VALUE) {
-        startTime = tsBlock.getStartTime();
-      }
-      endTime = tsBlock.getEndTime();
       if (isAligned) {
         writer.write(
             tsBlock.getTimeColumn(),
@@ -288,7 +282,6 @@ public class ReadPointCompactionPerformer
         }
       }
     }
-    // writer.updateStartTimeAndEndTime(startTime, endTime, subTaskId);
   }
 
   private AbstractCompactionWriter getCompactionWriter(

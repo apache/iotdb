@@ -295,8 +295,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(tsFileResource)
-          || !deviceIteratorMap.get(tsFileResource).current().equals(currentDevice)) {
+      if (!deviceIteratorMap.containsKey(tsFileResource)) {
         continue;
       }
       TsFileDeviceIterator iterator = deviceIteratorMap.get(tsFileResource);

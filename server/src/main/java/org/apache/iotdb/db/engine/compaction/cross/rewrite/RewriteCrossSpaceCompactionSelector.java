@@ -368,7 +368,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @Override
   public List selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
       return Collections.emptyList();
