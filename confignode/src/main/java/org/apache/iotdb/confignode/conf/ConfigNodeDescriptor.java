@@ -478,16 +478,33 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadCQConfig(Properties properties) {
-    conf.setCqSubmitThread(
+    int cqSubmitThread =
         Integer.parseInt(
             properties.getProperty(
-                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread()))));
+                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread())));
+    if (cqSubmitThread <= 0) {
+      LOGGER.warn(
+          "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqSubmitThread,
+          conf.getCqSubmitThread());
+      cqSubmitThread = conf.getCqSubmitThread();
+    }
+    conf.setCqSubmitThread(cqSubmitThread);
 
-    conf.setCqMinEveryIntervalInMs(
-        Integer.parseInt(
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
             properties.getProperty(
                 "continuous_query_min_every_interval_in_ms",
-                String.valueOf(conf.getCqMinEveryIntervalInMs()))));
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      LOGGER.warn(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqMinEveryIntervalInMs,
+          conf.getCqMinEveryIntervalInMs());
+      cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();
+    }
+
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
   }
 
   /**
