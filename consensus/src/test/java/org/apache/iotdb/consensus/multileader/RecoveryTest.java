@@ -76,11 +76,11 @@ public class RecoveryTest {
 
   @Test
   public void recoveryTest() throws Exception {
-    consensusImpl.createPeer(
+    consensusImpl.createConsensusGroup(
         schemaRegionId,
         Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
-    consensusImpl.deletePeer(schemaRegionId);
+    consensusImpl.deleteConsensusGroup(schemaRegionId);
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -88,7 +88,7 @@ public class RecoveryTest {
     constructConsensus();
 
     ConsensusGenericResponse response =
-        consensusImpl.createPeer(
+        consensusImpl.createConsensusGroup(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 

@@ -116,9 +116,9 @@ public class MultiLeaderConsensusTest {
   @Test
   public void ReplicateUsingQueueTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingQueueTest");
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).createConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(2).createConsensusGroup(group.getGroupId(), group.getPeers());
 
     Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
@@ -194,8 +194,8 @@ public class MultiLeaderConsensusTest {
   @Test
   public void ReplicateUsingWALTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingWALTest");
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).createConsensusGroup(group.getGroupId(), group.getPeers());
 
     Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
@@ -213,7 +213,7 @@ public class MultiLeaderConsensusTest {
     stopServer();
     initServer();
 
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createConsensusGroup(group.getGroupId(), group.getPeers());
 
     Assert.assertEquals(peers, servers.get(0).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());

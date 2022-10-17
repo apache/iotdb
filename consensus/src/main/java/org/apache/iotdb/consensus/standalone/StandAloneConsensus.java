@@ -139,7 +139,7 @@ class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse createConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
     int consensusGroupSize = peers.size();
     if (consensusGroupSize != 1) {
       return ConsensusGenericResponse.newBuilder()
@@ -175,7 +175,7 @@ class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse deleteConsensusGroup(ConsensusGroupId groupId) {
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -201,6 +201,11 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer peer) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 

@@ -183,7 +183,7 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse createConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
     int consensusGroupSize = peers.size();
     if (consensusGroupSize == 0) {
       return ConsensusGenericResponse.newBuilder()
@@ -226,7 +226,7 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse deleteConsensusGroup(ConsensusGroupId groupId) {
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -305,6 +305,11 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new ConsensusException(e.getMessage()))
           .build();
     }
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer peer) {
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 

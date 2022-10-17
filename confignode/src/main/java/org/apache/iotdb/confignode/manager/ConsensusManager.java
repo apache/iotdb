@@ -179,7 +179,7 @@ public class ConsensusManager {
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createPeer(consensusGroupId, peerList);
+    consensusImpl.createConsensusGroup(consensusGroupId, peerList);
   }
 
   /**
