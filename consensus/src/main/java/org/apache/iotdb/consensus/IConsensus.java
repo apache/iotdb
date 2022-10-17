@@ -73,9 +73,9 @@ public interface IConsensus {
 
   /**
    * Tell the group that a new Peer is prepared to be added into this group. Call {@link
-   * #createPeer(ConsensusGroupId, List)} on the new Peer before calling this method. When
-   * this method returns, the group data should be already transmitted to the new Peer. That is, the
-   * new peer is available to answer client requests by the time this method successfully returns.
+   * #createPeer(ConsensusGroupId, List)} on the new Peer before calling this method. When this
+   * method returns, the group data should be already transmitted to the new Peer. That is, the new
+   * peer is available to answer client requests by the time this method successfully returns.
    * addPeer should be called on a living peer of the consensus group. For example: We'd like to add
    * a peer D to (A, B, C) group. We need to execute addPeer in A, B or C.
    *
@@ -86,10 +86,10 @@ public interface IConsensus {
 
   /**
    * Tell the group to remove an active Peer. The removed peer can no longer answer group requests
-   * when this method successfully returns. Call {@link #deletePeer(ConsensusGroupId)} on
-   * the removed Peer to do cleanup jobs after this method successfully returns. removePeer should
-   * be called on a living peer of its consensus group. For example: a group has A, B, C. We'd like
-   * to remove C, in case C is dead, the removePeer should be sent to A or B.
+   * when this method successfully returns. Call {@link #deletePeer(ConsensusGroupId)} on the
+   * removed Peer to do cleanup jobs after this method successfully returns. removePeer should be
+   * called on a living peer of its consensus group. For example: a group has A, B, C. We'd like to
+   * remove C, in case C is dead, the removePeer should be sent to A or B.
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the peer to be removed
