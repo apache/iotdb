@@ -19,30 +19,18 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
 
 public class TransferringTriggersResp implements DataSet {
 
-  private TSStatus status;
-
   private List<String> transferringTriggers;
 
   public TransferringTriggersResp() {}
 
-  public TransferringTriggersResp(TSStatus status, List<String> transferringTriggers) {
-    this.status = status;
+  public TransferringTriggersResp(List<String> transferringTriggers) {
     this.transferringTriggers = transferringTriggers;
-  }
-
-  public TSStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(TSStatus status) {
-    this.status = status;
   }
 
   public List<String> getTransferringTriggers() {

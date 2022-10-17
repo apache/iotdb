@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -1190,6 +1191,10 @@ public class ConfigManager implements IManager {
   }
 
   public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
+    if (nodeManager.filterConfigNodeThroughStatus(NodeStatus.Running).isEmpty()) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("No Running DataNode");
+    }
     LOGGER.info("start Transfer of {}", newUnknownDataList);
     // transfer trigger
     return triggerManager.transferTrigger(newUnknownDataList);
