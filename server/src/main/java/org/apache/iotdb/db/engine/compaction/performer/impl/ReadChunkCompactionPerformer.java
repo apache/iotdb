@@ -118,12 +118,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     checkThreadInterrupted();
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
-    boolean anyChunkExists = false;
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
-        readerAndChunkMetadataList) {
-      anyChunkExists = anyChunkExists || !readerListPair.right.isEmpty();
-    }
-    if (!anyChunkExists) {
+    if (!checkAlignedSeriesExists(readerAndChunkMetadataList)) {
       return;
     }
     writer.startChunkGroup(device);
@@ -140,6 +135,18 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           String.format(
               "[Compaction] compaction for target file %s abort", targetResource.toString()));
     }
+  }
+
+  private boolean checkAlignedSeriesExists(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+        readerAndChunkMetadataList) {
+      if (!readerListPair.right.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void compactNotAlignedSeries(
