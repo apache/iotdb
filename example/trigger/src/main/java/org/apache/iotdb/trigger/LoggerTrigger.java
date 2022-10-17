@@ -70,10 +70,8 @@ public class LoggerTrigger implements Trigger {
         }
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.TEXT)) {
         Binary[] values = (Binary[]) tablet.values[i];
-        for (Binary value : values) {
-          if (!value.toString().isEmpty()) {
-            LOGGER.info("Text type, trigger Non empty");
-          }
+        for (Binary ignored : values) {
+          LOGGER.info("Text type, trigger Non empty");
         }
 
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.BOOLEAN)) {
