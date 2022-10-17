@@ -36,7 +36,8 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
-  7: optional TCQConfig cqConfig
+  7: optional list<binary> allTriggerInformation
+  8: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -70,6 +71,16 @@ struct TRatisConfig {
 
   13: required i64 schemaLeaderElectionTimeoutMax
   14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
 }
 
 struct TCQConfig {
@@ -184,8 +195,9 @@ struct TDataPartitionTableResp {
 
 struct TGetRoutingReq {
     1: required string storageGroup
-    2: required common.TSeriesPartitionSlot seriesSlotId
-    3: required common.TTimePartitionSlot timeSlotId
+    2: required common.TConsensusGroupType type
+    3: required common.TSeriesPartitionSlot seriesSlotId
+    4: optional common.TTimePartitionSlot timeSlotId
 }
 
 struct TGetRoutingResp {
@@ -279,6 +291,11 @@ struct TConfigNodeRegisterReq {
   13: required double diskSpaceWarningThreshold
 }
 
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required i32 configNodeId
+}
+
 struct TAddConsensusGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeList
 }
@@ -334,6 +351,16 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+// Get jars of the corresponding trigger
+struct TGetTriggerJarReq {
+  1: required list<string> jarNameList
+}
+
+struct TGetTriggerJarResp {
+  1: required common.TSStatus status
+  2: required list<binary> jarList
 }
 
 // Show datanodes
@@ -394,7 +421,7 @@ struct TRegionInfo {
   3: required i32 dataNodeId
   4: required string clientRpcIp
   5: required i32 clientRpcPort
-  6: required i64 seriesSlots
+  6: required i32 seriesSlots
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType
@@ -711,7 +738,7 @@ service IConfigNodeRPCService {
    *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
    *                             are inconsist with the ConfigNode-leader
    */
-  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   /** The ConfigNode-leader will guide the Non-Seed-ConfigNode to join the ConsensusGroup when first startup */
   common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
@@ -730,13 +757,13 @@ service IConfigNodeRPCService {
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /**
-   * Let the specific ConfigNode remove the ConsensusGroup
+   * Let the specific ConfigNode delete the peer
    *
-   * @return SUCCESS_STATUS if remove ConsensusGroup successfully
+   * @return SUCCESS_STATUS if delete peer  successfully
    *         REMOVE_CONFIGNODE_FAILED if the specific ConfigNode doesn't exist in the current cluster
    *                                  or Ratis internal failure
    */
-  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -789,6 +816,11 @@ service IConfigNodeRPCService {
      * Return the trigger table of config leader
      */
   TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the trigger jar list of the trigger name list
+     */
+  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
 
   // ======================================================
   // Maintenance Tools

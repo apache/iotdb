@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 
 import org.apache.commons.lang3.Validate;
 
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -171,6 +174,34 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
       boxValue.add(String.format("  Output: %s", descriptor.getOutputColumnNames()));
       boxValue.add(String.format("  Input: %s", descriptor.getInputExpressions()));
+    }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitGroupByTag(GroupByTagNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GroupByTag-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Tag keys: %s", node.getTagKeys()));
+    int bucketIdx = 0;
+    for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
+        node.getTagValuesToAggregationDescriptors().entrySet()) {
+      boxValue.add(String.format("Bucket-%d: %s", bucketIdx, entry.getKey()));
+      int aggregatorIdx = 0;
+      for (CrossSeriesAggregationDescriptor descriptor : entry.getValue()) {
+        if (descriptor == null) {
+          boxValue.add(String.format("    Aggregator-%d: NULL", aggregatorIdx));
+        } else {
+          boxValue.add(
+              String.format(
+                  "    Aggregator-%d: %s, %s",
+                  aggregatorIdx, descriptor.getAggregationType(), descriptor.getStep()));
+          boxValue.add(String.format("      Output: %s", descriptor.getOutputColumnNames()));
+          boxValue.add(String.format("      Input: %s", descriptor.getInputExpressions()));
+        }
+        aggregatorIdx += 1;
+      }
+      bucketIdx += 1;
     }
     return render(node, boxValue, context);
   }

@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class DataNodeRegisterResp implements DataSet {
@@ -39,6 +40,7 @@ public class DataNodeRegisterResp implements DataSet {
 
   private TCQConfig cqConfig;
   private byte[] templateInfo;
+  private List<ByteBuffer> allTriggerInformation;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -77,6 +79,14 @@ public class DataNodeRegisterResp implements DataSet {
     this.templateInfo = templateInfo;
   }
 
+  public List<ByteBuffer> getTriggerInformation() {
+    return allTriggerInformation;
+  }
+
+  public void setTriggerInformation(List<ByteBuffer> triggerInformation) {
+    this.allTriggerInformation = triggerInformation;
+  }
+
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
@@ -89,6 +99,7 @@ public class DataNodeRegisterResp implements DataSet {
       resp.setTemplateInfo(templateInfo);
       resp.setRatisConfig(ratisConfig);
       resp.setCqConfig(cqConfig);
+      resp.setAllTriggerInformation(allTriggerInformation);
     }
 
     return resp;

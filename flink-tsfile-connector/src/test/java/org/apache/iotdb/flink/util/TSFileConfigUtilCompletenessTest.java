@@ -74,7 +74,8 @@ public class TSFileConfigUtilCompletenessTest {
       "setFreqEncodingSNR",
       "setFreqEncodingBlockSize",
       "setMaxTsBlockLineNumber",
-      "setMaxTsBlockSizeInBytes"
+      "setMaxTsBlockSizeInBytes",
+      "setPatternMatchingThreshold"
     };
     Set<String> newSetters =
         Arrays.stream(TSFileConfig.class.getMethods())

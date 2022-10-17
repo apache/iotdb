@@ -943,7 +943,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
-    Peer newLeaderPeer = new Peer(regionId, newNode);
+    Peer newLeaderPeer = new Peer(regionId, req.getNewLeaderNode().getDataNodeId(), newNode);
     if (!isLeader(regionId)) {
       LOGGER.info("region {} is not leader, no need to change leader", regionId);
       return status;
@@ -991,7 +991,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
         req.getRegionLocations().stream()
-            .map(location -> new Peer(regionId, getConsensusEndPoint(location, regionId)))
+            .map(
+                location ->
+                    new Peer(
+                        regionId,
+                        location.getDataNodeId(),
+                        getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
     TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
     if (!isSucceed(status)) {

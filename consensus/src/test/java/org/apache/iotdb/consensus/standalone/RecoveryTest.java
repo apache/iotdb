@@ -48,6 +48,7 @@ public class RecoveryTest {
         ConsensusFactory.getConsensusImpl(
                 ConsensusFactory.StandAloneConsensus,
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
                     .setStorageDir("target" + java.io.File.separator + "recovery")
                     .build(),
@@ -76,7 +77,7 @@ public class RecoveryTest {
   public void recoveryTest() throws Exception {
     consensusImpl.createPeer(
         schemaRegionId,
-        Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
+        Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -86,7 +87,7 @@ public class RecoveryTest {
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
             schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
+            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
     Assert.assertEquals(
         response.getException().getMessage(),

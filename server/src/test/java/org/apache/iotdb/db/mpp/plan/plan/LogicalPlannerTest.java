@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.mpp.plan.analyze.FakeSchemaFetcherImpl;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
@@ -44,11 +46,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,7 +69,10 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.querySQLs;
@@ -73,8 +85,13 @@ public class LogicalPlannerTest {
   @Test
   public void testQueryPlan() {
     for (String sql : querySQLs) {
-      Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
-      System.out.printf("\"%s\" TEST PASSED\n", sql);
+      try {
+        Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
+      } catch (Exception e) {
+        System.err.println("Failed to generated logical plan for " + sql);
+        e.printStackTrace();
+        break;
+      }
     }
   }
 
@@ -608,21 +625,71 @@ public class LogicalPlannerTest {
     }
   }
 
-  private PlanNode parseSQLToPlanNode(String sql) {
-    PlanNode planNode = null;
+  @Test
+  public void testGroupByTag() {
+    String sql = "select max_value(s1) from root.** group by tags(key1)";
     try {
-      Statement statement =
-          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      Analyzer analyzer =
-          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-      Analysis analysis = analyzer.analyze(statement);
-      LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-      planNode = planner.plan(analysis).getRootNode();
+      PlanNode pn = parseSQLToPlanNode(sql);
+      GroupByTagNode root = (GroupByTagNode) pn;
+
+      Assert.assertEquals(Collections.singletonList("key1"), root.getTagKeys());
+
+      Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
+          root.getTagValuesToAggregationDescriptors();
+      Assert.assertEquals(1, tagValuesToAggregationDescriptors.size());
+      Assert.assertEquals(
+          Collections.singleton(Collections.singletonList("value1")),
+          tagValuesToAggregationDescriptors.keySet());
+      List<CrossSeriesAggregationDescriptor> descriptors =
+          tagValuesToAggregationDescriptors.get(Collections.singletonList("value1"));
+      Assert.assertEquals(1, descriptors.size());
+      CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
+      Assert.assertEquals("s1", descriptor.getOutputExpression().toString());
+      Assert.assertEquals(AggregationType.MAX_VALUE, descriptor.getAggregationType());
+      Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
+      Assert.assertEquals(3, descriptor.getInputExpressions().size());
+      for (Expression expression : descriptor.getInputExpressions()) {
+        Assert.assertTrue(expression instanceof TimeSeriesOperand);
+        Assert.assertEquals("s1", ((TimeSeriesOperand) expression).getPath().getMeasurement());
+      }
+
+      Assert.assertEquals(Arrays.asList("key1", "max_value(s1)"), root.getOutputColumnNames());
+
+      Assert.assertNull(root.getGroupByTimeParameter());
+
+      Assert.assertEquals(Ordering.ASC, root.getScanOrder());
+
+      Assert.assertEquals(3, root.getChildren().size());
+      for (PlanNode child : root.getChildren()) {
+        Assert.assertTrue(
+            child instanceof AlignedSeriesAggregationScanNode
+                || child instanceof SeriesAggregationScanNode);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
-    return planNode;
+  }
+
+  @Test
+  public void testGroupByTagWithValueFilter() {
+    String sql = "select max_value(s1) from root.** where s1>1 group by tags(key1)";
+    try {
+      parseSQLToPlanNode(sql);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Only time filters are supported in GROUP BY TAGS query"));
+    }
+  }
+
+  private PlanNode parseSQLToPlanNode(String sql) {
+    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+    Analyzer analyzer =
+        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+    Analysis analysis = analyzer.analyze(statement);
+    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
+    return planner.plan(analysis).getRootNode();
   }
 }

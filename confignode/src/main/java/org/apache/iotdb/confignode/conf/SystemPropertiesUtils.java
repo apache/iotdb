@@ -193,6 +193,9 @@ public class SystemPropertiesUtils {
    */
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
+
+    systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+
     // Startup configuration
     systemProperties.setProperty("internal_address", String.valueOf(conf.getInternalAddress()));
     systemProperties.setProperty("internal_port", String.valueOf(conf.getInternalPort()));
@@ -237,6 +240,23 @@ public class SystemPropertiesUtils {
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
 
     storeSystemProperties(systemProperties);
+  }
+
+  /**
+   * Load the config_node_id in confignode-system.properties file. We only invoke this interface
+   * when restarted.
+   *
+   * @return The property of config_node_id in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static int loadConfigNodeId() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    try {
+      return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
+    } catch (NumberFormatException e) {
+      throw new IOException(
+          "The parameter config_node_id doesn't exist in confignode-system.properties");
+    }
   }
 
   private static synchronized Properties getSystemProperties() throws IOException {

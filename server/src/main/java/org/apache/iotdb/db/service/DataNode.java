@@ -32,12 +32,16 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -65,6 +69,8 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -75,8 +81,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -93,6 +101,10 @@ public class DataNode implements DataNodeMBean {
   private static final int DEFAULT_JOIN_RETRY = 10;
 
   private final TEndPoint thisNode = new TEndPoint();
+
+  /** Hold the information of trigger, udf...... */
+  private final ResourcesInformationHolder resourcesInformationHolder =
+      new ResourcesInformationHolder();
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -186,6 +198,9 @@ public class DataNode implements DataNodeMBean {
         ClusterTemplateManager.getInstance()
             .updateTemplateSetInfo(dataNodeRegisterResp.getTemplateInfo());
 
+        // store triggerInformationList
+        getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
+
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
@@ -252,6 +267,10 @@ public class DataNode implements DataNodeMBean {
     throw new StartupException("Cannot register to the cluster.");
   }
 
+  private void prepareResources() throws StartupException {
+    prepareTriggerResources();
+  }
+
   /** register services and set up DataNode */
   private void active() throws StartupException {
     try {
@@ -273,6 +292,9 @@ public class DataNode implements DataNodeMBean {
 
   private void setUp() throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB DataNode...");
+
+    // get resources for trigger,udf...
+    prepareResources();
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
@@ -298,7 +320,6 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
-    initTriggerRelatedInstance();
 
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
@@ -395,6 +416,107 @@ public class DataNode implements DataNodeMBean {
           config.getTriggerTemporaryLibDir(), config.getTriggerDir());
     } catch (IOException e) {
       throw new StartupException(e);
+    }
+  }
+
+  private void prepareTriggerResources() throws StartupException {
+    initTriggerRelatedInstance();
+    if (resourcesInformationHolder.getTriggerInformationList() == null
+        || resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
+      return;
+    }
+
+    // get jars from config node
+    List<TriggerInformation> triggerNeedJarList = getJarListForTrigger();
+    int index = 0;
+    while (index < triggerNeedJarList.size()) {
+      List<TriggerInformation> curList = new ArrayList<>();
+      int offset = 0;
+      while (offset < ResourcesInformationHolder.getJarNumOfOneRpc()
+          && index + offset < triggerNeedJarList.size()) {
+        curList.add(triggerNeedJarList.get(index + offset));
+        offset++;
+      }
+      index += (offset + 1);
+      getJarOfTriggers(curList);
+    }
+
+    // create instances of triggers and do registration
+    try {
+      for (TriggerInformation triggerInformation :
+          resourcesInformationHolder.getTriggerInformationList()) {
+        TriggerManagementService.getInstance().doRegister(triggerInformation);
+      }
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+    logger.debug("successfully registered all the triggers");
+    for (TriggerInformation triggerInformation :
+        TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
+      logger.debug("get trigger: {}", triggerInformation.getTriggerName());
+    }
+    for (TriggerExecutor triggerExecutor :
+        TriggerManagementService.getInstance().getAllTriggerExecutors()) {
+      logger.debug(
+          "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
+    }
+  }
+
+  private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
+      throws StartupException {
+    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+      List<String> jarNameList =
+          triggerInformationList.stream()
+              .map(TriggerInformation::getJarName)
+              .collect(Collectors.toList());
+      TGetTriggerJarResp resp = configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList));
+      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+        throw new StartupException("Failed to get trigger jar from config node.");
+      }
+      List<ByteBuffer> jarList = resp.getJarList();
+      for (int i = 0; i < triggerInformationList.size(); i++) {
+        TriggerExecutableManager.getInstance()
+            .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+      }
+    } catch (IOException | TException e) {
+      throw new StartupException(e);
+    }
+  }
+
+  /** Generate a list for triggers that do not have jar on this node. */
+  private List<TriggerInformation> getJarListForTrigger() {
+    List<TriggerInformation> res = new ArrayList<>();
+    for (TriggerInformation triggerInformation :
+        resourcesInformationHolder.getTriggerInformationList()) {
+      if (triggerInformation.isStateful()) {
+        // jar of stateful trigger is not needed
+        continue;
+      }
+      // jar does not exist, add current triggerInformation to list
+      if (!TriggerExecutableManager.getInstance()
+          .hasFileUnderLibRoot(triggerInformation.getJarName())) {
+        res.add(triggerInformation);
+      } else {
+        try {
+          // local jar has conflicts with jar on config node, add current triggerInformation to list
+          if (!TriggerManagementService.getInstance().isLocalJarCorrect(triggerInformation)) {
+            res.add(triggerInformation);
+          }
+        } catch (TriggerManagementException e) {
+          res.add(triggerInformation);
+        }
+      }
+    }
+    return res;
+  }
+
+  private void getTriggerInformationList(List<ByteBuffer> allTriggerInformation) {
+    if (allTriggerInformation != null && !allTriggerInformation.isEmpty()) {
+      List<TriggerInformation> list = new ArrayList<>();
+      for (ByteBuffer triggerInformationByteBuffer : allTriggerInformation) {
+        list.add(TriggerInformation.deserialize(triggerInformationByteBuffer));
+      }
+      resourcesInformationHolder.setTriggerInformationList(list);
     }
   }
 

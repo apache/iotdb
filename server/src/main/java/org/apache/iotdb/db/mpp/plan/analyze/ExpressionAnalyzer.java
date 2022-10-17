@@ -1067,6 +1067,8 @@ public class ExpressionAnalyzer {
       return !expression.isBuiltInAggregationFunctionExpression();
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
+    } else if (expression instanceof ConstantOperand) {
+      return false;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

@@ -58,22 +58,25 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     try {
       switch (state) {
         case ADD_CONFIG_NODE_PREPARE:
-          setNextState(AddConfigNodeState.ADD_CONSENSUS_GROUP);
+          setNextState(AddConfigNodeState.CREATE_PEER);
           break;
-        case ADD_CONSENSUS_GROUP:
+        case CREATE_PEER:
+          LOG.info("Executing createPeerForConsensusGroup on {}...", tConfigNodeLocation);
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
-          LOG.info("Add consensus group {}", tConfigNodeLocation);
+          LOG.info("Successfully createPeerForConsensusGroup on {}", tConfigNodeLocation);
           break;
         case ADD_PEER:
+          LOG.info("Executing addPeer {}...", tConfigNodeLocation);
           env.addConfigNodePeer(tConfigNodeLocation);
           setNextState(AddConfigNodeState.REGISTER_SUCCESS);
-          LOG.info("Add Peer of {}", tConfigNodeLocation);
+          LOG.info("Successfully addPeer {}", tConfigNodeLocation);
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation);
           env.broadCastTheLatestConfigNodeGroup();
+          LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -97,8 +100,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   protected void rollbackState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
       throws ProcedureException {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
-        env.removeConsensusGroup(tConfigNodeLocation);
+      case CREATE_PEER:
+        env.deleteConfigNodePeer(tConfigNodeLocation);
         LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
         break;
       case ADD_PEER:
@@ -111,7 +114,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   @Override
   protected boolean isRollbackSupported(AddConfigNodeState state) {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
+      case CREATE_PEER:
       case ADD_PEER:
         return true;
     }

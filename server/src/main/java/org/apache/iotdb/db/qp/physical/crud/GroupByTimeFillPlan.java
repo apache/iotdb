@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -94,10 +94,10 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
         intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep));
-        extraStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum);
+        extraStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum);
         while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
-          extraStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum);
+          extraStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum);
         }
       } else {
         intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
