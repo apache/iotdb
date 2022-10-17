@@ -548,7 +548,7 @@ public class RewriteTsFileTool {
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
             chunkHeader.getCompressionType());
-    Tablet tablet = new Tablet(device, Collections.singletonList(schema), 1024);
+    Tablet tablet = new Tablet(device, Collections.singletonList(schema), MAX_TABLET_LENGTH);
     IChunkReader chunkReader = new ChunkReader(chunk, null);
     while (chunkReader.hasNextSatisfiedPage()) {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
@@ -556,7 +556,7 @@ public class RewriteTsFileTool {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
         tablet.timestamps[tablet.rowSize] = timeValuePair.getTimestamp();
         tablet.values[tablet.rowSize++] = timeValuePair.getValue();
-        if (tablet.rowSize >= 1024) {
+        if (tablet.rowSize >= MAX_TABLET_LENGTH) {
           session.insertTablet(tablet);
           tablet.reset();
         }
@@ -633,7 +633,7 @@ public class RewriteTsFileTool {
       Session session)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     while (readerIterator.hasNext()) {
-      Tablet tablet = new Tablet(device, schemaList, 1024);
+      Tablet tablet = new Tablet(device, schemaList, MAX_TABLET_LENGTH);
       Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
       AlignedChunkReader alignedChunkReader = chunkReaderAndChunkSize.left;
       while (alignedChunkReader.hasNextSatisfiedPage()) {
@@ -644,7 +644,7 @@ public class RewriteTsFileTool {
           tablet.timestamps[tablet.rowSize] = batchDataIterator.currentTime();
           tablet.values[tablet.rowSize++] = batchDataIterator.currentValue();
           batchDataIterator.next();
-          if (tablet.rowSize >= 1024) {
+          if (tablet.rowSize >= MAX_TABLET_LENGTH) {
             session.insertAlignedTablet(tablet);
             tablet.reset();
           }
