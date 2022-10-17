@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -995,6 +996,11 @@ public class ConfigManager implements IManager {
     } else {
       return new TGetPathsSetTemplatesResp(status);
     }
+  }
+
+  @Override
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
+    return null;
   }
 
   @Override

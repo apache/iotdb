@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -612,6 +613,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
     return configManager.getPathsSetTemplate(req);
+  }
+
+  @Override
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
+    return null;
   }
 
   @Override

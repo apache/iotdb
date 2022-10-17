@@ -503,6 +503,12 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+struct TDeactivateSchemaTemplateReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional string templateName
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -838,6 +844,7 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries

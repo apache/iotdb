@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+
 public class DeactivateTemplateStatement extends Statement implements IConfigStatement {
 
   private String templateName;
@@ -51,7 +53,7 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
   }
 
   public String getTemplateName() {
-    return templateName;
+    return templateName == null ? ONE_LEVEL_PATH_WILDCARD : templateName;
   }
 
   public void setTemplateName(String templateName) {
