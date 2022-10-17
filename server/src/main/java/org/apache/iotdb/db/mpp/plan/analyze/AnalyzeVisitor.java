@@ -1117,7 +1117,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath deviceTemplate = intoDeviceMeasurementIterator.getDeviceTemplate();
       boolean isAlignedDevice = intoDeviceMeasurementIterator.isAlignedDevice();
       PartialPath targetDevice = constructTargetDevice(sourceDevice, deviceTemplate);
-      deviceViewIntoPathDescriptor.specifyDeviceAlignment(targetDevice, isAlignedDevice);
+      deviceViewIntoPathDescriptor.specifyDeviceAlignment(targetDevice.toString(), isAlignedDevice);
 
       for (Expression sourceColumn : sourceColumns) {
         String measurementTemplate = intoDeviceMeasurementIterator.getMeasurementTemplate();
@@ -1136,6 +1136,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       intoDeviceMeasurementIterator.nextDevice();
     }
+    deviceViewIntoPathDescriptor.validate();
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
   }
 
@@ -1170,9 +1171,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         targetPath = deviceTemplate.concatNode(measurementTemplate);
       }
       intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
-      intoPathDescriptor.specifyDeviceAlignment(targetPath.getDevicePath(), isAlignedDevice);
+      intoPathDescriptor.specifyDeviceAlignment(
+          targetPath.getDevicePath().toString(), isAlignedDevice);
       intoPathIterator.next();
     }
+    intoPathDescriptor.validate();
     analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
 

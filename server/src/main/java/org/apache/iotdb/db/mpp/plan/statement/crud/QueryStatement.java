@@ -419,6 +419,9 @@ public class QueryStatement extends Statement {
       if (isLastQuery()) {
         throw new SemanticException("select into: last clauses are not supported.");
       }
+      if (isGroupByTag()) {
+        throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
+      }
     }
   }
 
