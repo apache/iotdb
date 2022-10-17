@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode */
   public static void bind() {
-    // bind predefined metric sets
-    MetricService.getInstance().addMetricSet(new JvmMetrics());
-    MetricService.getInstance().addMetricSet(new LogbackMetrics());
-    MetricService.getInstance().addMetricSet(new FileMetrics());
-    MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics());
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      // bind predefined metric sets
+      MetricService.getInstance().addMetricSet(new JvmMetrics());
+      MetricService.getInstance().addMetricSet(new LogbackMetrics());
+      MetricService.getInstance().addMetricSet(new FileMetrics());
+      MetricService.getInstance().addMetricSet(new ProcessMetrics());
+      MetricService.getInstance().addMetricSet(new SystemMetrics());
+    }
   }
 }
