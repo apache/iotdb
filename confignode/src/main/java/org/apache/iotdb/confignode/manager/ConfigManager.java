@@ -1191,12 +1191,20 @@ public class ConfigManager implements IManager {
   }
 
   public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
-    if (nodeManager.filterConfigNodeThroughStatus(NodeStatus.Running).isEmpty()) {
+    Map<Integer, TDataNodeLocation> runningDataNodeLocationMap = new HashMap<>();
+    nodeManager
+        .filterDataNodeThroughStatus(NodeStatus.Running)
+        .forEach(
+            dataNodeConfiguration ->
+                runningDataNodeLocationMap.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
+    if (runningDataNodeLocationMap.isEmpty()) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage("No Running DataNode");
     }
     LOGGER.info("start Transfer of {}", newUnknownDataList);
     // transfer trigger
-    return triggerManager.transferTrigger(newUnknownDataList);
+    return triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
   }
 }

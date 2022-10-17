@@ -106,7 +106,7 @@ public class TriggerTable {
 
   public void updateTriggerLocation(String triggerName, TDataNodeLocation dataNodeLocation) {
     TriggerInformation triggerInformation = triggerTable.get(triggerName);
-    // TriggerInformation will not be null here
+    // triggerInformation will not be null here
     triggerInformation.setDataNodeLocation(dataNodeLocation);
     triggerTable.put(triggerName, triggerInformation);
   }

@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -97,10 +98,6 @@ public class TriggerInfo implements SnapshotProcessor {
 
   /**
    * Validate whether the trigger can be created
-   *
-   * @param triggerName
-   * @param jarName
-   * @param jarMD5
    */
   public void validate(String triggerName, String jarName, String jarMD5) {
     if (triggerTable.containsTrigger(triggerName)) {
@@ -120,8 +117,6 @@ public class TriggerInfo implements SnapshotProcessor {
 
   /**
    * Validate whether the trigger can be dropped
-   *
-   * @param triggerName
    */
   public void validate(String triggerName) {
     if (triggerTable.containsTrigger(triggerName)) {
@@ -208,6 +203,7 @@ public class TriggerInfo implements SnapshotProcessor {
   public TSStatus updateTriggerLocation(UpdateTriggerLocationPlan physicalPlan) {
     triggerTable.updateTriggerLocation(
         physicalPlan.getTriggerName(), physicalPlan.getDataNodeLocation());
+    triggerTable.setTriggerState(physicalPlan.getTriggerName(), TTriggerState.ACTIVE);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

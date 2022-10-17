@@ -143,7 +143,23 @@ public class TriggerManager {
     }
   }
 
-  public TSStatus transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
+  /**
+   * Step1: Mark Stateful Triggers on UnknownDataNodes as {@link TTriggerState#TRANSFERRING}.
+   *
+   * <p>Step2: Get all Transferring Triggers marked in Step1.
+   *
+   * <p>Step3: For each trigger get in Step2, find the DataNode with the lowest load, then transfer
+   * the Stateful Trigger to it and update this information on all DataNodes.
+   *
+   * <p>Step4: Update the newest location on ConfigNodes.
+   *
+   * @param dataNodeLocationMap The DataNodes with {@link
+   *     org.apache.iotdb.commons.cluster.NodeStatus#Running}
+   * @return result of transferTrigger
+   */
+  public TSStatus transferTrigger(
+      List<TDataNodeLocation> newUnknownDataList,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     TSStatus transferResult;
     triggerInfo.acquireTriggerTableLock();
     try {
@@ -165,8 +181,10 @@ public class TriggerManager {
 
       for (String trigger : transferringTriggers) {
         TDataNodeLocation newDataNodeLocation = nodeManager.getLowestLoadDataNode();
+
         transferResult =
-            RpcUtils.squashResponseStatusList(updateTriggerLocation(trigger, newDataNodeLocation));
+            RpcUtils.squashResponseStatusList(
+                updateTriggerLocation(trigger, newDataNodeLocation, dataNodeLocationMap));
         if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return transferResult;
         }
@@ -187,10 +205,9 @@ public class TriggerManager {
   }
 
   public List<TSStatus> updateTriggerLocation(
-      String triggerName, TDataNodeLocation dataNodeLocation) {
-    NodeManager nodeManager = configManager.getNodeManager();
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        nodeManager.getRegisteredDataNodeLocations();
+      String triggerName,
+      TDataNodeLocation dataNodeLocation,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     final TUpdateTriggerLocationReq request =
         new TUpdateTriggerLocationReq(triggerName, dataNodeLocation);
 
