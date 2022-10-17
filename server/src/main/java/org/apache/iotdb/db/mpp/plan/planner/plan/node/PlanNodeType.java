@@ -140,7 +140,9 @@ public enum PlanNodeType {
   LOAD_TSFILE((short) 55),
   CONSTRUCT_SCHEMA_BLACK_LIST_NODE((short) 56),
   ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57),
-  GROUP_BY_TAG((short) 58);
+  GROUP_BY_TAG((short) 58),
+  INTO((short) 59),
+  DEVICE_VIEW_INTO((short) 60);
 
   public static final int BYTES = Short.BYTES;
 

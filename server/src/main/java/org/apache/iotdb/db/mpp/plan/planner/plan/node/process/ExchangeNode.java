@@ -28,8 +28,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,8 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class ExchangeNode extends PlanNode {
-  private PlanNode child;
+public class ExchangeNode extends SingleChildProcessNode {
+
   // The remoteSourceNode is used to record the remote source info for current ExchangeNode
   // It is not the child of current ExchangeNode
   private FragmentSinkNode remoteSourceNode;
@@ -57,21 +55,8 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    if (this.child == null) {
-      return ImmutableList.of();
-    }
-    return ImmutableList.of(child);
-  }
-
-  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitExchange(this, context);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
   }
 
   @Override
@@ -83,11 +68,6 @@ public class ExchangeNode extends PlanNode {
       node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -150,14 +130,6 @@ public class ExchangeNode extends PlanNode {
     }
   }
 
-  public PlanNode getChild() {
-    return child;
-  }
-
-  public void setChild(PlanNode child) {
-    this.child = child;
-  }
-
   @Override
   public String toString() {
     return String.format(
@@ -180,10 +152,6 @@ public class ExchangeNode extends PlanNode {
   public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
     this.setOutputColumnNames(remoteSourceNode.getOutputColumnNames());
-  }
-
-  public void cleanChildren() {
-    this.child = null;
   }
 
   public TEndPoint getUpstreamEndpoint() {
@@ -210,15 +178,13 @@ public class ExchangeNode extends PlanNode {
       return false;
     }
     ExchangeNode that = (ExchangeNode) o;
-    return Objects.equals(child, that.child)
-        && Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
+    return Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
         && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
         && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(), child, upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId);
+    return Objects.hash(super.hashCode(), upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId);
   }
 }

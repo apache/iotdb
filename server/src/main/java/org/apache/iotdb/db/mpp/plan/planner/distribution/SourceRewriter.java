@@ -38,7 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
@@ -254,7 +254,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   private PlanNode processRawSeriesScan(
-      SeriesSourceNode node, DistributionPlanContext context, MultiChildNode parent) {
+      SeriesSourceNode node, DistributionPlanContext context, MultiChildProcessNode parent) {
     List<SeriesSourceNode> sourceNodes = splitSeriesSourceNodeByPartition(node, context);
     if (sourceNodes.size() == 1) {
       return sourceNodes.get(0);
@@ -407,8 +407,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return processRawMultiChildNode(node, context);
   }
 
-  private PlanNode processRawMultiChildNode(MultiChildNode node, DistributionPlanContext context) {
-    MultiChildNode root = (MultiChildNode) node.clone();
+  private PlanNode processRawMultiChildNode(
+      MultiChildProcessNode node, DistributionPlanContext context) {
+    MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
     // Step 1: Get all source nodes. For the node which is not source, add it as the child of
     // current TimeJoinNode
     List<SourceNode> sources = new ArrayList<>();
@@ -468,7 +469,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             } else {
               // We clone a TimeJoinNode from root to make the params to be consistent.
               // But we need to assign a new ID to it
-              MultiChildNode parentOfGroup = (MultiChildNode) root.clone();
+              MultiChildProcessNode parentOfGroup = (MultiChildProcessNode) root.clone();
               parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
               seriesScanNodes.forEach(parentOfGroup::addChild);
               root.addChild(parentOfGroup);
