@@ -60,7 +60,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -642,7 +641,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
     getAllDevicesWithIsAligned(metadataIndexNode, queue);
 
-    return new TsFileDeviceIterator(this, queue);
+    return new TsFileDeviceIterator(this, null, queue);
   }
 
   private void getAllDevicesWithIsAligned(
@@ -664,6 +663,87 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
         ByteBuffer nextBuffer = readData(startOffset, endOffset);
         getAllDevicesWithIsAligned(MetadataIndexNode.deserializeFrom(nextBuffer), queue);
+      }
+    } catch (Exception e) {
+      logger.error("Something error happened while getting all devices of file {}", file);
+      throw e;
+    }
+  }
+
+  public TsFileDeviceIterator getAllDevicesIteratorWithLeafNodeOffset() throws IOException {
+    readFileMetadata();
+    Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
+    List<Pair<Long, Long>> leafDeviceNodeOffsets = new ArrayList<>();
+    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+    if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+      // the first node of index tree is device leaf node, then get the devices directly
+      getDevicesOfLeafNode(metadataIndexNode, queue);
+    } else {
+      getAllDeviceLeafNodeOffset(metadataIndexNode, leafDeviceNodeOffsets);
+    }
+
+    return new TsFileDeviceIterator(this, leafDeviceNodeOffsets, queue);
+  }
+
+  public void getDevicesOfOneNodeWithIsAligned(
+      Long startOffset,
+      Long endOffset,
+      Queue<Pair<String, Pair<Long, Long>>> measurementNodeOffsetQueue)
+      throws IOException {
+    try {
+      ByteBuffer nextBuffer = readData(startOffset, endOffset);
+      MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+
+      getDevicesOfLeafNode(deviceLeafNode, measurementNodeOffsetQueue);
+    } catch (Exception e) {
+      logger.error("Something error happened while getting all devices of file {}", file);
+      throw e;
+    }
+  }
+
+  private void getDevicesOfLeafNode(
+      MetadataIndexNode deviceLeafNode,
+      Queue<Pair<String, Pair<Long, Long>>> measurementNodeOffsetQueue) {
+    List<MetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
+    for (int i = 0; i < childrenEntries.size(); i++) {
+      MetadataIndexEntry deviceEntry = childrenEntries.get(i);
+      long childStartOffset = deviceEntry.getOffset();
+      long childEndOffset =
+          i == childrenEntries.size() - 1
+              ? deviceLeafNode.getEndOffset()
+              : childrenEntries.get(i + 1).getOffset();
+      measurementNodeOffsetQueue.add(
+          new Pair<>(deviceEntry.getName(), new Pair<>(childStartOffset, childEndOffset)));
+    }
+  }
+
+  private void getAllDeviceLeafNodeOffset(
+      MetadataIndexNode metadataIndexNode, List<Pair<Long, Long>> leafDeviceNodeOffsets)
+      throws IOException {
+    try {
+      int metadataIndexListSize = metadataIndexNode.getChildren().size();
+      int isCurrentLayerLeafNode = -1;
+      for (int i = 0; i < metadataIndexListSize; i++) {
+        MetadataIndexEntry entry = metadataIndexNode.getChildren().get(i);
+        long startOffset = entry.getOffset();
+        long endOffset = metadataIndexNode.getEndOffset();
+        if (i != metadataIndexListSize - 1) {
+          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+        }
+        if (isCurrentLayerLeafNode == -1) {
+          MetadataIndexNodeType nodeType =
+              MetadataIndexNodeType.deserialize(
+                  ReadWriteIOUtils.readByte(readData(endOffset - 1, endOffset)));
+          isCurrentLayerLeafNode = nodeType.equals(MetadataIndexNodeType.LEAF_DEVICE) ? 1 : 0;
+        }
+        if (isCurrentLayerLeafNode == 1) {
+          // is device leaf node
+          leafDeviceNodeOffsets.add(new Pair<>(startOffset, endOffset));
+          continue;
+        }
+        ByteBuffer nextBuffer = readData(startOffset, endOffset);
+        getAllDeviceLeafNodeOffset(
+            MetadataIndexNode.deserializeFrom(nextBuffer), leafDeviceNodeOffsets);
       }
     } catch (Exception e) {
       logger.error("Something error happened while getting all devices of file {}", file);

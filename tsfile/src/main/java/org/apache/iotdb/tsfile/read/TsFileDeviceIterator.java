@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
@@ -34,10 +35,15 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   private Pair<String, Boolean> currentDevice = null;
   private MetadataIndexNode measurementNode;
 
+  private List<Pair<Long, Long>> leafDeviceNodeOffset;
+
   public TsFileDeviceIterator(
-      TsFileSequenceReader reader, Queue<Pair<String, Pair<Long, Long>>> queue) {
+      TsFileSequenceReader reader,
+      List<Pair<Long, Long>> leafDeviceNodeOffset,
+      Queue<Pair<String, Pair<Long, Long>>> queue) {
     this.reader = reader;
     this.queue = queue;
+    this.leafDeviceNodeOffset = leafDeviceNodeOffset;
   }
 
   public Pair<String, Boolean> current() {
@@ -46,7 +52,21 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
 
   @Override
   public boolean hasNext() {
-    return !queue.isEmpty();
+    // return !queue.isEmpty();
+    if (!queue.isEmpty()) {
+      return true;
+    } else if (leafDeviceNodeOffset.size() == 0) {
+      return false;
+    } else {
+      Pair<Long, Long> nextDeviceLeafNodeOffset = leafDeviceNodeOffset.remove(0);
+      try {
+        reader.getDevicesOfOneNodeWithIsAligned(
+            nextDeviceLeafNodeOffset.left, nextDeviceLeafNodeOffset.right, queue);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return true;
+    }
   }
 
   @Override
