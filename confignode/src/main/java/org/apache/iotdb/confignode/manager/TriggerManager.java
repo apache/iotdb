@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -134,8 +133,7 @@ public class TriggerManager {
   }
 
   public TSStatus transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
-    configManager.getConsensusManager().write(new UpdateTriggerStateInTablePlan());
-
+    // TODO implement
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }
