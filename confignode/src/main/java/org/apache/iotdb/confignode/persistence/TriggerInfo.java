@@ -96,9 +96,7 @@ public class TriggerInfo implements SnapshotProcessor {
     triggerTableLock.unlock();
   }
 
-  /**
-   * Validate whether the trigger can be created
-   */
+  /** Validate whether the trigger can be created */
   public void validate(String triggerName, String jarName, String jarMD5) {
     if (triggerTable.containsTrigger(triggerName)) {
       throw new TriggerManagementException(
@@ -115,9 +113,7 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
-  /**
-   * Validate whether the trigger can be dropped
-   */
+  /** Validate whether the trigger can be dropped */
   public void validate(String triggerName) {
     if (triggerTable.containsTrigger(triggerName)) {
       return;
