@@ -57,8 +57,6 @@ public class IoTDBTriggerManagementIT {
   private static final String TRIGGER_FILE_TIMES_COUNTER =
       "org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter";
 
-  private static final String TRIGGER_EXAMPLE = "";
-
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
       "statelessTriggerBeforeInsertion_";
 
