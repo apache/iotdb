@@ -31,8 +31,6 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
-
 public class RegionGroupStatisticsTest {
 
   @Test

@@ -28,8 +28,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.junit.Assert.*;
-
 public class NodeStatisticsTest {
 
   @Test
