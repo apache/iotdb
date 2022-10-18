@@ -60,8 +60,8 @@ import java.util.stream.Collectors;
  * Get a mlog.bin file in an IoTDB, and load this mlog.bin into another IoTDB. This tool receives a
  * mlog.bin and IoTDB ip, port. It reads this mlog.bin and use session interface to replay.
  */
-public class MLogLoad {
-  private static final Logger logger = LoggerFactory.getLogger(MLogLoad.class);
+public class MLogLoader {
+  private static final Logger logger = LoggerFactory.getLogger(MLogLoader.class);
   private static final String MLOG_LOAD_PREFIX = "MLogLoad";
 
   private static final String MLOG_FILE_ARGS = "mlog";

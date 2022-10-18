@@ -34,7 +34,7 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.tools.mlog.MLogLoad;
+import org.apache.iotdb.db.tools.mlog.MLogLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MLogLoadTest {
+public class MLogLoaderTest {
 
   File file = new File("target" + File.separator + "tmp" + File.separator + "mlog.bin.bak");
 
@@ -207,7 +207,7 @@ public class MLogLoadTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.restartDaemon();
     String[] args = new String[] {"-mlog", file.getAbsolutePath()};
-    MLogLoad.main(args);
+    MLogLoader.main(args);
     List<ShowTimeSeriesResult> actualTSResult =
         IoTDB.metaManager.showTimeseries(
             new ShowTimeSeriesPlan(new PartialPath("root.**")), new QueryContext());
