@@ -19,64 +19,112 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-public class DeviceViewIntoOperator implements ProcessOperator {
+public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
-  private final OperatorContext operatorContext;
-  private final Operator child;
+  private final Map<String, Map<PartialPath, Map<String, InputLocation>>>
+      deviceToTargetPathSourceInputLocationMap;
+  private final Map<String, Map<PartialPath, Map<String, TSDataType>>>
+      deviceToTargetPathDataTypeMap;
+  private final Map<String, Boolean> targetDeviceToAlignedMap;
+  private final Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
 
-  public DeviceViewIntoOperator(OperatorContext operatorContext, Operator child) {
-    this.operatorContext = operatorContext;
-    this.child = child;
-  }
+  private String currentDevice;
 
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
+  private final TsBlockBuilder resultTsBlockBuilder;
 
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
+  public DeviceViewIntoOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      Map<String, Map<PartialPath, Map<String, InputLocation>>>
+          deviceToTargetPathSourceInputLocationMap,
+      Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap,
+      Map<String, Boolean> targetDeviceToAlignedMap,
+      Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap,
+      Map<String, InputLocation> sourceColumnToInputLocationMap) {
+    super(operatorContext, child, null, sourceColumnToInputLocationMap);
+    this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
+    this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
+    this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
+    this.deviceToSourceTargetPathPairListMap = deviceToSourceTargetPathPairListMap;
+
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock inputTsBlock = child.next();
+    if (inputTsBlock != null) {
+      String device = String.valueOf(inputTsBlock.getValueColumns()[0].getBinary(0));
+      if (!Objects.equals(device, currentDevice)) {
+        insertMultiTabletsInternally(false);
+        updateResultTsBlock();
+
+        insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
+        currentDevice = device;
+      }
+      int lastReadIndex = 0;
+      while (lastReadIndex < inputTsBlock.getPositionCount()) {
+        for (IntoOperator.InsertTabletStatementGenerator generator :
+            insertTabletStatementGenerators) {
+          lastReadIndex = generator.processTsBlock(inputTsBlock, lastReadIndex);
+        }
+        insertMultiTabletsInternally(true);
+      }
+    }
+
+    if (child.hasNext()) {
+      return null;
+    } else {
+      insertMultiTabletsInternally(false);
+      updateResultTsBlock();
+      return resultTsBlockBuilder.build();
+    }
   }
 
-  @Override
-  public boolean hasNext() {
-    return child.hasNext();
+  private void updateResultTsBlock() {
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+    for (Pair<String, PartialPath> sourceTargetPathPair :
+        deviceToSourceTargetPathPairListMap.get(currentDevice)) {
+      timeColumnBuilder.writeLong(0);
+      columnBuilders[0].writeBinary(new Binary(currentDevice));
+      columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.left));
+      columnBuilders[2].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
+      columnBuilders[3].writeInt(findWritten(sourceTargetPathPair.left));
+      resultTsBlockBuilder.declarePosition();
+    }
   }
 
-  @Override
-  public void close() throws Exception {
-    child.close();
-  }
-
-  @Override
-  public boolean isFinished() {
-    return child.isFinished();
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize();
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
+  private List<IntoOperator.InsertTabletStatementGenerator>
+      constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
+    Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
+        deviceToTargetPathSourceInputLocationMap.get(currentDevice);
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
+        deviceToTargetPathDataTypeMap.get(currentDevice);
+    return constructInsertTabletStatementGenerators(
+        targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
   }
 }
