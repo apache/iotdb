@@ -71,7 +71,7 @@ public class IoTDBPipeIT {
         statement.execute("CREATE PIPE p to demo;");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("Can not find PIPESINK [demo]"));
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo] does not exist"));
       }
 
       statement.execute(
