@@ -87,7 +87,7 @@ public class LoadManager {
   private Future<?> currentLoadStatisticsFuture;
 
   private final ScheduledExecutorService loadStatisticsExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
   private final Object scheduleMonitor = new Object();
 
   public LoadManager(IManager configManager) {

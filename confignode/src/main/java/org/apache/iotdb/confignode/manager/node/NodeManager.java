@@ -55,7 +55,6 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -124,7 +123,7 @@ public class NodeManager {
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
 
   /** Unknown DataNode Detector */
   private Future<?> currentUnknownDataNodeDetectFuture;
