@@ -31,19 +31,22 @@ import java.util.Queue;
 
 public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   private final TsFileSequenceReader reader;
+
+  // device -> firstMeasurmentNode offset
   private final Queue<Pair<String, Pair<Long, Long>>> queue;
   private Pair<String, Boolean> currentDevice = null;
   private MetadataIndexNode measurementNode;
 
-  private List<Pair<Long, Long>> leafDeviceNodeOffset;
+  // <startOffset, endOffset>, device leaf node offset in this file
+  private final List<Pair<Long, Long>> leafDeviceNodeOffsetList;
 
   public TsFileDeviceIterator(
       TsFileSequenceReader reader,
-      List<Pair<Long, Long>> leafDeviceNodeOffset,
+      List<Pair<Long, Long>> leafDeviceNodeOffsetList,
       Queue<Pair<String, Pair<Long, Long>>> queue) {
     this.reader = reader;
     this.queue = queue;
-    this.leafDeviceNodeOffset = leafDeviceNodeOffset;
+    this.leafDeviceNodeOffsetList = leafDeviceNodeOffsetList;
   }
 
   public Pair<String, Boolean> current() {
@@ -55,10 +58,10 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
     // return !queue.isEmpty();
     if (!queue.isEmpty()) {
       return true;
-    } else if (leafDeviceNodeOffset.size() == 0) {
+    } else if (leafDeviceNodeOffsetList.size() == 0) {
       return false;
     } else {
-      Pair<Long, Long> nextDeviceLeafNodeOffset = leafDeviceNodeOffset.remove(0);
+      Pair<Long, Long> nextDeviceLeafNodeOffset = leafDeviceNodeOffsetList.remove(0);
       try {
         reader.getDevicesOfOneNodeWithIsAligned(
             nextDeviceLeafNodeOffset.left, nextDeviceLeafNodeOffset.right, queue);
