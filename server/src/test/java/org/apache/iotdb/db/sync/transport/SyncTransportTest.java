@@ -20,15 +20,25 @@
 package org.apache.iotdb.db.sync.transport;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.service.RPCService;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
@@ -37,6 +47,8 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.IoTDBSyncClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -64,6 +76,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -71,6 +84,11 @@ import java.util.Collections;
 import java.util.List;
 
 public class SyncTransportTest {
+
+  private static LocalConfigNode configNode;
+  private static Coordinator coordinator;
+  private static ISchemaFetcher schemaFetcher;
+  private static IPartitionFetcher partitionFetcher;
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** create tsfile and move to tmpDir for sync test */
@@ -121,13 +139,43 @@ public class SyncTransportTest {
       }
     }
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.envSetUp();
+    //    EnvironmentUtils.envSetUp();
+    setupNewIoTDB();
+  }
+
+  private void setupNewIoTDB() throws StartupException {
+    config.setMppMode(true);
+    config.setDataNodeId(0);
+    coordinator = Coordinator.getInstance();
+    schemaFetcher = StandaloneSchemaFetcher.getInstance();
+    partitionFetcher = StandalonePartitionFetcher.getInstance();
+
+    configNode = LocalConfigNode.getInstance();
+    configNode.init();
+    WALManager.getInstance().start();
+    FlushManager.getInstance().start();
+    StorageEngineV2.getInstance().start();
+    RPCService.getInstance().start();
   }
 
   @After
   public void tearDown() throws Exception {
     FileUtils.deleteDirectory(tmpDir);
-    EnvironmentUtils.cleanEnv();
+//    EnvironmentUtils.cleanEnv();
+    tearDownNewIoTDB();
+  }
+
+  private void tearDownNewIoTDB() throws IOException {
+    configNode.clear();
+    WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
+    WALManager.getInstance().stop();
+    StorageEngineV2.getInstance().stop();
+    FlushManager.getInstance().stop();
+    RPCService.getInstance().stop();
+    EnvironmentUtils.cleanAllDir();
+    config.setDataNodeId(-1);
+    config.setMppMode(false);
   }
 
   @Test
