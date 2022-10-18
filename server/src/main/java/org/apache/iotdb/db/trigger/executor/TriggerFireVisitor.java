@@ -177,8 +177,11 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                 .map(measurement -> columns[measurementToSchemaIndexMap.get(measurement)])
                 .toArray();
         BitMap[] bitMapsOfNewTablet = new BitMap[entry.getValue().size()];
-        for (int i = 0; i < entry.getValue().size(); i++) {
-          bitMapsOfNewTablet[i] = bitMaps[measurementToSchemaIndexMap.get(entry.getValue().get(i))];
+        if (bitMaps != null) {
+          for (int i = 0; i < entry.getValue().size(); i++) {
+            bitMapsOfNewTablet[i] =
+                bitMaps[measurementToSchemaIndexMap.get(entry.getValue().get(i))];
+          }
         }
         tablet =
             new Tablet(
