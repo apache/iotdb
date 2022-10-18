@@ -626,7 +626,7 @@ public class ImportCsv extends AbstractCsvTool {
                       record.getRecordNumber(), headerName.getKey(), value, type);
                 } else {
                   values.add(valueTrans);
-                  measurements.add(headerName.getValue());
+                  measurements.add(headerName.getKey());
                   types.add(type);
                   pointSize.getAndIncrement();
                 }
