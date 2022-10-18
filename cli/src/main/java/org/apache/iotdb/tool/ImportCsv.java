@@ -587,11 +587,15 @@ public class ImportCsv extends AbstractCsvTool {
           AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
           // read data from record
-          for (Map.Entry<String, String> headerName : headerNameMap.entrySet()) {
-            String value = record.get(headerName.getValue());
+          for (Map.Entry<String, String> headerNameEntry : headerNameMap.entrySet()) {
+            // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
+            String headerNameWithoutType = headerNameEntry.getKey();
+            String headerName = headerNameEntry.getValue();
+            String value = record.get(headerName);
             if (!"".equals(value)) {
               TSDataType type;
-              if (!headerTypeMap.containsKey(headerName.getKey())) {
+              // Get the data type directly if the CSV column have data type.
+              if (!headerTypeMap.containsKey(headerNameWithoutType)) {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
@@ -607,26 +611,26 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!hasResult) {
                   type = typeInfer(value);
                   if (type != null) {
-                    headerTypeMap.put(headerName.getKey(), type);
+                    headerTypeMap.put(headerNameWithoutType, type);
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), headerName.getKey(), value);
+                        record.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
               }
-              type = headerTypeMap.get(headerName.getKey());
+              type = headerTypeMap.get(headerNameWithoutType);
               if (type != null) {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerName.getKey(), value, type);
+                      record.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
-                  measurements.add(headerName.getKey());
+                  measurements.add(headerNameWithoutType);
                   types.add(type);
                   pointSize.getAndIncrement();
                 }
