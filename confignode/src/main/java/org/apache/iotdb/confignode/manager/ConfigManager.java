@@ -1213,6 +1213,9 @@ public class ConfigManager implements IManager {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
 
+    newUnknownDataList.forEach(
+        dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
+
     LOGGER.info("start Transfer of {}", newUnknownDataList);
     // transfer trigger
     TSStatus transferResult =

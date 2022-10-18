@@ -183,7 +183,8 @@ public class TriggerManager {
               .getTransferringTriggers();
 
       for (String trigger : transferringTriggers) {
-        TDataNodeLocation newDataNodeLocation = nodeManager.getLowestLoadDataNode();
+        TDataNodeLocation newDataNodeLocation =
+            nodeManager.getLowestLoadDataNode(dataNodeLocationMap.keySet());
 
         transferResult =
             RpcUtils.squashResponseStatusList(

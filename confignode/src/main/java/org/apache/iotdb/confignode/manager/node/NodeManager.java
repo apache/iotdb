@@ -830,6 +830,30 @@ public class NodeManager {
     return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
   }
 
+  /**
+   * Get the DataNodeLocation of the lowest load DataNode in input
+   *
+   * @return TDataNodeLocation
+   */
+  public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
+    AtomicInteger result = new AtomicInteger();
+    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+
+    nodes.forEach(
+        nodeID -> {
+          BaseNodeCache cache = nodeCacheMap.get(nodeID);
+          long score = (cache == null) ? Long.MAX_VALUE : cache.getLoadScore();
+          if (score < lowestLoadScore.get()) {
+            result.set(nodeID);
+            lowestLoadScore.set(score);
+          }
+        });
+
+    LOGGER.info(
+        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+  }
+
   public boolean isNodeRemoving(int dataNodeId) {
     DataNodeHeartbeatCache cache =
         (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
