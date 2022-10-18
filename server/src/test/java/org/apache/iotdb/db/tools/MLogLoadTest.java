@@ -55,7 +55,7 @@ import java.util.Set;
 
 public class MLogLoadTest {
 
-  File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+  File file = new File("target" + File.separator + "tmp" + File.separator + "mlog.bin.bak");
 
   @Before
   public void setUp() {
@@ -206,7 +206,7 @@ public class MLogLoadTest {
     mlog.renameTo(file);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.restartDaemon();
-    String[] args = new String[] {"-f", file.getAbsolutePath()};
+    String[] args = new String[] {"-mlog", file.getAbsolutePath()};
     MLogLoad.main(args);
     List<ShowTimeSeriesResult> actualTSResult =
         IoTDB.metaManager.showTimeseries(
