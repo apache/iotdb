@@ -116,8 +116,6 @@ public class MLogParser {
     hf.setOptionComparator(null);
     CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
-    //    args = new
-    // String[]{"-f","/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/system/schema/mlog.bin"};
 
     if (args == null || args.length == 0) {
       logger.warn("Too few params input, please check the following hint.");
