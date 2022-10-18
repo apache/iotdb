@@ -55,6 +55,11 @@ public class ExchangeNode extends SingleChildProcessNode {
   }
 
   @Override
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
+  }
+
+  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitExchange(this, context);
   }

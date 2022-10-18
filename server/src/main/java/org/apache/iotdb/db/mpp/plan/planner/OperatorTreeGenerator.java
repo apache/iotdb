@@ -1378,6 +1378,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       targetPathToDataTypeMap.put(targetDevice, measurementToDataTypeMap);
     }
 
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new IntoOperator(
         operatorContext,
         child,

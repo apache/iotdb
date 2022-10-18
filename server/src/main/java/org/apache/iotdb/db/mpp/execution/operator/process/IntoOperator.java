@@ -106,12 +106,14 @@ public class IntoOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock inputTsBlock = child.next();
-    int lastReadIndex = 0;
-    while (lastReadIndex < inputTsBlock.getPositionCount()) {
-      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-        lastReadIndex = generator.processTsBlock(inputTsBlock, lastReadIndex);
+    if (inputTsBlock != null) {
+      int lastReadIndex = 0;
+      while (lastReadIndex < inputTsBlock.getPositionCount()) {
+        for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+          lastReadIndex = generator.processTsBlock(inputTsBlock, lastReadIndex);
+        }
+        insertMultiTabletsInternally(true);
       }
-      insertMultiTabletsInternally(true);
     }
 
     if (child.hasNext()) {
@@ -234,12 +236,39 @@ public class IntoOperator implements ProcessOperator {
       for (InputLocation inputLocation : inputLocations) {
         writtenCounter.put(inputLocation, new AtomicInteger(0));
       }
+      this.reset();
     }
 
     public void reset() {
       this.rowCount = 0;
       this.times = new long[TABLET_ROW_LIMIT];
       this.columns = new Object[this.measurements.length];
+      for (int i = 0; i < this.measurements.length; i++) {
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            columns[i] = new boolean[TABLET_ROW_LIMIT];
+            break;
+          case INT32:
+            columns[i] = new int[TABLET_ROW_LIMIT];
+            break;
+          case INT64:
+            columns[i] = new long[TABLET_ROW_LIMIT];
+            break;
+          case FLOAT:
+            columns[i] = new float[TABLET_ROW_LIMIT];
+            break;
+          case DOUBLE:
+            columns[i] = new double[TABLET_ROW_LIMIT];
+            break;
+          case TEXT:
+            columns[i] = new Binary[TABLET_ROW_LIMIT];
+            Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataTypes[i]));
+        }
+      }
       this.bitMaps = new BitMap[this.measurements.length];
       for (int i = 0; i < this.bitMaps.length; ++i) {
         this.bitMaps[i] = new BitMap(TABLET_ROW_LIMIT);

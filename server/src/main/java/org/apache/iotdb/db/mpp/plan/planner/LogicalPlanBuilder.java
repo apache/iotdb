@@ -151,6 +151,10 @@ public class LogicalPlanBuilder {
     keys.forEach(k -> context.getTypeProvider().setType(k, dataType));
   }
 
+  private void updateTypeProviderWithConstantType(String columnName, TSDataType dataType) {
+    context.getTypeProvider().setType(columnName, dataType);
+  }
+
   public LogicalPlanBuilder planRawDataSource(
       Set<Expression> sourceExpressions, Ordering scanOrder, Filter timeFilter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
@@ -854,6 +858,11 @@ public class LogicalPlanBuilder {
       return this;
     }
 
+    ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.forEach(
+        columnHeader -> {
+          updateTypeProviderWithConstantType(
+              columnHeader.getColumnName(), columnHeader.getColumnType());
+        });
     this.root =
         new DeviceViewIntoNode(
             context.getQueryId().genPlanNodeId(), this.getRoot(), deviceViewIntoPathDescriptor);
@@ -865,6 +874,11 @@ public class LogicalPlanBuilder {
       return this;
     }
 
+    ColumnHeaderConstant.selectIntoColumnHeaders.forEach(
+        columnHeader -> {
+          updateTypeProviderWithConstantType(
+              columnHeader.getColumnName(), columnHeader.getColumnType());
+        });
     this.root =
         new IntoNode(context.getQueryId().genPlanNodeId(), this.getRoot(), intoPathDescriptor);
     return this;
