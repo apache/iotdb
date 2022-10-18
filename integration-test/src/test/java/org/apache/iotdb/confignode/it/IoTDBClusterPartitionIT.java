@@ -85,7 +85,7 @@ public class IoTDBClusterPartitionIT {
   private static final String testConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
-  protected static int originSchemaReplicationFactor;
+  protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
@@ -109,7 +109,7 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
     ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
-    originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
+    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
     ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
@@ -123,12 +123,17 @@ public class IoTDBClusterPartitionIT {
   @After
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
+
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+
+    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+
     ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 

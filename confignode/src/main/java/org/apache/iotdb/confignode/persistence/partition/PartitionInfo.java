@@ -859,7 +859,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
-    return nextRegionGroupId.equals(that.nextRegionGroupId)
+    return nextRegionGroupId.get() == that.nextRegionGroupId.get()
         && storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
         && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)
         && regionMaintainTaskList.equals(that.regionMaintainTaskList);

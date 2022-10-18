@@ -21,8 +21,9 @@ package org.apache.iotdb.confignode.persistence.node;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -64,7 +65,7 @@ public class NodeStatistics {
     this.status = NodeStatus.Removing;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(loadScore, stream);
     ReadWriteIOUtils.write(status.getStatus(), stream);
     if (statusReason != null) {
@@ -75,11 +76,22 @@ public class NodeStatistics {
     }
   }
 
+  // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
     loadScore = buffer.getLong();
     status = NodeStatus.parse(ReadWriteIOUtils.readString(buffer));
     if (ReadWriteIOUtils.readBool(buffer)) {
       statusReason = ReadWriteIOUtils.readString(buffer);
+    } else {
+      statusReason = null;
+    }
+  }
+
+  public void deserialize(InputStream inputStream) throws IOException {
+    loadScore = ReadWriteIOUtils.readLong(inputStream);
+    status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));
+    if (ReadWriteIOUtils.readBool(inputStream)) {
+      statusReason = ReadWriteIOUtils.readString(inputStream);
     } else {
       statusReason = null;
     }

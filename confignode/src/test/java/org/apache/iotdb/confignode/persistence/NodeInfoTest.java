@@ -80,7 +80,9 @@ public class NodeInfoTest {
       ApplyConfigNodePlan applyConfigNodePlan =
           new ApplyConfigNodePlan(
               new TConfigNodeLocation(
-                  i, new TEndPoint("127.0.0.1", 22200 + i), new TEndPoint("127.0.0.1", 22300 + i)));
+                  10000 + i,
+                  new TEndPoint("127.0.0.1", 22200 + i),
+                  new TEndPoint("127.0.0.1", 22300 + i)));
       nodeInfo.applyConfigNode(applyConfigNodePlan);
     }
   }

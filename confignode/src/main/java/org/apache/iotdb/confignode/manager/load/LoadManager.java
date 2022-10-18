@@ -50,7 +50,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -63,7 +62,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -181,13 +179,9 @@ public class LoadManager {
   }
 
   private void updateLoadStatistics() {
-    AtomicBoolean existDataNodeChangesStatus = new AtomicBoolean(false);
-    AtomicBoolean existSchemaRegionGroupChangesLeader = new AtomicBoolean(false);
-    AtomicBoolean existDataRegionGroupChangesLeader = new AtomicBoolean(false);
-    boolean isNeedBroadcast = false;
-
     UpdateLoadStatisticsPlan updateLoadStatisticsPlan = new UpdateLoadStatisticsPlan();
 
+    // Update NodeStatistics
     getNodeManager()
         .getNodeCacheMap()
         .forEach(
@@ -199,6 +193,7 @@ public class LoadManager {
               }
             });
 
+    // Update RegionGroupStatistics
     getPartitionManager()
         .getRegionGroupCacheMap()
         .forEach(
@@ -215,28 +210,8 @@ public class LoadManager {
     // Update LoadStatistics if necessary
     if (updateLoadStatisticsPlan.isNeedUpdate()) {
       getConsensusManager().write(updateLoadStatisticsPlan);
-    }
 
-    if (existDataNodeChangesStatus.get()) {
-      // The RegionRouteMap must be broadcast if some DataNodes change status
-      isNeedBroadcast = true;
-    }
-
-    if (RouteBalancer.LEADER_POLICY.equals(CONF.getRoutingPolicy())) {
-      // Check the condition of leader routing policy
-      if (existSchemaRegionGroupChangesLeader.get()) {
-        // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
-        isNeedBroadcast = true;
-      }
-      if (!ConsensusFactory.MultiLeaderConsensus.equals(CONF.getDataRegionConsensusProtocolClass())
-          && existDataRegionGroupChangesLeader.get()) {
-        // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
-        // and the consensus protocol isn't MultiLeader
-        isNeedBroadcast = true;
-      }
-    }
-
-    if (isNeedBroadcast) {
+      // TODO: Broadcast the latest RegionRouteMap in RegionBalancer
       broadcastLatestRegionRouteMap();
     }
   }

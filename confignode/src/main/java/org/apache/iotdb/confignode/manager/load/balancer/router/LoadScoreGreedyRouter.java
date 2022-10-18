@@ -51,7 +51,7 @@ public class LoadScoreGreedyRouter implements IRouter {
           sortedReplicaSet.setRegionId(replicaSet.getRegionId());
 
           // List<Pair<loadScore, TDataNodeLocation>> for sorting
-          List<Pair<Double, TDataNodeLocation>> sortList = new Vector<>();
+          List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
           replicaSet
               .getDataNodeLocations()
               .forEach(
@@ -61,14 +61,13 @@ public class LoadScoreGreedyRouter implements IRouter {
                     // In this case we put a maximum loadScore into the sortList.
                     sortList.add(
                         new Pair<>(
-                            (double)
-                                loadScoreMap.computeIfAbsent(
-                                    dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
+                            loadScoreMap.computeIfAbsent(
+                                dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
 
-          sortList.sort(Comparator.comparingDouble(Pair::getLeft));
-          for (Pair<Double, TDataNodeLocation> entry : sortList) {
+          sortList.sort(Comparator.comparingLong(Pair::getLeft));
+          for (Pair<Long, TDataNodeLocation> entry : sortList) {
             sortedReplicaSet.addToDataNodeLocations(entry.getRight());
           }
 

@@ -181,7 +181,6 @@ public class LeaderRouterTest {
             RegionGroupStatistics regionGroupStatistics =
                 regionGroupCache.updateRegionGroupStatistics();
             Assert.assertNotNull(regionGroupStatistics);
-            Assert.assertEquals(-1, regionGroupStatistics.getLeaderDataNodeId());
             leaderMap.put(groupId, regionGroupStatistics.getLeaderDataNodeId());
           });
 
@@ -190,13 +189,13 @@ public class LeaderRouterTest {
       result1 = result.get(groupId1);
       // The others will only be sorted by loadScore
       Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(0));
-      Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(1));
-      Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(2));
+      Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(1));
+      Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(2));
       result2 = result.get(groupId2);
       // The others will only be sorted by loadScore
       Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(0));
-      Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(1));
-      Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(2));
+      Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
+      Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(2));
     }
 
     /* Simulate multiLeader consensus protocol with a DataNode fails down */
@@ -224,7 +223,6 @@ public class LeaderRouterTest {
           RegionGroupStatistics regionGroupStatistics =
               regionGroupCache.updateRegionGroupStatistics();
           Assert.assertNotNull(regionGroupStatistics);
-          Assert.assertEquals(-1, regionGroupStatistics.getLeaderDataNodeId());
           leaderMap.put(groupId, regionGroupStatistics.getLeaderDataNodeId());
         });
 

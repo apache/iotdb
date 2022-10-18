@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -382,6 +381,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeRegisteredDataNode(fileOutputStream, protocol);
 
+      serializeNodeStatistics(fileOutputStream);
+
       fileOutputStream.flush();
 
       fileOutputStream.close();
@@ -420,9 +421,12 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void serializeNodeStatistics(OutputStream outputStream, TProtocol protocol)
-      throws IOException {
+  private void serializeNodeStatistics(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(nodeStatisticsMap.size(), outputStream);
+    for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
+      ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), outputStream);
+      nodeStatisticsEntry.getValue().serialize(outputStream);
+    }
   }
 
   @Override
@@ -450,6 +454,8 @@ public class NodeInfo implements SnapshotProcessor {
       deserializeRegisteredConfigNode(fileInputStream, protocol);
 
       deserializeRegisteredDataNode(fileInputStream, protocol);
+
+      deserializeNodeStatistics(fileInputStream);
 
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
@@ -481,9 +487,15 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  @TestOnly
-  public int getNextNodeId() {
-    return nextNodeId.get();
+  private void deserializeNodeStatistics(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      int nodeId = ReadWriteIOUtils.readInt(inputStream);
+      NodeStatistics nodeStatistics = new NodeStatistics();
+      nodeStatistics.deserialize(inputStream);
+      nodeStatisticsMap.put(nodeId, nodeStatistics);
+      size--;
+    }
   }
 
   public static int getMinimumDataNode() {
@@ -503,7 +515,7 @@ public class NodeInfo implements SnapshotProcessor {
     if (o == null || getClass() != o.getClass()) return false;
     NodeInfo nodeInfo = (NodeInfo) o;
     return registeredConfigNodes.equals(nodeInfo.registeredConfigNodes)
-        && nextNodeId.equals(nodeInfo.nextNodeId)
+        && nextNodeId.get() == nodeInfo.nextNodeId.get()
         && registeredDataNodes.equals(nodeInfo.registeredDataNodes)
         && nodeStatisticsMap.equals(nodeInfo.nodeStatisticsMap);
   }
