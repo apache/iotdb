@@ -91,5 +91,6 @@ public enum ConfigPhysicalPlanType {
   GetTriggerJar,
   GetRouting,
   GetSeriesSlotList,
-  GetTimeSlotList
+  GetTimeSlotList,
+  GetTemplateSetInfo
 }

@@ -54,6 +54,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -666,6 +667,36 @@ public class ConfigMTree {
         };
     setTemplatePaths.traverse();
     return resSet;
+  }
+
+  public Set<Integer> getTemplateSetInfo(PartialPath pathPattern) throws MetadataException {
+    Set<Integer> result = new HashSet<>();
+    CollectorTraverser<List<Integer>> collector =
+        new CollectorTraverser<List<Integer>>(root, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              // node set template
+              result.add(node.getSchemaTemplateId());
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              // node set template
+              result.add(node.getSchemaTemplateId());
+            }
+            return true;
+          }
+        };
+    collector.traverse();
+    return result;
   }
 
   // endregion

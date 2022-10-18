@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaT
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
@@ -262,6 +263,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetSchemaTemplate:
           req = new SetSchemaTemplatePlan();
+          break;
+        case GetTemplateSetInfo:
+          req = new GetTemplateSetInfoPlan();
           break;
         case GetNodePathsPartition:
           req = new GetNodePathsPartitionPlan();
