@@ -442,12 +442,12 @@ It costs 0.007s
 示例:
 ```
 IoTDB> show timeslotid of root.sg where seriesslotid=5286
-+---------+
-|Timeslots|
-+---------+
-|        0|
-|     1000|
-+---------+
++----------+
+|TimeSlotId|
++----------+
+|         0|
+|      1000|
++----------+
 Total line number = 1
 It costs 0.007s
 ```
@@ -458,31 +458,31 @@ It costs 0.007s
 示例:
 ```
 IoTDB> show data seriesslotid of root.sg
-+-----------+
-|SeriesSlots|
-+-----------+
-|       5286|
-+-----------+
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
 Total line number = 1
 It costs 0.007s
 
 IoTDB> show schema seriesslotid of root.sg
-+-----------+
-|SeriesSlots|
-+-----------+
-|       5286|
-+-----------+
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
 Total line number = 1
 It costs 0.006s
 
 IoTDB> show seriesslotid of root.sg
-+-----------+
-|SeriesSlots|
-+-----------+
-|       5286|
-+-----------+
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
 Total line number = 1
 It costs 0.006s
 ```
 #### 注意:
-通常情况下，一个存储组内，数据和元数据的序列槽是相同的。然而，你可以仍然使用不同的sql，以防它们在某些意外情况下并不相同。
+通常情况下，一个存储组内，数据和元数据的序列槽是相同的。然而，我们仍然提供了不同的sql语句，以防它们在某些情况下并不相同。
