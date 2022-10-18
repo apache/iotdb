@@ -623,7 +623,7 @@ public class ImportCsv extends AbstractCsvTool {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerName.getValue(), value, type);
+                      record.getRecordNumber(), headerName.getKey(), value, type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerName.getValue());
