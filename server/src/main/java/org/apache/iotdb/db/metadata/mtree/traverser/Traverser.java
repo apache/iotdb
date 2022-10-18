@@ -184,6 +184,7 @@ public abstract class Traverser implements Iterator<IMNode> {
     nextMatchNode = null;
     VisitorStackEntry<IMNode> stackEntry;
     int patternIndex;
+    int level;
     IMNode node;
     Iterator<IMNode> iterator;
     int lastMultiLevelWildcardIndex;
@@ -199,8 +200,14 @@ public abstract class Traverser implements Iterator<IMNode> {
       node = iterator.next();
       patternIndex = stackEntry.patternIndex;
       lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
+      level = stackEntry.level;
 
       if (checkIsMatch(patternIndex, node)) {
+        if (patternIndex < nodes.length - 1) {
+
+        } else {
+
+        }
 
       } else {
 
@@ -209,7 +216,13 @@ public abstract class Traverser implements Iterator<IMNode> {
   }
 
   private boolean checkIsMatch(int patternIndex, IMNode node) {
-    return true;
+    if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      return true;
+    } else if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
+      return Pattern.matches(nodes[patternIndex], node.getName());
+    } else {
+      return nodes[patternIndex].equals(node.getName());
+    }
   }
 
   private void popStack() {
