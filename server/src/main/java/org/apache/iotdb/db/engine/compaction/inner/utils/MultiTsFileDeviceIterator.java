@@ -65,7 +65,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (TsFileResource tsFileResource : this.tsFileResources) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         readerMap.put(tsFileResource, reader);
-        deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithLeafNodeOffset());
+        deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
     } catch (Throwable throwable) {
       // if there is any exception occurs
@@ -88,7 +88,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
       readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithLeafNodeOffset());
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
   }
 

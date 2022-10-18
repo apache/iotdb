@@ -633,45 +633,10 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * @return an iterator of "device, isAligned" list, in which names of devices are ordered in
-   *     dictionary order, and isAligned represents whether the device is aligned
+   *     dictionary order, and isAligned represents whether the device is aligned. Only read devices
+   *     on one device leaf node each time to save memory.
    */
   public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
-    readFileMetadata();
-
-    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
-    getAllDevicesWithIsAligned(metadataIndexNode, queue);
-
-    return new TsFileDeviceIterator(this, null, queue);
-  }
-
-  private void getAllDevicesWithIsAligned(
-      MetadataIndexNode metadataIndexNode, Queue<Pair<String, Pair<Long, Long>>> queue)
-      throws IOException {
-    try {
-      int metadataIndexListSize = metadataIndexNode.getChildren().size();
-
-      for (int i = 0; i < metadataIndexListSize; i++) {
-        MetadataIndexEntry entry = metadataIndexNode.getChildren().get(i);
-        long startOffset = entry.getOffset();
-        long endOffset = metadataIndexNode.getEndOffset();
-        if (i != metadataIndexListSize - 1) {
-          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
-        }
-        if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          queue.add(new Pair<>(entry.getName(), new Pair<>(startOffset, endOffset)));
-          continue;
-        }
-        ByteBuffer nextBuffer = readData(startOffset, endOffset);
-        getAllDevicesWithIsAligned(MetadataIndexNode.deserializeFrom(nextBuffer), queue);
-      }
-    } catch (Exception e) {
-      logger.error("Something error happened while getting all devices of file {}", file);
-      throw e;
-    }
-  }
-
-  public TsFileDeviceIterator getAllDevicesIteratorWithLeafNodeOffset() throws IOException {
     readFileMetadata();
     Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
     List<Pair<Long, Long>> leafDeviceNodeOffsets = new ArrayList<>();
@@ -680,13 +645,21 @@ public class TsFileSequenceReader implements AutoCloseable {
       // the first node of index tree is device leaf node, then get the devices directly
       getDevicesOfLeafNode(metadataIndexNode, queue);
     } else {
+      // get all device leaf node offset
       getAllDeviceLeafNodeOffset(metadataIndexNode, leafDeviceNodeOffsets);
     }
 
     return new TsFileDeviceIterator(this, leafDeviceNodeOffsets, queue);
   }
 
-  public void getDevicesOfOneNodeWithIsAligned(
+  /**
+   * Get devices and first measurement node offset.
+   *
+   * @param startOffset start offset of device leaf node
+   * @param endOffset end offset of device leaf node
+   * @param measurementNodeOffsetQueue device -> first measurement node offset
+   */
+  public void getDevicesAndEntriesOfOneLeafNode(
       Long startOffset,
       Long endOffset,
       Queue<Pair<String, Pair<Long, Long>>> measurementNodeOffsetQueue)
@@ -694,7 +667,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       ByteBuffer nextBuffer = readData(startOffset, endOffset);
       MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer);
-
       getDevicesOfLeafNode(deviceLeafNode, measurementNodeOffsetQueue);
     } catch (Exception e) {
       logger.error("Something error happened while getting all devices of file {}", file);
@@ -702,6 +674,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  /**
+   * Get all devices and its corresponding entries on the specific device leaf node.
+   *
+   * @param deviceLeafNode this node must be device leaf node
+   */
   private void getDevicesOfLeafNode(
       MetadataIndexNode deviceLeafNode,
       Queue<Pair<String, Pair<Long, Long>>> measurementNodeOffsetQueue) {
@@ -718,18 +695,23 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  /**
+   * Get the device leaf node offset under the specific device internal node.
+   *
+   * @param deviceInternalNode this node must be device internal node
+   */
   private void getAllDeviceLeafNodeOffset(
-      MetadataIndexNode metadataIndexNode, List<Pair<Long, Long>> leafDeviceNodeOffsets)
+      MetadataIndexNode deviceInternalNode, List<Pair<Long, Long>> leafDeviceNodeOffsets)
       throws IOException {
     try {
-      int metadataIndexListSize = metadataIndexNode.getChildren().size();
+      int metadataIndexListSize = deviceInternalNode.getChildren().size();
       int isCurrentLayerLeafNode = -1;
       for (int i = 0; i < metadataIndexListSize; i++) {
-        MetadataIndexEntry entry = metadataIndexNode.getChildren().get(i);
+        MetadataIndexEntry entry = deviceInternalNode.getChildren().get(i);
         long startOffset = entry.getOffset();
-        long endOffset = metadataIndexNode.getEndOffset();
+        long endOffset = deviceInternalNode.getEndOffset();
         if (i != metadataIndexListSize - 1) {
-          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          endOffset = deviceInternalNode.getChildren().get(i + 1).getOffset();
         }
         if (isCurrentLayerLeafNode == -1) {
           MetadataIndexNodeType nodeType =
