@@ -591,7 +591,7 @@ public class ImportCsv extends AbstractCsvTool {
             String value = record.get(headerName.getValue());
             if (!"".equals(value)) {
               TSDataType type;
-              if (!headerTypeMap.containsKey(headerName.getValue())) {
+              if (!headerTypeMap.containsKey(headerName.getKey())) {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
@@ -616,7 +616,7 @@ public class ImportCsv extends AbstractCsvTool {
                   }
                 }
               }
-              type = headerTypeMap.get(headerName.getValue());
+              type = headerTypeMap.get(headerName.getKey());
               if (type != null) {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
