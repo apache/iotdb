@@ -71,6 +71,9 @@ public interface IMTreeBelowSG {
       List<String> aliasList)
       throws MetadataException;
 
+  Map<Integer, MetadataException> checkMeasurementExistence(
+          PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
   /**
    * Delete path. The path should be a full path from root to leaf node
    *
@@ -146,6 +149,9 @@ public interface IMTreeBelowSG {
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
+
+  List<MeasurementPath> fetchSchema(
+          PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags) throws MetadataException;
 
   /**
    * Get all measurement schema matching the given path pattern
