@@ -1014,6 +1014,10 @@ public class IoTDBDescriptor {
     conf.setTimePartitionIntervalForStorage(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {

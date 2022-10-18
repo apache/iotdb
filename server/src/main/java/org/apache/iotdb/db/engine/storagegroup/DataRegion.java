@@ -3076,9 +3076,10 @@ public class DataRegion {
           return false;
         }
         if (insertPos == -1) {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, 0);
+          tsFileManager.insertToPartitionFileList(tsFileResource, filePartitionId, true, 0);
         } else {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
+          tsFileManager.insertToPartitionFileList(
+              tsFileResource, filePartitionId, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
@@ -3156,15 +3157,13 @@ public class DataRegion {
       } catch (IOException e) {
         logger.error(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
-            resourceFileToLoad.getAbsolutePath(),
+            modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),
             e);
         throw new LoadFileException(
             String.format(
                 "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                resourceFileToLoad.getAbsolutePath(),
-                targetModFile.getAbsolutePath(),
-                e.getMessage()));
+                modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
       } finally {
         // ModFile will be updated during the next call to `getModFile`
         tsFileResource.setModFile(null);

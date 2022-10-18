@@ -68,8 +68,7 @@ public class TransformUtils {
 
     try {
       Object value =
-          CommonUtils.parseValue(
-              constantOperand.getDataType(), constantOperand.getExpressionString());
+          CommonUtils.parseValue(constantOperand.getDataType(), constantOperand.getValueString());
       if (value == null) {
         throw new UnsupportedOperationException(
             "Invalid constant operand: " + constantOperand.getExpressionString());
