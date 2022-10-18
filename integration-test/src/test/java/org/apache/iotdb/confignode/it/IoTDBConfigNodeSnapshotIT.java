@@ -119,7 +119,8 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   @Test
-  public void testPartitionInfoSnapshot() throws IOException, IllegalPathException, TException {
+  public void testPartitionInfoSnapshot()
+      throws IOException, IllegalPathException, TException, InterruptedException {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;

@@ -33,13 +33,13 @@ public abstract class BaseNodeCache {
   public static final int MAXIMUM_WINDOW_SIZE = 100;
 
   /** SlidingWindow stores the heartbeat sample data */
-  protected final LinkedList<NodeHeartbeatSample> slidingWindow;
+  protected final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
 
   protected volatile NodeStatistics statistics;
 
+  /** Constructor for NodeCache with default NodeStatistics */
   protected BaseNodeCache() {
-    this.slidingWindow = new LinkedList<>();
-    this.statistics = new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
+    this.statistics = NodeStatistics.generateDefaultNodeStatistics();
   }
 
   /**

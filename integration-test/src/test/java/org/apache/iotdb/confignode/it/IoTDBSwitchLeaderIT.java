@@ -38,6 +38,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -46,6 +48,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,6 +59,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
 public class IoTDBSwitchLeaderIT {
 
   protected static String originalConfigNodeConsensusProtocolClass;
@@ -104,6 +110,11 @@ public class IoTDBSwitchLeaderIT {
 
     ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+  }
+
+  private void switchLeader() throws IOException, InterruptedException {
+    // The ConfigNode-Group will elect a new leader after the current ConfigNode-Leader is shutdown
+    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */
@@ -179,20 +190,15 @@ public class IoTDBSwitchLeaderIT {
             break;
           }
         }
+
+        // Sleep 1s before next check
+        TimeUnit.SECONDS.sleep(1);
       }
       Assert.assertTrue(isDetectedUnknown);
     }
 
-    // Shutdown all ConfigNodes
-    for (int i = 0; i < testConfigNodeNum; i++) {
-      EnvFactory.getEnv().shutdownConfigNode(i);
-    }
-    // Sleep 1s before restart
-    TimeUnit.SECONDS.sleep(1);
-    // Restart all ConfigNodes to switch leader
-    for (int i = 0; i < testConfigNodeNum; i++) {
-      EnvFactory.getEnv().startConfigNode(i);
-    }
+    // Switch the current ConfigNode-Leader
+    switchLeader();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {

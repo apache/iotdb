@@ -71,6 +71,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -841,6 +842,26 @@ public class PartitionManager {
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
         .cacheHeartbeatSample(belongedDataNodeId, regionHeartbeatSample);
     regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
+  }
+
+  /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  public void recoverRegionGroupCacheMap() {
+    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
+        partitionInfo.getRegionGroupStatisticsMap();
+    regionGroupCacheMap.clear();
+
+    getAllReplicaSets()
+        .forEach(
+            regionReplicaSet -> {
+              TConsensusGroupId groupId = regionReplicaSet.getRegionId();
+
+              regionGroupCacheMap.put(
+                  groupId,
+                  new RegionGroupCache(
+                      groupId,
+                      regionGroupStatisticsMap.getOrDefault(
+                          groupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics())));
+            });
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

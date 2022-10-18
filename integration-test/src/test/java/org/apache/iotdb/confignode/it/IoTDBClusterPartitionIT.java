@@ -153,7 +153,7 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetAndCreateSchemaPartition()
-      throws TException, IOException, IllegalPathException {
+      throws TException, IOException, IllegalPathException, InterruptedException {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -763,7 +763,7 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetSchemaNodeManagementPartition()
-      throws IOException, TException, IllegalPathException {
+      throws IOException, TException, IllegalPathException, InterruptedException {
     final String sg = "root.sg";
     final int storageGroupNum = 2;
 

@@ -29,9 +29,17 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   private final TConfigNodeLocation configNodeLocation;
 
+  /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics */
   public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
     super();
     this.configNodeLocation = configNodeLocation;
+  }
+
+  /** Constructor that only used when ConfigNode-leader switched */
+  public ConfigNodeHeartbeatCache(
+      TConfigNodeLocation configNodeLocation, NodeStatistics nodeStatistics) {
+    this.configNodeLocation = configNodeLocation;
+    this.statistics = nodeStatistics;
   }
 
   @Override

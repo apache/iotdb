@@ -97,14 +97,21 @@ public class NodeStatistics {
     }
   }
 
+  public static NodeStatistics generateDefaultNodeStatistics() {
+    return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     NodeStatistics that = (NodeStatistics) o;
-    return loadScore == that.loadScore
-        && status == that.status
-        && Objects.equals(statusReason, that.statusReason);
+    return status == that.status
+        && Objects.equals(statusReason, that.statusReason)
+        // In order to prevent the NodeStatistics from updating too fast.
+        // Here we consider the loadScore equal when the difference is small.
+        // TODO: optimize
+        && Math.abs(loadScore - that.loadScore) < 60 * 1000;
   }
 
   @Override

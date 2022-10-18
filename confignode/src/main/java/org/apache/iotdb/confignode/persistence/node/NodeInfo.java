@@ -353,8 +353,18 @@ public class NodeInfo implements SnapshotProcessor {
     return nextNodeId.incrementAndGet();
   }
 
+  /**
+   * Update NodeStatistics through consensus-write
+   *
+   * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
+   */
   public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
     nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
+  }
+
+  /** Only used when the ConfigNode-Leader is switched */
+  public Map<Integer, NodeStatistics> getNodeStatisticsMap() {
+    return nodeStatisticsMap;
   }
 
   @Override

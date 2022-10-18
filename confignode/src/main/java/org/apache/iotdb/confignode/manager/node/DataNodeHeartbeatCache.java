@@ -24,8 +24,14 @@ import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 /** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
+  /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
   public DataNodeHeartbeatCache() {
     super();
+  }
+
+  /** Constructor that only used when ConfigNode-leader switched */
+  public DataNodeHeartbeatCache(NodeStatistics nodeStatistics) {
+    this.statistics = nodeStatistics;
   }
 
   @Override

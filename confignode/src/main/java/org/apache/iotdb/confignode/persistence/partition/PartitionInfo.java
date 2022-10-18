@@ -506,11 +506,6 @@ public class PartitionInfo implements SnapshotProcessor {
         .orElse(null);
   }
 
-  public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
-    return RpcUtils.SUCCESS_STATUS;
-  }
-
   // ======================================================
   // Leader scheduling interfaces
   // ======================================================
@@ -690,6 +685,21 @@ public class PartitionInfo implements SnapshotProcessor {
           .set(dataNodeLocationIntegerMap.get(dataNodeLocation));
     }
     return result;
+  }
+
+  /**
+   * Update RegionGroupStatistics through consensus-write
+   *
+   * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
+   */
+  public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
+    regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /** Only used when the ConfigNode-Leader is switched */
+  public Map<TConsensusGroupId, RegionGroupStatistics> getRegionGroupStatisticsMap() {
+    return regionGroupStatisticsMap;
   }
 
   @Override

@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -826,6 +827,34 @@ public class NodeManager {
     LOGGER.info(
         "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
     return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+  }
+
+  /** Recover the nodeCacheMap when the ConfigNode-Leader is switched */
+  public void recoverNodeCacheMap() {
+    Map<Integer, NodeStatistics> nodeStatisticsMap = nodeInfo.getNodeStatisticsMap();
+    nodeCacheMap.clear();
+
+    getRegisteredConfigNodes()
+        .forEach(
+            configNodeLocation -> {
+              int configNodeId = configNodeLocation.getConfigNodeId();
+              nodeCacheMap.put(
+                  configNodeId,
+                  new ConfigNodeHeartbeatCache(
+                      configNodeLocation,
+                      nodeStatisticsMap.getOrDefault(
+                          configNodeId, NodeStatistics.generateDefaultNodeStatistics())));
+            });
+    getRegisteredDataNodes()
+        .forEach(
+            dataNodeConfiguration -> {
+              int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+              nodeCacheMap.put(
+                  dataNodeId,
+                  new DataNodeHeartbeatCache(
+                      nodeStatisticsMap.getOrDefault(
+                          dataNodeId, NodeStatistics.generateDefaultNodeStatistics())));
+            });
   }
 
   public boolean isNodeRemoving(int dataNodeId) {

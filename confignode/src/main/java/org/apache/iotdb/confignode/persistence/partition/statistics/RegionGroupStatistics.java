@@ -72,6 +72,10 @@ public class RegionGroupStatistics {
         : RegionStatus.Unknown;
   }
 
+  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
+    return new RegionGroupStatistics(-1, RegionGroupStatus.Disabled, new HashMap<>());
+  }
+
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(leaderDataNodeId, stream);
     ReadWriteIOUtils.write(regionGroupStatus.getStatus(), stream);

@@ -253,6 +253,15 @@ public class LoadManager {
     }
   }
 
+  /**
+   * Recover the cluster heartbeat cache through loadStatistics when the ConfigNode-Leader is
+   * switched
+   */
+  public void recoverHeartbeatCache() {
+    getNodeManager().recoverNodeCacheMap();
+    getPartitionManager().recoverRegionGroupCacheMap();
+  }
+
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
   }

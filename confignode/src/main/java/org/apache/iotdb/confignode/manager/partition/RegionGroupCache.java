@@ -49,11 +49,20 @@ public class RegionGroupCache {
 
   private volatile RegionGroupStatistics statistics;
 
+  /** Constructor for create RegionGroupCache with default RegionGroupStatistics */
   public RegionGroupCache(TConsensusGroupId consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
     this.regionCacheMap = new ConcurrentHashMap<>();
 
-    this.statistics = new RegionGroupStatistics(-1, RegionGroupStatus.Disabled, new HashMap<>());
+    this.statistics = RegionGroupStatistics.generateDefaultRegionGroupStatistics();
+  }
+
+  public RegionGroupCache(
+      TConsensusGroupId consensusGroupId, RegionGroupStatistics regionGroupStatistics) {
+    this.consensusGroupId = consensusGroupId;
+    this.regionCacheMap = new ConcurrentHashMap<>();
+
+    this.statistics = regionGroupStatistics;
   }
 
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
