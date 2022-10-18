@@ -178,7 +178,7 @@ Remove on Linux:
 
 Remove on Windows:
 ```
-confignode\sbin\remove-confignode.bat <id>
+confignode\sbin\remove-confignode.bat <confignode_id>
 confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 ```
 
