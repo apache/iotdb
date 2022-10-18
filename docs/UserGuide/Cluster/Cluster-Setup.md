@@ -188,12 +188,14 @@ Execute the remove-datanode shell on an active DataNode.
 
 Remove on Linux:
 ```
-./datanode/sbin/remove-datanode.sh <id>/<rpc_address>:<rpc_port>
+./datanode/sbin/remove-datanode.sh <datanode_id>
+./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
 Remove on Windows:
 ```
-datanode\sbin\remove-datanode.bat <id>/<rpc_address>:<rpc_port>
+datanode\sbin\remove-datanode.bat <datanode_id>
+datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
 ```
 
 ## Quick Start
