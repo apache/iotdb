@@ -255,8 +255,17 @@ public class NodeManager {
           preCheckStatus.getStatus());
       return preCheckStatus;
     }
-    // if add request to queue, then return to client
+
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+    // do transfer of the DataNodes before remove
+    if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataSet.setStatus(
+          new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode())
+              .setMessage("Fail to do transfer of the DataNodes"));
+      return dataSet;
+    }
+    // if add request to queue, then return to client
     boolean registerSucceed =
         configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
@@ -716,8 +725,6 @@ public class NodeManager {
       TSStatus transferResult = configManager.transfer(newUnknownNodes);
       if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         oldUnknownNodes.addAll(newUnknownNodes);
-      } else {
-        LOGGER.warn("Fail to transfer because {}, will retry", transferResult.getMessage());
       }
     }
   }

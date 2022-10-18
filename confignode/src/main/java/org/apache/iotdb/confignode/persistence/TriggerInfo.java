@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
@@ -163,10 +164,16 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TriggerTableResp getTriggerTable() {
-    return new TriggerTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        triggerTable.getAllTriggerInformation());
+  public TriggerTableResp getTriggerTable(GetTriggerTablePlan req) {
+    if (req.isOnlyStateful()) {
+      return new TriggerTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          triggerTable.getAllStatefulTriggerInformation());
+    } else {
+      return new TriggerTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          triggerTable.getAllTriggerInformation());
+    }
   }
 
   public TriggerJarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {

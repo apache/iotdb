@@ -82,6 +82,12 @@ public class TriggerTable {
     return new ArrayList<>(triggerTable.values());
   }
 
+  public List<TriggerInformation> getAllStatefulTriggerInformation() {
+    return triggerTable.values().stream()
+        .filter(TriggerInformation::isStateful)
+        .collect(Collectors.toList());
+  }
+
   public List<String> getTransferringTriggers() {
     return triggerTable.values().stream()
         .filter(
@@ -91,14 +97,15 @@ public class TriggerTable {
         .collect(Collectors.toList());
   }
 
-  // update trigger to TRANSFERRING which dataNodeLocation is in transferNodes
+  // update stateful trigger to TRANSFERRING which dataNodeLocation is in transferNodes
   public void updateTriggersOnTransferNodes(List<TDataNodeLocation> transferNodes) {
     Set<TDataNodeLocation> dataNodeLocationSet = new HashSet<>(transferNodes);
     triggerTable
         .values()
         .forEach(
             triggerInformation -> {
-              if (dataNodeLocationSet.contains(triggerInformation.getDataNodeLocation())) {
+              if (triggerInformation.isStateful()
+                  && dataNodeLocationSet.contains(triggerInformation.getDataNodeLocation())) {
                 triggerInformation.setTriggerState(TTriggerState.TRANSFERRING);
               }
             });

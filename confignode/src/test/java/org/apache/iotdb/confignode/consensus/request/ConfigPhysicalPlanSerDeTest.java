@@ -947,10 +947,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTriggerTablePlanTest() throws IOException {
-    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer())
-            instanceof GetTriggerTablePlan);
+    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan(true);
+    GetTriggerTablePlan getTriggerTablePlan1 =
+        (GetTriggerTablePlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        getTriggerTablePlan0.isOnlyStateful(), getTriggerTablePlan1.isOnlyStateful());
   }
 
   @Test

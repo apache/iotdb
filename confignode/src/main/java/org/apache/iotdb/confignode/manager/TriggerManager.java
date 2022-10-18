@@ -112,10 +112,13 @@ public class TriggerManager {
     return configManager.getProcedureManager().dropTrigger(req.getTriggerName());
   }
 
-  public TGetTriggerTableResp getTriggerTable() {
+  public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {
     try {
       return ((TriggerTableResp)
-              configManager.getConsensusManager().read(new GetTriggerTablePlan()).getDataset())
+              configManager
+                  .getConsensusManager()
+                  .read(new GetTriggerTablePlan(onlyStateful))
+                  .getDataset())
           .convertToThriftResponse();
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerTable", e);
@@ -154,7 +157,7 @@ public class TriggerManager {
    * <p>Step4: Update the newest location on ConfigNodes.
    *
    * @param dataNodeLocationMap The DataNodes with {@link
-   *     org.apache.iotdb.commons.cluster.NodeStatus#Running}
+   *     org.apache.iotdb.commons.cluster.NodeStatus#Running} State
    * @return result of transferTrigger
    */
   public TSStatus transferTrigger(
