@@ -84,9 +84,12 @@ public class RegionStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionStatistics that = (RegionStatistics) o;
-    return versionTimestamp == that.versionTimestamp
-        && isLeader == that.isLeader
-        && regionStatus == that.regionStatus;
+    return isLeader == that.isLeader
+        && regionStatus == that.regionStatus
+        // In order to prevent the RegionStatistics from updating too fast.
+        // Here we consider the versionTimestamp equal when the difference is small.
+        // TODO: optimize
+        && Math.abs(versionTimestamp - that.versionTimestamp) < 60 * 1000;
   }
 
   @Override
