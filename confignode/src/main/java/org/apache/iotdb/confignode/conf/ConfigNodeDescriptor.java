@@ -409,6 +409,70 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_rpc_leader_election_timeout_max_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
+
+    conf.setPartitionRegionRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_request_timeout_ms",
+                String.valueOf(conf.getPartitionRegionRatisRequestTimeoutMs()))));
+    conf.setSchemaRegionRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_request_timeout_ms",
+                String.valueOf(conf.getSchemaRegionRatisRequestTimeoutMs()))));
+    conf.setDataRegionRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_request_timeout_ms",
+                String.valueOf(conf.getDataRegionRatisRequestTimeoutMs()))));
+
+    conf.setPartitionRegionRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_region_ratis_max_retry_attempts",
+                String.valueOf(conf.getPartitionRegionRatisMaxRetryAttempts()))));
+    conf.setPartitionRegionRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_initial_sleep_time_ms",
+                String.valueOf(conf.getPartitionRegionRatisInitialSleepTimeMs()))));
+    conf.setPartitionRegionRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_max_sleep_time_ms",
+                String.valueOf(conf.getPartitionRegionRatisMaxSleepTimeMs()))));
+
+    conf.setDataRegionRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_ratis_max_retry_attempts",
+                String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))));
+    conf.setDataRegionRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_initial_sleep_time_ms",
+                String.valueOf(conf.getDataRegionRatisInitialSleepTimeMs()))));
+    conf.setDataRegionRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_max_sleep_time_ms",
+                String.valueOf(conf.getDataRegionRatisMaxSleepTimeMs()))));
+
+    conf.setSchemaRegionRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_ratis_max_retry_attempts",
+                String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))));
+    conf.setSchemaRegionRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_initial_sleep_time_ms",
+                String.valueOf(conf.getSchemaRegionRatisInitialSleepTimeMs()))));
+    conf.setSchemaRegionRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_max_sleep_time_ms",
+                String.valueOf(conf.getSchemaRegionRatisMaxSleepTimeMs()))));
   }
 
   /**

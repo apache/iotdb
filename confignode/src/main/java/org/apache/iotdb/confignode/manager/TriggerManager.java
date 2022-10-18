@@ -24,11 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 public class TriggerManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
@@ -108,5 +113,27 @@ public class TriggerManager {
               .setMessage(e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+    try {
+      return ((TriggerJarResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new GetTriggerJarPlan(req.getJarNameList()))
+                  .getDataset())
+          .convertToThriftResponse();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get TriggerJar", e);
+      return new TGetTriggerJarResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
+  }
+
+  public TSStatus transferTrigger(List<TDataNodeLocation> newUnknownDataList) {
+    // TODO implement
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

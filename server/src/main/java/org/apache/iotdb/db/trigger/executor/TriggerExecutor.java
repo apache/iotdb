@@ -93,4 +93,8 @@ public class TriggerExecutor {
     LOGGER.warn(errorMessage);
     throw new TriggerExecutionException(errorMessage);
   }
+
+  public TriggerInformation getTriggerInformation() {
+    return triggerInformation;
+  }
 }

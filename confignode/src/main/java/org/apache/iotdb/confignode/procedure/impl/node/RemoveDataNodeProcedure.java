@@ -38,6 +38,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+
 /** remove data node procedure */
 public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
@@ -68,7 +70,10 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
           execDataNodeRegionIds =
               env.getDataNodeRemoveHandler().getDataNodeRegionIds(disableDataNodeLocation);
-          LOG.info("DataNode region id is {}", execDataNodeRegionIds);
+          LOG.info(
+              "{}, DataNode regions to be removed is {}",
+              REMOVE_DATANODE_PROCESS,
+              execDataNodeRegionIds);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:

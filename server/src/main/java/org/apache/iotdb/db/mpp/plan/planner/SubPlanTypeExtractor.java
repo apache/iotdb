@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -93,6 +94,14 @@ public class SubPlanTypeExtractor {
     @Override
     public Void visitGroupByLevel(GroupByLevelNode node, Void context) {
       updateTypeProviderByAggregationDescriptor(node.getGroupByLevelDescriptors());
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitGroupByTag(GroupByTagNode node, Void context) {
+      node.getTagValuesToAggregationDescriptors()
+          .values()
+          .forEach(this::updateTypeProviderByAggregationDescriptor);
       return visitPlan(node, context);
     }
 

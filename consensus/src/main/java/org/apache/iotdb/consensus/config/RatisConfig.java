@@ -725,9 +725,24 @@ public class RatisConfig {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
-    private RatisConsensus(int retryTimesMax, long retryWaitMillis) {
+    private final long clientRequestTimeoutMillis;
+    private final int clientMaxRetryAttempt;
+    private final long clientRetryInitialSleepTimeMs;
+    private final long clientRetryMaxSleepTimeMs;
+
+    private RatisConsensus(
+        int retryTimesMax,
+        long retryWaitMillis,
+        long clientRequestTimeoutMillis,
+        int clientMaxRetryAttempt,
+        long clientRetryInitialSleepTimeMs,
+        long clientRetryMaxSleepTimeMs) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
+      this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+      this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+      this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+      this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
     }
 
     public int getRetryTimesMax() {
@@ -738,6 +753,22 @@ public class RatisConfig {
       return retryWaitMillis;
     }
 
+    public long getClientRequestTimeoutMillis() {
+      return clientRequestTimeoutMillis;
+    }
+
+    public int getClientMaxRetryAttempt() {
+      return clientMaxRetryAttempt;
+    }
+
+    public long getClientRetryInitialSleepTimeMs() {
+      return clientRetryInitialSleepTimeMs;
+    }
+
+    public long getClientRetryMaxSleepTimeMs() {
+      return clientRetryMaxSleepTimeMs;
+    }
+
     public static RatisConsensus.Builder newBuilder() {
       return new Builder();
     }
@@ -746,8 +777,19 @@ public class RatisConfig {
       private int retryTimesMax = 3;
       private long retryWaitMillis = 500;
 
+      private long clientRequestTimeoutMillis = 10000;
+      private int clientMaxRetryAttempt = 10;
+      private long clientRetryInitialSleepTimeMs = 100;
+      private long clientRetryMaxSleepTimeMs = 10000;
+
       public RatisConsensus build() {
-        return new RatisConsensus(retryTimesMax, retryWaitMillis);
+        return new RatisConsensus(
+            retryTimesMax,
+            retryWaitMillis,
+            clientRequestTimeoutMillis,
+            clientMaxRetryAttempt,
+            clientRetryInitialSleepTimeMs,
+            clientRetryMaxSleepTimeMs);
       }
 
       public RatisConsensus.Builder setRetryTimesMax(int retryTimesMax) {
@@ -757,6 +799,27 @@ public class RatisConfig {
 
       public RatisConsensus.Builder setRetryWaitMillis(long retryWaitMillis) {
         this.retryWaitMillis = retryWaitMillis;
+        return this;
+      }
+
+      public RatisConsensus.Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
+        this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+        return this;
+      }
+
+      public RatisConsensus.Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
+        this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+        return this;
+      }
+
+      public RatisConsensus.Builder setClientRetryInitialSleepTimeMs(
+          long clientRetryInitialSleepTimeMs) {
+        this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+        return this;
+      }
+
+      public RatisConsensus.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
+        this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
         return this;
       }
     }

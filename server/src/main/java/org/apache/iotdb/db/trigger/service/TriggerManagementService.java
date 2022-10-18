@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
@@ -42,6 +43,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,10 +118,12 @@ public class TriggerManagementService {
       if (executor != null) {
         executor.onDrop();
       }
+
       if (triggerInformation == null) {
         return;
       }
       patternTreeMap.delete(triggerInformation.getPathPattern(), triggerName);
+
       // if it is needed to delete jar file of the trigger, delete both jar file and md5
       if (needToDeleteJar) {
         TriggerExecutableManager.getInstance()
@@ -176,65 +180,76 @@ public class TriggerManagementService {
     return patternTreeMap.getOverlapped(devicePath, measurements);
   }
 
-  private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
+  private void checkIfRegistered(TriggerInformation triggerInformation)
+      throws TriggerManagementException {
+
     String triggerName = triggerInformation.getTriggerName();
-    if (triggerTable.containsTrigger(triggerName)) {
-      String jarName = triggerInformation.getJarName();
-      if (TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
-        // A jar with the same name exists, we need to check md5
-        String existedMd5 = "";
-        String md5FilePath = triggerName + ".txt";
-
-        // if meet error when reading md5 from txt, we need to compute it again
-        boolean hasComputed = false;
-        if (TriggerExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
-          try {
-            existedMd5 =
-                TriggerExecutableManager.getInstance()
-                    .readTextFromFileUnderTemporaryRoot(md5FilePath);
-            hasComputed = true;
-          } catch (IOException e) {
-            LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
-          }
-        }
-        if (!hasComputed) {
-          try {
-            existedMd5 =
-                DigestUtils.md5Hex(
-                    Files.newInputStream(
-                        Paths.get(
-                            TriggerExecutableManager.getInstance().getLibRoot()
-                                + File.separator
-                                + triggerInformation.getJarName())));
-            // save the md5 in a txt under trigger temporary lib
-            TriggerExecutableManager.getInstance()
-                .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
-          } catch (IOException e) {
-            String errorMessage =
-                String.format(
-                    "Failed to registered trigger %s, "
-                        + "because error occurred when trying to compute md5 of jar file for trigger %s ",
-                    triggerName, triggerName);
-            LOGGER.warn(errorMessage, e);
-            throw new TriggerManagementException(errorMessage);
-          }
-        }
-
-        if (!existedMd5.equals(triggerInformation.getJarFileMD5())) {
-          // same jar name with different md5
-          String errorMessage =
-              String.format(
-                  "Failed to registered trigger %s, "
-                      + "because existed md5 of jar file for trigger %s is different from the new jar file. ",
-                  triggerName, triggerName);
-          LOGGER.warn(errorMessage);
-          throw new TriggerManagementException(errorMessage);
-        }
+    String jarName = triggerInformation.getJarName();
+    if (triggerTable.containsTrigger(triggerName)
+        && TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
+      if (!isLocalJarCorrect(triggerInformation)) {
+        // same jar name with different md5
+        String errorMessage =
+            String.format(
+                "Failed to registered trigger %s, "
+                    + "because existed md5 of jar file for trigger %s is different from the new jar file. ",
+                triggerName, triggerName);
+        LOGGER.warn(errorMessage);
+        throw new TriggerManagementException(errorMessage);
       }
     }
   }
 
-  private void doRegister(TriggerInformation triggerInformation) throws IOException {
+  /** check whether local jar is correct according to md5 */
+  public boolean isLocalJarCorrect(TriggerInformation triggerInformation)
+      throws TriggerManagementException {
+    String jarName = triggerInformation.getJarName();
+    String triggerName = triggerInformation.getTriggerName();
+    // A jar with the same name exists, we need to check md5
+    String existedMd5 = "";
+    String md5FilePath = triggerName + ".txt";
+
+    // if meet error when reading md5 from txt, we need to compute it again
+    boolean hasComputed = false;
+    if (TriggerExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
+      try {
+        existedMd5 =
+            TriggerExecutableManager.getInstance().readTextFromFileUnderTemporaryRoot(md5FilePath);
+        hasComputed = true;
+      } catch (IOException e) {
+        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+      }
+    }
+    if (!hasComputed) {
+      try {
+        existedMd5 =
+            DigestUtils.md5Hex(
+                Files.newInputStream(
+                    Paths.get(
+                        TriggerExecutableManager.getInstance().getLibRoot()
+                            + File.separator
+                            + triggerInformation.getJarName())));
+        // save the md5 in a txt under trigger temporary lib
+        TriggerExecutableManager.getInstance()
+            .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
+      } catch (IOException e) {
+        String errorMessage =
+            String.format(
+                "Failed to registered trigger %s, "
+                    + "because error occurred when trying to compute md5 of jar file for trigger %s ",
+                triggerName, triggerName);
+        LOGGER.warn(errorMessage, e);
+        throw new TriggerManagementException(errorMessage);
+      }
+    }
+    return existedMd5.equals(triggerInformation.getJarFileMD5());
+  }
+
+  /**
+   * Only call this method directly for registering new data node, otherwise you need to call
+   * register().
+   */
+  public void doRegister(TriggerInformation triggerInformation) throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
@@ -289,6 +304,20 @@ public class TriggerManagementService {
     }
     return null;
   }
+
+  // region only for test
+
+  @TestOnly
+  public List<TriggerInformation> getAllTriggerInformationInTriggerTable() {
+    return triggerTable.getAllTriggerInformation();
+  }
+
+  @TestOnly
+  public List<TriggerExecutor> getAllTriggerExecutors() {
+    return new ArrayList<>(executorMap.values());
+  }
+
+  // end region
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder

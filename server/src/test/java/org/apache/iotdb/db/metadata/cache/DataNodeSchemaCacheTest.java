@@ -33,15 +33,19 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class DataNodeSchemaCacheTest {
   DataNodeSchemaCache dataNodeSchemaCache;
+  private Map<String, String> s1TagMap;
 
   @Before
   public void setUp() throws Exception {
     dataNodeSchemaCache = DataNodeSchemaCache.getInstance();
+    s1TagMap = new HashMap<>();
+    s1TagMap.put("k1", "v1");
   }
 
   @After
@@ -67,16 +71,21 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.INT32,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
     Assert.assertEquals(
+        s1TagMap, schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTagMap());
+    Assert.assertEquals(
         TSDataType.FLOAT,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s2")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s2")).getTagMap());
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
     Assert.assertEquals(3, dataNodeSchemaCache.estimatedSize());
 
     String[] otherMeasurements = new String[3];
@@ -94,16 +103,20 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
     Assert.assertEquals(
         TSDataType.TEXT,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
     Assert.assertEquals(
         TSDataType.INT64,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
     Assert.assertEquals(5, dataNodeSchemaCache.estimatedSize());
   }
 
@@ -176,20 +189,24 @@ public class DataNodeSchemaCacheTest {
 
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-
+    Map<String, String> s1TagMap = new HashMap<>();
+    s1TagMap.put("k1", "v1");
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s1"),
         new MeasurementSchema("s1", TSDataType.INT32),
+        s1TagMap,
         null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
+        null,
         null,
         false);
 
@@ -203,15 +220,18 @@ public class DataNodeSchemaCacheTest {
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
+        null,
         null,
         false);
 
