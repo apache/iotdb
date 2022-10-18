@@ -509,6 +509,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() {
+    return configManager.getTriggerTable();
+  }
+
+  @Override
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
     return configManager.getTriggerJar(req);
   }

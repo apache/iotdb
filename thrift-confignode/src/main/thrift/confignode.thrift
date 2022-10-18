@@ -779,9 +779,14 @@ service IConfigNodeRPCService {
   common.TSStatus dropTrigger(TDropTriggerReq req)
 
   /**
-     * Return the trigger table of config leader
+     * Return the trigger table
      */
   TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
      * Return the trigger jar list of the trigger name list
