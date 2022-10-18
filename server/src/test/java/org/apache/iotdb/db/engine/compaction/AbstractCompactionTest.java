@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -36,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -45,7 +48,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -68,6 +73,9 @@ public class AbstractCompactionTest {
 
   private static final int oldMaxCrossCompactionFileNum =
       IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+
+  private final int oldMaxDegreeOfIndexNode =
+      TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -359,6 +367,7 @@ public class AbstractCompactionTest {
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(oldMaxDegreeOfIndexNode);
     EnvironmentUtils.cleanEnv();
     if (SEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(SEQ_DIRS);
@@ -388,6 +397,18 @@ public class AbstractCompactionTest {
         FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
+    }
+  }
+
+  protected void generateModsFile(
+      List<String> seriesPaths, List<TsFileResource> resources, long startValue, long endValue)
+      throws IllegalPathException, IOException {
+    for (TsFileResource resource : resources) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      for (String path : seriesPaths) {
+        deleteMap.put(path, new Pair<>(startValue, endValue));
+      }
+      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
   }
 

@@ -49,7 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  // sorted from the newest to the oldest
+
   private final List<TsFileResource> tsFileResources;
   private final Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
@@ -59,6 +59,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
+    // sort the files from the oldest to the newest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
@@ -82,6 +83,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResources = new ArrayList<>(seqResources);
     tsFileResources.addAll(unseqResources);
+    // sort the files from the newest to the oldest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
     for (TsFileResource tsFileResource : tsFileResources) {
       TsFileSequenceReader reader =
