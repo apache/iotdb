@@ -191,6 +191,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
+  public void writeTime(long time) {
+    timeChunkWriter.write(time);
+  }
+
   public void write(TimeColumn timeColumn, Column[] valueColumns, int batchSize) {
     if (remainingPointsNumber < batchSize) {
       int pointsHasWritten = (int) remainingPointsNumber;
@@ -338,6 +342,14 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.sealCurrentPage();
     }
+  }
+
+  public void sealCurrentTimePage() {
+    timeChunkWriter.sealCurrentPage();
+  }
+
+  public void sealCurrentValuePage(int valueIndex) {
+    valueChunkWriterList.get(valueIndex).sealCurrentPage();
   }
 
   @Override

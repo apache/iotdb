@@ -72,6 +72,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -810,17 +812,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
-    if (ctx.intoClause() != null) {
-      throw new SemanticException(
-          "The SELECT-INTO statement is not supported in the current version.");
-    }
-
     // initialize query statement
     queryStatement = new QueryStatement();
 
-    // parser select, from
+    // parse select, from
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
+
+    // parse into clause
+    if (ctx.intoClause() != null) {
+      parseIntoClause(ctx.intoClause());
+    }
 
     // parse where clause
     if (ctx.whereClause() != null) {
@@ -1405,6 +1407,44 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  // parse INTO clause
+
+  private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
+    if (ctx.intoItem().size() > 0) {
+      List<IntoItem> intoItems = new ArrayList<>();
+      for (IoTDBSqlParser.IntoItemContext intoItemContext : ctx.intoItem()) {
+        intoItems.add(parseIntoItem(intoItemContext));
+      }
+      queryStatement.setIntoComponent(new IntoComponent(intoItems));
+    } else {
+      throw new SemanticException("The syntax of SELECT INTO statement has changed from v0.14");
+    }
+  }
+
+  private IntoItem parseIntoItem(IoTDBSqlParser.IntoItemContext intoItemContext) {
+    boolean isAligned = intoItemContext.ALIGNED() != null;
+    PartialPath intoDevice = parseIntoPath(intoItemContext.intoPath());
+    List<String> intoMeasurements =
+        intoItemContext.nodeNameInIntoPath().stream()
+            .map(this::parseNodeNameInIntoPath)
+            .collect(Collectors.toList());
+    return new IntoItem(intoDevice, intoMeasurements, isAligned);
+  }
+
+  private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
+    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
+      return parseFullPathInIntoPath((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
+    } else {
+      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames =
+          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
+      String[] path = new String[nodeNames.size()];
+      for (int i = 0; i < nodeNames.size(); i++) {
+        path[i] = parseNodeNameInIntoPath(nodeNames.get(i));
+      }
+      return new PartialPath(path);
+    }
+  }
+
   // Insert Statement ========================================================================
 
   @Override
@@ -1568,6 +1608,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathInIntoPath(IoTDBSqlParser.FullPathInIntoPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames = ctx.nodeNameInIntoPath();
+    String[] path = new String[nodeNames.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameInIntoPathContext nodeName : nodeNames) {
+      i++;
+      path[i] = parseNodeNameInIntoPath(nodeName);
+    }
+    return new PartialPath(path);
+  }
+
   private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
@@ -1599,6 +1653,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return parseNodeString(ctx.getText());
   }
 
+  private String parseNodeNameInIntoPath(IoTDBSqlParser.NodeNameInIntoPathContext ctx) {
+    return parseNodeStringInIntoPath(ctx.getText());
+  }
+
   private String parseNodeString(String nodeName) {
     if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
@@ -1617,12 +1675,39 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return nodeName;
   }
 
+  private String parseNodeStringInIntoPath(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.DOUBLE_COLONS)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (PathUtils.isRealNumber(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    checkNodeNameInIntoPath(nodeName);
+    return nodeName;
+  }
+
   private void checkNodeName(String src) {
     // node name could start with * and end with *
     if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
-      throw new SQLParserException(
+      throw new SemanticException(
           String.format(
               "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkNodeNameInIntoPath(String src) {
+    // ${} are allowed
+    if (!TsFileConstant.NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
               src));
     }
   }

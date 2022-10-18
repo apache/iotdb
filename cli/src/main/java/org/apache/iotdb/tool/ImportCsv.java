@@ -587,7 +587,7 @@ public class ImportCsv extends AbstractCsvTool {
           AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
           // read data from record
-          for (String measurement : headerNameMap.keySet()) {
+          for (String measurement : headerNameMap.values()) {
             String value = record.get(measurement);
             if (!"".equals(value)) {
               TSDataType type;
