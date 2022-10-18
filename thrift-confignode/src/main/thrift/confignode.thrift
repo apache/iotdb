@@ -782,6 +782,11 @@ service IConfigNodeRPCService {
   TGetTriggerTableResp getTriggerTable()
 
   /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
+
+  /**
      * Return the trigger jar list of the trigger name list
      */
   TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
