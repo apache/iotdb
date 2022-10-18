@@ -113,7 +113,9 @@ public class ConstantOperand extends LeafOperand {
 
   @Override
   public String getExpressionStringInternal() {
-    return valueString;
+    // Currently, we use Expression String to distinguish the expressions.
+    // So we need to distinguish number 1 and text "1"
+    return dataType.equals(TSDataType.TEXT) ? String.format("\"%s\"", valueString) : valueString;
   }
 
   @Override
