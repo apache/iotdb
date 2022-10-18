@@ -153,8 +153,9 @@ public class CQScheduleTask implements Runnable {
       }
     } else {
       LOGGER.info(
-          "[StartExecuteCQ] {}, time range is [{}, {}), current time is {}",
+          "[StartExecuteCQ] execute CQ {} on DataNode[{}], time range is [{}, {}), current time is {}",
           cqId,
+          targetDataNode.get().dataNodeId,
           startTime,
           endTime,
           System.currentTimeMillis());
