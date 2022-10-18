@@ -112,9 +112,14 @@ public class LoadTsFileManager {
     TsFileWriterManager writerManager =
         uuid2WriterManager.computeIfAbsent(
             uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
-    for (ChunkData chunkData : pieceNode.getAllChunkData()) {
-      writerManager.write(
-          new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      if (!tsFileData.isModification()) {
+        ChunkData chunkData = (ChunkData) tsFileData;
+        writerManager.write(
+            new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+      } else {
+        writerManager.writeDeletion(tsFileData);
+      }
     }
   }
 
@@ -172,7 +177,9 @@ public class LoadTsFileManager {
     }
 
     private void clearDir(File dir) {
-      FileUtils.deleteDirectory(dir);
+      if (dir.exists()) {
+        FileUtils.deleteDirectory(dir);
+      }
       if (dir.mkdirs()) {
         logger.info(String.format("Load TsFile dir %s is created.", dir.getPath()));
       }
@@ -202,6 +209,15 @@ public class LoadTsFileManager {
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
+    }
+
+    private void writeDeletion(TsFileData deletionData) throws IOException {
+      if (isClosed) {
+        throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
+      }
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        deletionData.writeToFileWriter(entry.getValue());
+      }
     }
 
     private void loadAll() throws IOException, LoadFileException {
@@ -236,6 +252,9 @@ public class LoadTsFileManager {
     }
 
     private void close() {
+      if (isClosed) {
+        return;
+      }
       if (dataPartition2Writer != null) {
         for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
           try {
@@ -243,7 +262,7 @@ public class LoadTsFileManager {
             if (writer.canWrite()) {
               writer.close();
             }
-            if (!writer.getFile().delete()) {
+            if (writer.getFile().exists() && !writer.getFile().delete()) {
               logger.warn(String.format("Delete File %s error.", writer.getFile()));
             }
           } catch (IOException e) {
