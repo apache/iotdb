@@ -194,7 +194,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataNodeUpdateResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+  public TDataNodeUpdateResp updateDataNode(TDataNodeUpdateReq req) {
     LOGGER.info("ConfigNode RPC Service start to update DataNode, req: {}", req);
     UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(req.getDataNodeLocation());
     TDataNodeUpdateResp resp = new TDataNodeUpdateResp();

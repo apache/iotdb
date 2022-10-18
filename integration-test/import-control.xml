@@ -66,6 +66,7 @@
     <allow pkg="org\.apache\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.trigger\.api\.enums.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.confignode\.it\.utils\.ConfigNodeTestUtils.*" regex="true"/>
   </subpackage>
   <subpackage name="session.it">
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />

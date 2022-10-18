@@ -149,7 +149,7 @@ public class DataNode implements DataNodeMBean {
       prepareDataNode();
       // register current DataNode to ConfigNode
       if (IoTDBStartCheck.getInstance().isUpdate()) {
-        updateDataNodeInConfigNode();
+        updateDataNodeConfiguration();
       } else {
         registerInConfigNode();
       }
@@ -184,7 +184,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
   }
 
-  private void updateDataNodeInConfigNode() throws StartupException {
+  private void updateDataNodeConfiguration() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
     TDataNodeLocation newDataNodeLocation = generateDataNodeLocation();
     while (retry > 0) {

@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -201,6 +202,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
+      case UpdateDataNode:
+        return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
       case SetStorageGroup:
         TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

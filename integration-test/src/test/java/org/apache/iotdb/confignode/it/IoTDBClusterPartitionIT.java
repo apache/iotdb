@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
@@ -53,7 +51,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -72,6 +69,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -130,20 +129,6 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
     ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
-  }
-
-  /** Generate a PatternTree and serialize it into a ByteBuffer */
-  private ByteBuffer generatePatternTreeBuffer(String[] paths)
-      throws IllegalPathException, IOException {
-    PathPatternTree patternTree = new PathPatternTree();
-    for (String path : paths) {
-      patternTree.appendPathPattern(new PartialPath(path));
-    }
-    patternTree.constructTree();
-
-    PublicBAOS baos = new PublicBAOS();
-    patternTree.serialize(baos);
-    return ByteBuffer.wrap(baos.toByteArray());
   }
 
   @Test
