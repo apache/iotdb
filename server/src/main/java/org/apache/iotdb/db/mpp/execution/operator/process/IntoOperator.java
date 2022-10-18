@@ -55,39 +55,39 @@ public class IntoOperator implements ProcessOperator {
   private final Operator child;
 
   private final List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
-  private final List<Pair<String, String>> sourceTargetPathPairList;
+  private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
   private final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
   public IntoOperator(
       OperatorContext operatorContext,
       Operator child,
-      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceMap,
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<PartialPath, Boolean> targetDeviceToAlignedMap,
-      List<Pair<String, String>> sourceTargetPathPairList,
+      Map<String, Boolean> targetDeviceToAlignedMap,
+      List<Pair<String, PartialPath>> sourceTargetPathPairList,
       Map<String, InputLocation> sourceColumnToInputLocationMap) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.insertTabletStatementGenerators =
         constructInsertTabletStatementGenerators(
-            targetPathToSourceMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
+            targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
   }
 
   private List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
-      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceMap,
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<PartialPath, Boolean> targetDeviceToAlignedMap) {
+      Map<String, Boolean> targetDeviceToAlignedMap) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
-        new ArrayList<>(targetPathToSourceMap.size());
-    for (PartialPath targetDevice : targetPathToSourceMap.keySet()) {
+        new ArrayList<>(targetPathToSourceInputLocationMap.size());
+    for (PartialPath targetDevice : targetPathToSourceInputLocationMap.keySet()) {
       InsertTabletStatementGenerator generator =
           new InsertTabletStatementGenerator(
               targetDevice,
-              targetPathToSourceMap.get(targetDevice),
+              targetPathToSourceInputLocationMap.get(targetDevice),
               targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice));
+              targetDeviceToAlignedMap.get(targetDevice.toString()));
       insertTabletStatementGenerators.add(generator);
     }
     return insertTabletStatementGenerators;
@@ -150,10 +150,10 @@ public class IntoOperator implements ProcessOperator {
     TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    for (Pair<String, String> sourceTargetPathPair : sourceTargetPathPairList) {
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
       timeColumnBuilder.writeLong(0);
       columnBuilders[0].writeBinary(new Binary(sourceTargetPathPair.left));
-      columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.right));
+      columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
       columnBuilders[2].writeInt(findWritten(sourceTargetPathPair.left));
       resultTsBlockBuilder.declarePosition();
     }

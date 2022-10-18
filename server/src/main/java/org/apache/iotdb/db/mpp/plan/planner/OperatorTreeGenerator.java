@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
@@ -137,6 +138,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -158,6 +160,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregatio
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -1334,6 +1337,55 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
     return super.visitSort(node, context);
+  }
+
+  @Override
+  public Operator visitInto(IntoNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                IntoOperator.class.getSimpleName());
+
+    IntoPathDescriptor intoPathDescriptor = node.getIntoPathDescriptor();
+    Map<String, List<InputLocation>> layout = makeLayout(node);
+    Map<String, InputLocation> sourceColumnToInputLocationMap = new HashMap<>();
+    for (Map.Entry<String, List<InputLocation>> layoutEntry : layout.entrySet()) {
+      sourceColumnToInputLocationMap.put(layoutEntry.getKey(), layoutEntry.getValue().get(0));
+    }
+
+    Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
+        new HashMap<>();
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
+    Map<PartialPath, Map<String, String>> targetPathToSourceMap =
+        intoPathDescriptor.getTargetPathToSourceMap();
+    for (Map.Entry<PartialPath, Map<String, String>> entry : targetPathToSourceMap.entrySet()) {
+      PartialPath targetDevice = entry.getKey();
+      Map<String, InputLocation> measurementToInputLocationMap = new HashMap<>();
+      Map<String, TSDataType> measurementToDataTypeMap = new HashMap<>();
+      for (Map.Entry<String, String> measurementEntry : entry.getValue().entrySet()) {
+        String targetMeasurement = measurementEntry.getKey();
+        String sourceColumn = measurementEntry.getValue();
+        measurementToInputLocationMap.put(
+            targetMeasurement, sourceColumnToInputLocationMap.get(sourceColumn));
+        measurementToDataTypeMap.put(
+            targetMeasurement, context.getTypeProvider().getType(sourceColumn));
+      }
+      targetPathToSourceInputLocationMap.put(targetDevice, measurementToInputLocationMap);
+      targetPathToDataTypeMap.put(targetDevice, measurementToDataTypeMap);
+    }
+
+    return new IntoOperator(
+        operatorContext,
+        child,
+        targetPathToSourceInputLocationMap,
+        targetPathToDataTypeMap,
+        intoPathDescriptor.getTargetDeviceToAlignedMap(),
+        intoPathDescriptor.getSourceTargetPathPairList(),
+        sourceColumnToInputLocationMap);
   }
 
   @Override

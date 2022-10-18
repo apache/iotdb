@@ -48,6 +48,10 @@ public class IntoNode extends SingleChildProcessNode {
     this.intoPathDescriptor = intoPathDescriptor;
   }
 
+  public IntoPathDescriptor getIntoPathDescriptor() {
+    return intoPathDescriptor;
+  }
+
   @Override
   public PlanNode clone() {
     return new IntoNode(getPlanNodeId(), this.intoPathDescriptor);
