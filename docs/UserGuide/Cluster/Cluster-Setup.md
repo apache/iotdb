@@ -172,7 +172,7 @@ Execute the remove-confignode shell on an active ConfigNode.
 
 Remove on Linux:
 ```
-./confignode/sbin/remove-confignode.sh <id>
+./confignode/sbin/remove-confignode.sh <confignode_id>
 ./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
 ```
 
