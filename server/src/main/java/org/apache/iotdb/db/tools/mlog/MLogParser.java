@@ -42,6 +42,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.utils.CommandLineUtils;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -115,6 +116,8 @@ public class MLogParser {
     hf.setOptionComparator(null);
     CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
+    //    args = new
+    // String[]{"-f","/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/system/schema/mlog.bin"};
 
     if (args == null || args.length == 0) {
       logger.warn("Too few params input, please check the following hint.");
@@ -142,24 +145,12 @@ public class MLogParser {
   }
 
   public static void parseBasicParams(CommandLine commandLine) throws ParseException {
-    inputFile = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
+    inputFile = CommandLineUtils.checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
     outputFile = commandLine.getOptionValue(OUT_ARGS);
 
     if (outputFile == null) {
       outputFile = "tmp.txt";
     }
-  }
-
-  public static String checkRequiredArg(String arg, String name, CommandLine commandLine)
-      throws ParseException {
-    String str = commandLine.getOptionValue(arg);
-    if (str == null) {
-      String msg = String.format("Required values for option '%s' not provided", name);
-      logger.info(msg);
-      logger.info("Use -help for more information");
-      throw new ParseException(msg);
-    }
-    return str;
   }
 
   public static void parseFromFile(String inputFile, String outputFile) throws IOException {

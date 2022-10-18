@@ -19,7 +19,7 @@
 #
 
 echo ---------------------
-echo Starting Parsing the IoTDB Mlog or Snapshot
+echo Starting Loading IoTDB MLog
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
@@ -42,7 +42,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.mlog.MLogParser
+MAIN_CLASS=org.apache.iotdb.db.tools.mlog.MLogLoad
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
