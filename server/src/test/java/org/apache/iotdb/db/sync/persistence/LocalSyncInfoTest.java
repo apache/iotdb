@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.persistence;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -61,7 +62,8 @@ public class LocalSyncInfoTest {
       try {
         localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
         Assert.fail();
-      } catch (PipeException e) {
+      } catch (Exception e) {
+        Assert.assertTrue(e instanceof PipeSinkNotExistException);
         // throw exception because can not find pipeSink
       }
       localSyncInfo.addPipeSink(createPipeSinkPlan);
