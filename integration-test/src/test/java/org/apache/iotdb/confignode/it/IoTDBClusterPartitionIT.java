@@ -115,7 +115,7 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
 
     EnvFactory.getEnv().initBeforeClass();
   }
@@ -129,7 +129,7 @@ public class IoTDBClusterPartitionIT {
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */

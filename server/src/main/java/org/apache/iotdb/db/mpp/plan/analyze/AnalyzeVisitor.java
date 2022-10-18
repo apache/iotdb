@@ -1540,9 +1540,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // construct TsFileResource
       TsFileResource resource = new TsFileResource(tsFile);
-      FileLoaderUtils.updateTsFileResource(device2Metadata, resource);
-      resource.updatePlanIndexes(reader.getMinPlanIndex());
-      resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      if (!resource.resourceFileExists()) {
+        FileLoaderUtils.updateTsFileResource(
+            device2Metadata, resource); // serialize it in LoadSingleTsFileNode
+        resource.updatePlanIndexes(reader.getMinPlanIndex());
+        resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      } else {
+        resource.deserialize();
+      }
 
       // construct device time range
       for (String device : resource.getDevices()) {
