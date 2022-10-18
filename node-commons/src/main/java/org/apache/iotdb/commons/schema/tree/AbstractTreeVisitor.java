@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -78,32 +79,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
-    this.nodes = optimizePathPattern(pathPattern);
+    this.nodes = PathUtils.optimizePathPattern(pathPattern);
     this.isPrefixMatch = isPrefixMatch;
 
     visitorStack.push(
         new VisitorStackEntry<>(Collections.singletonList(root).iterator(), 0, 0, -1));
-  }
-
-  /**
-   * Optimize the given path pattern. Currently, the node name used for one level match will be
-   * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
-   * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
-   */
-  private String[] optimizePathPattern(PartialPath pathPattern) {
-    String[] rawNodes = pathPattern.getNodes();
-    List<String> optimizedNodes = new ArrayList<>(rawNodes.length);
-    for (String rawNode : rawNodes) {
-      if (rawNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(MULTI_LEVEL_PATH_WILDCARD);
-      } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(rawNode.replace("*", ".*"));
-      } else {
-        optimizedNodes.add(rawNode);
-      }
-    }
-
-    return optimizedNodes.toArray(new String[0]);
   }
 
   @Override
@@ -179,6 +159,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
 
       // only prefixMatch
+      // TODO what case
       if (patternIndex == nodes.length) {
 
         shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);

@@ -21,12 +21,17 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class PathUtils {
 
@@ -132,6 +137,27 @@ public class PathUtils {
 
   public static boolean isStartWith(String deviceName, String storageGroup) {
     return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
+  }
+
+  /**
+   * Optimize the given path pattern. Currently, the node name used for one level match will be
+   * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
+   * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
+   */
+  public static String[] optimizePathPattern(PartialPath pathPattern) {
+    String[] rawNodes = pathPattern.getNodes();
+    List<String> optimizedNodes = new ArrayList<>(rawNodes.length);
+    for (String rawNode : rawNodes) {
+      if (rawNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        optimizedNodes.add(MULTI_LEVEL_PATH_WILDCARD);
+      } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
+        optimizedNodes.add(rawNode.replace("*", ".*"));
+      } else {
+        optimizedNodes.add(rawNode);
+      }
+    }
+
+    return optimizedNodes.toArray(new String[0]);
   }
 
   private static boolean checkBackQuotes(String src) {

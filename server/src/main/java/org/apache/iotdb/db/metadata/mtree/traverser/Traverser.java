@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
@@ -28,11 +29,13 @@ import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -50,7 +53,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
  */
-public abstract class Traverser {
+public abstract class Traverser implements Iterator<IMNode> {
 
   protected IMTreeStore store;
 
@@ -59,6 +62,14 @@ public abstract class Traverser {
   protected int startIndex;
   protected int startLevel;
   protected boolean isPrefixStart = false;
+
+  // run time variables
+  protected final Deque<VisitorStackEntry<IMNode>> visitorStack = new ArrayDeque<>();
+
+  protected boolean shouldVisitSubtree;
+
+  // result variables
+  protected IMNode nextMatchNode;
 
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
@@ -80,7 +91,7 @@ public abstract class Traverser {
    * @throws MetadataException
    */
   public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
-    String[] nodes = path.getNodes();
+    String[] nodes = PathUtils.optimizePathPattern(path);
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
@@ -90,6 +101,13 @@ public abstract class Traverser {
     this.store = store;
     this.traverseContext = new ArrayDeque<>();
     initStartIndexAndLevel(path);
+
+    visitorStack.push(
+        new VisitorStackEntry<>(
+            Collections.singletonList(startNode).iterator(),
+            startIndex,
+            startLevel,
+            nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD) ? -1 : startIndex));
   }
 
   /**
@@ -125,11 +143,92 @@ public abstract class Traverser {
     }
 
     if (startIndex <= startLevel) {
+      // TODO what case
       if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         isPrefixStart = true;
       }
     } else {
       startIndex--;
+    }
+  }
+
+  @Override
+  public boolean hasNext() {
+    if (nextMatchNode == null) {
+      getNext();
+    }
+    return nextMatchNode != null;
+  }
+
+  @Override
+  public IMNode next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    return consumeNextMatchNode();
+  }
+
+  /** The method used for generating the result based on the matched node. */
+  protected IMNode generateResult() {
+    return null;
+  }
+
+  private IMNode consumeNextMatchNode() {
+    IMNode result = generateResult();
+
+    nextMatchNode = null;
+    return result;
+  }
+
+  protected void getNext() {
+    nextMatchNode = null;
+    VisitorStackEntry<IMNode> stackEntry;
+    int patternIndex;
+    IMNode node;
+    Iterator<IMNode> iterator;
+    int lastMultiLevelWildcardIndex;
+    while (!visitorStack.isEmpty()) {
+      stackEntry = visitorStack.peek();
+      iterator = stackEntry.iterator;
+
+      if (!iterator.hasNext()) {
+        popStack();
+        continue;
+      }
+
+      node = iterator.next();
+      patternIndex = stackEntry.patternIndex;
+      lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
+
+      if (checkIsMatch(patternIndex, node)) {
+
+      } else {
+
+      }
+    }
+  }
+
+  private boolean checkIsMatch(int patternIndex, IMNode node) {
+    return true;
+  }
+
+  private void popStack() {
+    visitorStack.pop();
+    // TODO pop ancestorStack
+  }
+
+  protected static class VisitorStackEntry<IMNode> {
+    private final Iterator<IMNode> iterator;
+    private final int patternIndex;
+    private final int level;
+    private final int lastMultiLevelWildcardIndex;
+
+    VisitorStackEntry(
+        Iterator<IMNode> iterator, int patternIndex, int level, int lastMultiLevelWildcardIndex) {
+      this.iterator = iterator;
+      this.patternIndex = patternIndex;
+      this.level = level;
+      this.lastMultiLevelWildcardIndex = lastMultiLevelWildcardIndex;
     }
   }
 
@@ -266,7 +365,7 @@ public abstract class Traverser {
 
   protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
-    String targetNameRegex = nodes[idx + 1].replace("*", ".*");
+    String targetNameRegex = nodes[idx + 1];
 
     if (isInTemplate) {
       traverseContext.push(node);
