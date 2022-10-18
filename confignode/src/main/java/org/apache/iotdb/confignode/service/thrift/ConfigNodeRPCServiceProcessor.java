@@ -408,7 +408,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp.getStatus());
+    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
 
     return resp;
   }

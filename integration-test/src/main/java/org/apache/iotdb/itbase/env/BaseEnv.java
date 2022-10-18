@@ -71,7 +71,7 @@ public interface BaseEnv {
 
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
-  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
+  IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(
@@ -132,7 +132,11 @@ public interface BaseEnv {
     return session;
   }
 
-  void restartDataNode(int index);
+  void startConfigNode(int index);
+
+  void shutdownConfigNode(int index);
+
+  void startDataNode(int index);
 
   void shutdownDataNode(int index);
 }
