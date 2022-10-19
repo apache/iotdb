@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.conf;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
@@ -283,4 +284,8 @@ public class IoTDBConstant {
     V_0_12,
     V_0_13
   }
+
+  // select into
+  public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  public static final String DOUBLE_COLONS = "::";
 }

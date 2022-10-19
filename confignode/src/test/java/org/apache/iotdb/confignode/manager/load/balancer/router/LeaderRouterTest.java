@@ -133,7 +133,7 @@ public class LeaderRouterTest {
 
     // Check result
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+        new LeaderRouter(leaderMap, loadScoreMap).getLatestRegionRouteMap(regionReplicaSets);
     TRegionReplicaSet result1 = result.get(groupId1);
     // Leader first
     Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
@@ -184,7 +184,7 @@ public class LeaderRouterTest {
         });
 
     // Check result
-    result = new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+    result = new LeaderRouter(leaderMap, loadScoreMap).getLatestRegionRouteMap(regionReplicaSets);
     result1 = result.get(groupId1);
     // The others will only be sorted by loadScore
     Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(0));
@@ -225,7 +225,7 @@ public class LeaderRouterTest {
         });
 
     // Check result
-    result = new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+    result = new LeaderRouter(leaderMap, loadScoreMap).getLatestRegionRouteMap(regionReplicaSets);
     result1 = result.get(groupId1);
     // The others will only be sorted by loadScore
     Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));

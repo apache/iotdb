@@ -48,8 +48,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -1023,13 +1023,14 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRoutingPlanTest() throws IOException {
-    GetRoutingPlan getRoutingPlan0 =
-        new GetRoutingPlan(
+  public void GetRegionIdPlanTest() throws IOException {
+    GetRegionIdPlan getRegionIdPlan0 =
+        new GetRegionIdPlan(
             "root.test", PartitionRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
-    GetRoutingPlan getRoutingPlan1 =
-        (GetRoutingPlan) ConfigPhysicalPlan.Factory.create(getRoutingPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getRoutingPlan0, getRoutingPlan1);
+    GetRegionIdPlan getRegionIdPlan1 =
+        (GetRegionIdPlan)
+            ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
   }
 
   @Test
