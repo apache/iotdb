@@ -239,5 +239,7 @@ public class Utils {
         properties, config.getLeaderLogAppender().getSnapshotChunkSizeMax());
     RaftServerConfigKeys.Log.Appender.setInstallSnapshotEnabled(
         properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
+
+    GrpcConfigKeys.Server.setHeartbeatChannel(properties, true);
   }
 }
