@@ -76,6 +76,8 @@ public class IoTDBSwitchLeaderIT {
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 3;
 
+  private static int partitionRegionRatisRPCLeaderElectionTimeoutMaxMs;
+
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
@@ -92,6 +94,9 @@ public class IoTDBSwitchLeaderIT {
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
     ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+
+    partitionRegionRatisRPCLeaderElectionTimeoutMaxMs =
+        ConfigFactory.getConfig().getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs();
 
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -115,6 +120,8 @@ public class IoTDBSwitchLeaderIT {
   private void switchLeader() throws IOException, InterruptedException {
     // The ConfigNode-Group will elect a new leader after the current ConfigNode-Leader is shutdown
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    // Waiting for leader election
+    TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */
