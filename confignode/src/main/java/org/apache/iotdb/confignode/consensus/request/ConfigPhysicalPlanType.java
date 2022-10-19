@@ -83,6 +83,7 @@ public enum ConfigPhysicalPlanType {
   GetPipeSink,
   PreCreatePipe,
   SetPipeStatus,
+  DropPipe,
   ShowPipe,
   AddTriggerInTable,
   DeleteTriggerInTable,

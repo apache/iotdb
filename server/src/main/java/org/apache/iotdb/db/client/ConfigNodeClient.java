@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
@@ -921,6 +922,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetLocationForTriggerResp resp = client.getLocationOfStatefulTrigger(triggerName);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
   public TGetTriggerTableResp getTriggerTable() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

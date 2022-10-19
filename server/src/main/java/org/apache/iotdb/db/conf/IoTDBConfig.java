@@ -982,6 +982,9 @@ public class IoTDBConfig {
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
 
+  /** How many times will we retry to find an instance of stateful trigger */
+  private int retryNumToFindStatefulTrigger = 3;
+
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
@@ -1402,6 +1405,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
+    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
   }
 
   public String getTriggerTemporaryLibDir() {
@@ -3153,6 +3160,14 @@ public class IoTDBConfig {
 
   public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
+  }
+
+  public int getRetryNumToFindStatefulTrigger() {
+    return retryNumToFindStatefulTrigger;
+  }
+
+  public void setRetryNumToFindStatefulTrigger(int retryNumToFindStatefulTrigger) {
+    this.retryNumToFindStatefulTrigger = retryNumToFindStatefulTrigger;
   }
 
   public int getCoordinatorReadExecutorSize() {

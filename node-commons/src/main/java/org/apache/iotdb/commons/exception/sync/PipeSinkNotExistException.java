@@ -16,15 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.exception.sync;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+public class PipeSinkNotExistException extends PipeSinkException {
+  public PipeSinkNotExistException(String pipeSinkName) {
+    super(String.format("PIPESINK [%s] does not exist", pipeSinkName));
+  }
 }

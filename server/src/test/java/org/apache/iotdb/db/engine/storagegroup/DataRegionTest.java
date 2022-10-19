@@ -696,6 +696,46 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testSmallReportProportionInsertRow()
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
+          TriggerExecutionException, DataRegionException {
+    double defaultValue = config.getWriteMemoryVariationReportProportion();
+    config.setWriteMemoryVariationReportProportion(0);
+    DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");
+
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, "root.ln22");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion1.insert(buildInsertRowNodeByTSRecord(record));
+      dataRegion1.asyncCloseAllWorkingTsFileProcessors();
+    }
+    dataRegion1.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileProcessor tsfileProcessor : dataRegion1.getWorkUnsequenceTsFileProcessors()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    QueryDataSource queryDataSource =
+        dataRegion1.query(
+            Collections.singletonList(new PartialPath("root.ln22", measurementId)),
+            "root.ln22",
+            context,
+            null,
+            null);
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+
+    dataRegion1.syncDeleteDataFiles();
+    config.setWriteMemoryVariationReportProportion(defaultValue);
+  }
+
+  @Test
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
