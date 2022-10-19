@@ -96,6 +96,9 @@ public class LoadTsFileNode extends WritePlanNode {
         singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
         if (singleTsFileNode.needDecodeTsFile()) {
           singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        } else {
+          logger.info(
+              String.format("TsFile %s will be loaded to local.", resource.getTsFile().getPath()));
         }
         res.add(singleTsFileNode);
       } catch (Exception e) {

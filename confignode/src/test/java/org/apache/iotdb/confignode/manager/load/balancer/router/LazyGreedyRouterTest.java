@@ -52,7 +52,7 @@ public class LazyGreedyRouterTest {
 
     /* Test1: The number of leaders in each DataNode should be approximately 4 */
     Map<TConsensusGroupId, TRegionReplicaSet> routeMap =
-        lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+        lazyGreedyRouter.getLatestRegionRouteMap(regionReplicaSetList);
     Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
     routeMap
         .values()
@@ -77,7 +77,7 @@ public class LazyGreedyRouterTest {
     /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be approximately 6 */
     lazyGreedyRouter.updateDisabledDataNodes(dataNodeConfigurations);
     leaderCounter.clear();
-    routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+    routeMap = lazyGreedyRouter.getLatestRegionRouteMap(regionReplicaSetList);
     routeMap
         .values()
         .forEach(
@@ -122,7 +122,7 @@ public class LazyGreedyRouterTest {
 
     /* Test1: The number of leaders in each DataNode should be approximately 6 */
     Map<TConsensusGroupId, TRegionReplicaSet> routeMap =
-        lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+        lazyGreedyRouter.getLatestRegionRouteMap(regionReplicaSetList);
     Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
     routeMap
         .values()
@@ -147,7 +147,7 @@ public class LazyGreedyRouterTest {
     /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be exactly 9 */
     lazyGreedyRouter.updateDisabledDataNodes(dataNodeConfigurations);
     leaderCounter.clear();
-    routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+    routeMap = lazyGreedyRouter.getLatestRegionRouteMap(regionReplicaSetList);
     routeMap
         .values()
         .forEach(

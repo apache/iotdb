@@ -57,7 +57,9 @@ public class ExecutableManager {
     requestCounter = new AtomicLong(0);
   }
 
+  // ======================================================
   // region download related
+  // ======================================================
 
   public ExecutableResource request(List<String> uris) throws URISyntaxException, IOException {
     final long requestId = generateNextRequestId();
@@ -106,7 +108,10 @@ public class ExecutableManager {
   }
   // endregion
 
+  // ======================================================
   // region File under LibRoot
+  // ======================================================
+
   public void copyFileToExtLibDir(String filePath) throws IOException {
     FileUtils.copyFileToDirectory(
         FSFactoryProducer.getFSFactory().getFile(filePath),
@@ -124,7 +129,9 @@ public class ExecutableManager {
 
   // endregion
 
+  // ======================================================
   // region File under temporaryLibRoot
+  // ======================================================
 
   public boolean hasFileUnderTemporaryRoot(String fileName) {
     return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
@@ -156,7 +163,9 @@ public class ExecutableManager {
 
   // endregion
 
+  // ======================================================
   // region file string and file generation
+  // ======================================================
 
   public File getDirUnderTempRootByRequestId(long requestId) {
     return FSFactoryProducer.getFSFactory()
@@ -189,7 +198,9 @@ public class ExecutableManager {
 
   // endregion
 
+  // ======================================================
   // region other functions
+  // ======================================================
 
   public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
     try (FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {

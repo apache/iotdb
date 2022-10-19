@@ -22,10 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -44,9 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 public class ClusterSyncInfo implements SnapshotProcessor {
 
@@ -123,7 +123,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
    * @param pipeInfo pipe info
    * @throws PipeException if there is Pipe with the same name exists or PipeSink does not exist
    */
-  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
     syncMetadata.checkAddPipe(pipeInfo);
   }
 
@@ -132,33 +132,24 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TSStatus operatePipe(SetPipeStatusPlan physicalPlan) {
-    TSStatus status = new TSStatus();
-    try {
-      syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (PipeException e) {
-      LOGGER.error("failed to execute OperatePipePlan {} on ClusterSyncInfo", physicalPlan, e);
-      status.setCode(TSStatusCode.PIPE_ERROR.getStatusCode());
-      LOGGER.error(e.getMessage());
-    }
-    return status;
+  public TSStatus setPipeStatus(SetPipeStatusPlan physicalPlan) {
+    syncMetadata.setPipeStatus(physicalPlan.getPipeName(), physicalPlan.getPipeStatus());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus dropPipe(DropPipePlan physicalPlan) {
+    syncMetadata.dropPipe(physicalPlan.getPipeName());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public PipeResp showPipe(ShowPipePlan plan) {
     PipeResp resp = new PipeResp();
-    // TODO(sync): optimize logic later
-    List<PipeInfo> allPipeInfos = syncMetadata.getAllPipeInfos();
     if (StringUtils.isEmpty(plan.getPipeName())) {
-      resp.setPipeInfoList(allPipeInfos);
+      // show all
+      resp.setPipeInfoList(syncMetadata.getAllPipeInfos());
     } else {
-      List<PipeInfo> pipeInfoList = new ArrayList<>();
-      for (PipeInfo pipeInfo : allPipeInfos) {
-        if (plan.getPipeName().equals(pipeInfo.getPipeName())) {
-          pipeInfoList.add(pipeInfo);
-        }
-      }
-      resp.setPipeInfoList(pipeInfoList);
+      // show specific pipe
+      resp.setPipeInfoList(Collections.singletonList(syncMetadata.getPipeInfo(plan.getPipeName())));
     }
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return resp;
@@ -171,8 +162,8 @@ public class ClusterSyncInfo implements SnapshotProcessor {
    * @throws PipeNotExistException if there is Pipe does not exist
    */
   public PipeInfo getPipeInfo(String pipeName) throws PipeNotExistException {
-    PipeInfo pipeInfo = syncMetadata.getRunningPipeInfo();
-    if (pipeInfo == null || !pipeInfo.getPipeName().equals(pipeName)) {
+    PipeInfo pipeInfo = syncMetadata.getPipeInfo(pipeName);
+    if (pipeInfo == null) {
       throw new PipeNotExistException(pipeName);
     }
     return pipeInfo;

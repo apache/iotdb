@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -28,33 +30,75 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class TriggerInformationUpdater {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInformationUpdater.class)
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInformationUpdater.class);
 
-    private static final IClientManager<PartitionRegionId, ConfigNodeClient>
-            CONFIG_NODE_CLIENT_MANAGER =
-            new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-                    .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+      CONFIG_NODE_CLIENT_MANAGER =
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
-    public void updateTask(){
-        try (ConfigNodeClient client =
-                     CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)){
-            TGetTriggerTableResp getStatefulTriggerTableResp = client.getStatefulTriggerTable();
-            if (getStatefulTriggerTableResp.getStatus().getCode()
-                    != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new IoTDBException(getStatefulTriggerTableResp.getStatus().getMessage(),getStatefulTriggerTableResp.getStatus().getCode());
-            }
-            List<TriggerInformation> statefulTriggerInformationList = getStatefulTriggerTableResp.getAllTriggerInformation().stream().map(TriggerInformation::deserialize).collect(Collectors.toList());
-        } catch (Exception e) {
-            LOGGER.warn(String.format("Meet error when updating trigger information: %s",e));
-        }
+  private final ScheduledExecutorService triggerInformationUpdateExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          "Stateful-Trigger-Information-Updater");
+
+  private Future<?> updateFuture;
+
+  private static final long UPDATE_INTERVAL = 1000 * 60;
+
+  public void startTriggerInformationUpdater() {
+    if (updateFuture == null) {
+      updateFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              triggerInformationUpdateExecutor,
+              this::updateTask,
+              UPDATE_INTERVAL,
+              UPDATE_INTERVAL,
+              TimeUnit.MILLISECONDS);
+      LOGGER.info("Stateful-Trigger-Information-Updater is successfully started.");
     }
+  }
+
+  public void stopUnknownDataNodeDetector() {
+    if (updateFuture != null) {
+      updateFuture.cancel(false);
+      updateFuture = null;
+      LOGGER.info("Stateful-Trigger-Information-Updater is successfully stopped.");
+    }
+  }
+
+  public void updateTask() {
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetTriggerTableResp getStatefulTriggerTableResp = client.getStatefulTriggerTable();
+      if (getStatefulTriggerTableResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(
+            getStatefulTriggerTableResp.getStatus().getMessage(),
+            getStatefulTriggerTableResp.getStatus().getCode());
+      }
+      List<TriggerInformation> statefulTriggerInformationList =
+          getStatefulTriggerTableResp.getAllTriggerInformation().stream()
+              .map(TriggerInformation::deserialize)
+              .collect(Collectors.toList());
+      for (TriggerInformation triggerInformation : statefulTriggerInformationList) {
+        TriggerManagementService.getInstance()
+            .updateLocationOfStatefulTrigger(
+                triggerInformation.getTriggerName(), triggerInformation.getDataNodeLocation());
+      }
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Meet error when updating trigger information: %s", e));
+    }
+  }
 }
