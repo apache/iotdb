@@ -274,12 +274,32 @@ public class NodeManager {
     return dataSet;
   }
 
+  /**
+   * Update DataNode
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
+   *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
+   *     failed.
+   */
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
 
-    getConsensusManager().write(updateDataNodePlan);
-
-    return nodeInfo.updateDataNode(updateDataNodePlan);
+    boolean found = false;
+    List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
+    for (TDataNodeConfiguration configuration : configurationList) {
+      if (configuration.getLocation().getDataNodeId()
+          == updateDataNodePlan.getDataNodeLocation().getDataNodeId()) {
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      getConsensusManager().write(updateDataNodePlan);
+      return nodeInfo.updateDataNode(updateDataNodePlan);
+    } else {
+      return new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
+    }
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {

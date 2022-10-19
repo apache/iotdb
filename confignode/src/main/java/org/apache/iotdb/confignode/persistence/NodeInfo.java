@@ -165,7 +165,7 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Persist Information about remove dataNode
    *
-   * @param req RemoveDataNodeReq
+   * @param req RemoveDataNodePlan
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
@@ -191,12 +191,21 @@ public class NodeInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus updateDataNode(UpdateDataNodePlan req) {
+  /**
+   * Persist data node info
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return SUCCESS_STATUS if update DataNode info successfully, otherwise return
+   *     UPDATE_DATA_NODE_ERROR
+   */
+  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
       registeredDataNodes
-          .get(req.getDataNodeLocation().getDataNodeId())
-          .setLocation(req.getDataNodeLocation());
+          .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
+          .setLocation(updateDataNodePlan.getDataNodeLocation());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.UPDATE_DATANODE_FAILED.getStatusCode());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

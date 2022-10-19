@@ -49,7 +49,6 @@ public class ConfigNodeConstant {
       "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
-  public static final String UPDATE_DATANODE_PROCESS = "[UPDATE_DATANODE_PROCESS]";
 
   private ConfigNodeConstant() {
     // empty constructor
