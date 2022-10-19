@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.fragment;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,6 +86,16 @@ public class FragmentInstanceContext extends QueryContext {
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
     return new FragmentInstanceContext(queryId);
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, "test", ZoneId.systemDefault().getId());
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
   }
 
   private FragmentInstanceContext(
