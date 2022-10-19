@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -229,7 +230,8 @@ public class ConfigManager implements IManager {
       try {
         dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
         dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-        dataSet.setTriggerInformation(triggerManager.getTriggerTable().getAllTriggerInformation());
+        dataSet.setTriggerInformation(
+            triggerManager.getTriggerTable(false).getAllTriggerInformation());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
       }
@@ -801,7 +803,15 @@ public class ConfigManager implements IManager {
   public TGetTriggerTableResp getTriggerTable() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? triggerManager.getTriggerTable()
+        ? triggerManager.getTriggerTable(false)
+        : new TGetTriggerTableResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? triggerManager.getTriggerTable(true)
         : new TGetTriggerTableResp(status, Collections.emptyList());
   }
 
@@ -1190,8 +1200,30 @@ public class ConfigManager implements IManager {
   }
 
   public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
+    Map<Integer, TDataNodeLocation> runningDataNodeLocationMap = new HashMap<>();
+    nodeManager
+        .filterDataNodeThroughStatus(NodeStatus.Running)
+        .forEach(
+            dataNodeConfiguration ->
+                runningDataNodeLocationMap.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
+    if (runningDataNodeLocationMap.isEmpty()) {
+      // no running DataNode, will not transfer and print log
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+
+    newUnknownDataList.forEach(
+        dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
+
     LOGGER.info("start Transfer of {}", newUnknownDataList);
     // transfer trigger
-    return triggerManager.transferTrigger(newUnknownDataList);
+    TSStatus transferResult =
+        triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
+    if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Fail to transfer because {}, will retry", transferResult.getMessage());
+    }
+
+    return transferResult;
   }
 }

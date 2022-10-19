@@ -510,6 +510,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() {
+    return configManager.getStatefulTriggerTable();
+  }
+
+  @Override
   public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
     // todo: implementation
     return new TGetLocationForTriggerResp(

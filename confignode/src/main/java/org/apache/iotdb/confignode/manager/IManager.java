@@ -310,6 +310,9 @@ public interface IManager {
   /** Show trigger & DataNode start */
   TGetTriggerTableResp getTriggerTable();
 
+  /** DataNode refresh stateful trigger cache */
+  TGetTriggerTableResp getStatefulTriggerTable();
+
   /** Get Trigger jar */
   TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);
 
