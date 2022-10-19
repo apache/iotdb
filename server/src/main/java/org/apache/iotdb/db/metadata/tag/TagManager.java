@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -33,13 +32,11 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,37 +66,9 @@ public class TagManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
+  public TagManager() {}
 
-    private TagManagerHolder() {
-      // allowed to do nothing
-    }
-
-    private static final TagManager INSTANCE = new TagManager();
-  }
-
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  public static TagManager getNewInstanceForMLogLoader(File tagFile) throws IOException {
-    TagManager tagManager = new TagManager();
-    tagManager.initTagLogFile(tagFile.getParent(), tagFile.getName());
-    return tagManager;
-  }
-
-  private TagManager() {}
-
-  public void init() throws IOException {
-    initTagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
-  }
-
-  private void initTagLogFile(String schemaDir, String logFileName) throws IOException {
+  public void init(String schemaDir, String logFileName) throws IOException {
     tagLogFile = new TagLogFile(schemaDir, logFileName);
   }
 

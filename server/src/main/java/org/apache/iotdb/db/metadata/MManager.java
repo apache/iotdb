@@ -202,7 +202,7 @@ public class MManager {
   private MTree mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
-  private TagManager tagManager = TagManager.getInstance();
+  private TagManager tagManager = new TagManager();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
   // seriesNumerMonitor may be null, so we must check it before use it.
@@ -306,7 +306,7 @@ public class MManager {
     try {
       isRecovering = true;
 
-      tagManager.init();
+      tagManager.init(config.getSchemaDir(), MetadataConstant.TAG_LOG);
       mtree = new MTree();
       mtree.init();
 
@@ -2605,13 +2605,14 @@ public class MManager {
   @TestOnly
   public void initForMultiMManagerTest() {
     templateManager = TemplateManager.getNewInstanceForTest();
-    tagManager = TagManager.getNewInstanceForTest();
+    tagManager = new TagManager();
     init();
   }
 
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
+    tagManager.clear();
   }
 
   @TestOnly

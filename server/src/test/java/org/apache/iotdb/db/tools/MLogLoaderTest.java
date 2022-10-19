@@ -21,7 +21,6 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -282,7 +281,6 @@ public class MLogLoaderTest {
     Map<PartialPath, Long> expectedSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
     Set<String> expectedTemplates = IoTDB.metaManager.getAllTemplates();
     IoTDB.metaManager.flushAllMlogForTest();
-    TagManager.getInstance().clear();
     new File(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
                 + File.separator

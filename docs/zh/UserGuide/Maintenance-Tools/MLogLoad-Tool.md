@@ -23,7 +23,8 @@
 
 ### 工具介绍
 
-MLogLoad 工具用于将 `mlog.bin` 中的元数据和 `tlog.txt`   中的标签和属性加载到正在运行的IoTDB中。
+MLogLoad 工具用于将 `mlog.bin` 中的元数据和 `tlog.txt`   中的标签和属性加载到正在运行的 IoTDB 中。
+与正在运行的 IoTDB 中的元数据存在冲突的待加载数据将会被跳过。
 
 ### 使用方法
 
@@ -66,3 +67,8 @@ usage: MLogLoad -mlog <mlog file> [-tlog <tlog file>] [-h <receiver host>]
 ```
 
 等待脚本执行完成之后，可以检查 IoTDB 实例中元数据已经被正确加载。
+
+### 常见问题
+
+* 找不到或无法加载主类 MLogLoader
+  * 可能是由于未设置环境变量 $IOTDB_HOME，请设置环境变量之后重试

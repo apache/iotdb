@@ -398,7 +398,9 @@ public class MLogLoader {
   private static void fillTagsAndOffset(CreateTimeSeriesPlan createTimeSeriesPlan)
       throws IOException {
     if (tagManager == null) {
-      tagManager = TagManager.getNewInstanceForMLogLoader(new File(tLogFile));
+      tagManager = new TagManager();
+      File file = new File(tLogFile);
+      tagManager.init(file.getParent(), file.getName());
     }
     Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
         tagManager.readTagFile(createTimeSeriesPlan.getTagOffset());
@@ -409,7 +411,9 @@ public class MLogLoader {
   private static String genAlterTimeSeriesSQL(ChangeTagOffsetPlan changeTagOffsetPlan)
       throws IOException {
     if (tagManager == null) {
-      tagManager = TagManager.getNewInstanceForMLogLoader(new File(tLogFile));
+      tagManager = new TagManager();
+      File file = new File(tLogFile);
+      tagManager.init(file.getParent(), file.getName());
     }
     Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
         tagManager.readTagFile(changeTagOffsetPlan.getOffset());

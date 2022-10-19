@@ -24,6 +24,7 @@
 ### Introduction
 
 The MLogLoad tool  is used to load the metadata from `mlog.bin` and tags and attributes from `tlog.txt` into the running IoTDB.
+Data to be loaded that conflicts with metadata in the running IoTDB will be skipped.
 
 ### How to Use
 
@@ -67,3 +68,8 @@ Enter to the directory where mLogLoad.sh is located and execute the following st
 ```
 
 After waiting for the script execution to complete, you can check that the metadata in the IoTDB instance has been loaded correctly.
+
+### Q&A
+
+* Cannot find or load the main class MLoadLoader
+  * It may be because the environment variable $IOTDB_HOME is not set, please set the environment variable and try again
