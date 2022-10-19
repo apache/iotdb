@@ -208,6 +208,14 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisInitialSleepTimeMs = 100;
   private long schemaRegionRatisMaxSleepTimeMs = 10000;
 
+  private long partitionRegionRatisPreserveLogsWhenPurge = 1000;
+  private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
+  private long dataRegionRatisPreserveLogsWhenPurge = 1000;
+
+  /* first election timeout shares between 3 regions */
+  private long ratisFirstElectionTimeoutMinMs = 50;
+  private long ratisFirstElectionTimeoutMaxMs = 150;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -811,5 +819,47 @@ public class ConfigNodeConfig {
 
   public void setSchemaRegionRatisMaxSleepTimeMs(long schemaRegionRatisMaxSleepTimeMs) {
     this.schemaRegionRatisMaxSleepTimeMs = schemaRegionRatisMaxSleepTimeMs;
+  }
+
+  public long getPartitionRegionRatisPreserveLogsWhenPurge() {
+    return partitionRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setPartitionRegionRatisPreserveLogsWhenPurge(
+      long partitionRegionRatisPreserveLogsWhenPurge) {
+    this.partitionRegionRatisPreserveLogsWhenPurge = partitionRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getSchemaRegionRatisPreserveLogsWhenPurge() {
+    return schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setSchemaRegionRatisPreserveLogsWhenPurge(
+      long schemaRegionRatisPreserveLogsWhenPurge) {
+    this.schemaRegionRatisPreserveLogsWhenPurge = schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getDataRegionRatisPreserveLogsWhenPurge() {
+    return dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setDataRegionRatisPreserveLogsWhenPurge(long dataRegionRatisPreserveLogsWhenPurge) {
+    this.dataRegionRatisPreserveLogsWhenPurge = dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getRatisFirstElectionTimeoutMinMs() {
+    return ratisFirstElectionTimeoutMinMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMinMs(long ratisFirstElectionTimeoutMinMs) {
+    this.ratisFirstElectionTimeoutMinMs = ratisFirstElectionTimeoutMinMs;
+  }
+
+  public long getRatisFirstElectionTimeoutMaxMs() {
+    return ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
+    this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 }
