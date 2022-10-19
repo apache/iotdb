@@ -188,6 +188,10 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
     RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMin(
+        properties, config.getRpc().getFirstElectionTimeoutMin());
+    RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
+        properties, config.getRpc().getFirstElectionTimeoutMax());
     RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
 
     RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
@@ -222,6 +226,8 @@ public class Utils {
     RaftServerConfigKeys.Log.setPurgeGap(properties, config.getLog().getPurgeGap());
     RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(
         properties, config.getLog().isPurgeUptoSnapshotIndex());
+    RaftServerConfigKeys.Log.setPurgePreservationLogNum(
+        properties, config.getLog().getPreserveNumsWhenPurge());
     RaftServerConfigKeys.Log.setSegmentSizeMax(properties, config.getLog().getSegmentSizeMax());
     RaftServerConfigKeys.Log.setSegmentCacheNumMax(
         properties, config.getLog().getSegmentCacheNumMax());

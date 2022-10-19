@@ -129,6 +129,14 @@ public class ConsensusManager {
                                         TimeDuration.valueOf(
                                             CONF.getPartitionRegionRatisRequestTimeoutMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
                                     .build())
                             .setRatisConsensus(
                                 RatisConfig.RatisConsensus.newBuilder()
