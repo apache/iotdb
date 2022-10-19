@@ -389,6 +389,39 @@ public class IoTDBTriggerManagementIT {
   }
 
   @Test
+  public void testTriggerNameCaseSensitivity() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "test",
+              TRIGGER_FILE_TIMES_COUNTER,
+              TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+              STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+
+      statement.execute(
+          String.format(
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "Test",
+              TRIGGER_FILE_TIMES_COUNTER,
+              TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+              STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+
+      statement.execute(
+          String.format(
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "TEST",
+              TRIGGER_FILE_TIMES_COUNTER,
+              TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+              STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testDropTriggersAfterCreationNormally() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
