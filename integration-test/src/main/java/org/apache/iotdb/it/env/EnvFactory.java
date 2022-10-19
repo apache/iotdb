@@ -31,28 +31,36 @@ public class EnvFactory {
   public static BaseEnv getEnv() {
     if (env == null) {
       try {
-        Class.forName(Config.JDBC_DRIVER_NAME);
-        logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
-        switch (System.getProperty("TestEnv", "Standalone")) {
-          case "Standalone":
-            env = (BaseEnv) Class.forName("org.apache.iotdb.db.it.env.StandaloneEnv").newInstance();
-            break;
-          case "LocalStandaloneOnMpp":
-            env = new StandaloneOnMppEnv();
-            break;
-          case "Cluster1":
-            env = new Cluster1Env();
-            break;
-          case "Remote":
-            env = new RemoteServerEnv();
-            break;
-          default:
-            throw new ClassNotFoundException("The Property class of TestEnv not found");
-        }
+        env = createNewEnv();
       } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
         e.printStackTrace();
         System.exit(-1);
       }
+    }
+    return env;
+  }
+
+  public static BaseEnv createNewEnv()
+      throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
+
+    BaseEnv env;
+    switch (System.getProperty("TestEnv", "Standalone")) {
+      case "Standalone":
+        env = (BaseEnv) Class.forName("org.apache.iotdb.db.it.env.StandaloneEnv").newInstance();
+        break;
+      case "LocalStandaloneOnMpp":
+        env = new StandaloneOnMppEnv();
+        break;
+      case "Cluster1":
+        env = new Cluster1Env();
+        break;
+      case "Remote":
+        env = new RemoteServerEnv();
+        break;
+      default:
+        throw new ClassNotFoundException("The Property class of TestEnv not found");
     }
     return env;
   }
