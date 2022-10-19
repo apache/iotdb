@@ -209,7 +209,6 @@ public class IoTDBRpcDataSet {
   }
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
-    queryResultIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     req.setTimeout(timeout);
     try {
@@ -221,6 +220,7 @@ public class IoTDBRpcDataSet {
         close();
       } else {
         queryResult = resp.getQueryResult();
+        queryResultIndex = 0;
         queryResultSize = queryResult.size();
       }
       return resp.hasResultSet;
