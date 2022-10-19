@@ -159,6 +159,14 @@ public interface IMTreeBelowSG {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
 
+  /**
+   * Fetch all measurement path
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param withTags whether returns all the tags of each timeseries as well.
+   * @return schema
+   */
   List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
@@ -211,6 +219,7 @@ public interface IMTreeBelowSG {
    * Get the count of timeseries matching the given path.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
@@ -218,7 +227,9 @@ public interface IMTreeBelowSG {
   /**
    * Get the count of timeseries matching the given path.
    *
-   * @param pathPattern a path pattern or a full path, may contain wildcard TODO： params description
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
