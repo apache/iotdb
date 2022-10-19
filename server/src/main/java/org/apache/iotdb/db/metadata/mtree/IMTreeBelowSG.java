@@ -218,6 +218,15 @@ public interface IMTreeBelowSG {
   /**
    * Get the count of timeseries matching the given path.
    *
+   * @param pathPattern a path pattern or a full path, may contain wildcard TODO： params description
+   */
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException;
+
+  /**
+   * Get the count of timeseries matching the given path.
+   *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;

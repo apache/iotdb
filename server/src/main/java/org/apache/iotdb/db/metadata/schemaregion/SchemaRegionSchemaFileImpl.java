@@ -911,7 +911,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
   @Override

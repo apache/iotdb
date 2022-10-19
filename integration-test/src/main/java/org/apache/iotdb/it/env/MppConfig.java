@@ -274,4 +274,10 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
     return this;
   }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
 }

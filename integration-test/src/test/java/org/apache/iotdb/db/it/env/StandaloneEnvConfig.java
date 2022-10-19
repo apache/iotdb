@@ -271,4 +271,15 @@ public class StandaloneEnvConfig implements BaseConfig {
   public int getMaxDegreeOfIndexNode() {
     return TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
   }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    IoTDBDescriptor.getInstance().getConfig().setSchemaEngineMode(schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public String getSchemaEngineMode() {
+    return IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode();
+  }
 }
