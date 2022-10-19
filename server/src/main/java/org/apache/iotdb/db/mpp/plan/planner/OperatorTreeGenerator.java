@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
@@ -132,6 +133,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -157,6 +159,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -1351,32 +1354,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 IntoOperator.class.getSimpleName());
 
     IntoPathDescriptor intoPathDescriptor = node.getIntoPathDescriptor();
-    Map<String, List<InputLocation>> layout = makeLayout(node);
-    Map<String, InputLocation> sourceColumnToInputLocationMap = new HashMap<>();
-    for (Map.Entry<String, List<InputLocation>> layoutEntry : layout.entrySet()) {
-      sourceColumnToInputLocationMap.put(layoutEntry.getKey(), layoutEntry.getValue().get(0));
-    }
+    Map<String, InputLocation> sourceColumnToInputLocationMap =
+        constructSourceColumnToInputLocationMap(node);
 
     Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
         new HashMap<>();
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
-    Map<PartialPath, Map<String, String>> targetPathToSourceMap =
-        intoPathDescriptor.getTargetPathToSourceMap();
-    for (Map.Entry<PartialPath, Map<String, String>> entry : targetPathToSourceMap.entrySet()) {
-      PartialPath targetDevice = entry.getKey();
-      Map<String, InputLocation> measurementToInputLocationMap = new HashMap<>();
-      Map<String, TSDataType> measurementToDataTypeMap = new HashMap<>();
-      for (Map.Entry<String, String> measurementEntry : entry.getValue().entrySet()) {
-        String targetMeasurement = measurementEntry.getKey();
-        String sourceColumn = measurementEntry.getValue();
-        measurementToInputLocationMap.put(
-            targetMeasurement, sourceColumnToInputLocationMap.get(sourceColumn));
-        measurementToDataTypeMap.put(
-            targetMeasurement, context.getTypeProvider().getType(sourceColumn));
-      }
-      targetPathToSourceInputLocationMap.put(targetDevice, measurementToInputLocationMap);
-      targetPathToDataTypeMap.put(targetDevice, measurementToDataTypeMap);
-    }
+    processTargetPathToSourceMap(
+        intoPathDescriptor.getTargetPathToSourceMap(),
+        targetPathToSourceInputLocationMap,
+        targetPathToDataTypeMap,
+        sourceColumnToInputLocationMap,
+        context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new IntoOperator(
@@ -1387,6 +1376,87 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
         intoPathDescriptor.getSourceTargetPathPairList(),
         sourceColumnToInputLocationMap);
+  }
+
+  @Override
+  public Operator visitDeviceViewInto(DeviceViewIntoNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                DeviceViewIntoOperator.class.getSimpleName());
+
+    DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor =
+        node.getDeviceViewIntoPathDescriptor();
+    Map<String, InputLocation> sourceColumnToInputLocationMap =
+        constructSourceColumnToInputLocationMap(node);
+
+    Map<String, Map<PartialPath, Map<String, InputLocation>>>
+        deviceToTargetPathSourceInputLocationMap = new HashMap<>();
+    Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap =
+        new HashMap<>();
+    Map<String, Map<PartialPath, Map<String, String>>> sourceDeviceToTargetPathMap =
+        deviceViewIntoPathDescriptor.getSourceDeviceToTargetPathMap();
+    for (Map.Entry<String, Map<PartialPath, Map<String, String>>> deviceEntry :
+        sourceDeviceToTargetPathMap.entrySet()) {
+      String sourceDevice = deviceEntry.getKey();
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
+          new HashMap<>();
+      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
+      processTargetPathToSourceMap(
+          deviceEntry.getValue(),
+          targetPathToSourceInputLocationMap,
+          targetPathToDataTypeMap,
+          sourceColumnToInputLocationMap,
+          context.getTypeProvider());
+      deviceToTargetPathSourceInputLocationMap.put(
+          sourceDevice, targetPathToSourceInputLocationMap);
+      deviceToTargetPathDataTypeMap.put(sourceDevice, targetPathToDataTypeMap);
+    }
+
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new DeviceViewIntoOperator(
+        operatorContext,
+        child,
+        deviceToTargetPathSourceInputLocationMap,
+        deviceToTargetPathDataTypeMap,
+        deviceViewIntoPathDescriptor.getTargetDeviceToAlignedMap(),
+        deviceViewIntoPathDescriptor.getDeviceToSourceTargetPathPairListMap(),
+        sourceColumnToInputLocationMap);
+  }
+
+  private Map<String, InputLocation> constructSourceColumnToInputLocationMap(PlanNode node) {
+    Map<String, InputLocation> sourceColumnToInputLocationMap = new HashMap<>();
+    Map<String, List<InputLocation>> layout = makeLayout(node);
+    for (Map.Entry<String, List<InputLocation>> layoutEntry : layout.entrySet()) {
+      sourceColumnToInputLocationMap.put(layoutEntry.getKey(), layoutEntry.getValue().get(0));
+    }
+    return sourceColumnToInputLocationMap;
+  }
+
+  private void processTargetPathToSourceMap(
+      Map<PartialPath, Map<String, String>> targetPathToSourceMap,
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
+      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
+      Map<String, InputLocation> sourceColumnToInputLocationMap,
+      TypeProvider typeProvider) {
+    for (Map.Entry<PartialPath, Map<String, String>> entry : targetPathToSourceMap.entrySet()) {
+      PartialPath targetDevice = entry.getKey();
+      Map<String, InputLocation> measurementToInputLocationMap = new HashMap<>();
+      Map<String, TSDataType> measurementToDataTypeMap = new HashMap<>();
+      for (Map.Entry<String, String> measurementEntry : entry.getValue().entrySet()) {
+        String targetMeasurement = measurementEntry.getKey();
+        String sourceColumn = measurementEntry.getValue();
+        measurementToInputLocationMap.put(
+            targetMeasurement, sourceColumnToInputLocationMap.get(sourceColumn));
+        measurementToDataTypeMap.put(targetMeasurement, typeProvider.getType(sourceColumn));
+      }
+      targetPathToSourceInputLocationMap.put(targetDevice, measurementToInputLocationMap);
+      targetPathToDataTypeMap.put(targetDevice, measurementToDataTypeMap);
+    }
   }
 
   @Override

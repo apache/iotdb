@@ -105,6 +105,10 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   }
 
   private void updateResultTsBlock() {
+    if (currentDevice == null) {
+      return;
+    }
+
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     for (Pair<String, PartialPath> sourceTargetPathPair :

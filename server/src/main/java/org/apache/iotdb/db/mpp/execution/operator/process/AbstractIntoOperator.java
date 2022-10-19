@@ -82,7 +82,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   protected void insertMultiTabletsInternally(boolean needCheck) {
-    if ((needCheck && !insertTabletStatementGenerators.get(0).isFull())
+    if (insertTabletStatementGenerators == null
+        || (needCheck && !insertTabletStatementGenerators.get(0).isFull())
         || insertTabletStatementGenerators.get(0).isEmpty()) {
       return;
     }
