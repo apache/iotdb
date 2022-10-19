@@ -68,9 +68,9 @@ public class MLogLoaderTest {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     mLog.deleteOnExit();
     tLog.deleteOnExit();
+    EnvironmentUtils.cleanEnv();
   }
 
   private void prepareMLog() throws Exception {
@@ -317,17 +317,11 @@ public class MLogLoaderTest {
     Map<PartialPath, Long> expectedSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
     Set<String> expectedTemplates = IoTDB.metaManager.getAllTemplates();
     IoTDB.metaManager.flushAllMlogForTest();
-    TagManager.getInstance().clear();
     new File(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
                 + File.separator
                 + MetadataConstant.METADATA_LOG)
         .renameTo(mLog);
-    new File(
-            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-                + File.separator
-                + MetadataConstant.TAG_LOG)
-        .renameTo(tLog);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.restartDaemon();
     String[] args = new String[] {"-mlog", mLog.getAbsolutePath()};
