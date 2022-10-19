@@ -32,7 +32,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <ratis.version>2.3.0</ratis.version>
+        <ratis.version>2.4.0</ratis.version>
         <consensus.test.skip>false</consensus.test.skip>
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>

@@ -400,11 +400,21 @@ selectStatement
 
 intoClause
     : INTO ALIGNED? intoPath (COMMA intoPath)*
+    | INTO intoItem (COMMA intoItem)*
     ;
 
 intoPath
-    : fullPath
-    | nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)*
+    : ROOT (DOT nodeNameInIntoPath)* #fullPathInIntoPath
+    | nodeNameInIntoPath (DOT nodeNameInIntoPath)* #suffixPathInIntoPath
+    ;
+
+intoItem
+    : ALIGNED? intoPath LR_BRACKET nodeNameInIntoPath (COMMA nodeNameInIntoPath)* RR_BRACKET
+    ;
+
+nodeNameInIntoPath
+    : nodeNameWithoutWildcard
+    | DOUBLE_COLON
     ;
 
 specialClause
