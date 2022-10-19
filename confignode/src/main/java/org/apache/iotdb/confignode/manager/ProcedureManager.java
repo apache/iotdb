@@ -42,9 +42,10 @@ import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -171,7 +172,7 @@ public class ProcedureManager {
       if (procedureId == -1) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
         procedureId =
@@ -190,7 +191,58 @@ public class ProcedureManager {
 
   public TSStatus deactivateTemplate(
       String queryId, Map<PartialPath, List<Template>> templateSetInfo) {
-    return StatusUtils.OK;
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      DeactivateTemplateProcedure deactivateTemplateProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null
+            || !type.equals(ProcedureFactory.ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
+          continue;
+        }
+        deactivateTemplateProcedure = (DeactivateTemplateProcedure) procedure;
+        if (queryId.equals(deactivateTemplateProcedure.getQueryId())) {
+          procedureId = deactivateTemplateProcedure.getProcId();
+          break;
+        }
+        for (PartialPath pattern : templateSetInfo.keySet()) {
+          for (PartialPath existingPattern :
+              deactivateTemplateProcedure.getTemplateSetInfo().keySet()) {
+            if (pattern.overlapWith(existingPattern)) {
+              hasOverlappedTask = true;
+              break;
+            }
+          }
+          if (hasOverlappedTask) {
+            break;
+          }
+        }
+        if (hasOverlappedTask) {
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is deactivating some target template from target path.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new DeactivateTemplateProcedure(queryId, templateSetInfo));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
   }
 
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */

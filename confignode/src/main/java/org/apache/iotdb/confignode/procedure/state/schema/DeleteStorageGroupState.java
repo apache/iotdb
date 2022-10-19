@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-public enum DeleteTimeSeriesState {
-  CONSTRUCT_BLACK_LIST,
-  CLEAN_DATANODE_SCHEMA_CACHE,
-  DELETE_DATA,
-  DELETE_TIMESERIES_SCHEMA
+public enum DeleteStorageGroupState {
+  DELETE_STORAGE_GROUP_PREPARE,
+  DELETE_PRE,
+  INVALIDATE_CACHE,
+  DELETE_CONFIG
 }
