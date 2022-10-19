@@ -573,7 +573,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void stopTriggerRelatedServices() {
-    triggerInformationUpdater.stopUnknownDataNodeDetector();
+    triggerInformationUpdater.stopTriggerInformationUpdater();
   }
 
   private void setUncaughtExceptionHandler() {

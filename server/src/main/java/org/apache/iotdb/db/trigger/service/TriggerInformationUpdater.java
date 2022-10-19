@@ -70,7 +70,7 @@ public class TriggerInformationUpdater {
     }
   }
 
-  public void stopUnknownDataNodeDetector() {
+  public void stopTriggerInformationUpdater() {
     if (updateFuture != null) {
       updateFuture.cancel(false);
       updateFuture = null;
