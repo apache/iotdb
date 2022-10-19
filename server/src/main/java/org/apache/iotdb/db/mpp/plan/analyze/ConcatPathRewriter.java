@@ -27,10 +27,10 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -43,6 +43,11 @@ import java.util.stream.Collectors;
 public class ConcatPathRewriter {
 
   private PathPatternTree patternTree;
+  private final Analysis analysis;
+
+  public ConcatPathRewriter(Analysis analysis) {
+    this.analysis = analysis;
+  }
 
   public Statement rewrite(Statement statement, PathPatternTree patternTree)
       throws StatementAnalyzeException {
@@ -53,12 +58,21 @@ public class ConcatPathRewriter {
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
 
     if (queryStatement.isAlignByDevice()) {
-      queryStatement.getSelectComponent().getResultColumns().stream()
-          .map(ResultColumn::getExpression)
+      queryStatement
+          .getSelectComponent()
+          .getResultColumns()
           .forEach(
-              expression ->
-                  ExpressionAnalyzer.constructPatternTreeFromExpression(
-                      expression, prefixPaths, patternTree));
+              resultColumn -> {
+                ExpressionAnalyzer.constructPatternTreeFromExpression(
+                    resultColumn.getExpression(), prefixPaths, patternTree);
+                analysis
+                    .getOutputExpressions()
+                    .add(
+                        new Pair<>(
+                            resultColumn.getExpression(),
+                            new org.apache.iotdb.db.mpp.plan.expression.ResultColumn(
+                                resultColumn.getExpression(), resultColumn.getAlias())));
+              });
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
@@ -93,6 +107,9 @@ public class ConcatPathRewriter {
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       boolean needAliasCheck = resultColumn.hasAlias() && !isGroupByLevel;
+      org.apache.iotdb.db.mpp.plan.expression.ResultColumn originalResultColumn =
+          new org.apache.iotdb.db.mpp.plan.expression.ResultColumn(
+              resultColumn.getExpression(), resultColumn.getAlias());
       List<Expression> resultExpressions =
           ExpressionAnalyzer.concatExpressionWithSuffixPaths(
               resultColumn.getExpression(), prefixPaths, patternTree);
@@ -101,13 +118,13 @@ public class ConcatPathRewriter {
             String.format(
                 "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
       }
-      resultColumns.addAll(
-          resultExpressions.stream()
-              .map(
-                  expression ->
-                      new ResultColumn(
-                          expression, resultColumn.getAlias(), resultColumn.getColumnType()))
-              .collect(Collectors.toList()));
+      resultExpressions.forEach(
+          expression -> {
+            resultColumns.add(
+                new ResultColumn(
+                    expression, resultColumn.getAlias(), resultColumn.getColumnType()));
+            analysis.getOutputExpressions().add(new Pair<>(expression, originalResultColumn));
+          });
     }
     return resultColumns;
   }

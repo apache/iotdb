@@ -325,7 +325,7 @@ public class QueryStatement extends Statement {
           throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
         outputColumn.add(
-            resultColumn.getAlias() != null
+            resultColumn.hasAlias()
                 ? resultColumn.getAlias()
                 : resultColumn.getExpression().getExpressionString());
       }

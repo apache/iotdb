@@ -223,7 +223,7 @@ public class LogicalPlanBuilder {
       Set<Expression> sourceTransformExpressions,
       LinkedHashMap<Expression, Set<Expression>> crossGroupByAggregations,
       List<String> tagKeys,
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
@@ -400,7 +400,7 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
       List<String> tagKeys,
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
     if (curStep.isOutputPartial()) {
       if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
@@ -645,7 +645,7 @@ public class LogicalPlanBuilder {
 
   private PlanNode createGroupByTagNode(
       List<String> tagKeys,
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
           tagValuesToGroupedTimeseriesOperands,
       Collection<Expression> groupByTagOutputExpressions,
       List<PlanNode> children,
@@ -655,7 +655,7 @@ public class LogicalPlanBuilder {
     SortedMap<List<String>, List<CrossSeriesAggregationDescriptor>>
         tagValuesToAggregationDescriptors = new TreeMap<>(GroupByTagNode::tagValuesComparator);
     for (List<String> tagValues : tagValuesToGroupedTimeseriesOperands.keySet()) {
-      LinkedHashMap<Expression, List<Expression>> groupedTimeseriesOperands =
+      LinkedHashMap<Expression, Set<Expression>> groupedTimeseriesOperands =
           tagValuesToGroupedTimeseriesOperands.get(tagValues);
       List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
 
@@ -667,12 +667,12 @@ public class LogicalPlanBuilder {
         }
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
+          String functionName = ((FunctionExpression) next).getFunctionName().toLowerCase();
           CrossSeriesAggregationDescriptor aggregationDescriptor =
               new CrossSeriesAggregationDescriptor(
                   functionName,
                   curStep,
-                  groupedTimeseriesOperands.get(next),
+                  new ArrayList<>(groupedTimeseriesOperands.get(next)),
                   next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);
         } else {

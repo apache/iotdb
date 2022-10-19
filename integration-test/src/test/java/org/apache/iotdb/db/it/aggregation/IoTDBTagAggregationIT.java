@@ -99,7 +99,7 @@ public class IoTDBTagAggregationIT {
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
-    // avg(t)|max_time(t)|min_time(t)|max_value(t)|min_value(t)|extreme(t)|
+    // AVG(t)|MAX_TIME(t)|MIN_TIME(t)|MAX_VALUE(t)|MIN_VALUE(t)|EXTREME(t)|
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |k1v1|       6| 2.600000003973643|         10|          1|         6.5|         1.1|
     // 6.5|
@@ -123,13 +123,13 @@ public class IoTDBTagAggregationIT {
         Assert.assertEquals(6.5F, resultSet.getFloat(8), DELTA);
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v2", resultSet.getString("k1"));
-        Assert.assertEquals(4L, resultSet.getLong("count(t)"));
-        Assert.assertEquals(3.1D, resultSet.getDouble("avg(t)"), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong("max_time(t)"));
-        Assert.assertEquals(1L, resultSet.getLong("min_time(t)"));
-        Assert.assertEquals(5.4F, resultSet.getFloat("max_value(t)"), DELTA);
-        Assert.assertEquals(1.3F, resultSet.getFloat("min_value(t)"), DELTA);
-        Assert.assertEquals(5.4F, resultSet.getFloat("extreme(t)"), DELTA);
+        Assert.assertEquals(4L, resultSet.getLong("COUNT(t)"));
+        Assert.assertEquals(3.1D, resultSet.getDouble("AVG(t)"), DELTA);
+        Assert.assertEquals(10L, resultSet.getLong("MAX_TIME(t)"));
+        Assert.assertEquals(1L, resultSet.getLong("MIN_TIME(t)"));
+        Assert.assertEquals(5.4F, resultSet.getFloat("MAX_VALUE(t)"), DELTA);
+        Assert.assertEquals(1.3F, resultSet.getFloat("MIN_VALUE(t)"), DELTA);
+        Assert.assertEquals(5.4F, resultSet.getFloat("EXTREME(t)"), DELTA);
         Assert.assertTrue(resultSet.next());
         Assert.assertNull(resultSet.getString(1));
         Assert.assertEquals(4L, resultSet.getLong(2));
@@ -153,7 +153,7 @@ public class IoTDBTagAggregationIT {
     String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.sg.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+------------+------------------+
-    // |  k1|count(t + 1)|        avg(t + 1)|
+    // |  k1|COUNT(t + 1)|        AVG(t + 1)|
     // +----+------------+------------------+
     // |k1v1|           6| 3.600000003973643|
     // |k1v2|           4|3.1000000536441803|
@@ -205,8 +205,8 @@ public class IoTDBTagAggregationIT {
         "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
-    // |  k1|count(t)|
-    // avg(t)|max_time(t)|min_time(t)|max_value(t)|min_value(t)|extreme(t)|
+    // |  k1|COUNT(t)|
+    // AVG(t)|MAX_TIME(t)|MIN_TIME(t)|MAX_VALUE(t)|MIN_VALUE(t)|EXTREME(t)|
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |k1v2|       4|3.1000000536441803|         10|          1|         5.4|         1.3|
     // 5.4|
@@ -219,13 +219,13 @@ public class IoTDBTagAggregationIT {
         Assert.assertEquals(8, resultSet.getMetaData().getColumnCount());
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v2", resultSet.getString("k1"));
-        Assert.assertEquals(4L, resultSet.getLong("count(t)"));
-        Assert.assertEquals(3.1D, resultSet.getDouble("avg(t)"), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong("max_time(t)"));
-        Assert.assertEquals(1L, resultSet.getLong("min_time(t)"));
-        Assert.assertEquals(5.4F, resultSet.getFloat("max_value(t)"), DELTA);
-        Assert.assertEquals(1.3F, resultSet.getFloat("min_value(t)"), DELTA);
-        Assert.assertEquals(5.4F, resultSet.getFloat("extreme(t)"), DELTA);
+        Assert.assertEquals(4L, resultSet.getLong("COUNT(t)"));
+        Assert.assertEquals(3.1D, resultSet.getDouble("AVG(t)"), DELTA);
+        Assert.assertEquals(10L, resultSet.getLong("MAX_TIME(t)"));
+        Assert.assertEquals(1L, resultSet.getLong("MIN_TIME(t)"));
+        Assert.assertEquals(5.4F, resultSet.getFloat("MAX_VALUE(t)"), DELTA);
+        Assert.assertEquals(1.3F, resultSet.getFloat("MIN_VALUE(t)"), DELTA);
+        Assert.assertEquals(5.4F, resultSet.getFloat("EXTREME(t)"), DELTA);
         Assert.assertTrue(resultSet.next());
         Assert.assertNull(resultSet.getString(1));
         Assert.assertEquals(4L, resultSet.getLong(2));
@@ -248,7 +248,7 @@ public class IoTDBTagAggregationIT {
     String query = "SELECT COUNT(t) FROM root.sg.** GROUP BY TAGS(k1, k2)";
     // Expected result set:
     // +----+----+--------+
-    // |  k1|  k2|count(t)|
+    // |  k1|  k2|COUNT(t)|
     // +----+----+--------+
     // |k1v1|k2v1|       2|
     // |k1v1|k2v2|       2|
@@ -276,7 +276,7 @@ public class IoTDBTagAggregationIT {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(objects[0], resultSet.getString("k1"));
           Assert.assertEquals(objects[1], resultSet.getString("k2"));
-          Assert.assertEquals(objects[2], resultSet.getLong("count(t)"));
+          Assert.assertEquals(objects[2], resultSet.getLong("COUNT(t)"));
         }
         Assert.assertFalse(resultSet.next());
       }
@@ -291,7 +291,7 @@ public class IoTDBTagAggregationIT {
     String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
-    // |                         Time|  k1|count(t)|
+    // |                         Time|  k1|COUNT(t)|
     // +-----------------------------+----+--------+
     // |1970-01-01T08:00:00.000+08:00|k1v1|       3|
     // |1970-01-01T08:00:00.000+08:00|k1v2|       2|
@@ -317,7 +317,49 @@ public class IoTDBTagAggregationIT {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(objects[0], resultSet.getLong("Time"));
           Assert.assertEquals(objects[1], resultSet.getString("k1"));
-          Assert.assertEquals(objects[2], resultSet.getLong("count(t)"));
+          Assert.assertEquals(objects[2], resultSet.getLong("COUNT(t)"));
+        }
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAlongWithTimeAggregationWithAlias() {
+    String query =
+        "SELECT COUNT(t), COUNT(t), COUNT(t) as a from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
+    // Expected result set:
+    // +-----------------------------+----+--------+
+    // |                         Time|  k1|COUNT(t)|
+    // +-----------------------------+----+--------+
+    // |1970-01-01T08:00:00.000+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.000+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.000+08:00|null|       2|
+    // |1970-01-01T08:00:00.010+08:00|k1v1|       3|
+    // |1970-01-01T08:00:00.010+08:00|k1v2|       2|
+    // |1970-01-01T08:00:00.010+08:00|null|       2|
+    // +-----------------------------+----+--------+
+    Object[][] expected =
+        new Object[][] {
+          {0L, "k1v1", 3L},
+          {0L, "k1v2", 2L},
+          {0L, null, 2L},
+          {10L, "k1v1", 3L},
+          {10L, "k1v2", 2L},
+          {10L, null, 2L},
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(query)) {
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        for (Object[] objects : expected) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(objects[0], resultSet.getLong("Time"));
+          Assert.assertEquals(objects[1], resultSet.getString("k1"));
+          Assert.assertEquals(objects[2], resultSet.getLong("COUNT(t)"));
         }
         Assert.assertFalse(resultSet.next());
       }
@@ -332,7 +374,7 @@ public class IoTDBTagAggregationIT {
     String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
-    // |                         Time|  k1|count(t)|
+    // |                         Time|  k1|COUNT(t)|
     // +-----------------------------+----+--------+
     // |1970-01-01T08:00:00.000+08:00|k1v1|       6|
     // |1970-01-01T08:00:00.000+08:00|k1v2|       4|
@@ -370,7 +412,7 @@ public class IoTDBTagAggregationIT {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(objects[0], resultSet.getLong("Time"));
           Assert.assertEquals(objects[1], resultSet.getString("k1"));
-          Assert.assertEquals(objects[2], resultSet.getLong("count(t)"));
+          Assert.assertEquals(objects[2], resultSet.getLong("COUNT(t)"));
         }
         Assert.assertFalse(resultSet.next());
       }
@@ -386,7 +428,7 @@ public class IoTDBTagAggregationIT {
         "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
     // Expected result set:
     // +-----------------------------+----+--------+
-    // |                         Time|  k1|count(t)|
+    // |                         Time|  k1|COUNT(t)|
     // +-----------------------------+----+--------+
     // |1970-01-01T08:00:00.010+08:00|k1v1|       3|
     // |1970-01-01T08:00:00.010+08:00|k1v2|       2|
@@ -412,7 +454,7 @@ public class IoTDBTagAggregationIT {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(objects[0], resultSet.getLong("Time"));
           Assert.assertEquals(objects[1], resultSet.getString("k1"));
-          Assert.assertEquals(objects[2], resultSet.getLong("count(t)"));
+          Assert.assertEquals(objects[2], resultSet.getLong("COUNT(t)"));
         }
         Assert.assertFalse(resultSet.next());
       }
@@ -427,7 +469,7 @@ public class IoTDBTagAggregationIT {
     String query = "SELECT COUNT(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+
-    // |  k1|count(t)|
+    // |  k1|COUNT(t)|
     // +----+--------+
     // |k1v1|       3|
     // |k1v2|       2|
@@ -439,13 +481,13 @@ public class IoTDBTagAggregationIT {
         Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v1", resultSet.getString("k1"));
-        Assert.assertEquals(3, resultSet.getLong("count(t)"));
+        Assert.assertEquals(3, resultSet.getLong("COUNT(t)"));
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v2", resultSet.getString("k1"));
-        Assert.assertEquals(2, resultSet.getLong("count(t)"));
+        Assert.assertEquals(2, resultSet.getLong("COUNT(t)"));
         Assert.assertTrue(resultSet.next());
         Assert.assertNull(resultSet.getString("k1"));
-        Assert.assertEquals(2, resultSet.getLong("count(t)"));
+        Assert.assertEquals(2, resultSet.getLong("COUNT(t)"));
         Assert.assertFalse(resultSet.next());
       }
 

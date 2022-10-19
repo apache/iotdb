@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +76,14 @@ public class Analysis {
   // fail.
   private String failMessage;
 
+  // As every result column will be analyzed with path concatenation and wildcard removing to
+  // generate one or more output expressions. We can maintain a map from output expression to
+  // original result column for later use.
+  // Note that if multiple expressions come from one single ResultColumn, the right object's
+  // REFERENCE should be equal, aka outputExpressions.get(i).right ==
+  // outputExpressions.get(j).right, NOT VALUE equal.
+  private List<Pair<Expression, ResultColumn>> outputExpressions = new ArrayList<>();
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY TIME)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +106,7 @@ public class Analysis {
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
 
-  // {tag values -> {grouped expression -> output expressions}}
+  // {tag values -> {grouped expression -> source timeseries expressions}}
   // For different combination of tag keys, the grouped expression may be different. Let's say there
   // are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
   // tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
@@ -105,7 +115,7 @@ public class Analysis {
   // Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
   // aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
   // has [last_value(temperature)].
-  private Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+  private Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
       tagValuesToGroupedTimeseriesOperands;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,14 +496,22 @@ public class Analysis {
     this.tagKeys = tagKeys;
   }
 
-  public Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+  public Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
       getTagValuesToGroupedTimeseriesOperands() {
     return tagValuesToGroupedTimeseriesOperands;
   }
 
   public void setTagValuesToGroupedTimeseriesOperands(
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      Map<List<String>, LinkedHashMap<Expression, Set<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
     this.tagValuesToGroupedTimeseriesOperands = tagValuesToGroupedTimeseriesOperands;
+  }
+
+  public List<Pair<Expression, ResultColumn>> getOutputExpressions() {
+    return outputExpressions;
+  }
+
+  public void setOutputExpressions(List<Pair<Expression, ResultColumn>> outputExpressions) {
+    this.outputExpressions = outputExpressions;
   }
 }
