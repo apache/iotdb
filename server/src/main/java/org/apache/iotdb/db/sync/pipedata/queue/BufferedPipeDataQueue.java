@@ -303,8 +303,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private void deletePipeData(long serialNumber) {
     while (commitSerialNumber < serialNumber) {
+      PipeData commitData = null;
       try {
-        PipeData commitData = pullOnePipeData(commitSerialNumber);
+        commitData = pullOnePipeData(commitSerialNumber);
         if (commitData == null) {
           return;
         }
@@ -314,10 +315,12 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
             Files.deleteIfExists(file.toPath());
           }
         }
-        commitSerialNumber = commitData.getSerialNumber();
       } catch (IOException e) {
         logger.error(
             String.format("Commit pipe data serial number %s error.", commitSerialNumber), e);
+      }
+      if (commitData != null) {
+        commitSerialNumber = commitData.getSerialNumber();
       }
     }
   }

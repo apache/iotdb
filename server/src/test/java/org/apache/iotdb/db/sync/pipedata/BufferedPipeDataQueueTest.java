@@ -510,6 +510,9 @@ public class BufferedPipeDataQueueTest {
                 pipeDataQueue.commit();
               } catch (InterruptedException e) {
                 break;
+              } catch (Exception e) {
+                e.printStackTrace();
+                break;
               }
             }
           });
