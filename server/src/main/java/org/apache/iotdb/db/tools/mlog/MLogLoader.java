@@ -20,10 +20,13 @@ package org.apache.iotdb.db.tools.mlog;
 
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -40,6 +43,7 @@ import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
@@ -49,11 +53,16 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -90,6 +99,7 @@ public class MLogLoader {
   private static int port;
   private static String user;
   private static String password;
+  private static TagManager tagManager;
 
   /**
    * create the commandline options.
@@ -114,7 +124,7 @@ public class MLogLoader {
             .argName(TLOG_FILE_NAME)
             .hasArg()
             .desc(
-                "Could specify a binary tlog.txt file to parse, skip tag related metadata if not specify (optional)")
+                "Could specify a binary tlog.txt file to parse. Tags and attributes will be ignored if not specified (optional)")
             .build();
     options.addOption(opTlog);
 
@@ -195,12 +205,13 @@ public class MLogLoader {
     }
   }
 
-  public static void parseBasicParams(CommandLine commandLine) throws ParseException {
+  public static void parseBasicParams(CommandLine commandLine) throws ParseException, IOException {
     mLogFile = CommandLineUtils.checkRequiredArg(MLOG_FILE_ARGS, MLOG_FILE_NAME, commandLine);
     host = commandLine.getOptionValue(HOST_ARGS);
     if (host == null) {
       host = "127.0.0.1";
     }
+    tLogFile = commandLine.getOptionValue(TLOG_FILE_ARGS);
     String portTmp = commandLine.getOptionValue(PORT_ARGS);
     port = portTmp == null ? 6667 : Integer.parseInt(portTmp);
     user = commandLine.getOptionValue(USER_ARGS);
@@ -231,6 +242,16 @@ public class MLogLoader {
           switch (plan.getOperatorType()) {
             case CREATE_TIMESERIES:
               CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+              if (createTimeSeriesPlan.getTagOffset() != -1) {
+                if (tLogFile == null) {
+                  logger.warn(
+                      "No specify tlog.txt file to parse, tag and attributes will be ignored.");
+                  createTimeSeriesPlan.setTags(Collections.emptyMap());
+                  createTimeSeriesPlan.setAttributes(Collections.emptyMap());
+                } else {
+                  fillTagsAndOffset(createTimeSeriesPlan);
+                }
+              }
               session.createTimeseries(
                   createTimeSeriesPlan.getPath().getFullPath(),
                   createTimeSeriesPlan.getDataType(),
@@ -278,11 +299,20 @@ public class MLogLoader {
                         "set ttl to %s %d", setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL()));
               }
               break;
-              // TODO: support tagFile
-              //          case CHANGE_ALIAS:
-              //            break;
-              //          case CHANGE_TAG_OFFSET:
-              //            break;
+            case CHANGE_ALIAS:
+              ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
+              session.executeNonQueryStatement(
+                  String.format(
+                      "ALTER timeseries %s UPSERT ALIAS=%s",
+                      changeAliasPlan.getPath(), changeAliasPlan.getAlias()));
+              break;
+            case CHANGE_TAG_OFFSET:
+              if (tLogFile == null) {
+                logger.warn("No specify tlog.txt file to parse, skip ChangeTagOffsetPlan.");
+              } else {
+                session.executeNonQueryStatement(genAlterTimeSeriesSQL((ChangeTagOffsetPlan) plan));
+              }
+              break;
             case CREATE_TEMPLATE:
               Template template = new Template((CreateTemplatePlan) plan);
               // currently, template must be flat
@@ -358,7 +388,54 @@ public class MLogLoader {
         }
       }
     } finally {
+      if (tagManager != null) {
+        tagManager.clear();
+      }
       session.close();
     }
+  }
+
+  private static void fillTagsAndOffset(CreateTimeSeriesPlan createTimeSeriesPlan)
+      throws IOException {
+    if (tagManager == null) {
+      tagManager = TagManager.getNewInstanceForMLogLoader(new File(tLogFile));
+    }
+    Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+        tagManager.readTagFile(createTimeSeriesPlan.getTagOffset());
+    createTimeSeriesPlan.setTags(tagAndAttributePair.left);
+    createTimeSeriesPlan.setAttributes(tagAndAttributePair.right);
+  }
+
+  private static String genAlterTimeSeriesSQL(ChangeTagOffsetPlan changeTagOffsetPlan)
+      throws IOException {
+    if (tagManager == null) {
+      tagManager = TagManager.getNewInstanceForMLogLoader(new File(tLogFile));
+    }
+    Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+        tagManager.readTagFile(changeTagOffsetPlan.getOffset());
+    StringBuilder stringBuilder =
+        new StringBuilder(
+            String.format("ALTER timeseries %s UPSERT", changeTagOffsetPlan.getPath()));
+    if (tagAndAttributePair.left.size() > 0) {
+      stringBuilder.append(" TAGS(");
+      stringBuilder.append(
+          StringUtils.join(
+              tagAndAttributePair.left.entrySet().stream()
+                  .map(i -> i.getKey() + "=" + i.getValue())
+                  .toArray(),
+              ", "));
+      stringBuilder.append(")");
+    }
+    if (tagAndAttributePair.right.size() > 0) {
+      stringBuilder.append(" ATTRIBUTES(");
+      stringBuilder.append(
+          StringUtils.join(
+              tagAndAttributePair.right.entrySet().stream()
+                  .map(i -> i.getKey() + "=" + i.getValue())
+                  .toArray(),
+              ", "));
+      stringBuilder.append(")");
+    }
+    return stringBuilder.toString();
   }
 }

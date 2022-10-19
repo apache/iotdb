@@ -23,7 +23,7 @@
 
 ### 工具介绍
 
-MLogLoad 工具用于将 MLog 中的元数据加载到正在运行的IoTDB中。
+MLogLoad 工具用于将 `mlog.bin` 中的元数据和 `tlog.txt`   中的标签和属性加载到正在运行的IoTDB中。
 
 ### 使用方法
 
@@ -36,12 +36,13 @@ Windows
 > ./mLogLoad.bat -mlog /yourpath/mlog.bin -tlog /yourpath/tlog.txt -h 127.0.0.1 -p 6667 -u root -pw root
 
 ```
-usage: MLogLoad -mlog <mlog file> -tlog <tlog file> [-h <receiver host>]
+usage: MLogLoad -mlog <mlog file> [-tlog <tlog file>] [-h <receiver host>]
        [-p <receiver port>] [-u <user>] [-pw <password>] [-help]
  -mlog <mlog file>    Need to specify a binary mlog.bin file to parse
                       (required)
- -tlog <tlog file>    Could specify a binary tlog.txt file to parse, skip
-                      tag related metadata if not specify (optional)
+ -tlog <tlog file>    Could specify a binary tlog.txt file to parse. Tags
+                      and attributes will be ignored if not specified
+                      (optional)
  -h <receiver host>   Could specify a specify the receiver host, default
                       is 127.0.0.1 (optional)
  -p <receiver port>   Could specify a specify the receiver port, default
@@ -52,6 +53,7 @@ usage: MLogLoad -mlog <mlog file> -tlog <tlog file> [-h <receiver host>]
                       (optional)
  -help,--help         Display help information
 ```
+注意：当 tlog 未指定时，Mlog 加载工具会跳过标签点管理相关的元数据操作。
 
 ### 使用示例
 

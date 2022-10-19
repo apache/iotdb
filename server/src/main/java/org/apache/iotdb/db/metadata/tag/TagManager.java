@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,10 +87,20 @@ public class TagManager {
     return new TagManager();
   }
 
+  public static TagManager getNewInstanceForMLogLoader(File tagFile) throws IOException {
+    TagManager tagManager = new TagManager();
+    tagManager.initTagLogFile(tagFile.getParent(), tagFile.getName());
+    return tagManager;
+  }
+
   private TagManager() {}
 
   public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+    initTagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+  }
+
+  private void initTagLogFile(String schemaDir, String logFileName) throws IOException {
+    tagLogFile = new TagLogFile(schemaDir, logFileName);
   }
 
   public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
@@ -573,6 +584,12 @@ public class TagManager {
     return tagLogFile.write(tags, attributes);
   }
 
+  /**
+   * Read tags and attributes from tag file
+   *
+   * @param tagFileOffset file offset
+   * @return tagAndAttributePair
+   */
   public Pair<Map<String, String>, Map<String, String>> readTagFile(long tagFileOffset)
       throws IOException {
     return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);

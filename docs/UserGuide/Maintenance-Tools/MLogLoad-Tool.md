@@ -23,7 +23,7 @@
 
 ### Introduction
 
-The MLogLoad tool  is used to load the metadata from MLog into the running IoTDB.
+The MLogLoad tool  is used to load the metadata from `mlog.bin` and tags and attributes from `tlog.txt` into the running IoTDB.
 
 ### How to Use
 
@@ -36,12 +36,13 @@ Windows
 > ./mLogLoad.bat -mlog /yourpath/mlog.bin -tlog /yourpath/tlog.txt -h 127.0.0.1 -p 6667 -u root -pw root
 
 ```
-usage: MLogLoad -mlog <mlog file> -tlog <tlog file> [-h <receiver host>]
+usage: MLogLoad -mlog <mlog file> [-tlog <tlog file>] [-h <receiver host>]
        [-p <receiver port>] [-u <user>] [-pw <password>] [-help]
  -mlog <mlog file>    Need to specify a binary mlog.bin file to parse
                       (required)
- -tlog <tlog file>    Could specify a binary tlog.txt file to parse, skip
-                      tag related metadata if not specify (optional)
+ -tlog <tlog file>    Could specify a binary tlog.txt file to parse. Tags
+                      and attributes will be ignored if not specified
+                      (optional)
  -h <receiver host>   Could specify a specify the receiver host, default
                       is 127.0.0.1 (optional)
  -p <receiver port>   Could specify a specify the receiver port, default
@@ -52,6 +53,8 @@ usage: MLogLoad -mlog <mlog file> -tlog <tlog file> [-h <receiver host>]
                       (optional)
  -help,--help         Display help information
 ```
+
+Note: If tlog is not specified, the MLogLoad tool will ignore tags and attributes management.
 
 ### Example
 

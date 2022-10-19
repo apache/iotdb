@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -49,23 +50,27 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class MLogLoaderTest {
 
-  File file = new File("target" + File.separator + "tmp" + File.separator + "mlog.bin.bak");
+  File mLog = new File("target" + File.separator + "tmp" + File.separator + "mlog.bin.bak");
+  File tLog = new File("target" + File.separator + "tmp" + File.separator + "tlog.txt.bak");
 
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    file.deleteOnExit();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    mLog.deleteOnExit();
+    tLog.deleteOnExit();
   }
 
   private void prepareMLog() throws Exception {
@@ -76,6 +81,20 @@ public class MLogLoaderTest {
     createTimeSeriesPlan1.setEncoding(TSEncoding.PLAIN);
     createTimeSeriesPlan1.setCompressor(CompressionType.GZIP);
     createTimeSeriesPlan1.setAlias("measurement");
+    createTimeSeriesPlan1.setAttributes(
+        new HashMap<String, String>() {
+          {
+            put("attr1", "a1");
+            put("attr2", "a2");
+          }
+        });
+    createTimeSeriesPlan1.setTags(
+        new HashMap<String, String>() {
+          {
+            put("tag1", "t1");
+            put("tag2", "t2");
+          }
+        });
     IoTDB.metaManager.createTimeseries(createTimeSeriesPlan1);
     CreateTimeSeriesPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan();
     createTimeSeriesPlan2.setPath(new PartialPath("root.sg2.device1.s1"));
@@ -83,6 +102,12 @@ public class MLogLoaderTest {
     createTimeSeriesPlan2.setEncoding(TSEncoding.PLAIN);
     createTimeSeriesPlan2.setCompressor(CompressionType.GZIP);
     IoTDB.metaManager.createTimeseries(createTimeSeriesPlan2);
+    CreateTimeSeriesPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan();
+    createTimeSeriesPlan3.setPath(new PartialPath("root.sg1.device1.s3"));
+    createTimeSeriesPlan3.setDataType(TSDataType.DOUBLE);
+    createTimeSeriesPlan3.setEncoding(TSEncoding.PLAIN);
+    createTimeSeriesPlan3.setCompressor(CompressionType.GZIP);
+    IoTDB.metaManager.createTimeseries(createTimeSeriesPlan3);
     IoTDB.metaManager.createAlignedTimeSeries(
         new PartialPath("root.laptop.d1.aligned_device"),
         Arrays.asList("s3", "s4", "s5"),
@@ -103,6 +128,65 @@ public class MLogLoaderTest {
         Arrays.asList(new PartialPath("root.ln.cc1"), new PartialPath("root.ln.cc2")));
     // ttl
     IoTDB.metaManager.setTTL(new PartialPath("root.sgcc"), 1234L);
+    // tag attribute
+    IoTDB.metaManager.renameTagOrAttributeKey(
+        "tag1", "newTag1", new PartialPath("root.sg1.device1.s1"));
+    IoTDB.metaManager.setTagsOrAttributesValue(
+        new HashMap<String, String>() {
+          {
+            put("newTag1", "newT1");
+            put("attr1", "newA1");
+          }
+        },
+        new PartialPath("root.sg1.device1.s1"));
+    IoTDB.metaManager.dropTagsOrAttributes(
+        new HashSet<String>() {
+          {
+            add("attr2");
+          }
+        },
+        new PartialPath("root.sg1.device1.s1"));
+    IoTDB.metaManager.addTags(
+        new HashMap<String, String>() {
+          {
+            put("tag3", "t3");
+          }
+        },
+        new PartialPath("root.sg1.device1.s1"));
+    IoTDB.metaManager.addAttributes(
+        new HashMap<String, String>() {
+          {
+            put("attr3", "a3");
+          }
+        },
+        new PartialPath("root.sg1.device1.s1"));
+    // alter time series -> change alias and change offset
+    IoTDB.metaManager.upsertTagsAndAttributes(
+        "newAlias1",
+        new HashMap<String, String>() {
+          {
+            put("tag4", "t4");
+          }
+        },
+        new HashMap<String, String>() {
+          {
+            put("attr4", "a4");
+          }
+        },
+        new PartialPath("root.sg1.device1.s1"));
+    IoTDB.metaManager.upsertTagsAndAttributes(
+        "newAlias2",
+        new HashMap<String, String>() {
+          {
+            put("tag4", "t4");
+          }
+        },
+        new HashMap<String, String>() {
+          {
+            put("attr4", "a4");
+          }
+        },
+        new PartialPath("root.sg1.device1.s3"));
     // create template
     IoTDB.metaManager.createSchemaTemplate(genUnalignedCreateSchemaTemplatePlan("template1"));
     IoTDB.metaManager.createSchemaTemplate(genAlignedCreateSchemaTemplatePlan("template2"));
@@ -190,7 +274,7 @@ public class MLogLoaderTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void testWithTagFile() throws Exception {
     prepareMLog();
     List<ShowTimeSeriesResult> expectedTSResult =
         IoTDB.metaManager.showTimeseries(
@@ -198,15 +282,20 @@ public class MLogLoaderTest {
     Map<PartialPath, Long> expectedSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
     Set<String> expectedTemplates = IoTDB.metaManager.getAllTemplates();
     IoTDB.metaManager.flushAllMlogForTest();
-    File mlog =
-        new File(
+    TagManager.getInstance().clear();
+    new File(
             IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
                 + File.separator
-                + MetadataConstant.METADATA_LOG);
-    mlog.renameTo(file);
+                + MetadataConstant.METADATA_LOG)
+        .renameTo(mLog);
+    new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+                + File.separator
+                + MetadataConstant.TAG_LOG)
+        .renameTo(tLog);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.restartDaemon();
-    String[] args = new String[] {"-mlog", file.getAbsolutePath()};
+    String[] args = new String[] {"-mlog", mLog.getAbsolutePath(), "-tlog", tLog.getAbsolutePath()};
     MLogLoader.main(args);
     List<ShowTimeSeriesResult> actualTSResult =
         IoTDB.metaManager.showTimeseries(
@@ -214,6 +303,46 @@ public class MLogLoaderTest {
     Map<PartialPath, Long> actualSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
     Set<String> actualTemplates = IoTDB.metaManager.getAllTemplates();
 
+    Assert.assertEquals(expectedTSResult, actualTSResult);
+    Assert.assertEquals(expectedSgTTL, actualSgTTL);
+    Assert.assertEquals(expectedTemplates, actualTemplates);
+  }
+
+  @Test
+  public void testWithoutTagFile() throws Exception {
+    prepareMLog();
+    List<ShowTimeSeriesResult> expectedTSResult =
+        IoTDB.metaManager.showTimeseries(
+            new ShowTimeSeriesPlan(new PartialPath("root.**")), new QueryContext());
+    Map<PartialPath, Long> expectedSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Set<String> expectedTemplates = IoTDB.metaManager.getAllTemplates();
+    IoTDB.metaManager.flushAllMlogForTest();
+    TagManager.getInstance().clear();
+    new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+                + File.separator
+                + MetadataConstant.METADATA_LOG)
+        .renameTo(mLog);
+    new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+                + File.separator
+                + MetadataConstant.TAG_LOG)
+        .renameTo(tLog);
+    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.restartDaemon();
+    String[] args = new String[] {"-mlog", mLog.getAbsolutePath()};
+    MLogLoader.main(args);
+    List<ShowTimeSeriesResult> actualTSResult =
+        IoTDB.metaManager.showTimeseries(
+            new ShowTimeSeriesPlan(new PartialPath("root.**")), new QueryContext());
+    Map<PartialPath, Long> actualSgTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Set<String> actualTemplates = IoTDB.metaManager.getAllTemplates();
+
+    Assert.assertNotEquals(expectedTSResult, actualTSResult);
+    for (ShowTimeSeriesResult showTimeSeriesResult : expectedTSResult) {
+      showTimeSeriesResult.setTags(Collections.emptyMap());
+      showTimeSeriesResult.setAttributes(Collections.emptyMap());
+    }
     Assert.assertEquals(expectedTSResult, actualTSResult);
     Assert.assertEquals(expectedSgTTL, actualSgTTL);
     Assert.assertEquals(expectedTemplates, actualTemplates);
