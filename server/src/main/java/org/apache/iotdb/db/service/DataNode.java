@@ -495,10 +495,6 @@ public class DataNode implements DataNodeMBean {
     List<TriggerInformation> res = new ArrayList<>();
     for (TriggerInformation triggerInformation :
         resourcesInformationHolder.getTriggerInformationList()) {
-      if (triggerInformation.isStateful()) {
-        // jar of stateful trigger is not needed
-        continue;
-      }
       // jar does not exist, add current triggerInformation to list
       if (!TriggerExecutableManager.getInstance()
           .hasFileUnderLibRoot(triggerInformation.getJarName())) {

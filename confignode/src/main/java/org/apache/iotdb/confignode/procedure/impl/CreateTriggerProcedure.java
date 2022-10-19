@@ -206,11 +206,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         if (RpcUtils.squashResponseStatusList(
                     env.dropTriggerOnDataNodes(triggerInformation.getTriggerName(), false))
                 .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        } else {
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new TriggerManagementException(
               String.format(
-                  "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
+                  "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [%s]",
                   triggerInformation.getTriggerName()));
         }
         break;

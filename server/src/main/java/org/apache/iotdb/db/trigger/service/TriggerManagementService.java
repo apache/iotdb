@@ -206,7 +206,6 @@ public class TriggerManagementService {
 
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {
-
     String triggerName = triggerInformation.getTriggerName();
     String jarName = triggerInformation.getJarName();
     if (triggerTable.containsTrigger(triggerName)
