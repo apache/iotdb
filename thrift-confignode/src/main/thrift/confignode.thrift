@@ -334,6 +334,11 @@ struct TDropTriggerReq {
   1: required string triggerName
 }
 
+struct TGetLocationForTriggerResp {
+  1: required common.TSStatus status
+  2: required common.TDataNodeLocation dataNodeLocation
+}
+
 // Get trigger table from config node
 struct TGetTriggerTableResp {
   1: required common.TSStatus status
@@ -740,19 +745,19 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-     * Create a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   /**
-     * Remove a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
@@ -760,21 +765,24 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-     * and sync Information of it to all ConfigNodes
-     *
-     * @return SUCCESS_STATUS if the trigger was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+   * and sync Information of it to all ConfigNodes
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-     * Remove a trigger on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a trigger on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /** Get TDataNodeLocation of a stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
 
   /**
      * Return the trigger table of config leader
