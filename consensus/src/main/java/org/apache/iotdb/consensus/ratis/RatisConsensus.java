@@ -616,10 +616,7 @@ class RatisConsensus implements IConsensus {
     List<ConsensusGroupId> ids = new ArrayList<>();
     server
         .getGroupIds()
-        .forEach(
-            groupId -> {
-              ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
-            });
+        .forEach(groupId -> ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId)));
     return ids;
   }
 

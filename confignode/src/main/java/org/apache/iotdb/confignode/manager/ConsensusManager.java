@@ -57,7 +57,7 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int SEED_CONFIG_NODE_Id = 0;
+  private static final int SEED_CONFIG_NODE_ID = 0;
 
   private final IManager configManager;
 
@@ -167,7 +167,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                  SEED_CONFIG_NODE_Id,
+                  SEED_CONFIG_NODE_ID,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }
