@@ -249,8 +249,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       } else if (serialNumber == pipeLogStartNumber.peekLast() && inputDeque != null) {
         outputDeque = inputDeque;
       } else {
+        long nextStartNumber =
+            pipeLogStartNumber.stream().filter(o -> o >= serialNumber).findFirst().get();
         List<PipeData> parsePipeData =
-            parsePipeLog(new File(pipeLogDir, SyncPathUtil.getPipeLogName(serialNumber)));
+            parsePipeLog(new File(pipeLogDir, SyncPathUtil.getPipeLogName(nextStartNumber)));
         int parsePipeDataSize = parsePipeData.size();
         outputDeque = new LinkedBlockingDeque<>();
         for (int i = 0; i < parsePipeDataSize; i++) {
