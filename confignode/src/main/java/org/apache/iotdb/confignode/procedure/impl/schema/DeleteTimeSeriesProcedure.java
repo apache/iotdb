@@ -65,6 +65,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getAllReplicaDataNodeRegionGroupMap;
+import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getLeaderDataNodeRegionGroupMap;
+
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
 
@@ -353,53 +356,6 @@ public class DeleteTimeSeriesProcedure
           }
         };
     deleteTimeSeriesTask.execute();
-  }
-
-  /**
-   * Try to get and execute request on consensus group leader as possible. If fail to get leader,
-   * select some other replica for execution.
-   */
-  private Map<TDataNodeLocation, List<TConsensusGroupId>> getLeaderDataNodeRegionGroupMap(
-      Map<TConsensusGroupId, Integer> leaderMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
-    regionReplicaSetMap.forEach(
-        (consensusGroupId, regionReplicaSet) -> {
-          Integer leaderId = leaderMap.get(consensusGroupId);
-          TDataNodeLocation leaderDataNodeLocation = null;
-          if (leaderId == null || leaderId == -1) {
-            leaderDataNodeLocation = regionReplicaSet.getDataNodeLocations().get(0);
-          } else {
-            for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-              if (dataNodeLocation.getDataNodeId() == leaderId) {
-                leaderDataNodeLocation = dataNodeLocation;
-                break;
-              }
-            }
-          }
-          dataNodeConsensusGroupIdMap
-              .computeIfAbsent(leaderDataNodeLocation, k -> new ArrayList<>())
-              .add(regionReplicaSet.getRegionId());
-        });
-    return dataNodeConsensusGroupIdMap;
-  }
-
-  /**
-   * Try to execute request on all replica of one consensus group. If some replica failed, execute
-   * according request on some other replica and let consensus layer to sync it.
-   */
-  private Map<TDataNodeLocation, List<TConsensusGroupId>> getAllReplicaDataNodeRegionGroupMap(
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
-    regionReplicaSetMap.forEach(
-        (consensusGroupId, regionReplicaSet) -> {
-          for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-            dataNodeConsensusGroupIdMap
-                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
-                .add(regionReplicaSet.getRegionId());
-          }
-        });
-    return dataNodeConsensusGroupIdMap;
   }
 
   @Override
