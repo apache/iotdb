@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
 
@@ -355,6 +356,22 @@ public class IoTDBRpcDataSet {
     } else {
       lastReadWasNull = true;
       return 0;
+    }
+  }
+
+  public Binary getBinary(int columIndex) throws StatementExecutionException {
+    return getBinary(findColumnNameByIndex(columIndex));
+  }
+
+  public Binary getBinary(String columnName) throws StatementExecutionException {
+    checkRecord();
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    if (!isNull(index, tsBlockIndex)) {
+      lastReadWasNull = false;
+      return curTsBlock.getColumn(index).getBinary(tsBlockIndex);
+    } else {
+      lastReadWasNull = true;
+      return null;
     }
   }
 

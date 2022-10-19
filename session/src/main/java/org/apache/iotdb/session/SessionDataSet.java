@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
 
@@ -157,7 +156,7 @@ public class SessionDataSet implements AutoCloseable {
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
-            field.setBinaryV(new Binary(ioTDBRpcDataSet.getString(datasetColumnIndex)));
+            field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
             break;
           default:
             throw new UnSupportedDataTypeException(
