@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.IntoProcessException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -74,7 +75,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws IntoProcessException {
     TsBlock inputTsBlock = child.next();
     if (inputTsBlock != null) {
       String device = String.valueOf(inputTsBlock.getValueColumns()[0].getBinary(0));

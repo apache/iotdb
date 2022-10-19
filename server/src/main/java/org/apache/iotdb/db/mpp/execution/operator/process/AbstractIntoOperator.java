@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.client.DataNodeInternalClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.IntoProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -34,6 +38,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,12 +50,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
+
   protected final OperatorContext operatorContext;
   protected final Operator child;
 
   protected List<IntoOperator.InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
+
+  private final DataNodeInternalClient client = new DataNodeInternalClient();
 
   public AbstractIntoOperator(
       OperatorContext operatorContext,
@@ -95,7 +105,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    // TODO: execute insertMultiTabletsStatement
+    TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
+    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      String message =
+          String.format(
+              "Error occurred while inserting tablets in SELECT INTO. %s",
+              executionStatus.getMessage());
+      LOGGER.error(message);
+      throw new IntoProcessException(message);
+    }
 
     for (IntoOperator.InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       generator.reset();

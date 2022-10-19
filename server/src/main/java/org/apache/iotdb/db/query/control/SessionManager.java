@@ -237,6 +237,11 @@ public class SessionManager {
     return sessionId;
   }
 
+  public long requestInternalSessionId() {
+    return requestSessionId(
+        "__internal", ZoneId.systemDefault().getId(), IoTDBConstant.ClientVersion.V_0_13);
+  }
+
   public boolean releaseSessionResource(long sessionId) {
     return releaseSessionResource(sessionId, this::releaseQueryResourceNoExceptions);
   }
