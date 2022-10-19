@@ -198,13 +198,46 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   @Test
   public void testFireTimesOfStatelessTrigger() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      insertTablet("root.test.stateless", session);
-      // fire times of statelessTrigger_all = rows
-      Assert.assertEquals(rows, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      Assert.assertEquals(rows, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      // fire times of statelessTrigger_a = (1 + 1) * rows
-      Assert.assertEquals(rows * 2, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-      Assert.assertEquals(rows * 2, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
+      insertTablet(
+          session,
+          "root.test.stateless",
+          new ArrayList<String>() {
+            {
+              add("a");
+              add("b");
+              add("c");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateless",
+          new ArrayList<String>() {
+            {
+              add("a");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateless",
+          new ArrayList<String>() {
+            {
+              add("b");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateless",
+          new ArrayList<String>() {
+            {
+              add("c");
+            }
+          });
+
+      Assert.assertEquals(4 * rows, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+      Assert.assertEquals(4 * rows, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
+
+      Assert.assertEquals(2 * rows, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+      Assert.assertEquals(2 * rows, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -213,35 +246,65 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   @Test
   public void testFireTimesOfStatefulTrigger() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      insertTablet("root.test.stateful", session);
-      // fire times of statefulTrigger_all = rows
-      Assert.assertEquals(rows, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      Assert.assertEquals(rows, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      // fire times of statefulTrigger_a = (1 + 1) * rows
-      Assert.assertEquals(rows * 2, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-      Assert.assertEquals(rows * 2, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
+      insertTablet(
+          session,
+          "root.test.stateful",
+          new ArrayList<String>() {
+            {
+              add("a");
+              add("b");
+              add("c");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateful",
+          new ArrayList<String>() {
+            {
+              add("a");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateful",
+          new ArrayList<String>() {
+            {
+              add("b");
+            }
+          });
+      insertTablet(
+          session,
+          "root.test.stateful",
+          new ArrayList<String>() {
+            {
+              add("c");
+            }
+          });
+
+      Assert.assertEquals(4 * rows, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+      Assert.assertEquals(4 * rows, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
+
+      Assert.assertEquals(2 * rows, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+      Assert.assertEquals(2 * rows, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
     } catch (Exception e) {
+      System.out.println(e);
       fail(e.getMessage());
     }
   }
 
-  private void insertTablet(String device, ISession session)
+  private void insertTablet(ISession session, String device, List<String> measurementList)
       throws IoTDBConnectionException, StatementExecutionException {
     List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("a", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("b", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
+    measurementList.forEach(
+        measurement -> schemaList.add(new MeasurementSchema(measurement, TSDataType.INT32)));
 
     Tablet tablet = new Tablet(device, schemaList, 10);
 
     long timestamp = 1;
-
     for (int i = 0; i < rows; i++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue("a", rowIndex, 1);
-      tablet.addValue("b", rowIndex, 1);
-      tablet.addValue("c", rowIndex, 1);
+      measurementList.forEach(measurement -> tablet.addValue(measurement, rowIndex, 1));
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
