@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -286,6 +287,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetPipeStatus:
           req = new SetPipeStatusPlan();
+          break;
+        case DropPipe:
+          req = new DropPipePlan();
           break;
         case ShowPipe:
           req = new ShowPipePlan();
