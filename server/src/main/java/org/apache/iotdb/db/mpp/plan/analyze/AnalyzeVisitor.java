@@ -381,7 +381,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-      if (hasAlias && !queryStatement.isGroupByLevel() && resultExpressions.size() > 1) {
+      if (hasAlias
+          && !queryStatement.isGroupByLevel()
+          && !queryStatement.isGroupByTag()
+          && resultExpressions.size() > 1) {
         throw new SemanticException(
             String.format(
                 "alias '%s' can only be matched with one time series", resultColumn.getAlias()));

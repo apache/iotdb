@@ -1124,6 +1124,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseOrderByClause(ctx.orderByClause());
     }
 
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+
     return queryStatement;
   }
 
