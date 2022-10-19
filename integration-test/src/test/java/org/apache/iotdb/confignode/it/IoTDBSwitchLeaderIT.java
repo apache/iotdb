@@ -121,7 +121,7 @@ public class IoTDBSwitchLeaderIT {
     // The ConfigNode-Group will elect a new leader after the current ConfigNode-Leader is shutdown
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
     // Waiting for leader election
-    TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
+    TimeUnit.MILLISECONDS.sleep(2L * partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */
