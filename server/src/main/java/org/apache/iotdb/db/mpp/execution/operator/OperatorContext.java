@@ -70,6 +70,14 @@ public class OperatorContext {
     this.maxRunTime = maxRunTime;
   }
 
+  public String getUserName() {
+    return instanceContext.getUserName();
+  }
+
+  public String getZoneId() {
+    return instanceContext.getZoneId();
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

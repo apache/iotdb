@@ -108,7 +108,11 @@ public class FragmentInstanceManager {
                     instanceContext.computeIfAbsent(
                         instanceId,
                         fragmentInstanceId ->
-                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                            createFragmentInstanceContext(
+                                fragmentInstanceId,
+                                stateMachine,
+                                instance.getUserName(),
+                                instance.getZoneId()));
 
                 try {
                   DataDriver driver =
@@ -151,7 +155,11 @@ public class FragmentInstanceManager {
                   instanceContext.computeIfAbsent(
                       instanceId,
                       fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                          createFragmentInstanceContext(
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getUserName(),
+                              instance.getZoneId()));
 
               try {
                 SchemaDriver driver =

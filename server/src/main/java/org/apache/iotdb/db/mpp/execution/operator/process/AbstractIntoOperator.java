@@ -59,7 +59,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
-  private final DataNodeInternalClient client = new DataNodeInternalClient();
+  private final DataNodeInternalClient client;
 
   public AbstractIntoOperator(
       OperatorContext operatorContext,
@@ -70,6 +70,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
+    this.client =
+        new DataNodeInternalClient(operatorContext.getUserName(), operatorContext.getZoneId());
   }
 
   protected static List<IntoOperator.InsertTabletStatementGenerator>
@@ -109,7 +111,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       String message =
           String.format(
-              "Error occurred while inserting tablets in SELECT INTO. %s",
+              "Error occurred while inserting tablets in SELECT INTO: %s",
               executionStatus.getMessage());
       LOGGER.error(message);
       throw new IntoProcessException(message);

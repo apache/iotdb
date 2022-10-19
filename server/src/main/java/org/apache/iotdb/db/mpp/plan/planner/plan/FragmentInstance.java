@@ -65,6 +65,10 @@ public class FragmentInstance implements IConsensusRequest {
 
   private boolean isRoot;
 
+  // session info
+  private final String userName;
+  private final String zoneId;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -73,13 +77,17 @@ public class FragmentInstance implements IConsensusRequest {
       FragmentInstanceId id,
       Filter timeFilter,
       QueryType type,
-      long timeOut) {
+      long timeOut,
+      String userName,
+      String zoneId) {
     this.fragment = fragment;
     this.timeFilter = timeFilter;
     this.id = id;
     this.type = type;
     this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
     this.isRoot = false;
+    this.userName = userName;
+    this.zoneId = zoneId;
   }
 
   public FragmentInstance(
@@ -88,8 +96,10 @@ public class FragmentInstance implements IConsensusRequest {
       Filter timeFilter,
       QueryType type,
       long timeOut,
+      String userName,
+      String zoneId,
       boolean isRoot) {
-    this(fragment, id, timeFilter, type, timeOut);
+    this(fragment, id, timeFilter, type, timeOut, userName, zoneId);
     this.isRoot = isRoot;
   }
 
@@ -188,11 +198,13 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     long timeOut = ReadWriteIOUtils.readLong(buffer);
+    String userName = ReadWriteIOUtils.readString(buffer);
+    String zoneId = ReadWriteIOUtils.readString(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut);
+        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut, userName, zoneId);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -205,6 +217,8 @@ public class FragmentInstance implements IConsensusRequest {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
       ReadWriteIOUtils.write(timeOut, outputStream);
+      ReadWriteIOUtils.write(userName, outputStream);
+      ReadWriteIOUtils.write(zoneId, outputStream);
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
@@ -245,5 +259,13 @@ public class FragmentInstance implements IConsensusRequest {
 
   public long getTimeOut() {
     return timeOut;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public String getZoneId() {
+    return zoneId;
   }
 }

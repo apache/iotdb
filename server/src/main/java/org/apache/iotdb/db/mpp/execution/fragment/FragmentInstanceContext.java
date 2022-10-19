@@ -58,6 +58,10 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
+  // session info
+  private String userName;
+  private String zoneId;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -67,8 +71,12 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      String userName,
+      String zoneId) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, userName, zoneId);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -79,10 +87,15 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      String userName,
+      String zoneId) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.userName = userName;
+    this.zoneId = zoneId;
   }
 
   // used for compaction
@@ -199,5 +212,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public String getZoneId() {
+    return zoneId;
   }
 }

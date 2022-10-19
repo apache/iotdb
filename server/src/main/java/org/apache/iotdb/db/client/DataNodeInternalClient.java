@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,7 +54,7 @@ public class DataNodeInternalClient {
 
   private final long sessionId;
 
-  public DataNodeInternalClient() {
+  public DataNodeInternalClient(String userName, String zoneId) {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
@@ -61,7 +62,8 @@ public class DataNodeInternalClient {
       PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
     }
-    sessionId = SESSION_MANAGER.requestInternalSessionId();
+    this.sessionId =
+        SESSION_MANAGER.requestSessionId(userName, zoneId, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   public TSStatus insertTablets(InsertMultiTabletsStatement statement) {
