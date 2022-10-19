@@ -140,7 +140,7 @@ public class SessionDataSet implements AutoCloseable {
             field.setBoolV(booleanValue);
             break;
           case INT32:
-            int intValue = iterator().getInt(datasetColumnIndex);
+            int intValue = ioTDBRpcDataSet.getInt(datasetColumnIndex);
             field.setIntV(intValue);
             break;
           case INT64:
