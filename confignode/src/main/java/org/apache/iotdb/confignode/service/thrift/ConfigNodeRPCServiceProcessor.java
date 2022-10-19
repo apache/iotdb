@@ -516,9 +516,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
-    // todo: implementation
-    return new TGetLocationForTriggerResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+    return configManager.getLocationOfStatefulTrigger(triggerName);
   }
 
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
