@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -36,14 +35,9 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -53,7 +47,6 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -5845,61 +5838,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       Assert.fail();
     } catch (Exception e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  private void generateModsFile(
-      List<String> seriesPaths, List<TsFileResource> resources, long startValue, long endValue)
-      throws IllegalPathException, IOException {
-    for (TsFileResource resource : resources) {
-      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-      for (String path : seriesPaths) {
-        deleteMap.put(path, new Pair<>(startValue, endValue));
-      }
-      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
-    }
-  }
-
-  /**
-   * Check whether target file contain empty chunk group or not. Assert fail if it contains empty
-   * chunk group whose deviceID is not in the deviceIdList.
-   */
-  public void check(TsFileResource targetResource, List<String> deviceIdList) throws IOException {
-    byte marker;
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
-        switch (marker) {
-          case MetaMarker.CHUNK_HEADER:
-          case MetaMarker.TIME_CHUNK_HEADER:
-          case MetaMarker.VALUE_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
-            ChunkHeader header = reader.readChunkHeader(marker);
-            int dataSize = header.getDataSize();
-            reader.position(reader.position() + dataSize);
-            break;
-          case MetaMarker.CHUNK_GROUP_HEADER:
-            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            String deviceID = chunkGroupHeader.getDeviceID();
-            if (!deviceIdList.contains(deviceID)) {
-              Assert.fail(
-                  "Target file "
-                      + targetResource.getTsFile().getPath()
-                      + " contains empty chunk group "
-                      + deviceID);
-            }
-            break;
-          case MetaMarker.OPERATION_INDEX_RANGE:
-            reader.readPlanIndex();
-            break;
-          default:
-            // the disk file is corrupted, using this file may be dangerous
-            throw new IOException("Unexpected marker " + marker);
-        }
-      }
     }
   }
 }

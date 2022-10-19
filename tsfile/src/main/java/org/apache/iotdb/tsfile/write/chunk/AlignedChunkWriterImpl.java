@@ -379,6 +379,11 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     return valueChunkWriterList.get(valueIndex);
   }
 
+  /** Test only */
+  public TimeChunkWriter getTimeChunkWriter() {
+    return timeChunkWriter;
+  }
+
   public TSDataType getCurrentValueChunkType() {
     return valueChunkWriterList.get(valueIndex).getDataType();
   }

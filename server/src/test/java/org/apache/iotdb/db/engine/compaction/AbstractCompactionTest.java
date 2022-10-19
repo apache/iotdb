@@ -18,34 +18,43 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -393,6 +402,62 @@ public class AbstractCompactionTest {
         FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
+    }
+  }
+
+  protected void generateModsFile(
+      List<String> seriesPaths, List<TsFileResource> resources, long startValue, long endValue)
+      throws IllegalPathException, IOException {
+    for (TsFileResource resource : resources) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      for (String path : seriesPaths) {
+        deleteMap.put(path, new Pair<>(startValue, endValue));
+      }
+      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
+    }
+  }
+
+  /**
+   * Check whether target file contain empty chunk group or not. Assert fail if it contains empty
+   * chunk group whose deviceID is not in the deviceIdList.
+   */
+  protected void check(TsFileResource targetResource, List<String> deviceIdList)
+      throws IOException {
+    byte marker;
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
+      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+        switch (marker) {
+          case MetaMarker.CHUNK_HEADER:
+          case MetaMarker.TIME_CHUNK_HEADER:
+          case MetaMarker.VALUE_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
+            ChunkHeader header = reader.readChunkHeader(marker);
+            int dataSize = header.getDataSize();
+            reader.position(reader.position() + dataSize);
+            break;
+          case MetaMarker.CHUNK_GROUP_HEADER:
+            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+            String deviceID = chunkGroupHeader.getDeviceID();
+            if (!deviceIdList.contains(deviceID)) {
+              Assert.fail(
+                  "Target file "
+                      + targetResource.getTsFile().getPath()
+                      + " contains empty chunk group "
+                      + deviceID);
+            }
+            break;
+          case MetaMarker.OPERATION_INDEX_RANGE:
+            reader.readPlanIndex();
+            break;
+          default:
+            // the disk file is corrupted, using this file may be dangerous
+            throw new IOException("Unexpected marker " + marker);
+        }
+      }
     }
   }
 

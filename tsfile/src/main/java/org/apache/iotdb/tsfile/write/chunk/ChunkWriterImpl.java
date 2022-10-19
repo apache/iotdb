@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -467,5 +466,10 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public void setLastPoint(boolean isLastPoint) {
     this.isLastPoint = isLastPoint;
+  }
+
+  /** Only used for tests. */
+  public PageWriter getPageWriter() {
+    return pageWriter;
   }
 }

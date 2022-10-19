@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -408,5 +407,9 @@ public class ValueChunkWriter {
 
   public boolean checkIsUnsealedPageOverThreshold(long size) {
     return pageWriter.estimateMaxMemSize() >= size;
+  }
+
+  public ValuePageWriter getPageWriter() {
+    return pageWriter;
   }
 }
