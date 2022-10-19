@@ -80,7 +80,8 @@ public class ConfigNodeRemoveCheck {
                   .findFirst()
                   .orElse(null);
         } catch (BadNodeUrlException e2) {
-          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          LOGGER.info(
+              "Usage: remove-confignode.sh <confignode-id> or remove-confignode.sh <internal_address>:<internal_port>");
           return nodeLocation;
         }
       }

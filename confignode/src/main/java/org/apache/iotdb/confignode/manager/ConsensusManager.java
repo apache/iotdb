@@ -167,7 +167,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                      SEED_CONFIG_NODE_ID,
+                  SEED_CONFIG_NODE_ID,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }
