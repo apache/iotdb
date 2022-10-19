@@ -828,6 +828,8 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
+  private int patternMatchingThreshold = 1000000;
+
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-datanode.properties
@@ -1035,6 +1037,16 @@ public class IoTDBConfig {
 
   private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+
+  private long dataRatisConsensusRequestTimeoutMs = 10000L;
+  private long schemaRatisConsensusRequestTimeoutMs = 10000L;
+
+  private int dataRatisConsensusMaxRetryAttempts = 10;
+  private int schemaRatisConsensusMaxRetryAttempts = 10;
+  private long dataRatisConsensusInitialSleepTimeMs = 100L;
+  private long schemaRatisConsensusInitialSleepTimeMs = 100L;
+  private long dataRatisConsensusMaxSleepTimeMs = 10000L;
+  private long schemaRatisConsensusMaxSleepTimeMs = 10000L;
 
   IoTDBConfig() {}
 
@@ -3424,5 +3436,78 @@ public class IoTDBConfig {
 
   public double getUsableCompactionMemoryProportion() {
     return 1.0d - chunkMetadataSizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public long getDataRatisConsensusRequestTimeoutMs() {
+    return dataRatisConsensusRequestTimeoutMs;
+  }
+
+  public void setDataRatisConsensusRequestTimeoutMs(long dataRatisConsensusRequestTimeoutMs) {
+    this.dataRatisConsensusRequestTimeoutMs = dataRatisConsensusRequestTimeoutMs;
+  }
+
+  public long getSchemaRatisConsensusRequestTimeoutMs() {
+    return schemaRatisConsensusRequestTimeoutMs;
+  }
+
+  public void setSchemaRatisConsensusRequestTimeoutMs(long schemaRatisConsensusRequestTimeoutMs) {
+    this.schemaRatisConsensusRequestTimeoutMs = schemaRatisConsensusRequestTimeoutMs;
+  }
+
+  public int getDataRatisConsensusMaxRetryAttempts() {
+    return dataRatisConsensusMaxRetryAttempts;
+  }
+
+  public void setDataRatisConsensusMaxRetryAttempts(int dataRatisConsensusMaxRetryAttempts) {
+    this.dataRatisConsensusMaxRetryAttempts = dataRatisConsensusMaxRetryAttempts;
+  }
+
+  public int getSchemaRatisConsensusMaxRetryAttempts() {
+    return schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public void setSchemaRatisConsensusMaxRetryAttempts(int schemaRatisConsensusMaxRetryAttempts) {
+    this.schemaRatisConsensusMaxRetryAttempts = schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public long getDataRatisConsensusInitialSleepTimeMs() {
+    return dataRatisConsensusInitialSleepTimeMs;
+  }
+
+  public void setDataRatisConsensusInitialSleepTimeMs(long dataRatisConsensusInitialSleepTimeMs) {
+    this.dataRatisConsensusInitialSleepTimeMs = dataRatisConsensusInitialSleepTimeMs;
+  }
+
+  public long getSchemaRatisConsensusInitialSleepTimeMs() {
+    return schemaRatisConsensusInitialSleepTimeMs;
+  }
+
+  public void setSchemaRatisConsensusInitialSleepTimeMs(
+      long schemaRatisConsensusInitialSleepTimeMs) {
+    this.schemaRatisConsensusInitialSleepTimeMs = schemaRatisConsensusInitialSleepTimeMs;
+  }
+
+  public long getDataRatisConsensusMaxSleepTimeMs() {
+    return dataRatisConsensusMaxSleepTimeMs;
+  }
+
+  public void setDataRatisConsensusMaxSleepTimeMs(long dataRatisConsensusMaxSleepTimeMs) {
+    this.dataRatisConsensusMaxSleepTimeMs = dataRatisConsensusMaxSleepTimeMs;
+  }
+
+  public long getSchemaRatisConsensusMaxSleepTimeMs() {
+    return schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public void setSchemaRatisConsensusMaxSleepTimeMs(long schemaRatisConsensusMaxSleepTimeMs) {
+    this.schemaRatisConsensusMaxSleepTimeMs = schemaRatisConsensusMaxSleepTimeMs;
   }
 }

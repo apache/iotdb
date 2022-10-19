@@ -40,8 +40,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
@@ -52,7 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.GetRoutingResp;
+import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
@@ -593,8 +593,8 @@ public class PartitionManager {
     return getConsensusManager().write(req).getStatus();
   }
 
-  public GetRoutingResp getRouting(GetRoutingPlan plan) {
-    return (GetRoutingResp) getConsensusManager().read(plan).getDataset();
+  public GetRegionIdResp getRegionId(GetRegionIdPlan plan) {
+    return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }
 
   public GetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {

@@ -70,6 +70,16 @@ struct TRatisConfig {
 
   13: required i64 schemaLeaderElectionTimeoutMax
   14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
 }
 
 struct TDataNodeRemoveReq {
@@ -178,14 +188,14 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
-struct TGetRoutingReq {
+struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
     3: required common.TSeriesPartitionSlot seriesSlotId
     4: optional common.TTimePartitionSlot timeSlotId
 }
 
-struct TGetRoutingResp {
+struct TGetRegionIdResp {
     1: required common.TSStatus status
     2: optional list<common.TConsensusGroupId> dataRegionIdList
 }
@@ -881,7 +891,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /** Get a particular DataPartition's corresponding Regions */
-  TGetRoutingResp getRouting(TGetRoutingReq req)
+  TGetRegionIdResp getRegionId(TGetRegionIdReq req)
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)

@@ -119,7 +119,7 @@ public class SeriesPartitionTable {
    * @param timeSlotId Time partition's timeSlotId
    * @return the timePartition's corresponding dataRegionIds
    */
-  List<TConsensusGroupId> getRouting(TTimePartitionSlot timeSlotId) {
+  List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
     if (timeSlotId.getStartTime() >= 0) {
       if (!seriesPartitionMap.containsKey(timeSlotId)) {
         return new ArrayList<>();

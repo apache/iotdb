@@ -949,6 +949,13 @@ public class IoTDBDescriptor {
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
                 properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
@@ -1007,6 +1014,10 @@ public class IoTDBDescriptor {
     conf.setTimePartitionIntervalForStorage(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1945,6 +1956,17 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    conf.setDataRatisConsensusRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    conf.setSchemaRatisConsensusRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    conf.setDataRatisConsensusMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    conf.setDataRatisConsensusInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    conf.setDataRatisConsensusMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
   }
 
   public void reclaimConsensusMemory() {
