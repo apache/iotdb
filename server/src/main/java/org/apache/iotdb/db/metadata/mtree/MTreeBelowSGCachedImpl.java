@@ -336,48 +336,53 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Map<Integer, MetadataException> checkMeasurementExistence(PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     IMNode device = null;
     try {
       device = getNodeByPath(devicePath);
     } catch (MetadataException e) {
       return Collections.emptyMap();
     }
-
-    if (!device.isEntity()) {
-      return Collections.emptyMap();
-    }
-    Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
-    for (int i = 0; i < measurementList.size(); i++) {
-      if (device.hasChild(measurementList.get(i))) {
-        IMNode node = device.getChild(measurementList.get(i));
-        if (node.isMeasurement()) {
-          if (node.getAsMeasurementMNode().isPreDeleted()) {
-            failingMeasurementMap.put(
-                    i,
-                    new MeasurementInBlackListException(devicePath.concatNode(measurementList.get(i))));
+    try {
+      if (!device.isEntity()) {
+        return Collections.emptyMap();
+      }
+      Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
+      for (int i = 0; i < measurementList.size(); i++) {
+        if (device.hasChild(measurementList.get(i))) {
+          IMNode node = device.getChild(measurementList.get(i));
+          if (node.isMeasurement()) {
+            if (node.getAsMeasurementMNode().isPreDeleted()) {
+              failingMeasurementMap.put(
+                  i,
+                  new MeasurementInBlackListException(
+                      devicePath.concatNode(measurementList.get(i))));
+            } else {
+              failingMeasurementMap.put(
+                  i,
+                  new MeasurementAlreadyExistException(
+                      devicePath.getFullPath() + "." + measurementList.get(i),
+                      node.getAsMeasurementMNode().getMeasurementPath()));
+            }
           } else {
             failingMeasurementMap.put(
-                    i,
-                    new MeasurementAlreadyExistException(
-                            devicePath.getFullPath() + "." + measurementList.get(i),
-                            node.getAsMeasurementMNode().getMeasurementPath()));
+                i,
+                new PathAlreadyExistException(
+                    devicePath.getFullPath() + "." + measurementList.get(i)));
           }
-        } else {
+        }
+        if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
           failingMeasurementMap.put(
-                  i,
-                  new PathAlreadyExistException(
-                          devicePath.getFullPath() + "." + measurementList.get(i)));
+              i,
+              new AliasAlreadyExistException(
+                  devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
         }
       }
-      if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
-        failingMeasurementMap.put(
-                i,
-                new AliasAlreadyExistException(
-                        devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
-      }
+      return failingMeasurementMap;
+    } finally {
+      unPinMNode(device);
     }
-    return failingMeasurementMap;
   }
 
   private Pair<IMNode, Template> checkAndAutoCreateInternalPath(PartialPath devicePath)
@@ -1075,26 +1080,28 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public List<MeasurementPath> fetchSchema(PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags) throws MetadataException {
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
-            new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
-              @Override
-              protected void collectMeasurement(IMeasurementMNode node) {
-                if (node.isPreDeleted()) {
-                  return;
-                }
-                MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-                if (nodes[nodes.length - 1].equals(node.getAlias())) {
-                  // only when user query with alias, the alias in path will be set
-                  path.setMeasurementAlias(node.getAlias());
-                }
-                if (withTags) {
-                  path.setTagMap(tagGetter.apply(node));
-                }
-                result.add(path);
-              }
-            };
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            if (node.isPreDeleted()) {
+              return;
+            }
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              path.setTagMap(tagGetter.apply(node));
+            }
+            result.add(path);
+          }
+        };
     collector.setTemplateMap(templateMap);
     collector.traverse();
     return result;

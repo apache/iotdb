@@ -1101,7 +1101,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    return mtree.fetchSchema(pathPattern,templateMap,withTags);
+    return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
   @Override

@@ -71,8 +71,17 @@ public interface IMTreeBelowSG {
       List<String> aliasList)
       throws MetadataException;
 
+  /**
+   * Check if measurements under device exists in MTree
+   *
+   * @param devicePath device full path
+   * @param measurementList measurements list
+   * @param aliasList alias of measurement
+   * @return If all measurements not exists, return empty map. Otherwise, return a map whose key is
+   *     index of measurement in list and value is exception.
+   */
   Map<Integer, MetadataException> checkMeasurementExistence(
-          PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
   /**
    * Delete path. The path should be a full path from root to leaf node
@@ -151,7 +160,8 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   List<MeasurementPath> fetchSchema(
-          PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags) throws MetadataException;
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException;
 
   /**
    * Get all measurement schema matching the given path pattern
