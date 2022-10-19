@@ -17,11 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.trigger;
+package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -36,17 +44,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-// todo: add LocalStandalone when trigger is supported in Standalone version
-@Category(ClusterIT.class)
-public class IoTDBTriggerExecutionIT {
-
+@Category({ClusterIT.class})
+public class IoTDBSessionInsertWithTriggerExecutionIT {
   private static final String TRIGGER_JAR_PREFIX =
       System.getProperty("user.dir")
           + File.separator
@@ -54,6 +59,9 @@ public class IoTDBTriggerExecutionIT {
           + File.separator
           + "test-classes"
           + File.separator;
+
+  // row num of tablet
+  private final int rows = 10;
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
       "statelessTriggerBeforeInsertion_";
@@ -81,37 +89,37 @@ public class IoTDBTriggerExecutionIT {
   }
 
   private static void createTimeSeries() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.test");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateless.a with datatype=INT32,encoding=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateless.b with datatype=INT32,encoding=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateless.c with datatype=INT32,encoding=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateful.a with datatype=INT32,encoding=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateful.b with datatype=INT32,encoding=PLAIN");
-      statement.execute(
-          "CREATE TIMESERIES root.test.stateful.c with datatype=INT32,encoding=PLAIN");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.setStorageGroup("root.test");
+      session.createTimeseries(
+          "root.test.stateless.a", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.test.stateless.b", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.test.stateless.c", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.test.stateful.a", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.test.stateful.b", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.test.stateful.c", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
   private static void createTriggers() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // create stateless triggers before insertion
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateless trigger %s before insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateless trigger %s before insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
@@ -119,13 +127,13 @@ public class IoTDBTriggerExecutionIT {
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
 
       // create stateless triggers after insertion
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateless trigger %s after insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateless trigger %s after insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a",
@@ -133,13 +141,13 @@ public class IoTDBTriggerExecutionIT {
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
 
       // create stateful triggers before insertion
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateful trigger %s before insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateful trigger %s before insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
@@ -147,13 +155,13 @@ public class IoTDBTriggerExecutionIT {
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
 
       // create stateful triggers after insertion
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateful trigger %s after insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format(
               "create stateful trigger %s after insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
@@ -165,23 +173,22 @@ public class IoTDBTriggerExecutionIT {
   }
 
   private static void dropTriggers() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-      statement.execute(
+      session.executeNonQueryStatement(
           String.format("drop trigger %s", STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
     } catch (Exception e) {
       fail(e.getMessage());
@@ -190,25 +197,11 @@ public class IoTDBTriggerExecutionIT {
 
   @Test
   public void testFireTimesOfStatelessTrigger() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // 10 times is enough for checking whether fire times is correct
-      int rows = 10;
-      for (int i = 0; i < rows; i++) {
-        statement.execute(
-            String.format(
-                "insert into root.test.stateless(time,a,b,c) values (%d,%d,%d,%d)", i, i, i, i));
-        statement.execute(
-            String.format("insert into root.test.stateless(time,a) values (%d,%d)", i, i));
-        statement.execute(
-            String.format("insert into root.test.stateless(time,b) values (%d,%d)", i, i));
-        statement.execute(
-            String.format("insert into root.test.stateless(time,c) values (%d,%d)", i, i));
-      }
-
-      // fire times of statelessTrigger_all = (1 + 3) * rows
-      Assert.assertEquals(rows * 4, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      Assert.assertEquals(rows * 4, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      insertTablet("root.test.stateless", session);
+      // fire times of statelessTrigger_all = rows
+      Assert.assertEquals(rows, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+      Assert.assertEquals(rows, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
       // fire times of statelessTrigger_a = (1 + 1) * rows
       Assert.assertEquals(rows * 2, getCounter(STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
       Assert.assertEquals(rows * 2, getCounter(STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
@@ -219,30 +212,46 @@ public class IoTDBTriggerExecutionIT {
 
   @Test
   public void testFireTimesOfStatefulTrigger() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // 10 times is enough for checking whether fire times is correct
-      int rows = 10;
-      for (int i = 0; i < rows; i++) {
-        statement.execute(
-            String.format(
-                "insert into root.test.stateful(time,a,b,c) values (%d,%d,%d,%d)", i, i, i, i));
-        statement.execute(
-            String.format("insert into root.test.stateful(time,a) values (%d,%d)", i, i));
-        statement.execute(
-            String.format("insert into root.test.stateful(time,b) values (%d,%d)", i, i));
-        statement.execute(
-            String.format("insert into root.test.stateful(time,c) values (%d,%d)", i, i));
-      }
-
-      // fire times of statefulTrigger_all = (1 + 3) * rows
-      Assert.assertEquals(rows * 4, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
-      Assert.assertEquals(rows * 4, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      insertTablet("root.test.stateful", session);
+      // fire times of statefulTrigger_all = rows
+      Assert.assertEquals(rows, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+      Assert.assertEquals(rows, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
       // fire times of statefulTrigger_a = (1 + 1) * rows
       Assert.assertEquals(rows * 2, getCounter(STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
       Assert.assertEquals(rows * 2, getCounter(STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
     } catch (Exception e) {
       fail(e.getMessage());
+    }
+  }
+
+  private void insertTablet(String device, ISession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("a", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("b", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
+
+    Tablet tablet = new Tablet(device, schemaList, 10);
+
+    long timestamp = 1;
+
+    for (int i = 0; i < rows; i++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue("a", rowIndex, 1);
+      tablet.addValue("b", rowIndex, 1);
+      tablet.addValue("c", rowIndex, 1);
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 
