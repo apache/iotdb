@@ -155,6 +155,11 @@ public abstract class AbstractEnv implements BaseEnv {
     testMethodName = null;
   }
 
+  @Override
+  public int getConnectionPort() {
+    return dataNodeWrapperList.get(0).getPort();
+  }
+
   public String getTestClassName() {
     StackTraceElement[] stack = Thread.currentThread().getStackTrace();
     for (StackTraceElement stackTraceElement : stack) {

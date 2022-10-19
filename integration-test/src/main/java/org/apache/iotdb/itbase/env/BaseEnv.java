@@ -56,6 +56,10 @@ public interface BaseEnv {
     return getConnection(version, "root", "root");
   }
 
+  default int getConnectionPort() {
+    return 6667;
+  }
+
   Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException;
 

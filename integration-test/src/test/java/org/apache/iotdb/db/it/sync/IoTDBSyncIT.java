@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -76,14 +78,16 @@ public class IoTDBSyncIT {
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          String.format("create pipesink %s as IoTDB(ip='%s', port=%s", PIPE_SINK_NAME, IP, PORT));
+          String.format(
+              "create pipesink %s as IoTDB(ip='%s', port=%s)",
+              PIPE_SINK_NAME, IP, receiverEnv.getConnectionPort()));
       statement.execute(String.format("create pipe %s to %s", PIPE_NAME, PIPE_SINK_NAME));
       statement.execute(String.format("start pipe %s", PIPE_NAME));
       SchemaConfig.registerSchema(statement);
 
       statement.execute(
           String.format(
-              "insert into %s(time, %s, %s, %s, %s) values(1, 1, 1, 1.0, \"1\"",
+              "insert into %s(time, %s, %s, %s, %s) values(1, 1, 1, 1.0, \"1\")",
               SchemaConfig.DEVICE_0,
               SchemaConfig.MEASUREMENT_00.getMeasurementId(),
               SchemaConfig.MEASUREMENT_01.getMeasurementId(),
@@ -102,8 +106,19 @@ public class IoTDBSyncIT {
         Statement statement = connection.createStatement()) {
       Thread.sleep(waitTime);
 
+      //      try (ResultSet resultSet =
+      //          statement.executeQuery(
+      //              String.format(
+      //                  "select %s from %s",
+      //                  SchemaConfig.MEASUREMENT_00.getMeasurementId(), SchemaConfig.DEVICE_0))) {
+      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+        while (resultSet.next()) {
+          System.out.println(resultSet.getString("storage group"));
+        }
+      }
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 

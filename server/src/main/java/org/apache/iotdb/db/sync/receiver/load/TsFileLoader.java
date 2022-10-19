@@ -91,6 +91,6 @@ public class TsFileLoader implements ILoader {
   }
 
   private int parseSgLevel() throws IllegalPathException {
-    return new PartialPath(storageGroup).getNodeLength();
+    return new PartialPath(storageGroup).getNodeLength() - 1;
   }
 }

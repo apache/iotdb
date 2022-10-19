@@ -161,7 +161,7 @@ public class SyncTransportTest {
   @After
   public void tearDown() throws Exception {
     FileUtils.deleteDirectory(tmpDir);
-//    EnvironmentUtils.cleanEnv();
+    //    EnvironmentUtils.cleanEnv();
     tearDownNewIoTDB();
   }
 
