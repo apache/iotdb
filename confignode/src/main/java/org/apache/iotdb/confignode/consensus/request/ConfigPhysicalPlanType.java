@@ -88,7 +88,8 @@ public enum ConfigPhysicalPlanType {
   DeleteTriggerInTable,
   GetTriggerTable,
   UpdateTriggerStateInTable,
-  GetRouting,
+  GetTriggerJar,
+  GetRegionId,
   GetSeriesSlotList,
   GetTimeSlotList
 }

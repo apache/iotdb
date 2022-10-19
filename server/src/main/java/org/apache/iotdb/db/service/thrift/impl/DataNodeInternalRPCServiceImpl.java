@@ -86,6 +86,8 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -112,6 +114,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -138,7 +142,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
@@ -811,7 +818,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
-    Peer newLeaderPeer = new Peer(regionId, newNode);
+    Peer newLeaderPeer = new Peer(regionId, req.getNewLeaderNode().getDataNodeId(), newNode);
     if (!isLeader(regionId)) {
       LOGGER.info("region {} is not leader, no need to change leader", regionId);
       return status;
@@ -859,7 +866,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
         req.getRegionLocations().stream()
-            .map(location -> new Peer(regionId, getConsensusEndPoint(location, regionId)))
+            .map(
+                location ->
+                    new Peer(
+                        regionId,
+                        location.getDataNodeId(),
+                        getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
     TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
     if (!isSucceed(status)) {
@@ -1018,6 +1030,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .setMessage(e.getMessage());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TFireTriggerResp fireTrigger(TFireTriggerReq req) {
+    String triggerName = req.getTriggerName();
+    TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+    // no executor for given trigger name on this data node
+    if (executor == null) {
+      return new TFireTriggerResp(false, TriggerFireResult.FAILED_NO_TERMINATION.getId());
+    }
+    TriggerFireResult result = TriggerFireResult.SUCCESS;
+    try {
+      boolean fireResult =
+          executor.fire(
+              Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
+      if (!fireResult) {
+        result =
+            executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                ? TriggerFireResult.TERMINATION
+                : TriggerFireResult.FAILED_NO_TERMINATION;
+      }
+    } catch (Exception e) {
+      result =
+          executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+              ? TriggerFireResult.TERMINATION
+              : TriggerFireResult.FAILED_NO_TERMINATION;
+    }
+    return new TFireTriggerResp(true, result.getId());
   }
 
   private TEndPoint getConsensusEndPoint(

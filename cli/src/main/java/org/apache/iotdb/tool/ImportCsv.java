@@ -22,7 +22,7 @@ package org.apache.iotdb.tool;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -587,11 +587,15 @@ public class ImportCsv extends AbstractCsvTool {
           AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
           // read data from record
-          for (String measurement : headerNameMap.keySet()) {
-            String value = record.get(measurement);
+          for (Map.Entry<String, String> headerNameEntry : headerNameMap.entrySet()) {
+            // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
+            String headerNameWithoutType = headerNameEntry.getKey();
+            String headerName = headerNameEntry.getValue();
+            String value = record.get(headerName);
             if (!"".equals(value)) {
               TSDataType type;
-              if (!headerTypeMap.containsKey(headerNameMap.get(measurement))) {
+              // Get the data type directly if the CSV column have data type.
+              if (!headerTypeMap.containsKey(headerNameWithoutType)) {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
@@ -607,26 +611,26 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!hasResult) {
                   type = typeInfer(value);
                   if (type != null) {
-                    headerTypeMap.put(measurement, type);
+                    headerTypeMap.put(headerNameWithoutType, type);
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), measurement, value);
+                        record.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
               }
-              type = headerTypeMap.get(headerNameMap.get(measurement));
+              type = headerTypeMap.get(headerNameWithoutType);
               if (type != null) {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
+                      record.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
-                  measurements.add(headerNameMap.get(measurement));
+                  measurements.add(headerNameWithoutType);
                   types.add(type);
                   pointSize.getAndIncrement();
                 }
@@ -958,7 +962,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
+      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
     }
     return timestamp;
   }

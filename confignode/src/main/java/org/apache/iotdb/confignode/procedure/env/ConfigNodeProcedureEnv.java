@@ -94,19 +94,7 @@ public class ConfigNodeProcedureEnv {
 
   private final DataNodeRemoveHandler dataNodeRemoveHandler;
 
-  private static boolean skipForTest = false;
-
-  private static boolean invalidCacheResult = true;
-
   private final ReentrantLock removeConfigNodeLock;
-
-  public static void setSkipForTest(boolean skipForTest) {
-    ConfigNodeProcedureEnv.skipForTest = skipForTest;
-  }
-
-  public static void setInvalidCacheResult(boolean result) {
-    ConfigNodeProcedureEnv.invalidCacheResult = result;
-  }
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
@@ -148,10 +136,6 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    // TODO: Remove it after IT is supported
-    if (skipForTest) {
-      return invalidCacheResult;
-    }
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
@@ -250,18 +234,18 @@ public class ConfigNodeProcedureEnv {
   /**
    * Remove Consensus Group in removed node
    *
-   * @param tConfigNodeLocation config node location
+   * @param removedConfigNode config node location
    * @throws ProcedureException if failed status
    */
-  public void removeConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+  public void deleteConfigNodePeer(TConfigNodeLocation removedConfigNode)
       throws ProcedureException {
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
                 .sendSyncRequestToConfigNodeWithRetry(
-                    tConfigNodeLocation.getInternalEndPoint(),
-                    tConfigNodeLocation,
-                    ConfigNodeRequestType.REMOVE_CONSENSUS_GROUP);
+                    removedConfigNode.getInternalEndPoint(),
+                    removedConfigNode,
+                    ConfigNodeRequestType.DELETE_CONFIG_NODE_PEER);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }

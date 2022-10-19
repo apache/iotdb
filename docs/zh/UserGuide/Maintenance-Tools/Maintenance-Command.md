@@ -77,9 +77,9 @@ IoTDB> SET SYSTEM TO READONLY ON LOCAL
 IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 ```
 
-## 超时
+## 终止查询
 
-IoTDB 支持 Session 超时和查询超时。
+IoTDB 支持设置 Session 连接超时和查询超时时间，并支持手动终止正在执行的查询。
 
 ### Session 超时
 
@@ -108,9 +108,9 @@ session.executeQueryStatement(String sql, long timeout)
 > 如果不配置超时时间参数或将超时时间设置为负数，将使用服务器端默认的超时时间。 
 > 如果超时时间设置为0，则会禁用超时功能。
 
-### 查询中止
+### 查询终止
 
-除了被动地等待查询超时外，IoTDB 还支持主动地中止查询，命令为：
+除了被动地等待查询超时外，IoTDB 还支持主动地终止查询，命令为：
 
 ```sql
 KILL QUERY <queryId>
@@ -389,3 +389,100 @@ It costs 0.009s
 - **Running**: Region 正常运行，可读可写
 - **Removing**: Region 所在 DataNode 正在被移出集群，不可读写
 - **Unknown**: Region 所在 DataNode 未正常上报心跳，ConfigNode 认为该 Region 不可读写
+
+## 集群槽路径监控工具
+
+集群使用分片来管理数据和元数据，一个存储组的元数据分片定义为序列槽，而数据分片定义为<序列槽，时间分区槽>的数对。为了得到分片相关的信息，可以使用以下SQL来查询：
+### 追踪数据分片的分区
+
+追踪一个数据分片（或一个序列槽下的所有数据分片）的对应分区:
+- `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+
+示例:
+```
+IoTDB> show data regionid of root.sg where seriesslotid=5286 and timeslotid=0
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show data regionid of root.sg where seriesslotid=5286
++--------+
+|RegionId|
++--------+
+|       1|
+|       2|
++--------+
+Total line number = 2
+It costs 0.006s
+```
+
+### 追踪元数据分片的分区
+追踪一个元数据分片下的对应分区：
+- `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+
+示例:
+```
+IoTDB> show schema regionid of root.sg where seriesslotid=5286
++--------+
+|RegionId|
++--------+
+|       0|
++--------+
+Total line number = 1
+It costs 0.007s
+```
+### 追踪序列槽下的时间槽
+展示一个存储组内，一个特定序列槽下的所有时间槽：
+- `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
+
+示例:
+```
+IoTDB> show timeslotid of root.sg where seriesslotid=5286
++----------+
+|TimeSlotId|
++----------+
+|         0|
+|      1000|
++----------+
+Total line number = 1
+It costs 0.007s
+```
+### 追踪存储组的序列槽
+展示一个存储组内，数据，元数据或是所有的序列槽：
+- `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
+
+示例:
+```
+IoTDB> show data seriesslotid of root.sg
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> show schema seriesslotid of root.sg
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show seriesslotid of root.sg
++------------+
+|SeriesSlotId|
++------------+
+|        5286|
++------------+
+Total line number = 1
+It costs 0.006s
+```
+#### 注意:
+通常情况下，一个存储组内，数据和元数据的序列槽是相同的。然而，我们仍然提供了不同的sql语句，以防它们在某些情况下并不相同。

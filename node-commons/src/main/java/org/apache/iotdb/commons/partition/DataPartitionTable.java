@@ -166,15 +166,16 @@ public class DataPartitionTable {
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param timeSlotId TimePartitionSlot
-   * @return the timePartition's corresponding dataRegionIds
+   * @return the timePartition's corresponding dataRegionIds, if timeSlotId == -1, then return all
+   *     the seriesSlot's dataRegionIds
    */
-  public List<TConsensusGroupId> getRouting(
+  public List<TConsensusGroupId> getRegionId(
       TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
     if (!dataPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
     }
     SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
-    return seriesPartitionTable.getRouting(timeSlotId);
+    return seriesPartitionTable.getRegionId(timeSlotId);
   }
 
   public List<TTimePartitionSlot> getTimeSlotList(

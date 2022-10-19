@@ -108,11 +108,8 @@ public class IoTDBSnapshotTest {
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
         Assert.assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-        int cnt = 0;
-        while (analyzer.hasNext()) {
-          analyzer.getNextPairs();
-          cnt++;
-        }
+        Assert.assertTrue(analyzer.isSnapshotComplete());
+        int cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
         Assert.assertEquals(200, cnt);
         for (TsFileResource resource : resources) {
@@ -147,10 +144,8 @@ public class IoTDBSnapshotTest {
         Assert.assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         int cnt = 0;
-        while (analyzer.hasNext()) {
-          analyzer.getNextPairs();
-          cnt++;
-        }
+        Assert.assertTrue(analyzer.isSnapshotComplete());
+        cnt = analyzer.getTotalFileCountInSnapshot();
         analyzer.close();
         Assert.assertEquals(100, cnt);
         for (TsFileResource resource : resources) {

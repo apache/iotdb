@@ -46,12 +46,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -117,6 +118,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.PartitionRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.junit.Assert.assertEquals;
 
@@ -1000,12 +1002,27 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRoutingPlanTest() throws IOException {
-    GetRoutingPlan getRoutingPlan0 =
-        new GetRoutingPlan("root.test", new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
-    GetRoutingPlan getRoutingPlan1 =
-        (GetRoutingPlan) ConfigPhysicalPlan.Factory.create(getRoutingPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getRoutingPlan0, getRoutingPlan1);
+  public void GetTriggerJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("test1");
+    jarNames.add("test2");
+    GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
+
+    GetTriggerJarPlan getTriggerJarPlan1 =
+        (GetTriggerJarPlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
+  }
+
+  @Test
+  public void GetRegionIdPlanTest() throws IOException {
+    GetRegionIdPlan getRegionIdPlan0 =
+        new GetRegionIdPlan(
+            "root.test", PartitionRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+    GetRegionIdPlan getRegionIdPlan1 =
+        (GetRegionIdPlan)
+            ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
   }
 
   @Test
