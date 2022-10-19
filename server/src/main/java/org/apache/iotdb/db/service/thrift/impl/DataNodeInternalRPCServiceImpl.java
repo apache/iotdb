@@ -626,7 +626,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
-      long queryId = SESSION_MANAGER.requestQueryId(0L, true);
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(sessionId), true);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
