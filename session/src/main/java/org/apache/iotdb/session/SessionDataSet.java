@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
 
 public class SessionDataSet implements AutoCloseable {
 
@@ -171,7 +170,7 @@ public class SessionDataSet implements AutoCloseable {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.getTimestamp(TIMESTAMP_STR).getTime(), outFields);
+    return new RowRecord(ioTDBRpcDataSet.time, outFields);
   }
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {

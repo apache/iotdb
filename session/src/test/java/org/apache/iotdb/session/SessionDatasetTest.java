@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -69,11 +68,12 @@ public class SessionDatasetTest {
   private String[] textData;
   private long[] times;
 
-  Session session = new Session(IP, PORT, USERNAME, PASSWORD);
+  Session session;
 
   @Test
   public void testTsBlockRpcDataset() throws IoTDBConnectionException, StatementExecutionException {
-    session.open(false);
+    session = new Session(IP, PORT, USERNAME, PASSWORD);
+    session.open();
     session.setStorageGroup(STORAGE_GROUP);
     try {
       createTimeSeries();
@@ -131,14 +131,12 @@ public class SessionDatasetTest {
     textData = new String[ROW_NUMBER];
     times = new long[ROW_NUMBER];
 
-    long timestamp = System.currentTimeMillis();
     for (int row = 0; row < ROW_NUMBER; row++) {
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
         tablet.reset();
       }
-      timestamp++;
     }
     if (tablet.rowSize != 0) {
       session.insertTablet(tablet);
@@ -147,7 +145,6 @@ public class SessionDatasetTest {
   }
 
   public void testV2() throws IoTDBConnectionException, StatementExecutionException {
-    session.open();
     SessionDataSet sd = session.executeQueryStatement("select * from " + DEVICE_ID, 100000);
     int r = 0;
     while (sd.hasNext()) {
