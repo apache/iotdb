@@ -1014,6 +1014,10 @@ public class IoTDBDescriptor {
     conf.setTimePartitionIntervalForStorage(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1952,6 +1956,17 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    conf.setDataRatisConsensusRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    conf.setSchemaRatisConsensusRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    conf.setDataRatisConsensusMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    conf.setDataRatisConsensusInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    conf.setDataRatisConsensusMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
   }
 
   public void reclaimConsensusMemory() {

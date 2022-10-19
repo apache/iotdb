@@ -29,8 +29,10 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -156,6 +158,16 @@ public class Analysis {
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // SELECT INTO Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // used in ALIGN BY DEVICE
+  private DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor;
+
+  // used in ALIGN BY TIME
+  private IntoPathDescriptor intoPathDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
@@ -435,6 +447,23 @@ public class Analysis {
 
   public void setDeviceViewOutputExpressions(Set<Expression> deviceViewOutputExpressions) {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
+  }
+
+  public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
+    return deviceViewIntoPathDescriptor;
+  }
+
+  public void setDeviceViewIntoPathDescriptor(
+      DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor) {
+    this.deviceViewIntoPathDescriptor = deviceViewIntoPathDescriptor;
+  }
+
+  public IntoPathDescriptor getIntoPathDescriptor() {
+    return intoPathDescriptor;
+  }
+
+  public void setIntoPathDescriptor(IntoPathDescriptor intoPathDescriptor) {
+    this.intoPathDescriptor = intoPathDescriptor;
   }
 
   public List<String> getTagKeys() {

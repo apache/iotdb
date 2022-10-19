@@ -140,4 +140,10 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getGetTimeSlotListHeader() {
     return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
   }
+
+  public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
+    return isAlignByDevice
+        ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.selectIntoColumnHeaders, true);
+  }
 }

@@ -93,6 +93,8 @@ public class IoTDBFilterIT {
             String.format(
                 "insert into root.vehicle.testNaN(timestamp,d1,d2) values(%d,%d,%d)", i, i, i));
       }
+      statement.execute(
+          " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -102,9 +104,8 @@ public class IoTDBFilterIT {
   public void testFilterNaN() {
     String sqlStr = "select d1 from root.vehicle.testNaN where d1/d2 > 0";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int count = 0;
       while (resultSet.next()) {
         ++count;
@@ -112,6 +113,23 @@ public class IoTDBFilterIT {
 
       // 0.0/0.0 is NaN which should not be kept.
       assertEquals(ITERATION_TIMES - 1, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSameConstantWithDifferentType() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select s2 from root.** where s1 = 1 and s2 >= \"1\" and s2 <= \"2\";")) {
+      int count = 0;
+      while (resultSet.next()) {
+        ++count;
+      }
+      assertEquals(1, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
