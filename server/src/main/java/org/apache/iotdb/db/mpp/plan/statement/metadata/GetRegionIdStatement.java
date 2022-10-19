@@ -41,7 +41,7 @@ import java.util.List;
  * <p>SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE SERIESSLOTID operator_eq
  * seriesSlot=INTEGER_LITERAL (OPERATOR_AND TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL)?
  */
-public class GetRegionStatement extends Statement implements IConfigStatement {
+public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
   private final String storageGroup;
 
@@ -51,7 +51,7 @@ public class GetRegionStatement extends Statement implements IConfigStatement {
 
   private TTimePartitionSlot timeSlotId;
 
-  public GetRegionStatement(
+  public GetRegionIdStatement(
       String storageGroup, TConsensusGroupType partitionType, TSeriesPartitionSlot seriesSlotId) {
     super();
     this.storageGroup = storageGroup;
@@ -81,7 +81,7 @@ public class GetRegionStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitGetRegion(this, context);
+    return visitor.visitGetRegionId(this, context);
   }
 
   @Override

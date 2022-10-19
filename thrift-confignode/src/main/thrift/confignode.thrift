@@ -188,14 +188,14 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
-struct TGetRoutingReq {
+struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
     3: required common.TSeriesPartitionSlot seriesSlotId
     4: optional common.TTimePartitionSlot timeSlotId
 }
 
-struct TGetRoutingResp {
+struct TGetRegionIdResp {
     1: required common.TSStatus status
     2: optional list<common.TConsensusGroupId> dataRegionIdList
 }
@@ -891,7 +891,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /** Get a particular DataPartition's corresponding Regions */
-  TGetRoutingResp getRouting(TGetRoutingReq req)
+  TGetRegionIdResp getRegionId(TGetRegionIdReq req)
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)

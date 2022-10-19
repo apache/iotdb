@@ -26,8 +26,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -290,8 +290,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case ShowPipe:
           req = new ShowPipePlan();
           break;
-        case GetRouting:
-          req = new GetRoutingPlan();
+        case GetRegionId:
+          req = new GetRegionIdPlan();
           break;
         case GetTimeSlotList:
           req = new GetTimeSlotListPlan();
