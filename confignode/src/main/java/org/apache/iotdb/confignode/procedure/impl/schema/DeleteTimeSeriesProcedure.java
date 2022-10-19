@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
@@ -279,10 +279,10 @@ public class DeleteTimeSeriesProcedure
               TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TDeleteDataForDeleteTimeSeriesReq, TSStatus> clientHandler =
+            AsyncClientHandler<TDeleteDataForDeleteSchemaReq, TSStatus> clientHandler =
                 new AsyncClientHandler<>(
-                    DataNodeRequestType.DELETE_DATA_FOR_DELETE_TIMESERIES,
-                    new TDeleteDataForDeleteTimeSeriesReq(
+                    DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+                    new TDeleteDataForDeleteSchemaReq(
                         new ArrayList<>(consensusGroupIdList),
                         preparePatternTreeBytesData(patternTree)),
                     dataNodeLocationMap);

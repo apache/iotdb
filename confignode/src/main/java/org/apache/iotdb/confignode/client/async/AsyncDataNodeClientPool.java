@@ -37,7 +37,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
@@ -234,9 +234,9 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case DELETE_DATA_FOR_DELETE_TIMESERIES:
-          client.deleteDataForDeleteTimeSeries(
-              (TDeleteDataForDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
+        case DELETE_DATA_FOR_DELETE_SCHEMA:
+          client.deleteDataForDeleteSchema(
+              (TDeleteDataForDeleteSchemaReq) clientHandler.getRequest(requestId),
               (DeleteTimeSeriesRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

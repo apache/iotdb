@@ -153,7 +153,7 @@ public class AsyncClientHandler<Q, R> {
     switch (requestType) {
       case CONSTRUCT_SCHEMA_BLACK_LIST:
       case ROLLBACK_SCHEMA_BLACK_LIST:
-      case DELETE_DATA_FOR_DELETE_TIMESERIES:
+      case DELETE_DATA_FOR_DELETE_SCHEMA:
       case DELETE_TIMESERIES:
         return new DeleteTimeSeriesRPCHandler(
             requestType,
