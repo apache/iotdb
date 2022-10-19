@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
@@ -172,6 +174,37 @@ public class TriggerManagementService {
     }
   }
 
+  public boolean isTriggerTableEmpty() {
+    return triggerTable.isEmpty();
+  }
+
+  public TriggerTable getTriggerTable() {
+    return triggerTable;
+  }
+
+  public TriggerExecutor getExecutor(String triggerName) {
+    return executorMap.get(triggerName);
+  }
+
+  public boolean needToFireOnAnotherDataNode(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    return triggerInformation.isStateful()
+        && triggerInformation.getDataNodeLocation().getDataNodeId() != DATA_NODE_ID;
+  }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.getTriggerInformation(triggerName);
+  }
+
+  /**
+   * @param devicePath PathPattern
+   * @return all the triggers that matched this Pattern
+   */
+  public List<List<String>> getMatchedTriggerListForPath(
+      PartialPath devicePath, List<String> measurements) {
+    return patternTreeMap.getOverlapped(devicePath, measurements);
+  }
+
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {
     String triggerName = triggerInformation.getTriggerName();
@@ -282,6 +315,18 @@ public class TriggerManagementService {
           String.format(
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
+  }
+
+  /**
+   * @param triggerName given trigger
+   * @return InternalRPC TEndPoint of DataNode where instance of given stateful trigger is on.
+   */
+  public TEndPoint getEndPointForStatefulTrigger(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    if (triggerInformation.isStateful()) {
+      return triggerInformation.getDataNodeLocation().getInternalEndPoint();
+    }
+    return null;
   }
 
   // region only for test

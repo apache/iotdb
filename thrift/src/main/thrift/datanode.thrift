@@ -192,6 +192,17 @@ struct TUpdateTriggerLocationReq {
   2: required common.TDataNodeLocation newLocation
 }
 
+struct TFireTriggerReq {
+  1: required string triggerName
+  2: required binary tablet
+  3: required byte triggerEvent
+}
+
+struct TFireTriggerResp {
+  1: required bool foundExecutor
+  2: required i32 fireResult
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -471,6 +482,13 @@ service IDataNodeRPCService {
    * @param trigger name, new DataNodeLocation
    **/
   common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
+
+  /**
+    * Fire a stateful trigger on current data node.
+    *
+    * @param trigger name, tablet and event
+    **/
+  TFireTriggerResp fireTrigger(TFireTriggerReq req)
 
   /**
    * Config node will invalidate permission Info cache.

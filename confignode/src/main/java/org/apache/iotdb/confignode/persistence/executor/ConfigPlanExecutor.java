@@ -29,8 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -189,8 +189,8 @@ public class ConfigPlanExecutor {
         return triggerInfo.getTriggerJar((GetTriggerJarPlan) req);
       case GetTransferringTriggers:
         return triggerInfo.getTransferringTriggers((GetTransferringTriggersPlan) req);
-      case GetRouting:
-        return partitionInfo.getRouting((GetRoutingPlan) req);
+      case GetRegionId:
+        return partitionInfo.getRegionId((GetRegionIdPlan) req);
       case GetTimeSlotList:
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
       case GetSeriesSlotList:

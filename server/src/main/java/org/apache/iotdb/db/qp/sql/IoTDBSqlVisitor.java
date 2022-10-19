@@ -1271,25 +1271,31 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private SelectIntoOperator parseAndConstructSelectIntoOperator(
       IoTDBSqlParser.SelectStatementContext ctx) {
+    IoTDBSqlParser.IntoClauseContext intoClauseContext = ctx.intoClause();
+    if (intoClauseContext.intoItem().size() > 0) {
+      throw new SQLParserException(
+          "The new syntax of SELECT INTO statement will be supported starting from v0.14");
+    }
+
     if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
       throw new SQLParserException(
           "select into: the number of prefix paths in the from clause should be 1.");
     }
-
     int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
-    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
+    if (sourcePathsCount != intoClauseContext.intoPath().size()) {
       throw new SQLParserException(
           "select into: the number of source paths and the number of target paths should be the same.");
     }
 
     SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
     selectIntoOperator.setQueryOperator(queryOp);
+
     List<PartialPath> intoPaths = new ArrayList<>();
     for (int i = 0; i < sourcePathsCount; ++i) {
-      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
+      intoPaths.add(parseIntoPath(intoClauseContext.intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
-    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
+    selectIntoOperator.setIntoPathsAligned(intoClauseContext.ALIGNED() != null);
     return selectIntoOperator;
   }
 
@@ -1304,8 +1310,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     PartialPath intoPath = null;
-    if (intoPathContext.fullPath() != null) {
-      intoPath = parseFullPathInSelectInto(intoPathContext.fullPath());
+    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
+      intoPath =
+          parseFullPathInSelectInto((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
 
       Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
       while (m.find()) {
@@ -1321,9 +1328,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
               "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
         }
       }
-    } else if (intoPathContext.nodeNameWithoutWildcard() != null) {
-      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNameWithoutStars =
-          intoPathContext.nodeNameWithoutWildcard();
+    } else if (intoPathContext instanceof IoTDBSqlParser.SuffixPathInIntoPathContext) {
+      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNameWithoutStars =
+          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
       String[] intoPathNodes =
           new String[1 + levelLimitOfSourcePrefixPath + nodeNameWithoutStars.size()];
 
@@ -2565,15 +2572,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
-  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathContext ctx) {
-    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
-        ctx.nodeNameWithoutWildcard();
+  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathInIntoPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNamesWithoutStar = ctx.nodeNameInIntoPath();
     String[] path = new String[nodeNamesWithoutStar.size() + 1];
     int i = 0;
     if (ctx.ROOT() != null) {
       path[0] = ctx.ROOT().getText();
     }
-    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+    for (IoTDBSqlParser.NodeNameInIntoPathContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       i++;
       path[i] = parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStar);
     }
@@ -2642,7 +2648,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** in select into, $ and {} are allowed */
   private String parseNodeNameWithoutWildCardInSelectInto(
-      IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
+      IoTDBSqlParser.NodeNameInIntoPathContext ctx) {
     String nodeName = ctx.getText();
     if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
