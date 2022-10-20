@@ -31,7 +31,7 @@ public class ConfigNodeConstant {
   public static final String JMX_TYPE = "type";
   public static final String CONFIGNODE_JMX_PORT = "confignode.jmx.port";
 
-  public static final String DATA_DIR = "data";
+  public static final String DATA_DIR = "confignode";
   public static final String CONF_DIR = "conf";
   public static final String CONSENSUS_FOLDER = "consensus";
   public static final String UDF_FOLDER = "udf";
