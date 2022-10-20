@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.confignode.it;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -225,9 +227,29 @@ public class IoTDBSwitchLeaderIT {
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
 
-      // Check cluster tools and loadStatistics
-      Assert.assertEquals(showDataNodesResp0, client.showDataNodes());
-      Assert.assertEquals(showRegionResp0, client.showRegion(new TShowRegionReq()));
+      // Check leadership
+      Map<TConsensusGroupId, Integer> oldLeaderMap = new HashMap<>();
+      showRegionResp0
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                if (RegionRoleType.Leader.getStatus().equals(regionInfo.getRoleType())) {
+                  oldLeaderMap.put(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId());
+                }
+              });
+      TShowRegionResp showRegionResp1 = client.showRegion(new TShowRegionReq());
+      Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+      showRegionResp1
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                if (RegionRoleType.Leader.getStatus().equals(regionInfo.getRoleType())) {
+                  newLeaderMap.put(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId());
+                }
+              });
+      Assert.assertEquals(oldLeaderMap, newLeaderMap);
+
+      // TODO: Check NodeStatus after the heartbeat check is optimized
     }
   }
 }
