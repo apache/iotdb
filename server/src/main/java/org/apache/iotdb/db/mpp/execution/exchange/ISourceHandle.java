@@ -43,10 +43,11 @@ public interface ISourceHandle {
    */
   TsBlock receive();
 
-  /** Get the serialized {@link TsBlock} as the form of bytebuffer.
-   *  This method share the same iterator with receive().
-   *  When one of these two methods is called, the cursor in iterator will forward.
-   * */
+  /**
+   * Get the serialized {@link TsBlock} as the form of bytebuffer. This method share the same
+   * iterator with receive(). When one of these two methods is called, the cursor in iterator will
+   * forward.
+   */
   ByteBuffer getSerializedTsBlock() throws IoTDBException;
 
   /** If there are more tsblocks. */

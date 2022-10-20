@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -28,6 +26,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,13 +113,13 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
-    if(tsBlock!=null){
+    if (tsBlock != null) {
       try {
         return serde.serialize(tsBlock);
-      }catch (Exception e){
+      } catch (Exception e) {
         throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       }
-    }else {
+    } else {
       return null;
     }
   }

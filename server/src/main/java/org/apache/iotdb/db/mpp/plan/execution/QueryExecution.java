@@ -163,6 +163,11 @@ public class QueryExecution implements IQueryExecution {
         });
   }
 
+  @FunctionalInterface
+  interface ISourceHandleSupplier<T> {
+    T get() throws IoTDBException;
+  }
+
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
@@ -337,8 +342,8 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
-  @Override
-  public Optional<TsBlock> getBatchResult() throws IoTDBException {
+  private Optional<Object> getResult(ISourceHandleSupplier<Object> dataSupplier)
+      throws IoTDBException {
     checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
@@ -354,9 +359,6 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          // Once the resultHandle is finished, we should transit the state of this query to
-          // FINISHED.
-          // So that the corresponding cleanup work could be triggered.
           logger.info("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
@@ -365,7 +367,8 @@ public class QueryExecution implements IQueryExecution {
         ListenableFuture<?> blocked = resultHandle.isBlocked();
         blocked.get();
         if (!resultHandle.isFinished()) {
-          TsBlock res = resultHandle.receive();
+          // use the getSerializedTsBlock instead of receive to get ByteBuffer result
+          Object res = dataSupplier.get();
           if (res == null) {
             continue;
           }
@@ -394,57 +397,15 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
-    checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
-    // iterate until we get a non-nullable TsBlock or result is finished
-    while (true) {
-      try {
-        if (resultHandle.isAborted()) {
-          logger.warn("[ResultHandleAborted]");
-          stateMachine.transitionToAborted();
-          if (stateMachine.getFailureStatus() != null) {
-            throw new IoTDBException(
-                stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-          } else {
-            throw new IoTDBException(
-                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-          }
-        } else if (resultHandle.isFinished()) {
-          logger.info("[ResultHandleFinished]");
-          stateMachine.transitionToFinished();
-          return Optional.empty();
-        }
+  public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    Optional<Object> res = getResult(() -> resultHandle.receive());
+    return res.map(o -> (TsBlock) o);
+  }
 
-        ListenableFuture<?> blocked = resultHandle.isBlocked();
-        blocked.get();
-        if (!resultHandle.isFinished()) {
-          // use the getSerializedTsBlock instead of receive to get ByteBuffer result
-          ByteBuffer res = resultHandle.getSerializedTsBlock();
-          if (res == null) {
-            continue;
-          }
-          return Optional.of(res);
-        } else {
-          return Optional.empty();
-        }
-      } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
-        if (stateMachine.getFailureStatus() != null) {
-          throw new IoTDBException(
-              stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-        }
-        Throwable t = e.getCause() == null ? e : e.getCause();
-        throwIfUnchecked(t);
-        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-      } catch (InterruptedException e) {
-        stateMachine.transitionToFailed(e);
-        Thread.currentThread().interrupt();
-        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-      } catch (Throwable t) {
-        stateMachine.transitionToFailed(t);
-        throw t;
-      }
-    }
+  @Override
+  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    Optional<Object> res = getResult(() -> resultHandle.getSerializedTsBlock());
+    return res.map(o -> (ByteBuffer) o);
   }
 
   /** @return true if there is more tsblocks, otherwise false */

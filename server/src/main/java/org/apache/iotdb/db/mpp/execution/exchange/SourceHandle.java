@@ -117,9 +117,9 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public synchronized TsBlock receive() {
     ByteBuffer tsBlock = getSerializedTsBlock();
-    if(tsBlock!=null){
+    if (tsBlock != null) {
       return serde.deserialize(tsBlock);
-    }else{
+    } else {
       return null;
     }
   }

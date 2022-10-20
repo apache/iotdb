@@ -375,26 +375,26 @@ public class QueryDataSetUtils {
 
   // To fetch required amounts of data and combine them through List
   public static List<ByteBuffer> convertQueryResultByFetchSize(
-          IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
+      IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
     int rowCount = 0;
     List<ByteBuffer> res = new LinkedList<>();
     while (rowCount < fetchSize) {
-        Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
-        if (!optionalByteBuffer.isPresent()) {
-          break;
-        }
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+      if (!optionalByteBuffer.isPresent()) {
+        break;
+      }
 
-        ByteBuffer byteBuffer = optionalByteBuffer.get();
-        byteBuffer.mark();
-        int valueColumnCount = byteBuffer.getInt();
-        for (int i = 0; i < valueColumnCount; i++) {
-          byteBuffer.get();
-        }
-        int positionCount = byteBuffer.getInt();
-        byteBuffer.reset();
+      ByteBuffer byteBuffer = optionalByteBuffer.get();
+      byteBuffer.mark();
+      int valueColumnCount = byteBuffer.getInt();
+      for (int i = 0; i < valueColumnCount; i++) {
+        byteBuffer.get();
+      }
+      int positionCount = byteBuffer.getInt();
+      byteBuffer.reset();
 
-        res.add(byteBuffer);
-        rowCount += positionCount;
+      res.add(byteBuffer);
+      rowCount += positionCount;
     }
     return res;
   }

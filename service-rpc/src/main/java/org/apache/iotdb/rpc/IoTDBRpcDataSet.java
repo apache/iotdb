@@ -64,7 +64,7 @@ public class IoTDBRpcDataSet {
   public long statementId;
   public boolean ignoreTimeStamp;
 
-  public final static TsBlockSerde serde = new TsBlockSerde();
+  public static final TsBlockSerde serde = new TsBlockSerde();
   public List<ByteBuffer> queryResult;
   public TsBlock curTsBlock;
   public int queryResultSize; // the length of queryResult

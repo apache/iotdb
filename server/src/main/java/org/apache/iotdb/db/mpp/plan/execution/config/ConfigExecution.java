@@ -70,7 +70,7 @@ public class ConfigExecution implements IQueryExecution {
   private final IConfigTask task;
   private IConfigTaskExecutor configTaskExecutor;
 
-  private final static TsBlockSerde serde = new TsBlockSerde();
+  private static final TsBlockSerde serde = new TsBlockSerde();
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -184,7 +184,7 @@ public class ConfigExecution implements IQueryExecution {
       try {
         return Optional.of(serde.serialize(resultSet));
       } catch (IOException e) {
-        throw new IoTDBException(e,TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       }
     }
     return Optional.empty();

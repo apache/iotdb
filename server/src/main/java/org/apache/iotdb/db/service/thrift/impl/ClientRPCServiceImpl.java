@@ -111,6 +111,7 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,8 +150,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   @FunctionalInterface
-  public interface SelectResult<T,R,U> {
-    public void apply(T t,R r,U u) throws IoTDBException, IOException;
+  public interface SelectResult<T, R, U> {
+    public void apply(T t, R r, U u) throws IoTDBException, IOException;
   }
 
   public ClientRPCServiceImpl() {
@@ -163,19 +164,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  @Override
-  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req)
-      throws TException {
-    return executeStatementV2(req);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req)
-      throws TException {
-    return executeStatementV2(req);
-  }
-
-  private TSExecuteStatementResp executeStatementInternal(TSExecuteStatementReq req, SelectResult<TSExecuteStatementResp,IQueryExecution,Integer> setResult){
+  private TSExecuteStatementResp executeStatementInternal(
+      TSExecuteStatementReq req,
+      SelectResult<TSExecuteStatementResp, IQueryExecution, Integer> setResult) {
     String statement = req.getStatement();
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
@@ -184,13 +175,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.currentTimeMillis();
     try {
       Statement s =
-              StatementGenerator.createStatement(
-                      statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+          StatementGenerator.createStatement(
+              statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
       if (s == null) {
         return RpcUtils.getTSExecuteStatementResp(
-                RpcUtils.getStatus(
-                        TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
@@ -204,17 +195,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
       // create and cache dataset
       ExecutionResult result =
-              COORDINATOR.execute(
-                      s,
-                      queryId,
-                      SESSION_MANAGER.getSessionInfo(req.sessionId),
-                      statement,
-                      PARTITION_FETCHER,
-                      SCHEMA_FETCHER,
-                      req.getTimeout());
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              statement,
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -225,8 +216,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution != null && queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          //todo ycy
-          setResult.apply(resp,queryExecution,req.fetchSize);
+          setResult.apply(resp, queryExecution, req.fetchSize);
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -234,7 +224,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
-              onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;
@@ -244,16 +234,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-
-  @Override
-  public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req){
-    return executeStatementInternal(req ,(TSExecuteStatementResp resp, IQueryExecution queryExecution, Integer fetchSize)
-            ->{resp.setQueryResult(QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution,fetchSize));});
-
-  }
-
-  @Override
-  public TSExecuteStatementResp executeRawDataQueryV2(TSRawDataQueryReq req) throws TException {
+  private TSExecuteStatementResp executeRawDataQueryInternal(
+      TSRawDataQueryReq req,
+      SelectResult<TSExecuteStatementResp, IQueryExecution, Integer> setResult) {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
@@ -293,7 +276,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          resp.setQueryResult(QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize));
+          setResult.apply(resp, queryExecution, req.fetchSize);
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -312,8 +295,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  @Override
-  public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) throws TException {
+  private TSExecuteStatementResp executeLastDataQueryInternal(
+      TSLastDataQueryReq req,
+      SelectResult<TSExecuteStatementResp, IQueryExecution, Integer> setResult) {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
@@ -351,7 +335,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          resp.setQueryResult(QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize));
+          setResult.apply(resp, queryExecution, req.fetchSize);
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -371,8 +355,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  @Override
-  public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) throws TException {
+  private TSFetchResultsResp fetchResultInternal(
+      TSFetchResultsReq req, SelectResult<TSFetchResultsResp, IQueryExecution, Integer> setResult) {
     try {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -382,23 +366,69 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
-
-        List<ByteBuffer> result = QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
-        boolean hasResultSet = !result.isEmpty();
-
-        resp.setHasResultSet(hasResultSet);
-        resp.setIsAlign(true);
-        resp.setQueryResult(result);
-
-        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
-        if (!hasResultSet) {
-          COORDINATOR.removeQueryExecution(req.queryId);
-        }
+        setResult.apply(resp, queryExecution, req.fetchSize);
         return resp;
       }
     } catch (Exception e) {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
+  }
+
+  @Override
+  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
+    return executeStatementV2(req);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req) {
+    return executeStatementV2(req);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
+    return executeStatementInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryResult(
+                QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize)));
+  }
+
+  @Override
+  public TSExecuteStatementResp executeRawDataQueryV2(TSRawDataQueryReq req) {
+    return executeRawDataQueryInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryResult(
+                QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize)));
+  }
+
+  @Override
+  public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) {
+    return executeLastDataQueryInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryResult(
+                QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize)));
+  }
+
+  @Override
+  public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) {
+    return fetchResultInternal(
+        req,
+        (resp, queryExecution, fetchSize) -> {
+          List<ByteBuffer> result =
+              QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
+          boolean hasResultSet = !result.isEmpty();
+
+          resp.setHasResultSet(hasResultSet);
+          resp.setIsAlign(true);
+          resp.setQueryResult(result);
+
+          QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+          if (!hasResultSet) {
+            COORDINATOR.removeQueryExecution(req.queryId);
+          }
+        });
   }
 
   @Override
@@ -813,8 +843,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-    return executeStatementInternal(req ,(TSExecuteStatementResp resp, IQueryExecution queryExecution, Integer fetchSize)
-            ->{resp.setQueryDataSet(QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution,fetchSize));});
+    return executeStatementInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryDataSet(
+                QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize)));
   }
 
   @Override
@@ -876,45 +909,33 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
+  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     return executeStatement(req);
   }
 
   @Override
-  public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req)
-      throws TException {
+  public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     return executeStatement(req);
   }
 
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
-    try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
-      }
+    return fetchResultInternal(
+        req,
+        (resp, queryExecution, fetchSize) -> {
+          TSQueryDataSet result =
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+          boolean hasResultSet = result.bufferForTime().limit() != 0;
 
-      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
+          resp.setHasResultSet(hasResultSet);
+          resp.setQueryDataSet(result);
+          resp.setIsAlign(true);
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
-      try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
-
-        TSQueryDataSet result =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
-        boolean hasResultSet = result.bufferForTime().limit() != 0;
-
-        resp.setHasResultSet(hasResultSet);
-        resp.setQueryDataSet(result);
-        resp.setIsAlign(true);
-
-        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
-        if (!hasResultSet) {
-          COORDINATOR.removeQueryExecution(req.queryId);
-        }
-        return resp;
-      }
-    } catch (Exception e) {
-      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
-    }
+          QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+          if (!hasResultSet) {
+            COORDINATOR.removeQueryExecution(req.queryId);
+          }
+        });
   }
 
   @Override
@@ -1357,125 +1378,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
-      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
-    }
-    long startTime = System.currentTimeMillis();
-    try {
-      Statement s =
-          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
-
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
-      }
-
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
-      // create and cache dataset
-      ExecutionResult result =
-          COORDINATOR.execute(
-              s,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
-              "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              req.getTimeout());
-
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException("error code: " + result.status);
-      }
-
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-
-      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        TSExecuteStatementResp resp;
-        if (queryExecution.isQuery()) {
-          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-          resp.setStatus(result.status);
-          resp.setQueryDataSet(
-              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-        } else {
-          resp = RpcUtils.getTSExecuteStatementResp(result.status);
-        }
-        return resp;
-      }
-    } catch (Exception e) {
-      // TODO call the coordinator to release query resource
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
-    } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
-      long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
-        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
-      }
-    }
+    return executeRawDataQueryInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryDataSet(
+                QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize)));
   }
 
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
-      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
-    }
-    long startTime = System.currentTimeMillis();
-    try {
-      Statement s =
-          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
-
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
-      }
-
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
-      // create and cache dataset
-      ExecutionResult result =
-          COORDINATOR.execute(
-              s,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
-              "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              req.getTimeout());
-
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException("error code: " + result.status);
-      }
-
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-
-      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        TSExecuteStatementResp resp;
-        if (queryExecution.isQuery()) {
-          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-          resp.setStatus(result.status);
-          resp.setQueryDataSet(
-              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-        } else {
-          resp = RpcUtils.getTSExecuteStatementResp(result.status);
-        }
-        return resp;
-      }
-
-    } catch (Exception e) {
-      // TODO call the coordinator to release query resource
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
-    } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
-      long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
-        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
-      }
-    }
+    return executeLastDataQueryInternal(
+        req,
+        (resp, queryExecution, fetchSize) ->
+            resp.setQueryDataSet(
+                QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize)));
   }
 
   @Override
