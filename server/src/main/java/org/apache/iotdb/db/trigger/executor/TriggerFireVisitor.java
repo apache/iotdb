@@ -119,6 +119,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
               .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
       Tablet tablet = new Tablet(node.getDevicePath().getFullPath(), schemas);
+      // add one row
+      tablet.rowSize++;
       tablet.addTimestamp(0, time);
       for (String measurement : entry.getValue()) {
         tablet.addValue(measurement, 0, values[measurementToSchemaIndexMap.get(measurement)]);
@@ -152,6 +154,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     Object[] columns = node.getColumns();
     BitMap[] bitMaps = node.getBitMaps();
     long[] timestamps = node.getTimes();
+    int rowCount = node.getRowCount();
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
       Tablet tablet;
@@ -164,7 +167,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                 timestamps,
                 columns,
                 bitMaps,
-                timestamps.length);
+                rowCount);
       } else {
         // choose specified columns
         List<MeasurementSchema> schemas =
@@ -190,7 +193,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                 timestamps,
                 columnsOfNewTablet,
                 bitMapsOfNewTablet,
-                timestamps.length);
+                rowCount);
       }
 
       TriggerFireResult result = fire(entry.getKey(), tablet, context);

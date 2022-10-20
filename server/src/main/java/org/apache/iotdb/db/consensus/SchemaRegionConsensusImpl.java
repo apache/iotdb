@@ -76,6 +76,8 @@ public class SchemaRegionConsensusImpl {
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getSchemaRatisConsensusLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          conf.getSchemaRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -98,6 +100,14 @@ public class SchemaRegionConsensusImpl {
                                       .setRequestTimeout(
                                           TimeDuration.valueOf(
                                               conf.getSchemaRatisConsensusRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setLeaderLogAppender(

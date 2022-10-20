@@ -87,7 +87,7 @@ public class IoTDBSessionInsertNulIT {
 
   private long queryCountRecords(ISession session, String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 1000);
+    SessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 60_000);
     long count = 0;
     while (dataSetWrapper.hasNext()) {
       RowRecord record = dataSetWrapper.next();

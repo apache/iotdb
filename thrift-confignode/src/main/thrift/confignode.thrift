@@ -80,6 +80,12 @@ struct TRatisConfig {
   20: required i64 dataInitialSleepTime
   21: required i64 schemaMaxSleepTime
   22: required i64 dataMaxSleepTime
+
+  23: required i64 schemaPreserveWhenPurge
+  24: required i64 dataPreserveWhenPurge
+
+  25: required i64 firstElectionTimeoutMin
+  26: required i64 firstElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
