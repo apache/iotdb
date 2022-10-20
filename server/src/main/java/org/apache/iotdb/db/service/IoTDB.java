@@ -57,8 +57,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
-
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
@@ -83,8 +81,6 @@ public class IoTDB implements IoTDBMBean {
       System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
-
-    loadExternLib(config);
 
     daemon.active();
   }
