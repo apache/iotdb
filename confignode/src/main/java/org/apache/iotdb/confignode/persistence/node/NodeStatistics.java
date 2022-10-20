@@ -118,4 +118,17 @@ public class NodeStatistics {
   public int hashCode() {
     return Objects.hash(loadScore, status, statusReason);
   }
+
+  @Override
+  public String toString() {
+    return "NodeStatistics{"
+        + "loadScore="
+        + loadScore
+        + ", status="
+        + status
+        + ", statusReason='"
+        + (statusReason == null ? "null" : statusReason)
+        + '\''
+        + '}';
+  }
 }

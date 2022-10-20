@@ -96,4 +96,16 @@ public class RegionStatistics {
   public int hashCode() {
     return Objects.hash(versionTimestamp, isLeader, regionStatus);
   }
+
+  @Override
+  public String toString() {
+    return "RegionStatistics{"
+        + "versionTimestamp="
+        + versionTimestamp
+        + ", isLeader="
+        + isLeader
+        + ", regionStatus="
+        + regionStatus
+        + '}';
+  }
 }

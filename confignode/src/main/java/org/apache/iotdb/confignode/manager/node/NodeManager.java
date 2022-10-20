@@ -867,6 +867,8 @@ public class NodeManager {
                       nodeStatisticsMap.getOrDefault(
                           dataNodeId, NodeStatistics.generateDefaultNodeStatistics())));
             });
+
+    LOGGER.info("Inherit NodeStatistics: {}", nodeStatisticsMap);
   }
 
   /**

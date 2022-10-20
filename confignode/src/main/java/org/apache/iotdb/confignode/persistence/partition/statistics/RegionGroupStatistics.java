@@ -130,4 +130,16 @@ public class RegionGroupStatistics {
   public int hashCode() {
     return Objects.hash(leaderDataNodeId, regionGroupStatus, regionStatisticsMap);
   }
+
+  @Override
+  public String toString() {
+    return "RegionGroupStatistics{"
+        + "leaderDataNodeId="
+        + leaderDataNodeId
+        + ", regionGroupStatus="
+        + regionGroupStatus
+        + ", regionStatisticsMap="
+        + regionStatisticsMap
+        + '}';
+  }
 }

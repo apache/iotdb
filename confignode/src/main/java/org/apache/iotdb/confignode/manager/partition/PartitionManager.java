@@ -854,7 +854,6 @@ public class PartitionManager {
         .forEach(
             regionReplicaSet -> {
               TConsensusGroupId groupId = regionReplicaSet.getRegionId();
-
               regionGroupCacheMap.put(
                   groupId,
                   new RegionGroupCache(
@@ -862,6 +861,8 @@ public class PartitionManager {
                       regionGroupStatisticsMap.getOrDefault(
                           groupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics())));
             });
+
+    LOGGER.info("Inherit RegionGroupStatistics: {}", regionGroupStatisticsMap);
   }
 
   public ScheduledExecutorService getRegionMaintainer() {
