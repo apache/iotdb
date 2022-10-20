@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -134,8 +135,9 @@ public class IntoPathDescriptor {
     int listSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>(listSize);
     for (int i = 0; i < listSize; i++) {
-      sourceTargetPathPairList.add(
-          new Pair<>(ReadWriteIOUtils.readString(byteBuffer), PartialPath.deserialize(byteBuffer)));
+      String sourceColumn = ReadWriteIOUtils.readString(byteBuffer);
+      PartialPath targetPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+      sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
     }
 
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);

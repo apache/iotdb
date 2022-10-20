@@ -68,13 +68,13 @@ public class DeviceViewIntoNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INTO.serialize(byteBuffer);
+    PlanNodeType.DEVICE_VIEW_INTO.serialize(byteBuffer);
     this.deviceViewIntoPathDescriptor.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INTO.serialize(stream);
+    PlanNodeType.DEVICE_VIEW_INTO.serialize(stream);
     this.deviceViewIntoPathDescriptor.serialize(stream);
   }
 

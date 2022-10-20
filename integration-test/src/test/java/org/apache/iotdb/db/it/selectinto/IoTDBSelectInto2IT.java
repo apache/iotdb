@@ -21,12 +21,19 @@ package org.apache.iotdb.db.it.selectinto;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 
+@RunWith(IoTDBTestRunner.class)
+// TODO add LocalStandaloneIT back while deleting old standalone
+@Category({ClusterIT.class})
 public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
 
   private static int numOfPointsPerPage;

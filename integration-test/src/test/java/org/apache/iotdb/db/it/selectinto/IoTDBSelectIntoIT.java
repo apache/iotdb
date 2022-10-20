@@ -34,6 +34,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
+// TODO add LocalStandaloneIT back while deleting old standalone
 @Category({ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
