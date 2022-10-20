@@ -322,10 +322,11 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     for (int i = 0; i < FIRE_RETRY_NUM; i++) {
       if (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
-        TEndPoint endPoint =
-            TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
+        TDataNodeLocation tDataNodeLocation =
+            TriggerManagementService.getInstance()
+                .getDataNodeLocationOfStatefulTrigger(triggerName);
         try (SyncDataNodeInternalServiceClient client =
-            INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(endPoint)) {
+            INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(tDataNodeLocation.getInternalEndPoint())) {
           TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
           TFireTriggerResp resp = client.fireTrigger(req);
           if (resp.foundExecutor) {
@@ -333,9 +334,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
             return TriggerFireResult.construct(resp.getFireResult());
           } else {
             // update TDataNodeLocation of stateful trigger through config node
-            if (!updateLocationOfStatefulTrigger(triggerName)) {
+            if (!updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId())) {
               // if TDataNodeLocation is still the same, sleep 1s and before the retry
-              Thread.sleep(1000);
+              Thread.sleep(4000);
             }
           }
         } catch (IOException | TException e) {
@@ -347,15 +348,15 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              endPoint.toString(),
+              tDataNodeLocation.getInternalEndPoint().toString(),
               e);
           // update TDataNodeLocation of stateful trigger through config node
-          updateLocationOfStatefulTrigger(triggerName);
+          updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
         } catch (Throwable e) {
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              endPoint.toString(),
+              tDataNodeLocation.getInternalEndPoint().toString(),
               e);
           // do not retry if it is not due to bad network or no executor found
           return TriggerManagementService.getInstance()
@@ -396,22 +397,20 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   }
 
   /** Return true if the config node returns a new TDataNodeLocation */
-  private boolean updateLocationOfStatefulTrigger(String triggerName) {
+  private boolean updateLocationOfStatefulTrigger(String triggerName, int currentDataNodeId) {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TDataNodeLocation tDataNodeLocation =
+      TDataNodeLocation newTDataNodeLocation =
           configNodeClient.getLocationOfStatefulTrigger(triggerName).getDataNodeLocation();
-      if (tDataNodeLocation != null) {
-        TriggerManagementService.getInstance()
-            .updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation);
-        return TriggerManagementService.getInstance()
-                .getTriggerInformation(triggerName)
-                .getDataNodeLocation()
-                .getDataNodeId()
-            == tDataNodeLocation.getDataNodeId();
-      } else {
-        return false;
+      if (newTDataNodeLocation != null) {
+        if (currentDataNodeId != newTDataNodeLocation.getDataNodeId()) {
+          // indicates that the location of this stateful trigger has changed
+          TriggerManagementService.getInstance()
+              .updateLocationOfStatefulTrigger(triggerName, newTDataNodeLocation);
+          return true;
+        }
       }
+      return false;
     } catch (TException | IOException e) {
       LOGGER.error(
           "Failed to update location of stateful trigger({}) through config node and the cause is {}.",

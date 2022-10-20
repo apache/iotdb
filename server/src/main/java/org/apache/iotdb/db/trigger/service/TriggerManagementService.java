@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -319,12 +318,13 @@ public class TriggerManagementService {
 
   /**
    * @param triggerName given trigger
-   * @return InternalRPC TEndPoint of DataNode where instance of given stateful trigger is on.
+   * @return TDataNodeLocation of DataNode where instance of given stateful trigger is on. Null if
+   *     trigger not found.
    */
-  public TEndPoint getEndPointForStatefulTrigger(String triggerName) {
+  public TDataNodeLocation getDataNodeLocationOfStatefulTrigger(String triggerName) {
     TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
     if (triggerInformation.isStateful()) {
-      return triggerInformation.getDataNodeLocation().getInternalEndPoint();
+      return triggerInformation.getDataNodeLocation();
     }
     return null;
   }
