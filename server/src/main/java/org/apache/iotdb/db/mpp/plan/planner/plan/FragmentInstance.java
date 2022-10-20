@@ -194,7 +194,8 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     long timeOut = ReadWriteIOUtils.readLong(buffer);
-    SessionInfo sessionInfo = SessionInfo.deserializeFrom(buffer);
+    boolean hasSessionInfo = ReadWriteIOUtils.readBool(buffer);
+    SessionInfo sessionInfo = hasSessionInfo ? SessionInfo.deserializeFrom(buffer) : null;
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
@@ -212,7 +213,10 @@ public class FragmentInstance implements IConsensusRequest {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
       ReadWriteIOUtils.write(timeOut, outputStream);
-      sessionInfo.serialize(outputStream);
+      ReadWriteIOUtils.write(sessionInfo != null, outputStream);
+      if (sessionInfo != null) {
+        sessionInfo.serialize(outputStream);
+      }
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
