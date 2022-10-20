@@ -285,6 +285,7 @@ public class NodeManager {
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
 
+    // check if node is already exist
     boolean found = false;
     List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
     for (TDataNodeConfiguration configuration : configurationList) {
