@@ -344,9 +344,6 @@ public class MTree implements Serializable {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    //    if(StringUtils.isEmpty(alias)){
-    //      alias = null;
-    //    }
     MetaFormatUtils.checkTimeseries(path);
     PartialPath devicePath = path.getDevicePath();
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
