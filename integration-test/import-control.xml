@@ -28,6 +28,7 @@
   <allow pkg="java.math"/>
   <allow pkg="java.text"/>
   <allow class="java.nio.file.Files"/>
+  <allow class="org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode"/>
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
