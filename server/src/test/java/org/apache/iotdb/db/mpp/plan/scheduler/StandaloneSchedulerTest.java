@@ -75,6 +75,8 @@ import java.util.concurrent.ExecutorService;
 
 public class StandaloneSchedulerTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
 
   static LocalConfigNode configNode;
 
@@ -139,8 +141,7 @@ public class StandaloneSchedulerTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
             conf.getQueryTimeoutThreshold(),
-            "test",
-            ZoneId.systemDefault().getId());
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.wt01.status"));
@@ -244,8 +245,7 @@ public class StandaloneSchedulerTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
             conf.getQueryTimeoutThreshold(),
-            "test",
-            ZoneId.systemDefault().getId());
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.GPS"));
@@ -359,8 +359,7 @@ public class StandaloneSchedulerTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
             conf.getQueryTimeoutThreshold(),
-            "test",
-            ZoneId.systemDefault().getId());
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.d3"));
@@ -412,8 +411,7 @@ public class StandaloneSchedulerTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
             conf.getQueryTimeoutThreshold(),
-            "test",
-            ZoneId.systemDefault().getId());
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(deviceId));
@@ -495,8 +493,7 @@ public class StandaloneSchedulerTest {
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
             conf.getQueryTimeoutThreshold(),
-            "test",
-            ZoneId.systemDefault().getId());
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(deviceId);

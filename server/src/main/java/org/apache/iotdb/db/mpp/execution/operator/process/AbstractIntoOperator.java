@@ -70,8 +70,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
-    this.client =
-        new DataNodeInternalClient(operatorContext.getUserName(), operatorContext.getZoneId());
+    this.client = new DataNodeInternalClient(operatorContext.getSessionInfo().getSessionId());
   }
 
   protected static List<IntoOperator.InsertTabletStatementGenerator>
@@ -108,7 +107,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
     TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
-    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       String message =
           String.format(
               "Error occurred while inserting tablets in SELECT INTO: %s",

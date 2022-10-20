@@ -109,10 +109,7 @@ public class FragmentInstanceManager {
                         instanceId,
                         fragmentInstanceId ->
                             createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getUserName(),
-                                instance.getZoneId()));
+                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
                 try {
                   DataDriver driver =
@@ -156,10 +153,7 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId,
-                              stateMachine,
-                              instance.getUserName(),
-                              instance.getZoneId()));
+                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
                 SchemaDriver driver =

@@ -100,8 +100,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             timeFilter,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
-            queryContext.getSession().getUserName(),
-            queryContext.getSession().getZoneId(),
+            queryContext.getSession(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one

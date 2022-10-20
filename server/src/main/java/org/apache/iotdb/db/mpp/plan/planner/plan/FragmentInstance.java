@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
@@ -65,9 +66,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private boolean isRoot;
 
-  // session info
-  private final String userName;
-  private final String zoneId;
+  private final SessionInfo sessionInfo;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -78,16 +77,14 @@ public class FragmentInstance implements IConsensusRequest {
       Filter timeFilter,
       QueryType type,
       long timeOut,
-      String userName,
-      String zoneId) {
+      SessionInfo sessionInfo) {
     this.fragment = fragment;
     this.timeFilter = timeFilter;
     this.id = id;
     this.type = type;
     this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
     this.isRoot = false;
-    this.userName = userName;
-    this.zoneId = zoneId;
+    this.sessionInfo = sessionInfo;
   }
 
   public FragmentInstance(
@@ -96,10 +93,9 @@ public class FragmentInstance implements IConsensusRequest {
       Filter timeFilter,
       QueryType type,
       long timeOut,
-      String userName,
-      String zoneId,
+      SessionInfo sessionInfo,
       boolean isRoot) {
-    this(fragment, id, timeFilter, type, timeOut, userName, zoneId);
+    this(fragment, id, timeFilter, type, timeOut, sessionInfo);
     this.isRoot = isRoot;
   }
 
@@ -198,13 +194,12 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     long timeOut = ReadWriteIOUtils.readLong(buffer);
-    String userName = ReadWriteIOUtils.readString(buffer);
-    String zoneId = ReadWriteIOUtils.readString(buffer);
+    SessionInfo sessionInfo = SessionInfo.deserializeFrom(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut, userName, zoneId);
+        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut, sessionInfo);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -217,8 +212,7 @@ public class FragmentInstance implements IConsensusRequest {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
       ReadWriteIOUtils.write(timeOut, outputStream);
-      ReadWriteIOUtils.write(userName, outputStream);
-      ReadWriteIOUtils.write(zoneId, outputStream);
+      sessionInfo.serialize(outputStream);
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
@@ -261,11 +255,7 @@ public class FragmentInstance implements IConsensusRequest {
     return timeOut;
   }
 
-  public String getUserName() {
-    return userName;
-  }
-
-  public String getZoneId() {
-    return zoneId;
+  public SessionInfo getSessionInfo() {
+    return sessionInfo;
   }
 }
