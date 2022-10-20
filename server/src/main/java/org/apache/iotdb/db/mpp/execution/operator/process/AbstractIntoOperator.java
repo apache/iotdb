@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
@@ -135,13 +136,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return false;
   }
 
-  protected int findWritten(String sourceColumn) {
-    InputLocation inputLocation = sourceColumnToInputLocationMap.get(sourceColumn);
+  protected int findWritten(String device, String measurement) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      int written = generator.getWrittenCount(inputLocation);
-      if (written != -1) {
-        return written;
+      if (!Objects.equals(generator.getDevice(), device)) {
+        continue;
       }
+      return generator.getWrittenCount(measurement);
     }
     return 0;
   }
@@ -203,7 +203,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     private Object[] columns;
     private BitMap[] bitMaps;
 
-    private final Map<InputLocation, AtomicInteger> writtenCounter;
+    private final Map<String, AtomicInteger> writtenCounter;
 
     public InsertTabletStatementGenerator(
         PartialPath devicePath,
@@ -216,8 +216,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       this.dataTypes = measurementToDataTypeMap.values().toArray(new TSDataType[0]);
       this.inputLocations = measurementToInputLocationMap.values().toArray(new InputLocation[0]);
       this.writtenCounter = new HashMap<>();
-      for (InputLocation inputLocation : inputLocations) {
-        writtenCounter.put(inputLocation, new AtomicInteger(0));
+      for (String measurement : measurements) {
+        writtenCounter.put(measurement, new AtomicInteger(0));
       }
       this.reset();
     }
@@ -274,7 +274,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
           }
 
           bitMaps[i].unmark(rowCount);
-          writtenCounter.get(inputLocations[i]).getAndIncrement();
+          writtenCounter.get(measurements[i]).getAndIncrement();
           switch (valueColumn.getDataType()) {
             case INT32:
               ((int[]) columns[i])[rowCount] = valueColumn.getInt(lastReadIndex);
@@ -363,11 +363,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       return insertTabletStatement;
     }
 
-    public int getWrittenCount(InputLocation inputLocation) {
-      if (!writtenCounter.containsKey(inputLocation)) {
+    public String getDevice() {
+      return devicePath.toString();
+    }
+
+    public int getWrittenCount(String measurement) {
+      if (!writtenCounter.containsKey(measurement)) {
         return -1;
       }
-      return writtenCounter.get(inputLocation).get();
+      return writtenCounter.get(measurement).get();
     }
   }
 }

@@ -94,7 +94,9 @@ public class IntoOperator extends AbstractIntoOperator {
       timeColumnBuilder.writeLong(0);
       columnBuilders[0].writeBinary(new Binary(sourceTargetPathPair.left));
       columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
-      columnBuilders[2].writeInt(findWritten(sourceTargetPathPair.left));
+      columnBuilders[2].writeInt(
+          findWritten(
+              sourceTargetPathPair.right.getDevice(), sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
     }
     return resultTsBlockBuilder.build();

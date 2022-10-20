@@ -121,7 +121,9 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       columnBuilders[0].writeBinary(new Binary(currentDevice));
       columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.left));
       columnBuilders[2].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
-      columnBuilders[3].writeInt(findWritten(sourceTargetPathPair.left));
+      columnBuilders[3].writeInt(
+          findWritten(
+              sourceTargetPathPair.right.getDevice(), sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
     }
   }
