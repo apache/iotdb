@@ -28,15 +28,17 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteTimeSeriesRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
@@ -47,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
@@ -213,13 +216,13 @@ public class AsyncDataNodeClientPool {
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
               (TConstructSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
               (TRollbackSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case FETCH_SCHEMA_BLACK_LIST:
@@ -237,13 +240,13 @@ public class AsyncDataNodeClientPool {
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
               (TDeleteDataForDeleteSchemaReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries(
               (TDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case PRE_CREATE_PIPE:
@@ -258,6 +261,23 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+          client.constructSchemaBlackListWithTemplate(
+              (TConstructSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+          client.rollbackSchemaBlackListWithTemplate(
+              (TRollbackSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case DEACTIVATE_TEMPLATE:
+          client.deactivateTemplate(
+              (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
