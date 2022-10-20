@@ -410,6 +410,27 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
+struct TGroupByTimeParameter {
+  1: required i64 startTime
+  2: required i64 endTime
+  3: required i64 interval
+  4: required i64 slidingStep
+  5: required list<i32> indexes
+}
+
+struct TFetchWindowSetReq {
+  1: required i64 sessionId
+  2: required list<string> queryPaths
+  3: optional string functionName
+  4: required TGroupByTimeParameter groupByTimeParameter
+}
+
+struct TFetchWindowSetResp {
+  1: required list<string> columns
+  2: required list<string> dataTypeList
+  3: required list<TSQueryDataSet> queryDataSetList
+}
+
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
   // Check whether the ip of sender is in the white list of receiver.
@@ -525,4 +546,6 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TFetchWindowSetResp fetchWindowSet(1:TFetchWindowSetReq req)
 }
