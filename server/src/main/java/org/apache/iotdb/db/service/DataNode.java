@@ -147,10 +147,12 @@ public class DataNode implements DataNodeMBean {
     try {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
-      // register current DataNode to ConfigNode
+
+      // update DataNode if properties are changed
       if (IoTDBStartCheck.getInstance().isUpdate()) {
         updateDataNodeLocation();
       } else {
+        // register current DataNode to ConfigNode
         registerInConfigNode();
       }
       // active DataNode
