@@ -134,7 +134,7 @@ public class RewriteTsFileTool {
       password = getArgOrDefault(commandLine, "pw", password);
       filePath = getArgOrDefault(commandLine, "f", filePath);
       readMode = getArgOrDefault(commandLine, "rm", readMode);
-      ignoreBrokenChunk = commandLine.hasOption("ignore-broken");
+      ignoreBrokenChunk = commandLine.hasOption("ig");
     } catch (ParseException e) {
       System.out.printf("Parse Args Error. %s%n", e.getMessage());
       priHelp(options);
@@ -201,14 +201,7 @@ public class RewriteTsFileTool {
             .build();
     options.addOption(readModeOpt);
 
-    Option ignoreBrokenChunkOpt =
-        Option.builder("ignore-broken")
-            .argName("IgnoreBrokenChunks")
-            .hasArg()
-            .desc("Ignore the broken chunks in the tsfile")
-            .type(boolean.class)
-            .build();
-    options.addOption(ignoreBrokenChunkOpt);
+    options.addOption("ig", "ignore-broken chunks");
     return options;
   }
 
@@ -513,12 +506,13 @@ public class RewriteTsFileTool {
       Decoder defaultTimeDecoder,
       Session session)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
+    String measurementId = header.getMeasurementID();
     Tablet tablet =
         new Tablet(
             currentDevice,
             Collections.singletonList(
                 new MeasurementSchema(
-                    header.getMeasurementID(),
+                    measurementId,
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType())),
@@ -527,8 +521,8 @@ public class RewriteTsFileTool {
         new PageReader(pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     while (batchData.hasCurrent()) {
-      tablet.timestamps[tablet.rowSize] = batchData.currentTime();
-      tablet.values[tablet.rowSize++] = batchData.currentValue();
+      tablet.addTimestamp(tablet.rowSize, batchData.currentTime());
+      tablet.addValue(measurementId, tablet.rowSize++, batchData.currentValue());
       if (tablet.rowSize >= MAX_TABLET_LENGTH) {
         session.insertTablet(tablet);
         tablet.reset();
@@ -578,23 +572,26 @@ public class RewriteTsFileTool {
           StatementExecutionException, NoMeasurementException {
     List<TsFileResource> resources = new ArrayList<>();
     files.forEach(x -> resources.add(new TsFileResource(x)));
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
-      while (deviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> devicePair = deviceIterator.nextDevice();
-        String device = devicePair.left;
-        boolean isAligned = devicePair.right;
-        if (isAligned) {
-          try {
-            writeAlignedSeries(device, deviceIterator, session);
-          } catch (Throwable t) {
-            // this is a broken aligned chunk, skip it
-            System.out.println("Skip aligned chunk " + device);
-          }
-        } else {
-          MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-              deviceIterator.iterateNotAlignedSeries(device, true);
-          while (seriesIterator.hasNextSeries()) {
-            writeSingleSeries(device, seriesIterator, session);
+    for (TsFileResource resource : resources) {
+      try (MultiTsFileDeviceIterator deviceIterator =
+          new MultiTsFileDeviceIterator(Collections.singletonList(resource))) {
+        while (deviceIterator.hasNextDevice()) {
+          Pair<String, Boolean> devicePair = deviceIterator.nextDevice();
+          String device = devicePair.left;
+          boolean isAligned = devicePair.right;
+          if (isAligned) {
+            try {
+              writeAlignedSeries(device, deviceIterator, session);
+            } catch (Throwable t) {
+              // this is a broken aligned chunk, skip it
+              System.out.println("Skip aligned chunk " + device);
+            }
+          } else {
+            MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
+                deviceIterator.iterateNotAlignedSeries(device, true);
+            while (seriesIterator.hasNextSeries()) {
+              writeSingleSeries(device, seriesIterator, session);
+            }
           }
         }
       }
@@ -618,6 +615,7 @@ public class RewriteTsFileTool {
           writeSingleChunk(device, p, chunkMetadata, reader, session);
         } catch (Throwable t) {
           // this is a broken chunk, skip it
+          t.printStackTrace();
           System.out.printf("Skip broken chunk in device %s.%s%n", device, p.getMeasurement());
         }
       }
@@ -646,8 +644,33 @@ public class RewriteTsFileTool {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
-        tablet.timestamps[tablet.rowSize] = timeValuePair.getTimestamp();
-        tablet.values[tablet.rowSize++] = timeValuePair.getValue();
+        tablet.addTimestamp(tablet.rowSize, timeValuePair.getTimestamp());
+        switch (timeValuePair.getValue().getDataType()) {
+          case TEXT:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getStringValue());
+            break;
+          case BOOLEAN:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getBoolean());
+            break;
+          case DOUBLE:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getDouble());
+            break;
+          case FLOAT:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getFloat());
+            break;
+          case INT64:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getLong());
+            break;
+          case INT32:
+            tablet.addValue(
+                p.getMeasurement(), tablet.rowSize++, timeValuePair.getValue().getInt());
+            break;
+        }
         if (tablet.rowSize >= MAX_TABLET_LENGTH) {
           session.insertTablet(tablet);
           tablet.reset();
@@ -732,9 +755,12 @@ public class RewriteTsFileTool {
         IBatchDataIterator batchDataIterator =
             alignedChunkReader.nextPageData().getBatchDataIterator();
         while (batchDataIterator.hasNext()) {
+          tablet.addTimestamp(tablet.rowSize, batchDataIterator.currentTime());
           TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
-          tablet.timestamps[tablet.rowSize] = batchDataIterator.currentTime();
-          tablet.values[tablet.rowSize++] = batchDataIterator.currentValue();
+          for (int i = 0; i < schemaList.size(); ++i) {
+            tablet.addValue(schemaList.get(i).getMeasurementId(), tablet.rowSize, pointsData[i]);
+          }
+          tablet.rowSize++;
           batchDataIterator.next();
           if (tablet.rowSize >= MAX_TABLET_LENGTH) {
             session.insertAlignedTablet(tablet);
