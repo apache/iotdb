@@ -122,11 +122,11 @@ END
 ```sql
 CREATE CONTINUOUS QUERY cq1
 RESAMPLE EVERY 20s
-BEGIN 
-  SELECT max_value(temperature) 
-  INTO root.ln.wf02.wt02.temperature_max, root.ln.wf02.wt01.temperature_max, root.ln.wf01.wt02.temperature_max, root.ln.wf01.wt01.temperature_max
-  FROM root.ln.*.* 
-  GROUP BY time(10s) 
+BEGIN
+  SELECT max_value(temperature)
+  INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
+  FROM root.ln.*.*
+  GROUP BY time(10s)
 END
 ```
 
@@ -182,7 +182,7 @@ CREATE CONTINUOUS QUERY cq2
 RESAMPLE RANGE 40s
 BEGIN
   SELECT max_value(temperature)
-  INTO root.ln.wf02.wt02.temperature_max, root.ln.wf02.wt01.temperature_max, root.ln.wf01.wt02.temperature_max, root.ln.wf01.wt01.temperature_max
+  INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
   GROUP BY time(10s)
 END
@@ -257,7 +257,7 @@ CREATE CONTINUOUS QUERY cq3
 RESAMPLE EVERY 20s RANGE 40s
 BEGIN
   SELECT max_value(temperature)
-  INTO root.ln.wf02.wt02.temperature_max, root.ln.wf02.wt01.temperature_max, root.ln.wf01.wt02.temperature_max, root.ln.wf01.wt01.temperature_max
+  INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
   GROUP BY time(10s)
   FILL(100.0)
@@ -322,7 +322,7 @@ CREATE CONTINUOUS QUERY cq4
 RESAMPLE EVERY 20s RANGE 40s, 20s
 BEGIN
   SELECT max_value(temperature)
-  INTO root.ln.wf02.wt02.temperature_max, root.ln.wf02.wt01.temperature_max, root.ln.wf01.wt02.temperature_max, root.ln.wf01.wt01.temperature_max
+  INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
   GROUP BY time(10s)
   FILL(100.0)
@@ -381,7 +381,7 @@ CREATE CONTINUOUS QUERY cq5
 RESAMPLE EVERY 20s
 BEGIN
   SELECT temperature + 1
-  INTO  root.precalculated_sg.::(temperature)
+  INTO root.precalculated_sg.::(temperature)
   FROM root.ln.*.*
   align by device
 END
