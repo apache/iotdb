@@ -62,11 +62,14 @@ public class IntoOperator extends AbstractIntoOperator {
   public TsBlock next() {
     TsBlock inputTsBlock = child.next();
     if (inputTsBlock != null) {
-      int lastReadIndex = 0;
-      while (lastReadIndex < inputTsBlock.getPositionCount()) {
+      int readIndex = 0;
+      while (readIndex < inputTsBlock.getPositionCount()) {
+        int lastReadIndex = readIndex;
         for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-          lastReadIndex = generator.processTsBlock(inputTsBlock, lastReadIndex);
+          lastReadIndex =
+              Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
         }
+        readIndex = lastReadIndex;
         insertMultiTabletsInternally(true);
       }
     }

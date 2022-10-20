@@ -86,12 +86,15 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
         currentDevice = device;
       }
-      int lastReadIndex = 0;
-      while (lastReadIndex < inputTsBlock.getPositionCount()) {
+      int readIndex = 0;
+      while (readIndex < inputTsBlock.getPositionCount()) {
+        int lastReadIndex = readIndex;
         for (IntoOperator.InsertTabletStatementGenerator generator :
             insertTabletStatementGenerators) {
-          lastReadIndex = generator.processTsBlock(inputTsBlock, lastReadIndex);
+          lastReadIndex =
+              Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
         }
+        readIndex = lastReadIndex;
         insertMultiTabletsInternally(true);
       }
     }

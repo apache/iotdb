@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
@@ -66,11 +65,6 @@ public class DataNodeInternalClient {
 
   public TSStatus insertTablets(InsertMultiTabletsStatement statement) {
     try {
-      if (statement.isEmpty()) {
-        // return success when this statement is empty because server doesn't need to execute it
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      }
-
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

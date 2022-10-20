@@ -55,7 +55,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected final OperatorContext operatorContext;
   protected final Operator child;
 
-  protected List<IntoOperator.InsertTabletStatementGenerator> insertTabletStatementGenerators;
+  protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
@@ -64,7 +64,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   public AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
-      List<IntoOperator.InsertTabletStatementGenerator> insertTabletStatementGenerators,
+      List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
       Map<String, InputLocation> sourceColumnToInputLocationMap) {
     this.operatorContext = operatorContext;
     this.child = child;
@@ -73,16 +73,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.client = new DataNodeInternalClient(operatorContext.getSessionInfo().getSessionId());
   }
 
-  protected static List<IntoOperator.InsertTabletStatementGenerator>
-      constructInsertTabletStatementGenerators(
-          Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
-          Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-          Map<String, Boolean> targetDeviceToAlignedMap) {
-    List<IntoOperator.InsertTabletStatementGenerator> insertTabletStatementGenerators =
+  protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
+      Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
+      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
+      Map<String, Boolean> targetDeviceToAlignedMap) {
+    List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
     for (PartialPath targetDevice : targetPathToSourceInputLocationMap.keySet()) {
-      IntoOperator.InsertTabletStatementGenerator generator =
-          new IntoOperator.InsertTabletStatementGenerator(
+      InsertTabletStatementGenerator generator =
+          new InsertTabletStatementGenerator(
               targetDevice,
               targetPathToSourceInputLocationMap.get(targetDevice),
               targetPathToDataTypeMap.get(targetDevice),
@@ -94,14 +93,18 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected void insertMultiTabletsInternally(boolean needCheck) {
     if (insertTabletStatementGenerators == null
-        || (needCheck && !insertTabletStatementGenerators.get(0).isFull())
-        || insertTabletStatementGenerators.get(0).isEmpty()) {
+        || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
       return;
     }
 
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    for (IntoOperator.InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      insertTabletStatementList.add(generator.constructInsertTabletStatement());
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!generator.isEmpty()) {
+        insertTabletStatementList.add(generator.constructInsertTabletStatement());
+      }
+    }
+    if (insertTabletStatementList.isEmpty()) {
+      return;
     }
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
@@ -117,14 +120,24 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       throw new IntoProcessException(message);
     }
 
-    for (IntoOperator.InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       generator.reset();
     }
   }
 
+  private boolean existFullStatement(
+      List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (generator.isFull()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   protected int findWritten(String sourceColumn) {
     InputLocation inputLocation = sourceColumnToInputLocationMap.get(sourceColumn);
-    for (IntoOperator.InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       int written = generator.getWrittenCount(inputLocation);
       if (written != -1) {
         return written;
