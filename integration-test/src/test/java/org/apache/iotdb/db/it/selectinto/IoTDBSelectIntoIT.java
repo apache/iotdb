@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.it.selectinto;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -37,9 +37,9 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 @Category({ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
-  private int selectIntoInsertTabletPlanRowLimit;
+  protected int selectIntoInsertTabletPlanRowLimit;
 
-  private static final String[] SQLs =
+  protected static final String[] SQLs =
       new String[] {
         "SET STORAGE GROUP TO root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -75,11 +75,11 @@ public class IoTDBSelectIntoIT {
         "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"
       };
 
-  private static final String selectIntoHeader = "source column,target timeseries,written,";
-  private static final String selectIntoAlignByDeviceHeader =
+  protected static final String selectIntoHeader = "source column,target timeseries,written,";
+  protected static final String selectIntoAlignByDeviceHeader =
       "source device,source column,target timeseries,written,";
 
-  private static final String[] rawDataSet =
+  protected static final String[] rawDataSet =
       new String[] {
         "1,1,null,1,1.0,",
         "2,2,2.0,null,2.0,",
