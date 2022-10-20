@@ -119,12 +119,7 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
   }
 
   @Override
-  public PipeInfo getRunningPipeInfo() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public TSStatus recordMsg(String pipeName, long createTime, PipeMessage message) {
+  public TSStatus recordMsg(String pipeName, PipeMessage message) {
     return null;
   }
 

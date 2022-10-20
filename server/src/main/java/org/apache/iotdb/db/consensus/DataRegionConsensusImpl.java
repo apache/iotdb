@@ -108,6 +108,8 @@ public class DataRegionConsensusImpl {
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          conf.getDataRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -130,6 +132,14 @@ public class DataRegionConsensusImpl {
                                       .setRequestTimeout(
                                           TimeDuration.valueOf(
                                               conf.getDataRatisConsensusRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setLeaderLogAppender(

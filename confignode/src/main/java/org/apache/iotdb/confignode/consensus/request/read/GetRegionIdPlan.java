@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetRoutingPlan extends ConfigPhysicalPlan {
+public class GetRegionIdPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;
 
@@ -42,11 +42,11 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
 
   private TTimePartitionSlot timeSlotId;
 
-  public GetRoutingPlan() {
-    super(ConfigPhysicalPlanType.GetRouting);
+  public GetRegionIdPlan() {
+    super(ConfigPhysicalPlanType.GetRegionId);
   }
 
-  public GetRoutingPlan(
+  public GetRegionIdPlan(
       String storageGroup,
       TConsensusGroupType partitionType,
       TSeriesPartitionSlot seriesSlotId,
@@ -95,7 +95,7 @@ public class GetRoutingPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetRoutingPlan that = (GetRoutingPlan) o;
+    GetRegionIdPlan that = (GetRegionIdPlan) o;
     return storageGroup.equals(that.storageGroup)
         && seriesSlotId.equals(that.seriesSlotId)
         && timeSlotId.equals(that.timeSlotId);

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -55,7 +56,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
-  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
+  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException, PipeSinkException {
     LOGGER.info("Start to create PIPE [{}]", pipeInfo.getPipeName());
     env.getConfigManager().getSyncManager().checkAddPipe(pipeInfo);
     return false;

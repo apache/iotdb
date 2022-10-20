@@ -46,13 +46,15 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -90,7 +92,9 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -949,11 +953,23 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetTriggerTablePlan() throws IOException {
-    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer())
-            instanceof GetTriggerTablePlan);
+  public void GetTriggerTablePlanTest() throws IOException {
+    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan(true);
+    GetTriggerTablePlan getTriggerTablePlan1 =
+        (GetTriggerTablePlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        getTriggerTablePlan0.isOnlyStateful(), getTriggerTablePlan1.isOnlyStateful());
+  }
+
+  @Test
+  public void GetTriggerLocationPlanTest() throws IOException {
+    GetTriggerLocationPlan getTriggerLocationPlan0 = new GetTriggerLocationPlan("test1");
+    GetTriggerLocationPlan getTriggerLocationPlan1 =
+        (GetTriggerLocationPlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerLocationPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        getTriggerLocationPlan0.getTriggerName(), getTriggerLocationPlan1.getTriggerName());
   }
 
   @Test
@@ -1085,13 +1101,14 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRoutingPlanTest() throws IOException {
-    GetRoutingPlan getRoutingPlan0 =
-        new GetRoutingPlan(
+  public void GetRegionIdPlanTest() throws IOException {
+    GetRegionIdPlan getRegionIdPlan0 =
+        new GetRegionIdPlan(
             "root.test", PartitionRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
-    GetRoutingPlan getRoutingPlan1 =
-        (GetRoutingPlan) ConfigPhysicalPlan.Factory.create(getRoutingPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getRoutingPlan0, getRoutingPlan1);
+    GetRegionIdPlan getRegionIdPlan1 =
+        (GetRegionIdPlan)
+            ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
   }
 
   @Test
@@ -1112,5 +1129,62 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
+  }
+
+  @Test
+  public void UpdateTriggersOnTransferNodesPlanTest() throws IOException {
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>(2);
+    dataNodeLocations.add(
+        new TDataNodeLocation(
+            10000,
+            new TEndPoint("127.0.0.1", 6600),
+            new TEndPoint("127.0.0.1", 7700),
+            new TEndPoint("127.0.0.1", 8800),
+            new TEndPoint("127.0.0.1", 9900),
+            new TEndPoint("127.0.0.1", 11000)));
+    dataNodeLocations.add(
+        new TDataNodeLocation(
+            20000,
+            new TEndPoint("127.0.0.1", 6600),
+            new TEndPoint("127.0.0.1", 7700),
+            new TEndPoint("127.0.0.1", 8800),
+            new TEndPoint("127.0.0.1", 9900),
+            new TEndPoint("127.0.0.1", 11000)));
+
+    UpdateTriggersOnTransferNodesPlan plan0 =
+        new UpdateTriggersOnTransferNodesPlan(dataNodeLocations);
+    UpdateTriggersOnTransferNodesPlan plan1 =
+        (UpdateTriggersOnTransferNodesPlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+
+    Assert.assertEquals(plan0.getDataNodeLocations(), plan1.getDataNodeLocations());
+  }
+
+  @Test
+  public void UpdateTriggerLocationPlanTest() throws IOException {
+    UpdateTriggerLocationPlan plan0 =
+        new UpdateTriggerLocationPlan(
+            "test",
+            new TDataNodeLocation(
+                10000,
+                new TEndPoint("127.0.0.1", 6600),
+                new TEndPoint("127.0.0.1", 7700),
+                new TEndPoint("127.0.0.1", 8800),
+                new TEndPoint("127.0.0.1", 9900),
+                new TEndPoint("127.0.0.1", 11000)));
+    UpdateTriggerLocationPlan plan1 =
+        (UpdateTriggerLocationPlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+
+    Assert.assertEquals(plan0.getTriggerName(), plan1.getTriggerName());
+    Assert.assertEquals(plan0.getDataNodeLocation(), plan1.getDataNodeLocation());
+  }
+
+  @Test
+  public void GetTransferringTriggersPlanTest() throws IOException {
+    GetTransferringTriggersPlan getTransferringTriggerPlan0 = new GetTransferringTriggersPlan();
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getTransferringTriggerPlan0.serializeToByteBuffer())
+            instanceof GetTransferringTriggersPlan);
   }
 }
