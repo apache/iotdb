@@ -32,6 +32,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -43,6 +45,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class BufferedPipeDataQueueTest {
+  private static final Logger logger = LoggerFactory.getLogger(BufferedPipeDataQueueTest.class);
+
   File pipeLogDir =
       new File(
           SyncPathUtil.getReceiverPipeLogDir("pipe", "192.168.0.11", System.currentTimeMillis()));
@@ -592,7 +596,7 @@ public class BufferedPipeDataQueueTest {
             while (true) {
               try {
                 PipeData pipeData = pipeDataQueue.take();
-                System.out.println(pipeData);
+                logger.info(String.format("PipeData: %s", pipeData));
                 pipeDataTakeList.add(pipeData);
                 pipeDataQueue.commit();
               } catch (InterruptedException e) {
@@ -620,7 +624,7 @@ public class BufferedPipeDataQueueTest {
         e.printStackTrace();
         Assert.fail();
       }
-      System.out.println(pipeDataTakeList);
+      logger.info(String.format("PipeDataTakeList: %s", pipeDataTakeList));
       Assert.assertEquals(10, pipeDataTakeList.size());
       for (int i = 0; i < 6; i++) {
         Assert.assertEquals(pipeDataList.get(i), pipeDataTakeList.get(i));
