@@ -153,7 +153,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
@@ -790,16 +790,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.DURATION_LITERAL().size() == 1) {
       if (ctx.EVERY() != null) {
         operator.setEveryInterval(
-            DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
+            DateTimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       } else if (ctx.FOR() != null) {
         operator.setForInterval(
-            DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
+            DateTimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       }
     } else if (ctx.DURATION_LITERAL().size() == 2) {
       operator.setEveryInterval(
-          DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
+          DateTimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       operator.setForInterval(
-          DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(1).getText()));
+          DateTimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(1).getText()));
     }
 
     if (ctx.BOUNDARY() != null) {
@@ -1271,25 +1271,31 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private SelectIntoOperator parseAndConstructSelectIntoOperator(
       IoTDBSqlParser.SelectStatementContext ctx) {
+    IoTDBSqlParser.IntoClauseContext intoClauseContext = ctx.intoClause();
+    if (intoClauseContext.intoItem().size() > 0) {
+      throw new SQLParserException(
+          "The new syntax of SELECT INTO statement will be supported starting from v0.14");
+    }
+
     if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
       throw new SQLParserException(
           "select into: the number of prefix paths in the from clause should be 1.");
     }
-
     int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
-    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
+    if (sourcePathsCount != intoClauseContext.intoPath().size()) {
       throw new SQLParserException(
           "select into: the number of source paths and the number of target paths should be the same.");
     }
 
     SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
     selectIntoOperator.setQueryOperator(queryOp);
+
     List<PartialPath> intoPaths = new ArrayList<>();
     for (int i = 0; i < sourcePathsCount; ++i) {
-      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
+      intoPaths.add(parseIntoPath(intoClauseContext.intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
-    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
+    selectIntoOperator.setIntoPathsAligned(intoClauseContext.ALIGNED() != null);
     return selectIntoOperator;
   }
 
@@ -1304,8 +1310,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     PartialPath intoPath = null;
-    if (intoPathContext.fullPath() != null) {
-      intoPath = parseFullPathInSelectInto(intoPathContext.fullPath());
+    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
+      intoPath =
+          parseFullPathInSelectInto((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
 
       Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
       while (m.find()) {
@@ -1321,9 +1328,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
               "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
         }
       }
-    } else if (intoPathContext.nodeNameWithoutWildcard() != null) {
-      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNameWithoutStars =
-          intoPathContext.nodeNameWithoutWildcard();
+    } else if (intoPathContext instanceof IoTDBSqlParser.SuffixPathInIntoPathContext) {
+      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNameWithoutStars =
+          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
       String[] intoPathNodes =
           new String[1 + levelLimitOfSourcePrefixPath + nodeNameWithoutStars.size()];
 
@@ -1648,7 +1655,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parseTimeInterval(
       IoTDBSqlParser.TimeRangeContext timeInterval, GroupByClauseComponent groupByClauseComponent) {
-    long currentTime = DatetimeUtils.currentTime();
+    long currentTime = DateTimeUtils.currentTime();
     long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
     long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
@@ -1849,10 +1856,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             throw new SQLParserException("need timestamps when insert multi rows");
           }
           valueList.add(insertMultiValues.get(i).timeValue().getText());
-          timestamp = DatetimeUtils.currentTime();
+          timestamp = DateTimeUtils.currentTime();
         } else {
           timestamp =
-              parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
+              parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
         }
       } else {
         if (!isTimeDefault) {
@@ -2362,8 +2369,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     LoadFilesOperator loadFilesOperator =
         new LoadFilesOperator(
             new File(parseFilePath(ctx.fileName.getText())),
-            true,
+            IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled(),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true,
             true);
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
@@ -2380,17 +2388,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    */
   private void parseLoadFiles(
       LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
-    if (ctx.AUTOREGISTER() != null) {
-      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else if (ctx.SGLEVEL() != null) {
+    if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
-    } else {
-      throw new SQLParserException(
-          String.format(
-              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
-              ctx.getText()));
+    } else if (ctx.ONSUCCESS() != null) {
+      operator.setDeleteAfterLoad(ctx.DELETE() != null);
     }
     if (ctx.loadFilesClause() != null) {
       parseLoadFiles(operator, ctx.loadFilesClause());
@@ -2569,15 +2572,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
-  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathContext ctx) {
-    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
-        ctx.nodeNameWithoutWildcard();
+  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathInIntoPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNamesWithoutStar = ctx.nodeNameInIntoPath();
     String[] path = new String[nodeNamesWithoutStar.size() + 1];
     int i = 0;
     if (ctx.ROOT() != null) {
       path[0] = ctx.ROOT().getText();
     }
-    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+    for (IoTDBSqlParser.NodeNameInIntoPathContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       i++;
       path[i] = parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStar);
     }
@@ -2646,7 +2648,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** in select into, $ and {} are allowed */
   private String parseNodeNameWithoutWildCardInSelectInto(
-      IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
+      IoTDBSqlParser.NodeNameInIntoPathContext ctx) {
     String nodeName = ctx.getText();
     if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
@@ -2726,10 +2728,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new SQLParserException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      return DatetimeUtils.currentTime();
+      return DateTimeUtils.currentTime();
     }
     try {
-      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SQLParserException(
           String.format(
@@ -2748,7 +2750,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return currentTime;
     }
     try {
-      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SQLParserException(
           String.format(
@@ -2772,9 +2774,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       }
     }
     return time;
@@ -2785,9 +2787,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       }
     }
     return time;
@@ -2964,26 +2966,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Expression parseRegularExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new RegularExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new LikeExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -3320,23 +3312,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return src;
   }
 
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-    }
-    return src;
-  }
-
   private String parseIdentifier(String src) {
     if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
@@ -3367,7 +3342,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         groupByComponent.setSlidingStepByMonth(true);
       }
     }
-    return DatetimeUtils.convertDurationStrToLong(durationStr);
+    return DateTimeUtils.convertDurationStrToLong(durationStr);
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {

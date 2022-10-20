@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -133,6 +133,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     if (needDecodeChunk()) {
@@ -213,7 +214,7 @@ public class NonAlignedChunkData implements ChunkData {
       if (time < timePartitionSlot.getStartTime()) {
         batchData.next();
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time))) {
+      } else if (!timePartitionSlot.equals(TimePartitionUtils.getTimePartitionForRouting(time))) {
         break;
       }
       length += 1;
@@ -227,7 +228,7 @@ public class NonAlignedChunkData implements ChunkData {
       if (time < timePartitionSlot.getStartTime()) {
         batchData.next();
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time))) {
+      } else if (!timePartitionSlot.equals(TimePartitionUtils.getTimePartitionForRouting(time))) {
         break;
       }
 
@@ -338,7 +339,7 @@ public class NonAlignedChunkData implements ChunkData {
     byte chunkType = ReadWriteIOUtils.readByte(stream);
     ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
     NonAlignedChunkData chunkData = new NonAlignedChunkData(-1, device, chunkHeader);
-    chunkData.setTimePartitionSlot(StorageEngineV2.getTimePartitionSlot(timePartition));
+    chunkData.setTimePartitionSlot(TimePartitionUtils.getTimePartitionForRouting(timePartition));
     chunkData.deserializeTsFileData(stream);
     return chunkData;
   }

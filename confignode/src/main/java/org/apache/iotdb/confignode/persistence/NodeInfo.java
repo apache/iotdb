@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -61,6 +61,8 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 
 /**
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
@@ -166,7 +168,10 @@ public class NodeInfo implements SnapshotProcessor {
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
-    LOGGER.info("there are {} data node in cluster before remove some", registeredDataNodes.size());
+    LOGGER.info(
+        "{}, There are {} data node in cluster before executed remove-datanode.sh",
+        REMOVE_DATANODE_PROCESS,
+        registeredDataNodes.size());
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
@@ -178,7 +183,10 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
-    LOGGER.info("there are {} data node in cluster after remove some", registeredDataNodes.size());
+    LOGGER.info(
+        "{}, There are {} data node in cluster after executed remove-datanode.sh",
+        REMOVE_DATANODE_PROCESS,
+        registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -39,15 +40,15 @@ import java.util.List;
 public class LoadTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileNode.class);
 
-  private final List<File> tsFiles;
+  private final List<TsFileResource> resources;
 
   public LoadTsFileNode(PlanNodeId id) {
     this(id, new ArrayList<>());
   }
 
-  public LoadTsFileNode(PlanNodeId id, List<File> tsFiles) {
+  public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
     super(id);
-    this.tsFiles = tsFiles;
+    this.resources = resources;
   }
 
   @Override
@@ -87,18 +88,21 @@ public class LoadTsFileNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
-    for (File file : tsFiles) {
+    LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
+    for (TsFileResource resource : resources) {
       try {
-        LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), file);
+        LoadSingleTsFileNode singleTsFileNode =
+            new LoadSingleTsFileNode(getPlanNodeId(), resource, statement.isDeleteAfterLoad());
         singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
-        singleTsFileNode.autoRegisterSchema();
-
         if (singleTsFileNode.needDecodeTsFile()) {
           singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        } else {
+          logger.info(
+              String.format("TsFile %s will be loaded to local.", resource.getTsFile().getPath()));
         }
         res.add(singleTsFileNode);
       } catch (Exception e) {
-        logger.error(String.format("Parse TsFile %s error", file.getPath()), e);
+        logger.error(String.format("Parse TsFile %s error", resource.getTsFile().getPath()), e);
       }
     }
     return res;

@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 
 /** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine
@@ -47,12 +46,12 @@ public class PartitionRegionStateMachine
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
-  private final TEndPoint currentNode;
+  private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
-    this.currentNode =
+    this.currentNodeTEndPoint =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
             .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
@@ -72,14 +71,21 @@ public class PartitionRegionStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
-        LOGGER.error("Deserialization error for write plan : {}", request, e);
+      } catch (Throwable e) {
+        LOGGER.error(
+            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            request,
+            request.serializeToByteBuffer(),
+            e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
     } else {
-      LOGGER.error("Unexpected write plan : {}", request);
+      LOGGER.error(
+          "Unexpected write plan, request: {}, bytebuffer: {}",
+          request,
+          request.serializeToByteBuffer());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return write(plan);
@@ -103,7 +109,7 @@ public class PartitionRegionStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
+      } catch (Throwable e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }
@@ -139,19 +145,31 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
-    if (currentNode.equals(newLeader)) {
-      LOGGER.info("Current node {} becomes Leader", newLeader);
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the PartitionRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+
+    if (currentNodeId == newLeaderId) {
+      LOGGER.info(
+          "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+          newLeaderId,
+          currentNodeTEndPoint);
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();
+      configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
+          currentNodeId,
+          currentNodeTEndPoint,
+          newLeaderId);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
+      configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
     }
   }

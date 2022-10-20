@@ -24,9 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.node.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;
@@ -94,7 +94,7 @@ public class LoadScoreGreedyRouterTest {
     /* Check result */
     Map<TConsensusGroupId, TRegionReplicaSet> result =
         new LoadScoreGreedyRouter(loadScoreMap)
-            .genLatestRegionRouteMap(Arrays.asList(regionReplicaSet1, regionReplicaSet2));
+            .getLatestRegionRouteMap(Arrays.asList(regionReplicaSet1, regionReplicaSet2));
     Assert.assertEquals(2, result.size());
 
     TRegionReplicaSet result1 = result.get(groupId1);

@@ -112,6 +112,11 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  private volatile String statusReason = null;
+
+  /** Disk Monitor */
+  private double diskSpaceWarningThreshold = 5.0;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -271,6 +276,18 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
+  }
+
+  public double getDiskSpaceWarningThreshold() {
+    return diskSpaceWarningThreshold;
+  }
+
+  public void setDiskSpaceWarningThreshold(double diskSpaceWarningThreshold) {
+    this.diskSpaceWarningThreshold = diskSpaceWarningThreshold;
+  }
+
   public boolean isReadOnly() {
     return status == NodeStatus.ReadOnly;
   }
@@ -279,23 +296,33 @@ public class CommonConfig {
     return status;
   }
 
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
-  }
-
   public void setNodeStatusToShutdown() {
     logger.info("System will reject write operations when shutting down.");
     this.status = NodeStatus.ReadOnly;
   }
 
   public void setNodeStatus(NodeStatus newStatus) {
-    if (newStatus == NodeStatus.ReadOnly) {
-      logger.error(
-          "Change system status to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else {
-      logger.info("Set system mode from {} to {}.", status, newStatus);
-    }
+    logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
+
+    switch (newStatus) {
+      case ReadOnly:
+        logger.error(
+            "Change system status to ReadOnly! Only query statements are permitted!",
+            new RuntimeException("System mode is set to READ_ONLY"));
+        break;
+      case Removing:
+        logger.info(
+            "Change system status to Removing! The current Node is being removed from cluster!");
+        break;
+    }
+  }
+
+  public String getStatusReason() {
+    return statusReason;
+  }
+
+  public void setStatusReason(String statusReason) {
+    this.statusReason = statusReason;
   }
 }

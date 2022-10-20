@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -50,7 +50,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.utils.SyncConstant.DATA_CHUNK_SIZE;
 
 public class IoTDBSyncClient implements ISyncClient {
 

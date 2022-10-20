@@ -21,10 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataInputStream;
-import java.io.IOException;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
@@ -35,22 +31,6 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
 
   private Binary[][] sortedValues;
   private Binary pivotValue;
-
-  @Override
-  public TimBinaryTVList clone() {
-    TimBinaryTVList cloneList = new TimBinaryTVList();
-    cloneAs(cloneList);
-    for (Binary[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private Binary[] cloneValue(Binary[] array) {
-    Binary[] cloneArray = new Binary[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
 
   @Override
   public void sort() {
@@ -146,18 +126,5 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimBinaryTVList deserialize(DataInputStream stream) throws IOException {
-    TimBinaryTVList tvList = new TimBinaryTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    Binary[] values = new Binary[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
-    }
-    tvList.putBinaries(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

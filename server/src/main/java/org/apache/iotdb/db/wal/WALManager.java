@@ -172,6 +172,23 @@ public class WALManager implements IService {
     }
   }
 
+  /** Wait until all write-ahead logs are flushed */
+  public void waitAllWALFlushed() {
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return;
+    }
+
+    for (WALNode walNode : walNodesManager.getNodesSnapshot()) {
+      while (!walNode.isAllWALEntriesConsumed()) {
+        try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          logger.error("Interrupted when waiting for all write-ahead logs flushed.");
+        }
+      }
+    }
+  }
+
   public long getTotalDiskUsage() {
     return totalDiskUsage.get();
   }

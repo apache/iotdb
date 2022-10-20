@@ -29,9 +29,14 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
+
+  private final ITimeRangeIterator timeRangeIterator;
+  // current interval of aggregation window [curStartTime, curEndTime)
+  private TimeRange curTimeRange;
 
   private final ITimeRangeIterator subTimeRangeIterator;
   // current interval of pre-aggregation window [curStartTime, curEndTime)
@@ -49,11 +54,27 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     checkArgument(
         groupByTimeParameter != null,
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+    this.timeRangeIterator = timeRangeIterator;
     this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   @Override
+  public boolean hasNext() {
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+  }
+
+  @Override
   protected boolean calculateNextAggregationResult() {
+    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      // move to next time window
+      curTimeRange = timeRangeIterator.nextTimeRange();
+
+      // clear previous aggregation result
+      for (Aggregator aggregator : aggregators) {
+        aggregator.updateTimeRange(curTimeRange);
+      }
+    }
+
     while (!isCalculationDone()) {
       if (inputTsBlock == null) {
         // NOTE: child.next() can only be invoked once
@@ -105,5 +126,12 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       inputTsBlock = null;
     }
     curSubTimeRange = null;
+  }
+
+  @Override
+  protected void updateResultTsBlock() {
+    curTimeRange = null;
+    appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 }

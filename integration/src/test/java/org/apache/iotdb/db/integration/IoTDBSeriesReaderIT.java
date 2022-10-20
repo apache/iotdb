@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -88,8 +88,9 @@ public class IoTDBSeriesReaderIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
     // test result of IBatchReader should not cross partition
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
+    prevPartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(2000);
 
     EnvironmentUtils.envSetUp();
 
@@ -108,7 +109,9 @@ public class IoTDBSeriesReaderIT {
 
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTimePartitionIntervalForStorage(prevPartitionInterval);
   }
 
   private static void insertData() throws ClassNotFoundException {

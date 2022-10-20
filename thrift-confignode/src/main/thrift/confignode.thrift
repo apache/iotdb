@@ -36,6 +36,7 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
+  7: optional list<binary> allTriggerInformation
 }
 
 struct TGlobalConfig {
@@ -45,10 +46,46 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
 }
 
 struct TRatisConfig {
-  1: optional i64 appenderBufferSize
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
+
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
+
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
+
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
+
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
+
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
+
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
+
+  23: required i64 schemaPreserveWhenPurge
+  24: required i64 dataPreserveWhenPurge
+
+  25: required i64 firstElectionTimeoutMin
+  26: required i64 firstElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -157,6 +194,40 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
+struct TGetRegionIdReq {
+    1: required string storageGroup
+    2: required common.TConsensusGroupType type
+    3: required common.TSeriesPartitionSlot seriesSlotId
+    4: optional common.TTimePartitionSlot timeSlotId
+}
+
+struct TGetRegionIdResp {
+    1: required common.TSStatus status
+    2: optional list<common.TConsensusGroupId> dataRegionIdList
+}
+
+struct TGetTimeSlotListReq {
+    1: required string storageGroup
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: optional i64 startTime
+    4: optional i64 endTime
+}
+
+struct TGetTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TTimePartitionSlot> timeSlotList
+}
+
+struct TGetSeriesSlotListReq {
+    1: required string storageGroup
+    2: optional common.TConsensusGroupType type
+}
+
+struct TGetSeriesSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TSeriesPartitionSlot> seriesSlotList
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -218,6 +289,12 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
+}
+
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required i32 configNodeId
 }
 
 struct TAddConsensusGroupReq {
@@ -239,12 +316,12 @@ struct TDropFunctionReq {
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
+  // The intermediate state of Transfer trigger, the cluster is in the process of transferring the trigger.
+  TRANSFERRING
 }
 
 struct TCreateTriggerReq {
@@ -256,11 +333,24 @@ struct TCreateTriggerReq {
   6: required byte triggerType
   7: required binary pathPattern,
   8: required map<string, string> attributes,
-  9: optional binary jarFile
+  9: optional binary jarFile,
+  10: optional string jarMD5,
+  11: required i32 failureStrategy
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
+}
+
+struct TGetLocationForTriggerResp {
+  1: required common.TSStatus status
+  2: required common.TDataNodeLocation dataNodeLocation
+}
+
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster
@@ -269,6 +359,16 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+// Get jars of the corresponding trigger
+struct TGetTriggerJarReq {
+  1: required list<string> jarNameList
+}
+
+struct TGetTriggerJarResp {
+  1: required common.TSStatus status
+  2: required list<binary> jarList
 }
 
 // Show datanodes
@@ -329,7 +429,7 @@ struct TRegionInfo {
   3: required i32 dataNodeId
   4: required string clientRpcIp
   5: required i32 clientRpcPort
-  6: required i64 seriesSlots
+  6: required i32 seriesSlots
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType
@@ -370,13 +470,14 @@ struct TSetSchemaTemplateReq {
   1: required string name
   2: required string path
 }
+
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
 }
 
-// Show pipe
-struct TPipeInfo {
+// SYNC
+struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
   3: required string role
@@ -385,9 +486,39 @@ struct TPipeInfo {
   6: required string message
 }
 
+struct TPipeInfo {
+    1: required string pipeName
+    2: required string pipeSinkName
+    3: required i64 startTime
+    4: optional map<string, string> attributes
+}
+
+struct TPipeSinkInfo {
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
+}
+
+struct TDropPipeSinkReq {
+  1: required string pipeSinkName
+}
+
+struct TGetPipeSinkReq {
+  1: optional string pipeSinkName
+}
+
+struct TGetPipeSinkResp {
+  1: required common.TSStatus status
+  2: required list<TPipeSinkInfo> pipeSinkInfoList
+}
+
+struct TShowPipeReq {
+  1: optional string pipeName
+}
+
 struct TShowPipeResp {
   1: required common.TSStatus status
-  2: optional list<TPipeInfo> pipeInfoList
+  2: optional list<TShowPipeInfo> pipeInfoList
 }
 
 struct TDeleteTimeSeriesReq{
@@ -584,7 +715,7 @@ service IConfigNodeRPCService {
    *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
    *                             are inconsist with the ConfigNode-leader
    */
-  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   /** The ConfigNode-leader will guide the Non-Seed-ConfigNode to join the ConsensusGroup when first startup */
   common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
@@ -603,13 +734,13 @@ service IConfigNodeRPCService {
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /**
-   * Let the specific ConfigNode remove the ConsensusGroup
+   * Let the specific ConfigNode delete the peer
    *
-   * @return SUCCESS_STATUS if remove ConsensusGroup successfully
+   * @return SUCCESS_STATUS if delete peer  successfully
    *         REMOVE_CONFIGNODE_FAILED if the specific ConfigNode doesn't exist in the current cluster
    *                                  or Ratis internal failure
    */
-  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -622,41 +753,59 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-     * Create a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   /**
-     * Remove a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
   // Trigger
   // ======================================================
 
-   /**
-      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-      * and sync Information of it to all ConfigNodes
-      *
-      * @return SUCCESS_STATUS if the trigger was created successfully
-      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-      */
+  /**
+   * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+   * and sync Information of it to all ConfigNodes
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-       * Remove a trigger on all online ConfigNodes and DataNodes
-       *
-       * @return SUCCESS_STATUS if the function was removed successfully
-       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-       */
-    common.TSStatus dropTrigger(TDropTriggerReq req)
+   * Remove a trigger on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /** Get TDataNodeLocation of a stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
+
+  /**
+     * Return the trigger table
+     */
+  TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
+
+  /**
+     * Return the trigger jar list of the trigger name list
+     */
+  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
 
   // ======================================================
   // Maintenance Tools
@@ -729,5 +878,47 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  // ======================================================
+  // Sync
+  // ======================================================
+
+  /** Create PipeSink */
+  common.TSStatus createPipeSink(TPipeSinkInfo req)
+
+  /** Drop PipeSink */
+  common.TSStatus dropPipeSink(TDropPipeSinkReq req)
+
+  /** Get PipeSink by name, if name is empty, get all PipeSink */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
+
+  /** Create Pipe */
+  common.TSStatus createPipe(TPipeInfo req)
+
+  /** Start Pipe */
+  common.TSStatus startPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipe(string pipeName)
+
+  /** Drop Pipe */
+  common.TSStatus dropPipe(string pipeName)
+
+  /** Show Pipe by name, if name is empty, show all Pipe */
+  TShowPipeResp showPipe(TShowPipeReq req)
+
+  // ======================================================
+  // TestTools
+  // ======================================================
+
+  /** Get a particular DataPartition's corresponding Regions */
+  TGetRegionIdResp getRegionId(TGetRegionIdReq req)
+
+  /** Get a specific SeriesSlot's TimeSlots by start time and end time */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  /** Get the given storage group's assigned SeriesSlots */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
 }
 

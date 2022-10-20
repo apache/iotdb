@@ -173,10 +173,10 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
     try {
       final ExecutableResource resource = udfExecutableManager.request(uris);
       try {
-        udfExecutableManager.removeFromExtLibDir(functionName);
-        udfExecutableManager.moveToExtLibDir(resource, functionName);
+        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
+        udfExecutableManager.moveTempDirToExtLibDir(resource, functionName);
       } catch (Exception innerException) {
-        udfExecutableManager.removeFromExtLibDir(functionName);
+        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
         udfExecutableManager.removeFromTemporaryLibRoot(resource);
         throw innerException;
       }

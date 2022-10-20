@@ -165,15 +165,26 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info("[SkipExecute]");
-      constructResultForMemorySource();
-      stateMachine.transitionToRunning();
+      if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+        stateMachine.transitionToFailed(new RuntimeException(analysis.getFailMessage()));
+      } else {
+        constructResultForMemorySource();
+        stateMachine.transitionToRunning();
+      }
       return;
     }
-    long remainTime = context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
-    if (remainTime <= 0) {
-      throw new QueryTimeoutRuntimeException();
+
+    // only update query operation's timeout because we will never limit write operation's execution
+    // time
+    if (isQuery()) {
+      long currentTime = System.currentTimeMillis();
+      long remainTime = context.getTimeOut() - (currentTime - context.getStartTime());
+      if (remainTime <= 0) {
+        throw new QueryTimeoutRuntimeException(
+            context.getStartTime(), currentTime, context.getTimeOut());
+      }
+      context.setTimeOut(remainTime);
     }
-    context.setTimeOut(remainTime);
 
     doLogicalPlan();
     doDistributedPlan();
@@ -205,6 +216,8 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
+    // clear runtime variables in MPPQueryContext
+    context.prepareForRetry();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
@@ -365,7 +378,7 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
       } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e);
+        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
         if (stateMachine.getFailureStatus() != null) {
           throw new IoTDBException(
               stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
@@ -471,11 +484,20 @@ public class QueryExecution implements IQueryExecution {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
-    TSStatusCode statusCode =
-        // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
-        state == QueryState.FINISHED || state == QueryState.RUNNING
-            ? TSStatusCode.SUCCESS_STATUS
-            : TSStatusCode.QUERY_PROCESS_ERROR;
+    TSStatusCode statusCode;
+    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+      // For WRITE, the state should be FINISHED
+      statusCode =
+          state == QueryState.FINISHED
+              ? TSStatusCode.SUCCESS_STATUS
+              : TSStatusCode.WRITE_PROCESS_ERROR;
+    } else {
+      // For READ, the state could be FINISHED and RUNNING
+      statusCode =
+          state == QueryState.FINISHED || state == QueryState.RUNNING
+              ? TSStatusCode.SUCCESS_STATUS
+              : TSStatusCode.QUERY_PROCESS_ERROR;
+    }
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
@@ -486,7 +508,8 @@ public class QueryExecution implements IQueryExecution {
     }
 
     // collect redirect info to client for writing
-    if (analysis.getStatement() instanceof InsertBaseStatement) {
+    if (analysis.getStatement() instanceof InsertBaseStatement
+        && !analysis.isFinishQueryAfterAnalyze()) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
       List<TEndPoint> redirectNodeList;
       if (config.isClusterMode()) {

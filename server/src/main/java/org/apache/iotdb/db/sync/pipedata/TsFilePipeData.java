@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;

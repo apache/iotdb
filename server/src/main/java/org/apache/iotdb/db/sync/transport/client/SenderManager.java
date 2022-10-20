@@ -21,15 +21,15 @@ package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +118,7 @@ public class SenderManager {
           if (!syncClient.handshake()) {
             SyncService.getInstance()
                 .recordMessage(
+                    pipe.getName(),
                     new PipeMessage(
                         PipeMessage.PipeMessageType.ERROR,
                         String.format("Can not handshake with %s", pipeSink)));
@@ -129,6 +130,7 @@ public class SenderManager {
               // can do something.
               SyncService.getInstance()
                   .recordMessage(
+                      pipe.getName(),
                       new PipeMessage(
                           PipeMessage.PipeMessageType.WARN,
                           String.format(

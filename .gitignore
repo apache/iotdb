@@ -37,6 +37,9 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.txt
 
 *.jar
+!trigger-example.jar
+!TriggerFireTimesCounter.jar
+
 *.gz
 *.tar.gz
 *.tar

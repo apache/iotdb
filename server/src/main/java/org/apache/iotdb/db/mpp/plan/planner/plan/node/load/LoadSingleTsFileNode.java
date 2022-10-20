@@ -23,20 +23,21 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
+import org.apache.iotdb.db.engine.load.DeletionData;
+import org.apache.iotdb.db.engine.load.TsFileData;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -63,12 +64,15 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
@@ -81,30 +85,34 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TsFileResource resource;
   private TRegionReplicaSet localRegionReplicaSet;
 
+  private boolean deleteAfterLoad;
+
   public LoadSingleTsFileNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, File tsFile) throws IOException {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
     super(id);
-    this.tsFile = tsFile;
-    this.resource = new TsFileResource(tsFile);
-
-    FileLoaderUtils.loadOrGenerateResource(resource);
+    this.tsFile = resource.getTsFile();
+    this.resource = resource;
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
-  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) {
+  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) throws IOException {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
-      if (!StorageEngineV2.getTimePartitionSlot(resource.getStartTime(device))
-          .equals(StorageEngineV2.getTimePartitionSlot(resource.getEndTime(device)))) {
+      if (!TimePartitionUtils.getTimePartitionForRouting(resource.getStartTime(device))
+          .equals(TimePartitionUtils.getTimePartitionForRouting(resource.getEndTime(device)))) {
         needDecodeTsFile = true;
         return;
       }
       allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
     }
     needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
+    if (!needDecodeTsFile && !resource.resourceFileExists()) {
+      resource.serialize();
+    }
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
@@ -127,47 +135,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
   }
 
-  public void autoRegisterSchema()
-      throws IOException, IllegalPathException { // TODO: only support sg level=1
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      List<PartialPath> deviceList = new ArrayList<>();
-      List<String[]> measurementList = new ArrayList<>();
-      List<TSDataType[]> dataTypeList = new ArrayList<>();
-      List<Boolean> isAlignedList = new ArrayList<>();
-
-      Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-        deviceList.add(new PartialPath(entry.getKey()));
-
-        List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
-        boolean isAligned =
-            timeseriesMetadataList.stream()
-                    .mapToInt(o -> o.getTSDataType().equals(TSDataType.VECTOR) ? 1 : 0)
-                    .sum()
-                != 0;
-        int measurementSize = timeseriesMetadataList.size() - (isAligned ? 1 : 0);
-        String[] measurements = new String[measurementSize];
-        TSDataType[] tsDataTypes = new TSDataType[measurementSize];
-
-        int index = 0;
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-          TSDataType dataType = timeseriesMetadata.getTSDataType();
-          if (!dataType.equals(TSDataType.VECTOR)) {
-            measurements[index] = timeseriesMetadata.getMeasurementId();
-            tsDataTypes[index++] = dataType;
-          }
-        }
-        measurementList.add(measurements);
-        dataTypeList.add(tsDataTypes);
-        isAlignedList.add(isAligned);
-      }
-
-      SchemaValidator.validate(deviceList, measurementList, dataTypeList, isAlignedList);
-    }
-  }
-
   public boolean needDecodeTsFile() {
     return needDecodeTsFile;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return deleteAfterLoad;
   }
 
   /**
@@ -238,9 +211,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public void splitTsFileByDataPartition(DataPartition dataPartition) throws IOException {
     replicaSet2Pieces = new HashMap<>();
-    List<ChunkData> chunkDataList = new ArrayList<>();
+    List<TsFileData> tsFileDataList = new ArrayList<>();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      TreeMap<Long, List<Deletion>> offset2Deletions = new TreeMap<>();
+      getAllModification(offset2Deletions);
+
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
             String.format("Magic String check error when parsing TsFile %s.", tsFile.getPath()));
@@ -260,6 +236,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             long chunkOffset = reader.position();
+            handleModification(offset2Deletions, tsFileDataList, chunkOffset);
+
             ChunkHeader header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
               throw new TsFileRuntimeException(
@@ -271,7 +249,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             TTimePartitionSlot timePartitionSlot =
-                StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime());
+                TimePartitionUtils.getTimePartitionForRouting(chunkMetadata.getStartTime());
             ChunkData chunkData =
                 ChunkData.createChunkData(isAligned, reader.position(), curDevice, header);
             chunkData.setTimePartitionSlot(timePartitionSlot);
@@ -284,7 +262,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     .add((AlignedChunkData) chunkData);
               }
               chunkData.setNotDecode(chunkMetadata);
-              chunkDataList.add(chunkData);
+              chunkData.addDataSize(header.getDataSize());
+              tsFileDataList.add(chunkData);
               reader.position(reader.position() + header.getDataSize());
               break;
             }
@@ -314,9 +293,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                         ? chunkMetadata.getStartTime()
                         : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    StorageEngineV2.getTimePartitionSlot(startTime);
+                    TimePartitionUtils.getTimePartitionForRouting(startTime);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
-                  chunkDataList.add(chunkData);
+                  tsFileDataList.add(chunkData);
                   timePartitionSlot = pageTimePartitionSlot;
                   chunkData = ChunkData.createChunkData(isAligned, pageOffset, curDevice, header);
                   chunkData.setTimePartitionSlot(timePartitionSlot);
@@ -336,7 +315,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                 boolean isFirstData = true;
                 for (long currentTime : timeBatch) {
                   TTimePartitionSlot currentTimePartitionSlot =
-                      StorageEngineV2.getTimePartitionSlot(currentTime); // TODO: can speed up
+                      TimePartitionUtils.getTimePartitionForRouting(
+                          currentTime); // TODO: can speed up
                   if (!timePartitionSlot.equals(currentTimePartitionSlot)) {
                     if (!isFirstData) {
                       chunkData.setTailPageNeedDecode(true); // close last chunk data
@@ -347,7 +327,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                             .add((AlignedChunkData) chunkData);
                       }
                     }
-                    chunkDataList.add(chunkData);
+                    tsFileDataList.add(chunkData);
 
                     chunkData =
                         ChunkData.createChunkData(
@@ -370,7 +350,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               dataSize -= pageDataSize;
             }
 
-            chunkDataList.add(chunkData);
+            tsFileDataList.add(chunkData);
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
@@ -384,7 +364,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
             Set<ChunkData> allChunkData = new HashSet<>();
             if (!isTimeChunkNeedDecode) {
-              pageIndex2ChunkData.get(1).get(0).addValueChunk(chunkOffset, header, chunkMetadata);
+              AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
+              alignedChunkData.addValueChunk(chunkOffset, header, chunkMetadata);
+              alignedChunkData.addValueChunkDataSize(header.getDataSize());
               reader.position(reader.position() + header.getDataSize());
               break;
             }
@@ -423,11 +405,38 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
+
+      handleModification(offset2Deletions, tsFileDataList, Long.MAX_VALUE);
     }
 
-    for (ChunkData chunkData : chunkDataList) {
-      getPieceNode(chunkData.getDevice(), chunkData.getTimePartitionSlot(), dataPartition)
-          .addChunkData(chunkData);
+    for (TsFileData tsFileData : tsFileDataList) {
+      if (!tsFileData.isModification()) {
+        ChunkData chunkData = (ChunkData) tsFileData;
+        getPieceNode(chunkData.getDevice(), chunkData.getTimePartitionSlot(), dataPartition)
+            .addTsFileData(chunkData);
+      } else {
+        for (Map.Entry<TRegionReplicaSet, List<LoadTsFilePieceNode>> entry :
+            replicaSet2Pieces.entrySet()) {
+          LoadTsFilePieceNode pieceNode = entry.getValue().get(entry.getValue().size() - 1);
+          pieceNode.addTsFileData(tsFileData);
+        }
+      }
+    }
+
+    logger.info(
+        String.format(
+            "Finish Parsing TsFile %s, split to %d pieces, send to %d RegionReplicaSet.",
+            tsFile.getPath(), tsFileDataList.size(), replicaSet2Pieces.keySet().size()));
+  }
+
+  private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
+    try (ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      for (Modification modification : modificationFile.getModifications()) {
+        offset2Deletions
+            .computeIfAbsent(modification.getFileOffset(), o -> new ArrayList<>())
+            .add((Deletion) modification);
+      }
     }
   }
 
@@ -464,18 +473,30 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     }
   }
 
+  private void handleModification(
+      TreeMap<Long, List<Deletion>> offset2Deletions,
+      List<TsFileData> tsFileDataList,
+      long chunkOffset) {
+    while (!offset2Deletions.isEmpty() && offset2Deletions.firstEntry().getKey() <= chunkOffset) {
+      tsFileDataList.addAll(
+          offset2Deletions.pollFirstEntry().getValue().stream()
+              .map(DeletionData::new)
+              .collect(Collectors.toList()));
+    }
+  }
+
   private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-    return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
-        .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionForRouting(chunkMetadata.getStartTime())
+        .equals(TimePartitionUtils.getTimePartitionForRouting(chunkMetadata.getEndTime()));
   }
 
   private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
-      return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
-          .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
+      return !TimePartitionUtils.getTimePartitionForRouting(chunkMetadata.getStartTime())
+          .equals(TimePartitionUtils.getTimePartitionForRouting(chunkMetadata.getEndTime()));
     }
-    return !StorageEngineV2.getTimePartitionSlot(pageHeader.getStartTime())
-        .equals(StorageEngineV2.getTimePartitionSlot(pageHeader.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionForRouting(pageHeader.getStartTime())
+        .equals(TimePartitionUtils.getTimePartitionForRouting(pageHeader.getEndTime()));
   }
 
   private long[] decodePage(
@@ -530,5 +551,15 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       pieceNodes.add(new LoadTsFilePieceNode(getPlanNodeId(), tsFile));
     }
     return pieceNodes.get(pieceNodes.size() - 1);
+  }
+
+  public void clean() {
+    try {
+      if (deleteAfterLoad) {
+        Files.deleteIfExists(tsFile.toPath());
+      }
+    } catch (IOException e) {
+      logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
+    }
   }
 }

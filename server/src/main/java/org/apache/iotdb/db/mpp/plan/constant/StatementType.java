@@ -148,4 +148,6 @@ public enum StatementType {
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,
+
+  SHOW_TRIGGERS,
 }

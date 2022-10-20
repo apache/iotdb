@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -85,10 +85,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTOREGISTER
-    : A U T O R E G I S T E R
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -200,6 +196,10 @@ DROP
 
 END
     : E N D
+    ;
+
+ENDTIME
+    : E N D T I M E
     ;
 
 EVERY
@@ -339,6 +339,10 @@ NODES
     : N O D E S
     ;
 
+NONE
+    : N O N E
+    ;
+
 NOW
     : N O W
     ;
@@ -361,6 +365,10 @@ ON
 
 ORDER
     : O R D E R
+    ;
+
+ONSUCCESS
+    : O N S U C C E S S
     ;
 
 PARTITION
@@ -439,6 +447,10 @@ REGEXP
     : R E G E X P
     ;
 
+REGIONID
+    : R E G I O N I D
+    ;
+
 REGIONS
     : R E G I O N S
     ;
@@ -479,6 +491,10 @@ SELECT
     : S E L E C T
     ;
 
+SERIESSLOTID
+    : S E R I E S S L O T I D
+    ;
+
 SET
     : S E T
     ;
@@ -509,6 +525,10 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STARTTIME
+    : S T A R T T I M E
     ;
 
 STATELESS
@@ -549,6 +569,10 @@ TIME
 
 TIMESERIES
     : T I M E S E R I E S
+    ;
+
+TIMESLOTID
+    : T I M E S L O T I D
     ;
 
 TIMESTAMP
@@ -863,6 +887,7 @@ LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
 RS_BRACKET : ']';
+DOUBLE_COLON: '::';
 
 
 /**

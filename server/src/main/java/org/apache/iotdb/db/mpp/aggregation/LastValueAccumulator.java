@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -42,22 +42,22 @@ public class LastValueAccumulator implements Accumulator {
     lastValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, timeRange);
+        return addIntInput(column, curWindow);
       case INT64:
-        return addLongInput(column, timeRange);
+        return addLongInput(column, curWindow);
       case FLOAT:
-        return addFloatInput(column, timeRange);
+        return addFloatInput(column, curWindow);
       case DOUBLE:
-        return addDoubleInput(column, timeRange);
+        return addDoubleInput(column, curWindow);
       case TEXT:
-        return addBinaryInput(column, timeRange);
+        return addBinaryInput(column, curWindow);
       case BOOLEAN:
-        return addBooleanInput(column, timeRange);
+        return addBooleanInput(column, curWindow);
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
@@ -221,20 +221,23 @@ public class LastValueAccumulator implements Accumulator {
     return lastValue.getDataType();
   }
 
-  protected int addIntInput(Column[] column, TimeRange timeRange) {
+  protected int addIntInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateIntLastValue(column[1].getInt(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateIntLastValue(int value, long curTime) {
@@ -245,20 +248,23 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addLongInput(Column[] column, TimeRange timeRange) {
+  protected int addLongInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateLongLastValue(column[1].getLong(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateLongLastValue(long value, long curTime) {
@@ -269,20 +275,23 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addFloatInput(Column[] column, TimeRange timeRange) {
+  protected int addFloatInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateFloatLastValue(column[1].getFloat(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
@@ -293,20 +302,23 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addDoubleInput(Column[] column, TimeRange timeRange) {
+  protected int addDoubleInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateDoubleLastValue(column[1].getDouble(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateDoubleLastValue(double value, long curTime) {
@@ -317,20 +329,23 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBooleanInput(Column[] column, TimeRange timeRange) {
+  protected int addBooleanInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateBooleanLastValue(column[1].getBoolean(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateBooleanLastValue(boolean value, long curTime) {
@@ -341,20 +356,23 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBinaryInput(Column[] column, TimeRange timeRange) {
+  protected int addBinaryInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateBinaryLastValue(column[1].getBinary(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   protected void updateBinaryLastValue(Binary value, long curTime) {

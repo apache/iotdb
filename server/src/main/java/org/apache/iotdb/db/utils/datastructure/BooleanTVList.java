@@ -27,12 +27,16 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
 public abstract class BooleanTVList extends TVList {
   // list of primitive array, add 1 when expanded -> Binary primitive array
@@ -42,6 +46,33 @@ public abstract class BooleanTVList extends TVList {
   BooleanTVList() {
     super();
     values = new ArrayList<>();
+  }
+
+  public static BooleanTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickBooleanTVList();
+      case BACKWARD:
+        return new BackBooleanTVList();
+      default:
+        return new TimBooleanTVList();
+    }
+  }
+
+  @Override
+  public BooleanTVList clone() {
+    BooleanTVList cloneList = BooleanTVList.newList();
+    cloneAs(cloneList);
+    for (boolean[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private boolean[] cloneValue(boolean[] array) {
+    boolean[] cloneArray = new boolean[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -91,11 +122,6 @@ public abstract class BooleanTVList extends TVList {
   @Override
   protected void expandValues() {
     values.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
-  }
-
-  @Override
-  public TVList clone() {
-    return null;
   }
 
   @Override
@@ -227,5 +253,18 @@ public abstract class BooleanTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBoolean(rowIdx), buffer);
     }
+  }
+
+  public static BooleanTVList deserialize(DataInputStream stream) throws IOException {
+    BooleanTVList tvList = BooleanTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    boolean[] values = new boolean[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBool(stream);
+    }
+    tvList.putBooleans(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

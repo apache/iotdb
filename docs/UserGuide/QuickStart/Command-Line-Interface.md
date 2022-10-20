@@ -103,6 +103,20 @@ The Windows system startup commands are as follows:
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
+### CLI Special Command
+Special commands of Cli are below.
+| Command | Description / Example |
+|:---|:---|
+| `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | show time display type |
+| `set time_zone=xxx` | eg. +08:00, Asia/Shanghai |
+| `show time_zone` | show cli time zone |
+| `set fetch_size=xxx` | set fetch size when querying data from server |
+| `show fetch_size` |  show fetch size |
+| `set max_display_num=xxx` |  set max lines for cli to output, -1 equals to unlimited |
+| `help` |  Get hints for CLI special commands |
+| `exit/quit` |  Exit CLI |
+
 ### Note on using the CLI with OpenID Connect Auth enabled on Server side
 
 Openid connect (oidc) uses keycloack as the authority authentication service of oidc service

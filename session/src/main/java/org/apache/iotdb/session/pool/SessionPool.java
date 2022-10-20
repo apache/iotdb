@@ -20,8 +20,8 @@ package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -103,12 +103,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
@@ -117,12 +117,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -133,12 +133,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -148,12 +148,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -170,12 +170,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
         enableCacheLeader,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -190,12 +190,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
         enableCacheLeader,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -206,12 +206,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         zoneId,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public SessionPool(
@@ -221,12 +221,12 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         zoneId,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   @SuppressWarnings("squid:S107")
@@ -2307,18 +2307,18 @@ public class SessionPool {
 
   public static class Builder {
 
-    private String host = Config.DEFAULT_HOST;
-    private int port = Config.DEFAULT_PORT;
+    private String host = SessionConfig.DEFAULT_HOST;
+    private int port = SessionConfig.DEFAULT_PORT;
     private List<String> nodeUrls = null;
-    private int maxSize = Config.DEFAULT_SESSION_POOL_MAX_SIZE;
-    private String user = Config.DEFAULT_USER;
-    private String password = Config.DEFAULT_PASSWORD;
-    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
+    private String user = SessionConfig.DEFAULT_USER;
+    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
-    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
-    private int connectionTimeoutInMs = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private boolean enableCacheLeader = SessionConfig.DEFAULT_CACHE_LEADER_MODE;
+    private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
 
     public Builder host(String host) {
       this.host = host;

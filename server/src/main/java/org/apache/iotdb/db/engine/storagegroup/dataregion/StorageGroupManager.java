@@ -65,12 +65,12 @@ public class StorageGroupManager {
    * recover status of each virtual storage group processor, null if this logical storage group is
    * new created
    */
-  private AtomicBoolean[] isDataRegionReady;
+  private final AtomicBoolean[] isDataRegionReady;
 
   /** number of ready virtual storage group processors */
   private AtomicInteger readyDataRegionNum;
 
-  private AtomicBoolean isSettling = new AtomicBoolean();
+  private final AtomicBoolean isSettling = new AtomicBoolean();
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
@@ -390,7 +390,7 @@ public class StorageGroupManager {
   public void setTTL(long dataTTL) {
     for (DataRegion dataRegion : this.dataRegion) {
       if (dataRegion != null) {
-        dataRegion.setDataTTL(dataTTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }

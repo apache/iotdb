@@ -33,7 +33,9 @@ import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceGroupSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -58,6 +60,15 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, false);
+  }
+
+  @Override
+  public ClusterSchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, true);
+  }
+
+  private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -70,7 +81,8 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
           SchemaRegionId schemaRegionId =
               localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
           ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-          schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(pathPattern, false));
+          schemaTree.appendMeasurementPaths(
+              schemaRegion.getMeasurementPaths(pathPattern, false, withTags));
         }
       }
     } catch (MetadataException e) {
@@ -87,7 +99,13 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       Function<Integer, TSDataType> getDataType,
       boolean aligned) {
     DeviceSchemaInfo deviceSchemaInfo =
-        getDeviceSchemaInfoWithAutoCreate(devicePath, measurements, getDataType, aligned);
+        getDeviceSchemaInfoWithAutoCreate(
+            devicePath,
+            measurements,
+            getDataType,
+            new TSEncoding[measurements.length],
+            new CompressionType[measurements.length],
+            aligned);
     DeviceGroupSchemaTree schemaTree = new DeviceGroupSchemaTree();
     schemaTree.addDeviceInfo(deviceSchemaInfo);
     return schemaTree;
@@ -97,12 +115,14 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean aligned) {
     try {
       SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(devicePath);
       ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
       return schemaRegion.getDeviceSchemaInfoWithAutoCreate(
-          devicePath, measurements, getDataType, aligned);
+          devicePath, measurements, getDataType, encodings, compressionTypes, aligned);
     } catch (MetadataException e) {
       throw new RuntimeException(e);
     }
@@ -113,6 +133,18 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+    return fetchSchemaListWithAutoCreate(
+        devicePathList, measurementsList, tsDataTypesList, null, null, isAlignedList);
+  }
+
+  @Override
+  public ISchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<TSEncoding[]> encodingsList,
+      List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
     Map<PartialPath, List<Integer>> deviceMap = new HashMap<>();
     for (int i = 0, size = devicePathList.size(); i < size; i++) {
@@ -134,6 +166,8 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
       String[] measurements = new String[totalSize];
       TSDataType[] tsDataTypes = new TSDataType[totalSize];
+      TSEncoding[] encodings = new TSEncoding[totalSize];
+      CompressionType[] compressionTypes = new CompressionType[totalSize];
 
       int curPos = 0;
       for (int index : entry.getValue()) {
@@ -145,12 +179,29 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
             measurementsList.get(index).length);
         System.arraycopy(
             tsDataTypesList.get(index), 0, tsDataTypes, curPos, tsDataTypesList.get(index).length);
+        if (encodingsList != null) {
+          System.arraycopy(
+              encodingsList.get(index), 0, encodings, curPos, encodingsList.get(index).length);
+        }
+        if (compressionTypesList != null) {
+          System.arraycopy(
+              compressionTypesList.get(index),
+              0,
+              compressionTypes,
+              curPos,
+              compressionTypesList.get(index).length);
+        }
         curPos += measurementsList.get(index).length;
       }
 
       schemaTree.addDeviceInfo(
           getDeviceSchemaInfoWithAutoCreate(
-              entry.getKey(), measurements, index -> tsDataTypes[index], isAligned));
+              entry.getKey(),
+              measurements,
+              index -> tsDataTypes[index],
+              encodings,
+              compressionTypes,
+              isAligned));
     }
 
     return schemaTree;

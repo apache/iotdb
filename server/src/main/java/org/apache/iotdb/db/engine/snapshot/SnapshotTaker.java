@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.snapshot;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -68,17 +69,22 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
-    if (flushBeforeSnapshot) {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    }
-
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
-      boolean success = true;
+      boolean success;
+      snapshotLogger.logSnapshotId(snapshotDir.getName());
 
-      readLockTheFile();
       try {
+        readLockTheFile();
+        if (flushBeforeSnapshot) {
+          try {
+            dataRegion.writeLock("snapshotTaker");
+            dataRegion.syncCloseAllWorkingTsFileProcessors();
+          } finally {
+            dataRegion.writeUnlock();
+          }
+        }
         success = createSnapshot(seqFiles, snapshotDir.getName());
         success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
       } finally {
@@ -92,6 +98,7 @@ public class SnapshotTaker {
             dataRegion.getDataRegionId());
         cleanUpWhenFail(snapshotDir.getName());
       } else {
+        snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
             dataRegion.getStorageGroupName(),
@@ -149,6 +156,9 @@ public class SnapshotTaker {
           continue;
         }
         File tsFile = resource.getTsFile();
+        if (!resource.isClosed()) {
+          continue;
+        }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
         createHardLink(snapshotTsFile, tsFile);
@@ -169,8 +179,15 @@ public class SnapshotTaker {
   }
 
   private void createHardLink(File target, File source) throws IOException {
+    if (!target.getParentFile().exists()) {
+      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+    }
+    if (!source.exists()) {
+      LOGGER.error("Hard link source file {} doesn't exist", source);
+    }
+    Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
-    snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
+    snapshotLogger.logFile(source);
   }
 
   /**
@@ -196,7 +213,7 @@ public class SnapshotTaker {
       stringBuilder.append(splittedPath[i]);
       stringBuilder.append(File.separator);
     }
-    stringBuilder.append("snapshot");
+    stringBuilder.append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);
@@ -216,9 +233,15 @@ public class SnapshotTaker {
   }
 
   private void cleanUpWhenFail(String snapshotId) {
+    LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       File dataDirForThisSnapshot =
-          new File(dataDir + File.separator + "snapshot" + File.separator + snapshotId);
+          new File(
+              dataDir
+                  + File.separator
+                  + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+                  + File.separator
+                  + snapshotId);
       if (dataDirForThisSnapshot.exists()) {
         try {
           FileUtils.recursiveDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());

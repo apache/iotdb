@@ -98,11 +98,11 @@ public class Session implements ISession {
       "Query do not enable redirect," + " please confirm the session and server conf.";
   private static final ThreadPoolExecutor OPERATION_EXECUTOR =
       new ThreadPoolExecutor(
-          Config.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
-          Config.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
+          SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
+          SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
           0,
           TimeUnit.MILLISECONDS,
-          new LinkedBlockingQueue<>(Config.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
+          new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
   protected String username;
@@ -140,14 +140,14 @@ public class Session implements ISession {
     this(
         host,
         rpcPort,
-        Config.DEFAULT_USER,
-        Config.DEFAULT_PASSWORD,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -156,12 +156,12 @@ public class Session implements ISession {
         Integer.parseInt(rpcPort),
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
@@ -170,12 +170,12 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
@@ -186,10 +186,10 @@ public class Session implements ISession {
         password,
         fetchSize,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
@@ -206,10 +206,10 @@ public class Session implements ISession {
         password,
         fetchSize,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
@@ -219,12 +219,12 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
@@ -234,12 +234,12 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableCacheLeader,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
@@ -257,10 +257,10 @@ public class Session implements ISession {
         password,
         fetchSize,
         zoneId,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableCacheLeader,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_VERSION);
   }
 
   @SuppressWarnings("squid:S107")
@@ -291,12 +291,12 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   /**
@@ -311,10 +311,10 @@ public class Session implements ISession {
         password,
         fetchSize,
         null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
@@ -322,12 +322,12 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_VERSION);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
@@ -373,12 +373,12 @@ public class Session implements ISession {
 
   @Override
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+    open(false, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   @Override
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+    open(enableRPCCompression, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   @Override
@@ -2607,7 +2607,7 @@ public class Session implements ISession {
     }
   }
 
-  protected void sortTablet(Tablet tablet) {
+  public void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -3154,17 +3154,17 @@ public class Session implements ISession {
   }
 
   public static class Builder {
-    private String host = Config.DEFAULT_HOST;
-    private int rpcPort = Config.DEFAULT_PORT;
-    private String username = Config.DEFAULT_USER;
-    private String password = Config.DEFAULT_PASSWORD;
-    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private String host = SessionConfig.DEFAULT_HOST;
+    private int rpcPort = SessionConfig.DEFAULT_PORT;
+    private String username = SessionConfig.DEFAULT_USER;
+    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private ZoneId zoneId = null;
-    private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
-    private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
-    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
-    private Version version = Config.DEFAULT_VERSION;
-    private long timeOut = Config.DEFAULT_QUERY_TIME_OUT;
+    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
+    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    private boolean enableCacheLeader = SessionConfig.DEFAULT_CACHE_LEADER_MODE;
+    private Version version = SessionConfig.DEFAULT_VERSION;
+    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
 
@@ -3230,7 +3230,7 @@ public class Session implements ISession {
 
     public Session build() {
       if (nodeUrls != null
-          && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
+          && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }

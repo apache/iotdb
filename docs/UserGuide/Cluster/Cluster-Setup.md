@@ -172,12 +172,14 @@ Execute the remove-confignode shell on an active ConfigNode.
 
 Remove on Linux:
 ```
-./confignode/sbin/remove-confignode.sh -r <internal_address>:<internal_port>
+./confignode/sbin/remove-confignode.sh <confignode_id>
+./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
 ```
 
 Remove on Windows:
 ```
-confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
+confignode\sbin\remove-confignode.bat <confignode_id>
+confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 ```
 
 ### Remove DataNode
@@ -185,27 +187,15 @@ confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
 Execute the remove-datanode shell on an active DataNode.
 
 Remove on Linux:
-
-+ Remove a DataNode:
 ```
+./datanode/sbin/remove-datanode.sh <datanode_id>
 ./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
-+ Remove multiple DataNodes:
-```
-./datanode/sbin/remove-datanode.sh <rpc_address_0>:<rpc_port_0>,...,<rpc_address_n>:<rpc_port_n>
-```
-
 Remove on Windows:
-
-+ Remove a DataNode:
 ```
+datanode\sbin\remove-datanode.bat <datanode_id>
 datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
-```
-
-+ Remove multiple DataNodes:
-```
-datanode\sbin\remove-datanode.bat <rpc_address_0>:<rpc_port_0>,...,<rpc_address_n>:<rpc_port_n>
 ```
 
 ## Quick Start
@@ -237,12 +227,12 @@ the default number of replica is one.
   command on the Cli. The result is shown below:
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     1|  DataNode|Running|127.0.0.1|        9003|
++------+----------+-------+---------+------------+
 Total line number = 2
 It costs 0.160s
 ```
@@ -318,16 +308,16 @@ The following commands can be executed in no particular order.
 Execute the show cluster command, the result is shown below:
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     2|ConfigNode|Running|  0.0.0.0|22279|
-|     3|ConfigNode|Running|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-|     4|  DataNode|Running|127.0.0.1| 9004|
-|     5|  DataNode|Running|127.0.0.1| 9005|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     2|ConfigNode|Running|  0.0.0.0|       22279|
+|     3|ConfigNode|Running|  0.0.0.0|       22281|
+|     1|  DataNode|Running|127.0.0.1|        9003|
+|     4|  DataNode|Running|127.0.0.1|        9004|
+|     5|  DataNode|Running|127.0.0.1|        9005|
++------+----------+-------+---------+------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -349,14 +339,14 @@ It costs 0.012s
 Execute the show cluster command, the result is shown below:
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     3|ConfigNode|Running|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-|     5|  DataNode|Running|127.0.0.1| 9005|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     3|ConfigNode|Running|  0.0.0.0|       22281|
+|     1|  DataNode|Running|127.0.0.1|        9003|
+|     5|  DataNode|Running|127.0.0.1|        9005|
++------+----------+-------+---------+------------+
 Total line number = 4
 It costs 0.007s
 ```

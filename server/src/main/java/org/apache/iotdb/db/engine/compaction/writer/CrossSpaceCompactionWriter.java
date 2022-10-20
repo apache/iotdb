@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -30,6 +32,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
@@ -37,6 +41,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   // source tsfiles
   private List<TsFileResource> seqTsFileResources;
+  private List<TsFileResource> targetTsFileResources;
 
   // Each sub task has its corresponding seq file index.
   // The index of the array corresponds to subTaskId.
@@ -54,17 +59,45 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // current chunk group header size
   private int chunkGroupHeaderSize;
 
+  private AtomicLong[] startTimeForCurDeviceForEachFile;
+  private AtomicLong[] endTimeForCurDeviceForEachFile;
+  private AtomicBoolean[] hasCurDeviceForEachFile;
+  private AtomicLong[][] startTimeForEachDevice = new AtomicLong[subTaskNum][];
+  private AtomicLong[][] endTimeForEachDevice = new AtomicLong[subTaskNum][];
+
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
+    this.targetTsFileResources = targetResources;
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
+    startTimeForCurDeviceForEachFile = new AtomicLong[targetResources.size()];
+    endTimeForCurDeviceForEachFile = new AtomicLong[targetResources.size()];
+    hasCurDeviceForEachFile = new AtomicBoolean[targetResources.size()];
+    long memorySizeForEachWriter =
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
+                / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
-      this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
+      this.fileWriterList.add(
+          new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));
       isEmptyFile[i] = true;
+      startTimeForCurDeviceForEachFile[i] = new AtomicLong(Long.MAX_VALUE);
+      endTimeForCurDeviceForEachFile[i] = new AtomicLong(Long.MIN_VALUE);
+      hasCurDeviceForEachFile[i] = new AtomicBoolean(false);
     }
     this.seqTsFileResources = seqFileResources;
+    for (int i = 0, size = targetResources.size(); i < subTaskNum; ++i) {
+      startTimeForEachDevice[i] = new AtomicLong[size];
+      endTimeForEachDevice[i] = new AtomicLong[size];
+      for (int j = 0; j < size; ++j) {
+        startTimeForEachDevice[i][j] = new AtomicLong(Long.MAX_VALUE);
+        endTimeForEachDevice[i][j] = new AtomicLong(Long.MIN_VALUE);
+      }
+    }
   }
 
   @Override
@@ -89,6 +122,16 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       }
       isDeviceExistedInTargetFiles[i] = false;
     }
+    for (int i = 0, size = targetTsFileResources.size(); i < size; ++i) {
+      for (int j = 0; j < subTaskNum; ++j) {
+        targetTsFileResources
+            .get(i)
+            .updateStartTime(deviceId, startTimeForEachDevice[j][i].getAndSet(Long.MAX_VALUE));
+        targetTsFileResources
+            .get(i)
+            .updateEndTime(deviceId, endTimeForEachDevice[j][i].getAndSet(Long.MIN_VALUE));
+      }
+    }
     deviceId = null;
   }
 
@@ -102,6 +145,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    startTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamp, Math::min);
+    endTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamp, Math::max);
     if (measurementPointCountArray[subTaskId] % 10 == 0) {
       checkChunkSizeAndMayOpenANewChunk(
           fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
@@ -111,12 +157,17 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+  public void write(
+      TimeColumn timestamps, Column[] columns, String device, int subTaskId, int batchSize)
       throws IOException {
     // todo control time range of target tsfile
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    startTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(
+        timestamps.getStartTime(), Math::min);
+    endTimeForEachDevice[subTaskId][fileIndex].accumulateAndGet(timestamps.getEndTime(), Math::max);
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
@@ -191,5 +242,15 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
       fileIndex++;
     }
+  }
+
+  @Override
+  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    // using synchronized will lead to significant performance loss,
+    // so we use atomic long here to accelerate
+    startTimeForCurDeviceForEachFile[fileIndex].accumulateAndGet(time, Math::min);
+    endTimeForCurDeviceForEachFile[fileIndex].accumulateAndGet(time, Math::max);
+    hasCurDeviceForEachFile[fileIndex].set(true);
   }
 }

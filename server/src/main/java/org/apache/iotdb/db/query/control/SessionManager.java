@@ -383,7 +383,13 @@ public class SessionManager {
   }
 
   public ZoneId getZoneId(Long sessionId) {
-    return sessionIdToZoneId.get(sessionId);
+    ZoneId zoneId = sessionIdToZoneId.get(sessionId);
+    if (zoneId == null) {
+      throw new RuntimeException(
+          new IoTDBException(
+              "session expired, please re-login.", TSStatusCode.SESSION_EXPIRED.getStatusCode()));
+    }
+    return zoneId;
   }
 
   public void setTimezone(Long sessionId, String zone) {

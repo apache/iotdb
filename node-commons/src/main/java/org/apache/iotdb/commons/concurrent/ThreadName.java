@@ -34,6 +34,7 @@ public enum ThreadName {
   DATA_REGION_RECOVER_SERVICE("Data-Region-Recover"),
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
+  FLUSH_TASK_SUBMIT("FlushTask-Submit-Pool"),
   COMPACTION_SERVICE("Compaction"),
   COMPACTION_SUB_SERVICE("Sub-Compaction"),
   COMPACTION_SCHEDULE("Compaction_Schedule"),

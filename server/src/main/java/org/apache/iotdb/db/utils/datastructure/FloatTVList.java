@@ -30,10 +30,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
 public abstract class FloatTVList extends TVList {
   // list of primitive array, add 1 when expanded -> float primitive array
@@ -43,6 +46,33 @@ public abstract class FloatTVList extends TVList {
   FloatTVList() {
     super();
     values = new ArrayList<>();
+  }
+
+  public static FloatTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickFloatTVList();
+      case BACKWARD:
+        return new BackFloatTVList();
+      default:
+        return new TimFloatTVList();
+    }
+  }
+
+  @Override
+  public FloatTVList clone() {
+    FloatTVList cloneList = FloatTVList.newList();
+    cloneAs(cloneList);
+    for (float[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private float[] cloneValue(float[] array) {
+    float[] cloneArray = new float[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -228,5 +258,18 @@ public abstract class FloatTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putFloat(getFloat(rowIdx));
     }
+  }
+
+  public static FloatTVList deserialize(DataInputStream stream) throws IOException {
+    FloatTVList tvList = FloatTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    float[] values = new float[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readFloat();
+    }
+    tvList.putFloats(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

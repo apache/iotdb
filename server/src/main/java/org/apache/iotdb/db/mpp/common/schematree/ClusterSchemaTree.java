@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -41,6 +41,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -159,12 +160,17 @@ public class ClusterSchemaTree implements ISchemaTree {
     appendSingleMeasurement(
         measurementPath,
         (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.getTagMap(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
   }
 
   public void appendSingleMeasurement(
-      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+      PartialPath path,
+      MeasurementSchema schema,
+      Map<String, String> tagMap,
+      String alias,
+      boolean isAligned) {
     String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -177,6 +183,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             measurementNode.setAlias(alias);
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
+          measurementNode.setTagMap(tagMap);
           child = measurementNode;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);

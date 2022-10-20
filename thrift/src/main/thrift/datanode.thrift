@@ -169,18 +169,38 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
-struct TcreateTriggerInstanceReq {
+struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
   2: required binary jarFile
 }
 
-struct TactiveTriggerInstanceReq {
+struct TActiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
+struct TInactiveTriggerInstanceReq {
   1: required string triggerName
 }
 
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
+}
+
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
+}
+
+struct TFireTriggerReq {
+  1: required string triggerName
+  2: required binary tablet
+  3: required byte triggerEvent
+}
+
+struct TFireTriggerResp {
+  1: required bool foundExecutor
+  2: required i32 fireResult
 }
 
 struct TInvalidatePermissionCacheReq {
@@ -197,9 +217,18 @@ struct THeartbeatReq {
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
-  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  4: optional i16 cpu
-  5: optional i16 memory
+  3: optional string statusReason
+  4: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  5: optional TLoadSample loadSample
+}
+
+struct TLoadSample {
+  // Percentage of occupied cpu in DataNode
+  1: required i16 cpuUsageRate
+  // Percentage of occupied memory space in DataNode
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in DataNode
+  3: required double diskUsageRate
 }
 
 struct TRegionRouteReq {
@@ -265,6 +294,16 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TCreatePipeOnDataNodeReq{
+  1: required binary pipeInfo
+}
+
+struct TOperatePipeOnDataNodeReq {
+    1: required string pipeName
+    // ordinal of {@linkplain SyncOperation}
+    2: required i8 operation
 }
 
 service IDataNodeRPCService {
@@ -412,21 +451,44 @@ service IDataNodeRPCService {
    *
    * @param TriggerInformation, jar file.
    **/
-  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+  common.TSStatus createTriggerInstance(TCreateTriggerInstanceReq req)
 
   /**
    * Config node will active a trigger instance on data node.
    *
    * @param trigger name.
    **/
-  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+  common.TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req)
+
 
   /**
-    * Config node will drop a trigger on all online config nodes and data nodes.
-    *
-    * @param trigger name, whether need to delete jar
-    **/
+   * Config node will inactive a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req)
+
+
+  /**
+   * Config node will drop a trigger on all online config nodes and data nodes.
+   *
+   * @param trigger name, whether need to delete jar
+   **/
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
+  /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
+
+  /**
+    * Fire a stateful trigger on current data node.
+    *
+    * @param trigger name, tablet and event
+    **/
+  TFireTriggerResp fireTrigger(TFireTriggerReq req)
 
   /**
    * Config node will invalidate permission Info cache.
@@ -497,6 +559,16 @@ service IDataNodeRPCService {
   * Delete matched timeseries and remove according schema black list in target schemRegion
   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+ /**
+  * Create PIPE on DataNode
+  */
+  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode
+  */
+  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
 }
 
 service MPPDataExchangeService {

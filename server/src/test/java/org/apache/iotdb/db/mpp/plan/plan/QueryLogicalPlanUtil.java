@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.plan;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -47,7 +47,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -597,40 +597,40 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             sourceNodeList,
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
@@ -848,21 +848,21 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             Collections.singletonList(aggregationNode),
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(

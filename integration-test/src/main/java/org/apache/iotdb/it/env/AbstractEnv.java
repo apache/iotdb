@@ -34,7 +34,12 @@ import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -59,9 +64,9 @@ public abstract class AbstractEnv implements BaseEnv {
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  private final Random rand = new Random();
   protected String testMethodName = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
@@ -162,6 +167,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public void testWorking() {
+    logger.info("Testing DataNode connection...");
     List<String> endpoints =
         dataNodeWrapperList.stream()
             .map(DataNodeWrapper::getIpAndPortString)
@@ -175,6 +181,7 @@ public abstract class AbstractEnv implements BaseEnv {
             Exception lastException = null;
             for (int i = 0; i < 30; i++) {
               try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
+                logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
               } catch (Exception e) {
                 lastException = e;
@@ -197,23 +204,40 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   private void checkNodeHeartbeat() throws Exception {
+    logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
     boolean flag;
     for (int i = 0; i < 30; i++) {
       try (SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
+          (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         flag = true;
         showClusterResp = client.showCluster();
-        Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
-        for (String status : nodeStatus.values()) {
-          if (!status.equals("Running")) {
-            flag = false;
-            break;
+
+        // Check resp status
+        if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          flag = false;
+        }
+
+        // Check the number of nodes
+        if (showClusterResp.getNodeStatus().size()
+            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
+          flag = false;
+        }
+
+        // Check the status of nodes
+        if (flag) {
+          Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
+          for (String status : nodeStatus.values()) {
+            if (!status.equals("Running")) {
+              flag = false;
+              break;
+            }
           }
         }
-        int nodeNum = configNodeWrapperList.size() + dataNodeWrapperList.size();
-        if (flag && nodeStatus.size() == nodeNum) {
+
+        if (flag) {
+          logger.info("The cluster is now ready for testing!");
           return;
         }
       } catch (Exception e) {
@@ -262,6 +286,15 @@ public abstract class AbstractEnv implements BaseEnv {
     } else {
       return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
   }
 
   protected NodeConnection getWriteConnection(
@@ -361,19 +394,52 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
     IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
-      try {
-        return clientManager.borrowClient(
-            new TEndPoint(
-                configNodeWrapperList.get(0).getIp(), configNodeWrapperList.get(0).getPort()));
-      } catch (IOException ignored) {
+      for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(
+                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
+          TShowClusterResp resp = client.showCluster();
+          // Only the ConfigNodeClient who connects to the ConfigNode-leader
+          // will respond the SUCCESS_STATUS
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            logger.info(
+                "Successfully get connection to the leader ConfigNode: {}",
+                configNodeWrapper.getIp());
+            return client;
+          }
+        } catch (TException e) {
+          logger.error(
+              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
+              configNodeWrapper.getIp(),
+              e);
+        }
       }
     }
     throw new IOException("Failed to get config node connection");
+  }
+
+  @Override
+  public void startConfigNode(int index) {
+    configNodeWrapperList.get(index).start();
+  }
+
+  @Override
+  public void shutdownConfigNode(int index) {
+    configNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public void startDataNode(int index) {
+    dataNodeWrapperList.get(index).start();
+  }
+
+  public void shutdownDataNode(int index) {
+    dataNodeWrapperList.get(index).stop();
   }
 }

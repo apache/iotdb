@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;

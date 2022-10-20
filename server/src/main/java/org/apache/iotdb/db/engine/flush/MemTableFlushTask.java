@@ -38,6 +38,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -114,14 +117,25 @@ public class MemTableFlushTask {
     long sortTime = 0;
 
     // for map do not use get(key) to iterate
-    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> memTableEntry :
-        memTable.getMemTableMap().entrySet()) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey().toStringID()));
-
-      final Map<String, IWritableMemChunk> value = memTableEntry.getValue().getMemChunkMap();
-      for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
+    // sort the IDeviceID in lexicographical order
+    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
+    for (IDeviceID deviceID : deviceIDList) {
+      final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      // skip the empty device/chunk group
+      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+        continue;
+      }
+      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
+      List<String> seriesInOrder = new ArrayList<>(value.keySet());
+      seriesInOrder.sort((String::compareTo));
+      for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
-        IWritableMemChunk series = iWritableMemChunkEntry.getValue();
+        IWritableMemChunk series = value.get(seriesId);
+        if (series.count() == 0) {
+          continue;
+        }
         /*
          * sort task (first task of flush pipeline)
          */

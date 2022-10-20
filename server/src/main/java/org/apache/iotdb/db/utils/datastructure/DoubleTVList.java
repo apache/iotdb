@@ -30,10 +30,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
 public abstract class DoubleTVList extends TVList {
   // list of primitive array, add 1 when expanded -> double primitive array
@@ -43,6 +46,33 @@ public abstract class DoubleTVList extends TVList {
   DoubleTVList() {
     super();
     values = new ArrayList<>();
+  }
+
+  public static DoubleTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickDoubleTVList();
+      case BACKWARD:
+        return new BackDoubleTVList();
+      default:
+        return new TimDoubleTVList();
+    }
+  }
+
+  @Override
+  public DoubleTVList clone() {
+    DoubleTVList cloneList = DoubleTVList.newList();
+    cloneAs(cloneList);
+    for (double[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private double[] cloneValue(double[] array) {
+    double[] cloneArray = new double[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -228,5 +258,18 @@ public abstract class DoubleTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putDouble(getDouble(rowIdx));
     }
+  }
+
+  public static DoubleTVList deserialize(DataInputStream stream) throws IOException {
+    DoubleTVList tvList = DoubleTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    double[] values = new double[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readDouble();
+    }
+    tvList.putDoubles(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

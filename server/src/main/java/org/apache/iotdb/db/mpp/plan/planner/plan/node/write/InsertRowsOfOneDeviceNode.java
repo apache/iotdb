@@ -21,9 +21,10 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -143,17 +145,20 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
+  public void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.validateAndSetSchema(schemaTree)) {
-        return false;
-      }
+      insertRowNode.validateAndSetSchema(schemaTree);
       if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
         this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
       }
     }
     storeMeasurementsAndDataType();
-    return true;
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
   }
 
   @Override
@@ -170,7 +175,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   devicePath.getFullPath(),
-                  StorageEngineV2.getTimePartitionSlot(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartitionForRouting(insertRowNode.getTime()));
       List<InsertRowNode> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
       List<Integer> tmpIndexMap =

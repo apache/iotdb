@@ -31,7 +31,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList1() {
-    TimIntTVList tvList = new TimIntTVList();
+    IntTVList tvList = IntTVList.newList();
     for (int i = 0; i < 1000; i++) {
       tvList.putInt(i, i);
     }
@@ -44,7 +44,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList2() {
-    TimIntTVList tvList = new TimIntTVList();
+    IntTVList tvList = IntTVList.newList();
     for (int i = 1000; i >= 0; i--) {
       tvList.putInt(i, i);
     }
@@ -57,7 +57,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithoutBitMap() {
-    TimIntTVList tvList = new TimIntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
@@ -78,7 +78,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithBitMap() {
-    TimIntTVList tvList = new TimIntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -109,7 +109,7 @@ public class IntTVListTest {
 
   @Test
   public void testClone() {
-    TimIntTVList tvList = new TimIntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -127,7 +127,7 @@ public class IntTVListTest {
         0,
         1000);
     tvList.sort();
-    TimIntTVList clonedTvList = tvList.clone();
+    IntTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(tvList.getInt((int) i), clonedTvList.getInt((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));

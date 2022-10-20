@@ -20,10 +20,13 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Test;
@@ -90,7 +93,8 @@ public class CreateRegionGroupsProcedureTest {
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionGroupsProcedure procedure0 =
-        new CreateRegionGroupsProcedure(createRegionGroupsPlan, failedRegions0);
+        new CreateRegionGroupsProcedure(
+            TConsensusGroupType.DataRegion, createRegionGroupsPlan, failedRegions0);
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
@@ -103,6 +107,13 @@ public class CreateRegionGroupsProcedureTest {
       procedure1.deserialize(buffer);
       assertEquals(procedure0, procedure1);
       assertEquals(procedure0.hashCode(), procedure1.hashCode());
+
+      CreateRegionGroupsProcedure procedure2 =
+          (CreateRegionGroupsProcedure)
+              ProcedureFactory.getInstance()
+                  .create(ByteBuffer.wrap(byteArrayOutputStream.getBuf()));
+      assertEquals(procedure0, procedure2);
+      assertEquals(procedure0.hashCode(), procedure2.hashCode());
     } catch (IOException e) {
       fail();
     }

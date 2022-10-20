@@ -29,10 +29,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
 public abstract class LongTVList extends TVList {
   // list of primitive array, add 1 when expanded -> long primitive array
@@ -42,6 +45,33 @@ public abstract class LongTVList extends TVList {
   LongTVList() {
     super();
     values = new ArrayList<>();
+  }
+
+  public static LongTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickLongTVList();
+      case BACKWARD:
+        return new BackLongTVList();
+      default:
+        return new TimLongTVList();
+    }
+  }
+
+  @Override
+  public LongTVList clone() {
+    LongTVList cloneList = LongTVList.newList();
+    cloneAs(cloneList);
+    for (long[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private long[] cloneValue(long[] array) {
+    long[] cloneArray = new long[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -221,5 +251,18 @@ public abstract class LongTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putLong(getLong(rowIdx));
     }
+  }
+
+  public static LongTVList deserialize(DataInputStream stream) throws IOException {
+    LongTVList tvList = LongTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    long[] values = new long[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readLong();
+    }
+    tvList.putLongs(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

@@ -44,6 +44,8 @@ public class IoTDBShutdownHook extends Thread {
 
     // reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setNodeStatusToShutdown();
+    // wait all wal are flushed
+    WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {

@@ -40,7 +40,11 @@ public class SchemaFetchScanNodeTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
     SchemaFetchScanNode schemaFetchScanNode =
         new SchemaFetchScanNode(
-            new PlanNodeId("0"), new PartialPath("root.sg"), patternTree, Collections.emptyMap());
+            new PlanNodeId("0"),
+            new PartialPath("root.sg"),
+            patternTree,
+            Collections.emptyMap(),
+            true);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchScanNode.serialize(byteBuffer);
     byteBuffer.flip();
@@ -48,5 +52,6 @@ public class SchemaFetchScanNodeTest {
     Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
     Assert.assertEquals(
         "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
+    Assert.assertTrue(recoveredNode.isWithTags());
   }
 }

@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -44,7 +44,8 @@ import java.util.stream.Collectors;
 public class AggregationDescriptorTest {
 
   private static final List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
-  private static final List<GroupByLevelDescriptor> groupByLevelDescriptorList = new ArrayList<>();
+  private static final List<CrossSeriesAggregationDescriptor> groupByLevelDescriptorList =
+      new ArrayList<>();
 
   public static final Map<String, PartialPath> pathMap = new HashMap<>();
 
@@ -91,7 +92,7 @@ public class AggregationDescriptorTest {
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
 
     groupByLevelDescriptorList.add(
-        new GroupByLevelDescriptor(
+        new CrossSeriesAggregationDescriptor(
             AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
@@ -99,7 +100,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
-        new GroupByLevelDescriptor(
+        new CrossSeriesAggregationDescriptor(
             AggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
@@ -107,7 +108,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
-        new GroupByLevelDescriptor(
+        new CrossSeriesAggregationDescriptor(
             AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
@@ -115,7 +116,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
-        new GroupByLevelDescriptor(
+        new CrossSeriesAggregationDescriptor(
             AggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
@@ -168,7 +169,7 @@ public class AggregationDescriptorTest {
     Assert.assertEquals(
         expectedOutputColumnNames,
         groupByLevelDescriptorList.stream()
-            .map(GroupByLevelDescriptor::getOutputColumnNames)
+            .map(CrossSeriesAggregationDescriptor::getOutputColumnNames)
             .flatMap(List::stream)
             .distinct()
             .collect(Collectors.toList()));
@@ -193,7 +194,7 @@ public class AggregationDescriptorTest {
     Assert.assertEquals(
         expectedInputColumnNames,
         groupByLevelDescriptorList.stream()
-            .map(GroupByLevelDescriptor::getInputColumnNamesList)
+            .map(CrossSeriesAggregationDescriptor::getInputColumnNamesList)
             .collect(Collectors.toList()));
   }
 
@@ -237,7 +238,7 @@ public class AggregationDescriptorTest {
     Assert.assertEquals(
         expectedMapList,
         groupByLevelDescriptorList.stream()
-            .map(GroupByLevelDescriptor::getInputColumnCandidateMap)
+            .map(CrossSeriesAggregationDescriptor::getInputColumnCandidateMap)
             .collect(Collectors.toList()));
   }
 }
