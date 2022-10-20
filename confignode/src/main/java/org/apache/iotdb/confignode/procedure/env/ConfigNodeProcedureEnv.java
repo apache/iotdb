@@ -487,9 +487,6 @@ public class ConfigNodeProcedureEnv {
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    // TODO: The request sent to DataNodes which stateful triggerInstance needn't to be created
-    // don't set
-    // JarFile
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

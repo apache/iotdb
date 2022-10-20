@@ -954,6 +954,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTriggerTableResp resp = client.getStatefulTriggerTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

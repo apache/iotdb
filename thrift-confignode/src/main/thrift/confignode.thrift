@@ -80,6 +80,12 @@ struct TRatisConfig {
   20: required i64 dataInitialSleepTime
   21: required i64 schemaMaxSleepTime
   22: required i64 dataMaxSleepTime
+
+  23: required i64 schemaPreserveWhenPurge
+  24: required i64 dataPreserveWhenPurge
+
+  25: required i64 firstElectionTimeoutMin
+  26: required i64 firstElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -314,6 +320,8 @@ enum TTriggerState {
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
+  // The intermediate state of Transfer trigger, the cluster is in the process of transferring the trigger.
+  TRANSFERRING
 }
 
 struct TCreateTriggerReq {
@@ -336,7 +344,7 @@ struct TDropTriggerReq {
 
 struct TGetLocationForTriggerResp {
   1: required common.TSStatus status
-  2: required common.TDataNodeLocation dataNodeLocation
+  2: optional common.TDataNodeLocation dataNodeLocation
 }
 
 // Get trigger table from config node
@@ -785,9 +793,14 @@ service IConfigNodeRPCService {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
 
   /**
-     * Return the trigger table of config leader
+     * Return the trigger table
      */
   TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
      * Return the trigger jar list of the trigger name list

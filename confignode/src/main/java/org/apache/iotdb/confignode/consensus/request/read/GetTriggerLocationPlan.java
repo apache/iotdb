@@ -27,36 +27,36 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetTriggerTablePlan extends ConfigPhysicalPlan {
+public class GetTriggerLocationPlan extends ConfigPhysicalPlan {
 
-  boolean onlyStateful;
+  String triggerName;
 
-  public GetTriggerTablePlan() {
-    super(ConfigPhysicalPlanType.GetTriggerTable);
+  public GetTriggerLocationPlan() {
+    super(ConfigPhysicalPlanType.GetTriggerLocation);
   }
 
-  public GetTriggerTablePlan(boolean onlyStateful) {
+  public GetTriggerLocationPlan(String triggerName) {
     this();
-    this.onlyStateful = onlyStateful;
+    this.triggerName = triggerName;
   }
 
-  public boolean isOnlyStateful() {
-    return onlyStateful;
+  public String getTriggerName() {
+    return triggerName;
   }
 
-  public void setOnlyStateful(boolean onlyStateful) {
-    this.onlyStateful = onlyStateful;
+  public void setTriggerName(String triggerName) {
+    this.triggerName = triggerName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetTriggerTable.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.GetTriggerLocation.ordinal());
 
-    ReadWriteIOUtils.write(onlyStateful, stream);
+    ReadWriteIOUtils.write(triggerName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.onlyStateful = ReadWriteIOUtils.readBool(buffer);
+    this.triggerName = ReadWriteIOUtils.readString(buffer);
   }
 }

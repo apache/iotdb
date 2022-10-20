@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
@@ -309,6 +310,12 @@ public interface IManager {
 
   /** Show trigger & DataNode start */
   TGetTriggerTableResp getTriggerTable();
+
+  /** DataNode refresh stateful trigger cache */
+  TGetTriggerTableResp getStatefulTriggerTable();
+
+  /** Get DataNodeLocation of stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName);
 
   /** Get Trigger jar */
   TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);

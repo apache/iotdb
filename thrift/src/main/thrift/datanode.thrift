@@ -187,6 +187,11 @@ struct TDropTriggerInstanceReq {
   2: required bool needToDeleteJarFile
 }
 
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
+}
+
 struct TFireTriggerReq {
   1: required string triggerName
   2: required binary tablet
@@ -470,6 +475,13 @@ service IDataNodeRPCService {
    * @param trigger name, whether need to delete jar
    **/
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
+  /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
 
   /**
     * Fire a stateful trigger on current data node.

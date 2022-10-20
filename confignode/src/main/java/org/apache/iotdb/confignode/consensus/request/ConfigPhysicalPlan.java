@@ -32,7 +32,9 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
@@ -73,7 +75,9 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -241,6 +245,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetTriggerTable:
           req = new GetTriggerTablePlan();
           break;
+        case GetTriggerLocation:
+          req = new GetTriggerLocationPlan();
+          break;
         case GetTriggerJar:
           req = new GetTriggerJarPlan();
           break;
@@ -306,6 +313,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UpdateLoadStatistics:
           req = new UpdateLoadStatisticsPlan();
+          break;
+        case UpdateTriggersOnTransferNodes:
+          req = new UpdateTriggersOnTransferNodesPlan();
+          break;
+        case UpdateTriggerLocation:
+          req = new UpdateTriggerLocationPlan();
+          break;
+        case GetTransferringTriggers:
+          req = new GetTransferringTriggersPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
