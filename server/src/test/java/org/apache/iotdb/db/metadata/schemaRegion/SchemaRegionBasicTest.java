@@ -53,10 +53,6 @@ import java.util.stream.IntStream;
  * and Schema_File modes. In Schema_File mode, there are three kinds of test environment: full
  * memory, partial memory and non memory.
  */
-
-
-
-
 public abstract class SchemaRegionBasicTest {
 
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
