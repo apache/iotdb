@@ -16,15 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+package org.apache.iotdb.confignode.consensus.response;
+
+import org.apache.iotdb.consensus.common.DataSet;
+
+import java.util.List;
+
+public class TransferringTriggersResp implements DataSet {
+
+  private List<String> transferringTriggers;
+
+  public TransferringTriggersResp() {}
+
+  public TransferringTriggersResp(List<String> transferringTriggers) {
+    this.transferringTriggers = transferringTriggers;
+  }
+
+  public List<String> getTransferringTriggers() {
+    return transferringTriggers;
+  }
+
+  public void setTransferringTriggers(List<String> transferringTriggers) {
+    this.transferringTriggers = transferringTriggers;
+  }
 }

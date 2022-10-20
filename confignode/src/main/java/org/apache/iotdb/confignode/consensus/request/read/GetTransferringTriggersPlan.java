@@ -16,15 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
 
-public enum PipeStatus {
-  // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+package org.apache.iotdb.confignode.consensus.request.read;
+
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public class GetTransferringTriggersPlan extends ConfigPhysicalPlan {
+
+  public GetTransferringTriggersPlan() {
+    super(ConfigPhysicalPlanType.GetTransferringTriggers);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.GetTransferringTriggers.ordinal());
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

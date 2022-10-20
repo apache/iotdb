@@ -16,47 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-package org.apache.iotdb.confignode.consensus.request.read;
-
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetTriggerTablePlan extends ConfigPhysicalPlan {
+public class DropPipePlan extends ConfigPhysicalPlan {
 
-  boolean onlyStateful;
+  private String pipeName;
 
-  public GetTriggerTablePlan() {
-    super(ConfigPhysicalPlanType.GetTriggerTable);
+  public DropPipePlan() {
+    super(ConfigPhysicalPlanType.DropPipe);
   }
 
-  public GetTriggerTablePlan(boolean onlyStateful) {
+  public DropPipePlan(String pipeName) {
     this();
-    this.onlyStateful = onlyStateful;
+    this.pipeName = pipeName;
   }
 
-  public boolean isOnlyStateful() {
-    return onlyStateful;
-  }
-
-  public void setOnlyStateful(boolean onlyStateful) {
-    this.onlyStateful = onlyStateful;
+  public String getPipeName() {
+    return pipeName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetTriggerTable.ordinal());
-
-    ReadWriteIOUtils.write(onlyStateful, stream);
+    stream.writeInt(ConfigPhysicalPlanType.DropPipe.ordinal());
+    BasicStructureSerDeUtil.write(pipeName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.onlyStateful = ReadWriteIOUtils.readBool(buffer);
+    pipeName = BasicStructureSerDeUtil.readString(buffer);
   }
 }
