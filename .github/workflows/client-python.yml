@@ -53,7 +53,7 @@ jobs:
         run: mvn -B clean install -pl distribution,client-py -am -DskipTests
       - name: Build IoTDB server docker image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:dev"
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r client-py/requirements_dev.txt
