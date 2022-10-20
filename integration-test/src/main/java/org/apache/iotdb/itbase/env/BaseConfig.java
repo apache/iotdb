@@ -282,4 +282,12 @@ public interface BaseConfig {
   default int getMaxDegreeOfIndexNode() {
     return 256;
   }
+
+  default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    return this;
+  }
+
+  default int getSelectIntoInsertTabletPlanRowLimit() {
+    return 10000;
+  }
 }

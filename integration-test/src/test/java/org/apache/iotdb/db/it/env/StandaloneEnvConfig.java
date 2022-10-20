@@ -271,4 +271,17 @@ public class StandaloneEnvConfig implements BaseConfig {
   public int getMaxDegreeOfIndexNode() {
     return TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
   }
+
+  @Override
+  public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
+    return this;
+  }
+
+  @Override
+  public int getSelectIntoInsertTabletPlanRowLimit() {
+    return IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+  }
 }

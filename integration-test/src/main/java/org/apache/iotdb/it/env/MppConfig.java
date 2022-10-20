@@ -281,4 +281,12 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
     return this;
   }
+
+  @Override
+  public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    engineProperties.setProperty(
+        "select_into_insert_tablet_plan_row_limit",
+        String.valueOf(selectIntoInsertTabletPlanRowLimit));
+    return this;
+  }
 }
