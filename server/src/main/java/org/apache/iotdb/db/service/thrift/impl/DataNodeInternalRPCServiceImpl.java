@@ -76,7 +76,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
@@ -516,18 +519,146 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
       throws TException {
-    return null;
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    int preDeactivateTemplateNum = 0;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new PreDeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        preDeactivateTemplateNum += Integer.parseInt(status.getMessage());
+      } else {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateTemplateNum));
+  }
+
+  private Map<PartialPath, List<Integer>> transformTemplateSetInfo(
+      Map<String, List<Integer>> rawTemplateSetInfo) {
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    rawTemplateSetInfo.forEach(
+        (k, v) -> {
+          try {
+            result.put(new PartialPath(k), v);
+          } catch (IllegalPathException ignored) {
+            // won't reach here
+          }
+        });
+    return result;
+  }
+
+  private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
+      Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPattern = getStorageGroupPattern(consensusGroupId);
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    templateSetInfo.forEach(
+        (k, v) -> {
+          if (storageGroupPattern.overlapWith(k)) {
+            result.put(k, v);
+          }
+        });
+    return result;
+  }
+
+  private PartialPath getStorageGroupPattern(TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPattern = null;
+    try {
+      storageGroupPattern =
+          new PartialPath(
+                  schemaEngine
+                      .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                      .getStorageGroupFullPath())
+              .concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    } catch (IllegalPathException ignored) {
+      // won't reach here
+    }
+    return storageGroupPattern;
   }
 
   @Override
   public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
       throws TException {
-    return null;
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new RollbackPreDeactivateTemplateNode(
+                      new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus deactivateTemplate(TDeactivateTemplateReq req) throws TException {
-    return null;
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
