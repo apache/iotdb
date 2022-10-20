@@ -94,19 +94,7 @@ public class ConfigNodeProcedureEnv {
 
   private final DataNodeRemoveHandler dataNodeRemoveHandler;
 
-  private static boolean skipForTest = false;
-
-  private static boolean invalidCacheResult = true;
-
   private final ReentrantLock removeConfigNodeLock;
-
-  public static void setSkipForTest(boolean skipForTest) {
-    ConfigNodeProcedureEnv.skipForTest = skipForTest;
-  }
-
-  public static void setInvalidCacheResult(boolean result) {
-    ConfigNodeProcedureEnv.invalidCacheResult = result;
-  }
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
@@ -148,10 +136,6 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    // TODO: Remove it after IT is supported
-    if (skipForTest) {
-      return invalidCacheResult;
-    }
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
@@ -503,9 +487,6 @@ public class ConfigNodeProcedureEnv {
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    // TODO: The request sent to DataNodes which stateful triggerInstance needn't to be created
-    // don't set
-    // JarFile
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

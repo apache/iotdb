@@ -40,8 +40,8 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
@@ -90,11 +90,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -408,7 +409,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp.getStatus());
+    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
 
     return resp;
   }
@@ -509,6 +510,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() {
+    return configManager.getStatefulTriggerTable();
+  }
+
+  @Override
+  public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
+    // todo: implementation
+    return new TGetLocationForTriggerResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+  }
+
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
     return configManager.getTriggerJar(req);
   }
@@ -660,16 +672,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetRoutingResp getRouting(TGetRoutingReq req) {
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRoutingResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
+      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
     }
     TTimePartitionSlot timePartitionSlot =
         req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);
-    GetRoutingPlan plan =
-        new GetRoutingPlan(
+    GetRegionIdPlan plan =
+        new GetRegionIdPlan(
             req.getStorageGroup(), req.getType(), req.getSeriesSlotId(), timePartitionSlot);
-    return configManager.getRouting(plan);
+    return configManager.getRegionId(plan);
   }
 
   @Override

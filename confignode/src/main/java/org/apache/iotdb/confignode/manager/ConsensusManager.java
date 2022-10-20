@@ -57,7 +57,7 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int SEED_CONFIG_NODE_Id = 0;
+  private static final int SEED_CONFIG_NODE_ID = 0;
 
   private final IManager configManager;
 
@@ -125,6 +125,29 @@ public class ConsensusManager {
                                             CONF
                                                 .getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setRequestTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getPartitionRegionRatisRequestTimeoutMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .build())
+                            .setRatisConsensus(
+                                RatisConfig.RatisConsensus.newBuilder()
+                                    .setClientRequestTimeoutMillis(
+                                        CONF.getPartitionRegionRatisRequestTimeoutMs())
+                                    .setClientMaxRetryAttempt(
+                                        CONF.getPartitionRegionRatisMaxRetryAttempts())
+                                    .setClientRetryInitialSleepTimeMs(
+                                        CONF.getPartitionRegionRatisInitialSleepTimeMs())
+                                    .setClientRetryMaxSleepTimeMs(
+                                        CONF.getPartitionRegionRatisMaxSleepTimeMs())
                                     .build())
                             .build())
                     .setStorageDir(CONF.getConsensusDir())
@@ -152,7 +175,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                  SEED_CONFIG_NODE_Id,
+                  SEED_CONFIG_NODE_ID,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }

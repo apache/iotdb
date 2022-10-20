@@ -949,6 +949,13 @@ public class IoTDBDescriptor {
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
                 properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
@@ -1007,6 +1014,10 @@ public class IoTDBDescriptor {
     conf.setTimePartitionIntervalForStorage(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1755,6 +1766,13 @@ public class IoTDBDescriptor {
 
   private void loadTriggerProps(Properties properties) {
     conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+    conf.setTriggerTemporaryLibDir(
+        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setRetryNumToFindStatefulTrigger(
+        Integer.parseInt(
+            properties.getProperty(
+                "stateful_trigger_retry_num_when_not_found",
+                Integer.toString(conf.getRetryNumToFindStatefulTrigger()))));
 
     int tlogBufferSize =
         Integer.parseInt(
@@ -1945,6 +1963,23 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    conf.setDataRatisConsensusRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    conf.setSchemaRatisConsensusRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    conf.setDataRatisConsensusMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    conf.setDataRatisConsensusInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    conf.setDataRatisConsensusMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
+    conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());
+
+    conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
+    conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
   }
 
   public void reclaimConsensusMemory() {
