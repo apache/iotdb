@@ -58,9 +58,8 @@ public class PartitionRegionStateMachine
   private LogWriter logWriter;
   private File logFile;
   private int logFileId;
-  private static final String fileDir= CONF.getConsensusDir();
-  private static final String filePath =
-          fileDir + File.separator + "log_inprogress_";
+  private static final String fileDir = CONF.getConsensusDir();
+  private static final String filePath = fileDir + File.separator + "log_inprogress_";
   private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
@@ -248,7 +247,7 @@ public class PartitionRegionStateMachine
       String[] list = new File(fileDir).list();
       if (list != null && list.length != 0) {
         for (String logFileName : list) {
-          File logFile = SystemFileFactory.INSTANCE.getFile(fileDir+File.separator+logFileName);
+          File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
           SingleFileLogReader logReader;
           try {
             logReader = new SingleFileLogReader(logFile);
