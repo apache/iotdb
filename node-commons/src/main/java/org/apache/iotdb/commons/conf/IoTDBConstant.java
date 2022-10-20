@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.conf;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
@@ -48,6 +49,8 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
+  public static final String CONFIG_NODE_ID = "config_node_id";
+  public static final String DATA_NODE_ID = "data_node_id";
   public static final String RPC_ADDRESS = "rpc_address";
   public static final String RPC_PORT = "rpc_port";
   public static final String INTERNAL_ADDRESS = "internal_address";
@@ -205,6 +208,7 @@ public class IoTDBConstant {
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
+  public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
@@ -223,10 +227,6 @@ public class IoTDBConstant {
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
-
-  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
-
-  public static final String EXT_LIMITER = "limiter";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -280,4 +280,8 @@ public class IoTDBConstant {
     V_0_12,
     V_0_13
   }
+
+  // select into
+  public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  public static final String DOUBLE_COLONS = "::";
 }

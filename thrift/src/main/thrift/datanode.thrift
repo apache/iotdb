@@ -187,6 +187,22 @@ struct TDropTriggerInstanceReq {
   2: required bool needToDeleteJarFile
 }
 
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
+}
+
+struct TFireTriggerReq {
+  1: required string triggerName
+  2: required binary tablet
+  3: required byte triggerEvent
+}
+
+struct TFireTriggerResp {
+  1: required bool foundExecutor
+  2: required i32 fireResult
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -278,6 +294,16 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TCreatePipeOnDataNodeReq{
+  1: required binary pipeInfo
+}
+
+struct TOperatePipeOnDataNodeReq {
+    1: required string pipeName
+    // ordinal of {@linkplain SyncOperation}
+    2: required i8 operation
 }
 
 service IDataNodeRPCService {
@@ -451,6 +477,20 @@ service IDataNodeRPCService {
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
+
+  /**
+    * Fire a stateful trigger on current data node.
+    *
+    * @param trigger name, tablet and event
+    **/
+  TFireTriggerResp fireTrigger(TFireTriggerReq req)
+
+  /**
    * Config node will invalidate permission Info cache.
    *
    * @param string:username, list<string>:roleList
@@ -519,6 +559,16 @@ service IDataNodeRPCService {
   * Delete matched timeseries and remove according schema black list in target schemRegion
   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+ /**
+  * Create PIPE on DataNode
+  */
+  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode
+  */
+  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
 }
 
 service MPPDataExchangeService {

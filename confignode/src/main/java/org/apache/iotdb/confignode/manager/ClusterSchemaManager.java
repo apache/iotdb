@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -216,37 +217,39 @@ public class ClusterSchemaManager {
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
-    Map<Integer, TDataNodeLocation> dataNodeLocationMaps = new ConcurrentHashMap<>();
+
+    // Map<DataNodeId, TDataNodeLocation>
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    // Map<DataNodeId, StorageGroupPatterns>
     Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
     for (String storageGroup : storageSchemaMap.keySet()) {
-
+      // Get related DataNodes
       Set<TDataNodeLocation> dataNodeLocations =
           getPartitionManager()
               .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        if (!dataNodeLocationMaps.containsKey(dataNodeLocation.getDataNodeId())) {
-          dataNodeLocationMaps.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-          List<String> storageGroups = new ArrayList<>();
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        } else {
-          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        }
+        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+        dnlToSgMap
+            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
+            .add(storageGroup);
       }
     }
 
-    for (Map.Entry<Integer, List<String>> entry : dnlToSgMap.entrySet()) {
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-      dataNodeLocationMap.put(entry.getKey(), dataNodeLocationMaps.get(entry.getKey()));
-      AsyncDataNodeClientPool.getInstance()
-          .sendAsyncRequestToDataNodeWithRetry(
-              new TSetTTLReq(entry.getValue(), setTTLPlan.getTTL()),
-              dataNodeLocationMap,
-              DataNodeRequestType.SET_TTL,
-              null);
-    }
+    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+    dnlToSgMap
+        .keySet()
+        .forEach(
+            dataNodeId -> {
+              TSetTTLReq setTTLReq =
+                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
+              clientHandler.putRequest(dataNodeId, setTTLReq);
+              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
+            });
+    // TODO: Check response
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 

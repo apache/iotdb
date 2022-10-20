@@ -45,6 +45,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -392,5 +395,18 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopPipe(StopPipeStatement stopPipeStatement, C context) {
     return visitStatement(stopPipeStatement, context);
+  }
+
+  public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {
+    return visitStatement(getRegionIdStatement, context);
+  }
+
+  public R visitGetSeriesSlotList(
+      GetSeriesSlotListStatement getSeriesSlotListStatement, C context) {
+    return visitStatement(getSeriesSlotListStatement, context);
+  }
+
+  public R visitGetTimeSlotList(GetTimeSlotListStatement getTimeSlotListStatement, C context) {
+    return visitStatement(getTimeSlotListStatement, context);
   }
 }

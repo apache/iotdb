@@ -56,6 +56,7 @@ struct TSyncLogRes {
 struct TBuildSyncLogChannelReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required common.TEndPoint endPoint
+  3: required i32 nodeId
 }
 
 struct TBuildSyncLogChannelRes {
@@ -65,6 +66,7 @@ struct TBuildSyncLogChannelRes {
 struct TRemoveSyncLogChannelReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required common.TEndPoint endPoint
+  3: required i32 nodeId
 }
 
 struct TRemoveSyncLogChannelRes {

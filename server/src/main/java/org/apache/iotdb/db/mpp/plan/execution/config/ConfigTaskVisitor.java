@@ -26,6 +26,9 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroup
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
@@ -66,6 +69,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
@@ -318,6 +324,24 @@ public class ConfigTaskVisitor
   public IConfigTask visitDeleteTimeseries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
     return new DeleteTimeSeriesTask(context.getQueryId(), deleteTimeSeriesStatement);
+  }
+
+  @Override
+  public IConfigTask visitGetRegionId(
+      GetRegionIdStatement getRegionIdStatement, TaskContext context) {
+    return new GetRegionIdTask(getRegionIdStatement);
+  }
+
+  @Override
+  public IConfigTask visitGetSeriesSlotList(
+      GetSeriesSlotListStatement getSeriesSlotListStatement, TaskContext context) {
+    return new GetSeriesSlotListTask(getSeriesSlotListStatement);
+  }
+
+  @Override
+  public IConfigTask visitGetTimeSlotList(
+      GetTimeSlotListStatement getTimeSlotListStatement, TaskContext context) {
+    return new GetTimeSlotListTask(getTimeSlotListStatement);
   }
 
   public static class TaskContext {

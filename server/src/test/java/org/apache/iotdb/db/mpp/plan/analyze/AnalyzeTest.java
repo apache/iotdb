@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
@@ -51,9 +52,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
 import static org.junit.Assert.assertEquals;
@@ -585,6 +590,170 @@ public class AnalyzeTest {
         1);
   }
 
+  @Test
+  public void testSelectIntoPath() throws IllegalPathException {
+    List<String> sqls =
+        Arrays.asList(
+            "SELECT s1, s2 INTO root.sg_copy.d1(t1, t2), root.sg_copy.d2(t1, t2) FROM root.sg.d1, root.sg.d2;",
+            "SELECT s1, s2 INTO root.sg_copy.d1(t1, t2, t3, t4) FROM root.sg.d1, root.sg.d2;",
+            "SELECT s1, s2 INTO root.sg_copy.d1(t1), root.sg_copy.d2(t1, t2), root.sg_copy.d3(t1) FROM root.sg.d1, root.sg.d2;",
+            "select count(s1 + s2), last_value(s2) into root.agg.count(s1_add_s2), root.agg.last_value(s2) from root.sg.d1 group by ([0, 100), 10ms);",
+            "select s1 + s2 into root.expr.add(d1s1_d1s2, d1s1_d2s2, d2s1_d1s2, d2s1_d2s2) from root.sg.d1, root.sg.d2;",
+            "select s1, s1 into root.sg_copy.d1(s1, s2)  from root.sg.d1",
+            "select s1, s1 into root.sg_copy.d1(s1), root.sg_copy.d2(s1)  from root.sg.d1",
+            "select s1, s2 into ::(t1, t1, t2, t2) from root.sg.*;",
+            "select s1, s2 into root.sg_copy.::(::) from root.sg.*;",
+            "select s1, s2 into root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}) from root.sg.d1, root.sg.d2;",
+            "select d1.s1, d1.s2, d2.s1, d2.s2 into ::(s1_1, s2_2), root.sg.d2_2(s3_3), root.backup_${1}.::(s4) from root.sg");
+    List<List<Pair<String, PartialPath>>> results =
+        Arrays.asList(
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.t1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg_copy.d1.t2")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_copy.d2.t1")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg_copy.d2.t2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.t1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg_copy.d1.t2")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_copy.d1.t3")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg_copy.d1.t4"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.t1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg_copy.d2.t1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_copy.d2.t2")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg_copy.d3.t1"))),
+            Arrays.asList(
+                new Pair<>(
+                    "count(root.sg.d1.s1 + root.sg.d1.s2)",
+                    new PartialPath("root.agg.count.s1_add_s2")),
+                new Pair<>("last_value(root.sg.d1.s2)", new PartialPath("root.agg.last_value.s2"))),
+            Arrays.asList(
+                new Pair(
+                    "root.sg.d1.s1 + root.sg.d1.s2", new PartialPath("root.expr.add.d1s1_d1s2")),
+                new Pair(
+                    "root.sg.d1.s1 + root.sg.d2.s2", new PartialPath("root.expr.add.d1s1_d2s2")),
+                new Pair(
+                    "root.sg.d2.s1 + root.sg.d1.s2", new PartialPath("root.expr.add.d2s1_d1s2")),
+                new Pair(
+                    "root.sg.d2.s1 + root.sg.d2.s2", new PartialPath("root.expr.add.d2s1_d2s2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.s1")),
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.s2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.s1")),
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d2.s1"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg.d1.t1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg.d2.t1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg.d1.t2")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg.d2.t2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1.s1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg_copy.d2.s1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_copy.d1.s2")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg_copy.d2.s2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_copy.d1_copy.d1_s1")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg_copy.d1_copy.d2_s1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_copy.d2_copy.d1_s2")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.sg_copy.d2_copy.d2_s2"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg.d1.s1_1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg.d1.s2_2")),
+                new Pair("root.sg.d2.s1", new PartialPath("root.sg.d2_2.s3_3")),
+                new Pair("root.sg.d2.s2", new PartialPath("root.backup_sg.d2.s4"))));
+
+    for (int i = 0; i < sqls.size(); i++) {
+      Analysis analysis = analyzeSQL(sqls.get(i));
+      assert analysis != null;
+      Assert.assertEquals(
+          results.get(i), analysis.getIntoPathDescriptor().getSourceTargetPathPairList());
+    }
+  }
+
+  @Test
+  public void testSelectIntoPathAlignByDevice() throws IllegalPathException {
+    List<String> sqls =
+        Arrays.asList(
+            "select s1, s2 into root.sg_copy.::(t1, t2) from root.sg.d1, root.sg.d2 align by device;",
+            "select s1 + s2 into root.expr.add(d1s1_d1s2), root.expr.add(d2s1_d2s2) from root.sg.d1, root.sg.d2 align by device;",
+            "select count(s1), last_value(s2) into root.agg.::(count_s1, last_value_s2) from root.sg.d1, root.sg.d2 group by ([0, 100), 10ms) align by device;",
+            "select s1, s2 into root.sg1.new_d1(::), root.sg2.new_d2(::) from root.sg.d1, root.sg.d2 align by device;",
+            "select s1, s2 into root.sg1.new_${2}(::) from root.sg.d1, root.sg.d2 align by device;");
+
+    List<Map<String, List<Pair<String, PartialPath>>>> results = new ArrayList<>();
+    Map<String, List<Pair<String, PartialPath>>> resultMap1 = new HashMap<>();
+    resultMap1.put(
+        "root.sg.d1",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg_copy.d1.t1")),
+            new Pair<>("s2", new PartialPath("root.sg_copy.d1.t2"))));
+    resultMap1.put(
+        "root.sg.d2",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg_copy.d2.t1")),
+            new Pair<>("s2", new PartialPath("root.sg_copy.d2.t2"))));
+    results.add(resultMap1);
+
+    Map<String, List<Pair<String, PartialPath>>> resultMap2 = new HashMap<>();
+    resultMap2.put(
+        "root.sg.d1",
+        Collections.singletonList(
+            new Pair<>("s1 + s2", new PartialPath("root.expr.add.d1s1_d1s2"))));
+    resultMap2.put(
+        "root.sg.d2",
+        Collections.singletonList(
+            new Pair<>("s1 + s2", new PartialPath("root.expr.add.d2s1_d2s2"))));
+    results.add(resultMap2);
+
+    Map<String, List<Pair<String, PartialPath>>> resultMap3 = new HashMap<>();
+    resultMap3.put(
+        "root.sg.d1",
+        Arrays.asList(
+            new Pair<>("count(s1)", new PartialPath("root.agg.d1.count_s1")),
+            new Pair<>("last_value(s2)", new PartialPath("root.agg.d1.last_value_s2"))));
+    resultMap3.put(
+        "root.sg.d2",
+        Arrays.asList(
+            new Pair<>("count(s1)", new PartialPath("root.agg.d2.count_s1")),
+            new Pair<>("last_value(s2)", new PartialPath("root.agg.d2.last_value_s2"))));
+    results.add(resultMap3);
+
+    Map<String, List<Pair<String, PartialPath>>> resultMap4 = new HashMap<>();
+    resultMap4.put(
+        "root.sg.d1",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg1.new_d1.s1")),
+            new Pair<>("s2", new PartialPath("root.sg1.new_d1.s2"))));
+    resultMap4.put(
+        "root.sg.d2",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg2.new_d2.s1")),
+            new Pair<>("s2", new PartialPath("root.sg2.new_d2.s2"))));
+    results.add(resultMap4);
+
+    Map<String, List<Pair<String, PartialPath>>> resultMap5 = new HashMap<>();
+    resultMap5.put(
+        "root.sg.d1",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg1.new_d1.s1")),
+            new Pair<>("s2", new PartialPath("root.sg1.new_d1.s2"))));
+    resultMap5.put(
+        "root.sg.d2",
+        Arrays.asList(
+            new Pair<>("s1", new PartialPath("root.sg1.new_d2.s1")),
+            new Pair<>("s2", new PartialPath("root.sg1.new_d2.s2"))));
+    results.add(resultMap5);
+
+    for (int i = 0; i < sqls.size(); i++) {
+      Analysis analysis = analyzeSQL(sqls.get(i));
+      assert analysis != null;
+      Assert.assertEquals(
+          results.get(i),
+          analysis.getDeviceViewIntoPathDescriptor().getDeviceToSourceTargetPathPairListMap());
+    }
+  }
+
   private Analysis analyzeSQL(String sql) {
     try {
       Statement statement =
@@ -611,7 +780,7 @@ public class AnalyzeTest {
     assertEquals(
         expectedAnalysis.getAggregationExpressions(), actualAnalysis.getAggregationExpressions());
     assertEquals(
-        expectedAnalysis.getGroupByLevelExpressions(), actualAnalysis.getGroupByLevelExpressions());
+        expectedAnalysis.getCrossGroupByExpressions(), actualAnalysis.getCrossGroupByExpressions());
   }
 
   private void alignByDeviceAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {

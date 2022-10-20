@@ -18,20 +18,42 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SyncManager {
@@ -88,10 +110,88 @@ public class SyncManager {
   // endregion
 
   // ======================================================
-  // region Implement of PipeS
+  // region Implement of Pipe
   // ======================================================
 
-  // TODO....
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
+    clusterSyncInfo.checkAddPipe(pipeInfo);
+  }
+
+  public TSStatus preCreatePipe(PipeInfo pipeInfo) {
+    pipeInfo.setStatus(PipeStatus.PREPARE_CREATE);
+    return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
+  }
+
+  public TSStatus setPipeStatus(String pipeName, PipeStatus pipeStatus) {
+    return getConsensusManager().write(new SetPipeStatusPlan(pipeName, pipeStatus)).getStatus();
+  }
+
+  public TSStatus dropPipe(String pipeName) {
+    return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
+  }
+
+  public TShowPipeResp showPipe(String pipeName) {
+    ShowPipePlan showPipePlan = new ShowPipePlan(pipeName);
+    PipeResp pipeResp = (PipeResp) getConsensusManager().read(showPipePlan).getDataset();
+    TShowPipeResp resp = new TShowPipeResp();
+    resp.setStatus(pipeResp.getStatus());
+    if (pipeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setPipeInfoList(
+          pipeResp.getPipeInfoList().stream()
+              .map(PipeInfo::getTShowPipeInfo)
+              .collect(Collectors.toList()));
+    }
+    return resp;
+  }
+
+  public PipeInfo getPipeInfo(String pipeName) throws PipeException {
+    return clusterSyncInfo.getPipeInfo(pipeName);
+  }
+
+  /**
+   * Broadcast DataNodes to operate PIPE operation.
+   *
+   * @param pipeName name of PIPE
+   * @param operation only support {@link SyncOperation#START_PIPE}, {@link SyncOperation#STOP_PIPE}
+   *     and {@link SyncOperation#DROP_PIPE}
+   * @return list of TSStatus
+   */
+  public List<TSStatus> operatePipeOnDataNodes(String pipeName, SyncOperation operation) {
+    NodeManager nodeManager = configManager.getNodeManager();
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    final TOperatePipeOnDataNodeReq request =
+        new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
+
+    AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+
+    return dataNodeResponseStatus;
+  }
+
+  /**
+   * Broadcast DataNodes to pre create PIPE
+   *
+   * @param pipeInfo pipeInfo
+   * @return list of TSStatus
+   */
+  public List<TSStatus> preCreatePipeOnDataNodes(PipeInfo pipeInfo) {
+    NodeManager nodeManager = configManager.getNodeManager();
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    final TCreatePipeOnDataNodeReq request =
+        new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
+
+    AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return dataNodeResponseStatus;
+  }
 
   // endregion
 

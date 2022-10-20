@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,7 +65,6 @@ public class IoTDBConfig {
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-datanode.properties";
-  public static final String EXTERNAL_CONFIG_NAME = "iotdb-datanode-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -152,13 +152,15 @@ public class IoTDBConfig {
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
 
-  private double chunkMetadataSizeProportionInWrite = 0.1;
-
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+  /**
+   * If memory cost of data region increased more than proportion of {@linkplain
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
+   * report to system.
+   */
+  private double writeMemoryVariationReportProportion = 0.001;
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
@@ -282,16 +284,6 @@ public class IoTDBConfig {
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
-
-  /** External lib directory for properties loader, stores user-uploaded JAR files */
-  private String externalPropertiesLoaderDir =
-      IoTDBConstant.EXT_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
-
-  /** External lib directory for limiter, stores user uploaded JAR files */
-  private String externalLimiterDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
@@ -441,7 +433,7 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  private double chunkMetadataSizeProportionInCompaction = 0.05;
+  private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -762,10 +754,10 @@ public class IoTDBConfig {
   private boolean enablePartition = false;
 
   /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 86400000;
+  private long timePartitionIntervalForStorage = 604_800_000;
 
   /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 86400000;
+  private long timePartitionIntervalForRouting = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -825,6 +817,8 @@ public class IoTDBConfig {
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
+
+  private int patternMatchingThreshold = 1000000;
 
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
@@ -978,6 +972,9 @@ public class IoTDBConfig {
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
 
+  /** How many times will we retry to find an instance of stateful trigger */
+  private int retryNumToFindStatefulTrigger = 3;
+
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
@@ -1033,6 +1030,25 @@ public class IoTDBConfig {
 
   private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+
+  private long dataRatisConsensusRequestTimeoutMs = 10000L;
+  private long schemaRatisConsensusRequestTimeoutMs = 10000L;
+
+  private int dataRatisConsensusMaxRetryAttempts = 10;
+  private int schemaRatisConsensusMaxRetryAttempts = 10;
+  private long dataRatisConsensusInitialSleepTimeMs = 100L;
+  private long schemaRatisConsensusInitialSleepTimeMs = 100L;
+  private long dataRatisConsensusMaxSleepTimeMs = 10000L;
+  private long schemaRatisConsensusMaxSleepTimeMs = 10000L;
+
+  private long dataRatisConsensusPreserveWhenPurge = 1000L;
+  private long schemaRatisConsensusPreserveWhenPurge = 1000L;
+
+  private long ratisFirstElectionTimeoutMinMs = 50L;
+  private long ratisFirstElectionTimeoutMaxMs = 150L;
+
+  // customizedProperties, this should be empty by default.
+  private Properties customizedProperties = new Properties();
 
   IoTDBConfig() {}
 
@@ -1154,8 +1170,7 @@ public class IoTDBConfig {
     triggerDir = addHomeDir(triggerDir);
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     mqttDir = addHomeDir(mqttDir);
-    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
-    externalLimiterDir = addHomeDir(externalLimiterDir);
+
     extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -1390,6 +1405,10 @@ public class IoTDBConfig {
     this.triggerDir = triggerDir;
   }
 
+  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
+    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
+  }
+
   public String getTriggerTemporaryLibDir() {
     return triggerTemporaryLibDir;
   }
@@ -1400,22 +1419,6 @@ public class IoTDBConfig {
 
   public void setMqttDir(String mqttDir) {
     this.mqttDir = mqttDir;
-  }
-
-  public String getExternalPropertiesLoaderDir() {
-    return externalPropertiesLoaderDir;
-  }
-
-  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
-    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
-  }
-
-  public String getExternalLimiterDir() {
-    return externalLimiterDir;
-  }
-
-  public void setExternalLimiterDir(String externalLimiterDir) {
-    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -1782,12 +1785,12 @@ public class IoTDBConfig {
     this.rejectProportion = rejectProportion;
   }
 
-  public long getStorageGroupSizeReportThreshold() {
-    return storageGroupSizeReportThreshold;
+  public double getWriteMemoryVariationReportProportion() {
+    return writeMemoryVariationReportProportion;
   }
 
-  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
-    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
+  public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
+    this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
   }
 
   public long getAllocateMemoryForStorageEngine() {
@@ -3141,6 +3144,14 @@ public class IoTDBConfig {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
 
+  public int getRetryNumToFindStatefulTrigger() {
+    return retryNumToFindStatefulTrigger;
+  }
+
+  public void setRetryNumToFindStatefulTrigger(int retryNumToFindStatefulTrigger) {
+    this.retryNumToFindStatefulTrigger = retryNumToFindStatefulTrigger;
+  }
+
   public int getCoordinatorReadExecutorSize() {
     return coordinatorReadExecutorSize;
   }
@@ -3241,21 +3252,12 @@ public class IoTDBConfig {
     this.throttleThreshold = throttleThreshold;
   }
 
-  public double getChunkMetadataSizeProportionInWrite() {
-    return chunkMetadataSizeProportionInWrite;
+  public double getChunkMetadataSizeProportion() {
+    return chunkMetadataSizeProportion;
   }
 
-  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
-    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
-  }
-
-  public double getChunkMetadataSizeProportionInCompaction() {
-    return chunkMetadataSizeProportionInCompaction;
-  }
-
-  public void setChunkMetadataSizeProportionInCompaction(
-      double chunkMetadataSizeProportionInCompaction) {
-    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
+  public void setChunkMetadataSizeProportion(double chunkMetadataSizeProportion) {
+    this.chunkMetadataSizeProportion = chunkMetadataSizeProportion;
   }
 
   public long getCacheWindowTimeInMs() {
@@ -3427,5 +3429,122 @@ public class IoTDBConfig {
       long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
         schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public double getUsableCompactionMemoryProportion() {
+    return 1.0d - chunkMetadataSizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public long getDataRatisConsensusRequestTimeoutMs() {
+    return dataRatisConsensusRequestTimeoutMs;
+  }
+
+  public void setDataRatisConsensusRequestTimeoutMs(long dataRatisConsensusRequestTimeoutMs) {
+    this.dataRatisConsensusRequestTimeoutMs = dataRatisConsensusRequestTimeoutMs;
+  }
+
+  public long getSchemaRatisConsensusRequestTimeoutMs() {
+    return schemaRatisConsensusRequestTimeoutMs;
+  }
+
+  public void setSchemaRatisConsensusRequestTimeoutMs(long schemaRatisConsensusRequestTimeoutMs) {
+    this.schemaRatisConsensusRequestTimeoutMs = schemaRatisConsensusRequestTimeoutMs;
+  }
+
+  public int getDataRatisConsensusMaxRetryAttempts() {
+    return dataRatisConsensusMaxRetryAttempts;
+  }
+
+  public void setDataRatisConsensusMaxRetryAttempts(int dataRatisConsensusMaxRetryAttempts) {
+    this.dataRatisConsensusMaxRetryAttempts = dataRatisConsensusMaxRetryAttempts;
+  }
+
+  public int getSchemaRatisConsensusMaxRetryAttempts() {
+    return schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public void setSchemaRatisConsensusMaxRetryAttempts(int schemaRatisConsensusMaxRetryAttempts) {
+    this.schemaRatisConsensusMaxRetryAttempts = schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public long getDataRatisConsensusInitialSleepTimeMs() {
+    return dataRatisConsensusInitialSleepTimeMs;
+  }
+
+  public void setDataRatisConsensusInitialSleepTimeMs(long dataRatisConsensusInitialSleepTimeMs) {
+    this.dataRatisConsensusInitialSleepTimeMs = dataRatisConsensusInitialSleepTimeMs;
+  }
+
+  public long getSchemaRatisConsensusInitialSleepTimeMs() {
+    return schemaRatisConsensusInitialSleepTimeMs;
+  }
+
+  public void setSchemaRatisConsensusInitialSleepTimeMs(
+      long schemaRatisConsensusInitialSleepTimeMs) {
+    this.schemaRatisConsensusInitialSleepTimeMs = schemaRatisConsensusInitialSleepTimeMs;
+  }
+
+  public long getDataRatisConsensusMaxSleepTimeMs() {
+    return dataRatisConsensusMaxSleepTimeMs;
+  }
+
+  public void setDataRatisConsensusMaxSleepTimeMs(long dataRatisConsensusMaxSleepTimeMs) {
+    this.dataRatisConsensusMaxSleepTimeMs = dataRatisConsensusMaxSleepTimeMs;
+  }
+
+  public long getSchemaRatisConsensusMaxSleepTimeMs() {
+    return schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public void setSchemaRatisConsensusMaxSleepTimeMs(long schemaRatisConsensusMaxSleepTimeMs) {
+    this.schemaRatisConsensusMaxSleepTimeMs = schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
+  }
+
+  public long getDataRatisConsensusPreserveWhenPurge() {
+    return dataRatisConsensusPreserveWhenPurge;
+  }
+
+  public void setDataRatisConsensusPreserveWhenPurge(long dataRatisConsensusPreserveWhenPurge) {
+    this.dataRatisConsensusPreserveWhenPurge = dataRatisConsensusPreserveWhenPurge;
+  }
+
+  public long getSchemaRatisConsensusPreserveWhenPurge() {
+    return schemaRatisConsensusPreserveWhenPurge;
+  }
+
+  public void setSchemaRatisConsensusPreserveWhenPurge(long schemaRatisConsensusPreserveWhenPurge) {
+    this.schemaRatisConsensusPreserveWhenPurge = schemaRatisConsensusPreserveWhenPurge;
+  }
+
+  public long getRatisFirstElectionTimeoutMinMs() {
+    return ratisFirstElectionTimeoutMinMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMinMs(long ratisFirstElectionTimeoutMinMs) {
+    this.ratisFirstElectionTimeoutMinMs = ratisFirstElectionTimeoutMinMs;
+  }
+
+  public long getRatisFirstElectionTimeoutMaxMs() {
+    return ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
+    this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 }

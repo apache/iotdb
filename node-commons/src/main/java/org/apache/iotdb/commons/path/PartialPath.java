@@ -63,7 +63,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
-   * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
@@ -615,6 +614,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return true;
+  }
+
+  public boolean startWith(String otherNode) {
+    return nodes[0].equals(otherNode);
+  }
+
+  public boolean containNode(String otherNode) {
+    for (String node : nodes) {
+      if (node.equals(otherNode)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

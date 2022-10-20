@@ -32,13 +32,15 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -59,6 +61,8 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
@@ -74,12 +78,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -96,9 +101,14 @@ public class NodeManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
+  private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
+      CONF.getUnknownDataNodeDetectInterval();
 
   public static final TEndPoint CURRENT_NODE =
       new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort());
+
+  // when fail to register a new node, set node id to -1
+  private static final int ERROR_STATUS_NODE_ID = -1;
 
   private final IManager configManager;
   private final NodeInfo nodeInfo;
@@ -115,11 +125,19 @@ public class NodeManager {
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
 
+  /** Unknown DataNode Detector */
+  private Future<?> currentUnknownDataNodeDetectFuture;
+
+  private final ScheduledExecutorService unknownDataNodeDetectExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Unknown-DataNode-Detector");
+  private final Set<TDataNodeLocation> oldUnknownNodes;
+
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
     this.nodeCacheMap = new ConcurrentHashMap<>();
+    this.oldUnknownNodes = new HashSet<>();
   }
 
   private void setGlobalConfig(DataNodeRegisterResp dataSet) {
@@ -170,6 +188,20 @@ public class NodeManager {
         conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs());
     ratisConfig.setSchemaLeaderElectionTimeoutMax(
         conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
+
+    ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
+    ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
+
+    ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
+    ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
+    ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+
+    ratisConfig.setSchemaPreserveWhenPurge(conf.getPartitionRegionRatisPreserveLogsWhenPurge());
+    ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
+
+    ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
+    ratisConfig.setFirstElectionTimeoutMax(conf.getRatisFirstElectionTimeoutMaxMs());
 
     dataSet.setRatisConfig(ratisConfig);
   }
@@ -229,8 +261,17 @@ public class NodeManager {
           preCheckStatus.getStatus());
       return preCheckStatus;
     }
-    // if add request to queue, then return to client
+
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+    // do transfer of the DataNodes before remove
+    if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataSet.setStatus(
+          new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode())
+              .setMessage("Fail to do transfer of the DataNodes"));
+      return dataSet;
+    }
+    // if add request to queue, then return to client
     boolean registerSucceed =
         configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
@@ -245,6 +286,28 @@ public class NodeManager {
 
     LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
     return dataSet;
+  }
+
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    // Check global configuration
+    TSStatus status = configManager.getConsensusManager().confirmLeader();
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TSStatus errorStatus = configManager.checkConfigNodeGlobalConfig(req);
+      if (errorStatus != null) {
+        return new TConfigNodeRegisterResp()
+            .setStatus(errorStatus)
+            .setConfigNodeId(ERROR_STATUS_NODE_ID);
+      }
+
+      int nodeId = nodeInfo.generateNextNodeId();
+      req.getConfigNodeLocation().setConfigNodeId(nodeId);
+
+      configManager.getProcedureManager().addConfigNode(req);
+      return new TConfigNodeRegisterResp().setStatus(StatusUtils.OK).setConfigNodeId(nodeId);
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
   }
 
   /**
@@ -383,8 +446,6 @@ public class NodeManager {
    * @param configNodeLocation The new ConfigNode
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    // Generate new ConfigNode's index
-    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
   }
@@ -447,7 +508,9 @@ public class NodeManager {
     ConsensusGenericResponse resp =
         getConsensusManager()
             .getConsensusImpl()
-            .transferLeader(groupId, new Peer(groupId, newLeader.getConsensusEndPoint()));
+            .transferLeader(
+                groupId,
+                new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
@@ -463,62 +526,47 @@ public class NodeManager {
   public List<TSStatus> merge() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            null, dataNodeLocationMap, DataNodeRequestType.MERGE, dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.MERGE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+    AsyncClientHandler<TFlushReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.FLUSH, req, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public List<TSStatus> clearCache() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public List<TSStatus> loadConfiguration() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            null,
-            dataNodeLocationMap,
-            DataNodeRequestType.LOAD_CONFIGURATION,
-            dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public List<TSStatus> setSystemStatus(String status) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(
-            status,
-            dataNodeLocationMap,
-            DataNodeRequestType.SET_SYSTEM_STATUS,
-            dataNodeResponseStatus);
-    return dataNodeResponseStatus;
+    AsyncClientHandler<String, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   /** Start the heartbeat service */
@@ -637,6 +685,67 @@ public class NodeManager {
     return nodeCacheMap;
   }
 
+  /** Start unknownDataNodeDetector */
+  public void startUnknownDataNodeDetector() {
+    synchronized (scheduleMonitor) {
+      if (currentUnknownDataNodeDetectFuture == null) {
+        currentUnknownDataNodeDetectFuture =
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                unknownDataNodeDetectExecutor,
+                this::detectTask,
+                0,
+                UNKNOWN_DATANODE_DETECT_INTERVAL,
+                TimeUnit.MILLISECONDS);
+        LOGGER.info("Unknown-DataNode-Detector is started successfully.");
+      }
+    }
+  }
+
+  /**
+   * The detectTask executed periodically to find newest UnknownDataNodes
+   *
+   * <p>1.If one DataNode is continuing Unknown, we shouldn't always activate Transfer of this Node.
+   *
+   * <p>2.The selected DataNodes may not truly need to transfer, so you should ensure safety of the
+   * Data when implement transferMethod in Manager.
+   */
+  private void detectTask() {
+    List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
+
+    getRegisteredDataNodes()
+        .forEach(
+            DataNodeConfiguration -> {
+              TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
+              BaseNodeCache newestNodeInformation = nodeCacheMap.get(dataNodeLocation.dataNodeId);
+              if (newestNodeInformation != null) {
+                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
+                  oldUnknownNodes.remove(dataNodeLocation);
+                } else if (!oldUnknownNodes.contains(dataNodeLocation)
+                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
+                  newUnknownNodes.add(dataNodeLocation);
+                }
+              }
+            });
+
+    if (!newUnknownNodes.isEmpty()) {
+      TSStatus transferResult = configManager.transfer(newUnknownNodes);
+      if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        oldUnknownNodes.addAll(newUnknownNodes);
+      }
+    }
+  }
+
+  /** Stop the heartbeat service */
+  public void stopUnknownDataNodeDetector() {
+    synchronized (scheduleMonitor) {
+      if (currentUnknownDataNodeDetectFuture != null) {
+        currentUnknownDataNodeDetectFuture.cancel(false);
+        currentUnknownDataNodeDetectFuture = null;
+        LOGGER.info("Unknown-DataNode-Detector is stopped successfully.");
+      }
+    }
+  }
+
   public void removeNodeCache(int nodeId) {
     nodeCacheMap.remove(nodeId);
   }
@@ -718,6 +827,30 @@ public class NodeManager {
           long score = heartbeatCache.getLoadScore();
           if (score < lowestLoadScore.get()) {
             result.set(dataNodeId);
+            lowestLoadScore.set(score);
+          }
+        });
+
+    LOGGER.info(
+        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+  }
+
+  /**
+   * Get the DataNodeLocation of the lowest load DataNode in input
+   *
+   * @return TDataNodeLocation
+   */
+  public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
+    AtomicInteger result = new AtomicInteger();
+    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+
+    nodes.forEach(
+        nodeID -> {
+          BaseNodeCache cache = nodeCacheMap.get(nodeID);
+          long score = (cache == null) ? Long.MAX_VALUE : cache.getLoadScore();
+          if (score < lowestLoadScore.get()) {
+            result.set(nodeID);
             lowestLoadScore.set(score);
           }
         });

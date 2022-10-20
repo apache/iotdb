@@ -36,12 +36,13 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -61,12 +62,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 public class IoTDBDescriptor {
 
@@ -78,6 +77,18 @@ public class IoTDBDescriptor {
 
   protected IoTDBDescriptor() {
     loadProps();
+    ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
+        ServiceLoader.load(IPropertiesLoader.class);
+    for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
+      logger.info("Will reload properties from {} ", loader.getClass().getName());
+      Properties properties = loader.loadProperties();
+      loadProperties(properties);
+      conf.setCustomizedProperties(loader.getCustomizedProperties());
+      TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setCustomizedProperties(loader.getCustomizedProperties());
+    }
   }
 
   public static IoTDBDescriptor getInstance() {
@@ -133,52 +144,6 @@ public class IoTDBDescriptor {
     } catch (MalformedURLException e) {
       return null;
     }
-  }
-
-  /**
-   * get props url location
-   *
-   * @return url object if location exit, otherwise null.
-   */
-  public Path getExternalPropsPath() {
-    // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (urlString != null) {
-        urlString =
-            urlString
-                + File.separatorChar
-                + "conf"
-                + File.separatorChar
-                + IoTDBConfig.EXTERNAL_CONFIG_NAME;
-      } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        if (uri != null) {
-          try {
-            return Paths.get(uri.toURI());
-          } catch (URISyntaxException e) {
-            return null;
-          }
-        }
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_EXTERNAL_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        // update all data seriesPath
-        conf.updatePath();
-        return null;
-      }
-    }
-    // If a config location was provided, but it doesn't end with a properties file,
-    // append the default location.
-    else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-    }
-
-    return Paths.get(urlString);
   }
 
   /** load an property file and set TsfileDBConfig variables. */
@@ -294,11 +259,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-    conf.setStorageGroupSizeReportThreshold(
-        Long.parseLong(
+    conf.setWriteMemoryVariationReportProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "storage_group_report_threshold",
-                Long.toString(conf.getStorageGroupSizeReportThreshold()))));
+                "write_memory_variation_report_proportion",
+                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
@@ -630,11 +595,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
-    conf.setChunkMetadataSizeProportionInCompaction(
+    conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
-                "chunk_metadata_size_proportion_in_compaction",
-                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -949,6 +914,13 @@ public class IoTDBDescriptor {
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
                 properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
@@ -1005,7 +977,12 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     conf.setTimePartitionIntervalForStorage(
-        convertMilliWithPrecision(conf.getTimePartitionIntervalForStorage()));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1349,16 +1326,6 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadExternalLibProps(Properties properties) {
-
-    conf.setExternalPropertiesLoaderDir(
-        properties.getProperty(
-            "external_properties_loader_dir", conf.getExternalPropertiesLoaderDir()));
-
-    conf.setExternalLimiterDir(
-        properties.getProperty("external_limiter_dir", conf.getExternalLimiterDir()));
-  }
-
   // timed flush memtable
   private void loadTimedService(Properties properties) {
     conf.setEnableTimedFlushSeqMemtable(
@@ -1472,12 +1439,6 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
-
-      conf.setChunkMetadataSizeProportionInWrite(
-          Double.parseDouble(
-              properties.getProperty(
-                  "chunk_metadata_size_proportion_in_write",
-                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
 
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
@@ -1760,6 +1721,13 @@ public class IoTDBDescriptor {
 
   private void loadTriggerProps(Properties properties) {
     conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+    conf.setTriggerTemporaryLibDir(
+        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setRetryNumToFindStatefulTrigger(
+        Integer.parseInt(
+            properties.getProperty(
+                "stateful_trigger_retry_num_when_not_found",
+                Integer.toString(conf.getRetryNumToFindStatefulTrigger()))));
 
     int tlogBufferSize =
         Integer.parseInt(
@@ -1820,7 +1788,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 
@@ -1918,7 +1886,8 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setTimePartitionIntervalForRouting(
-        convertMilliWithPrecision(globalConfig.timePartitionInterval));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
@@ -1949,6 +1918,23 @@ public class IoTDBDescriptor {
         ratisConfig.getDataLeaderElectionTimeoutMax());
     conf.setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
         ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    conf.setDataRatisConsensusRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    conf.setSchemaRatisConsensusRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    conf.setDataRatisConsensusMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    conf.setDataRatisConsensusInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    conf.setDataRatisConsensusMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
+    conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());
+
+    conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
+    conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
   }
 
   public void reclaimConsensusMemory() {
@@ -1989,22 +1975,6 @@ public class IoTDBDescriptor {
 
     conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
-  }
-
-  public long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = conf.getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   private static class IoTDBDescriptorHolder {

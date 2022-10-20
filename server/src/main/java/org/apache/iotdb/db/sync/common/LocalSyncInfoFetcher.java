@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -94,24 +92,16 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   // region Implement of Pipe
 
   @Override
-  public TSStatus addPipe(CreatePipePlan plan, long createTime) {
+  public TSStatus addPipe(PipeInfo pipeInfo) {
     try {
-      localSyncInfo.addPipe(plan, createTime);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (PipeException | IOException e) {
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-  }
-
-  @Override
-  public TSStatus addPipe(CreatePipeStatement createPipeStatement, long createTime) {
-    try {
-      localSyncInfo.addPipe(createPipeStatement, createTime);
+      localSyncInfo.addPipe(pipeInfo);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     } catch (IOException e) {
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    } catch (PipeSinkException e) {
+      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
     }
   }
 
@@ -157,13 +147,8 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   }
 
   @Override
-  public PipeInfo getRunningPipeInfo() {
-    return localSyncInfo.getRunningPipeInfo();
-  }
-
-  @Override
-  public TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage) {
-    localSyncInfo.changePipeMessage(pipeName, createTime, pipeMessage.getType());
+  public TSStatus recordMsg(String pipeName, PipeMessage pipeMessage) {
+    localSyncInfo.changePipeMessage(pipeName, pipeMessage.getType());
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

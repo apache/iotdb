@@ -115,7 +115,6 @@ public class QueryContext {
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
           return sortAndMerge(allModifications.getOverlapped(path));
-          //          return allModifications.getOverlapped(path);
         });
   }
 

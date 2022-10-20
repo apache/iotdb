@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -31,7 +32,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class RollbackPreDeleteTimeSeriesPlan extends PhysicalPlan {
+public class RollbackPreDeleteTimeSeriesPlan extends PhysicalPlan
+    implements IRollbackPreDeleteTimeSeriesPlan {
 
   private PartialPath path;
 

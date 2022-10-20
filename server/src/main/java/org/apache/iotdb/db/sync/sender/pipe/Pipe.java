@@ -127,6 +127,13 @@ public interface Pipe {
 
   void unregisterDataRegion(String dataRegionId);
 
+  /**
+   * If false, no need to collect realtime file
+   *
+   * @return whether finish collect history file.
+   */
+  boolean isHistoryCollectFinished();
+
   @TestOnly
   SenderManager getSenderManager();
 

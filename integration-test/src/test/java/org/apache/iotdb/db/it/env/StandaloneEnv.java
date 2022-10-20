@@ -31,7 +31,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.util.Version;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -132,7 +131,7 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() {
     return null;
   }
 
@@ -179,7 +178,17 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
-  public void restartDataNode(int index) {
+  public void startConfigNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void shutdownConfigNode(int index) {
+    // Do nothing
+  }
+
+  @Override
+  public void startDataNode(int index) {
     // Do nothing
   }
 

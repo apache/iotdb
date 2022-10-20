@@ -40,7 +40,7 @@
 |:---:|:----------------------------------------|
 |描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：毫秒  |
 |类型| Int64                                   |
-|默认值| 86400000                                |
+|默认值| 604800000                                |
 |改后生效方式| 仅允许在第一次启动服务前修改                          |
 
 ## 配置示例
@@ -49,9 +49,9 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Time-Partition/time_partition_example.png?raw=true" alt="time partition example">
 
-* 插入一条时间戳为 0 的数据，计算 0 / 86400 = 0，则该数据会被存储到 0 号文件夹下的TsFile中
+* 插入一条时间戳为 0 的数据，计算 0 / 86400000 = 0，则该数据会被存储到 0 号文件夹下的TsFile中
   
-* 插入一条时间戳为 1609459200010 的数据，计算 1609459200010 / 86400 = 18628，则该数据会被存储到 18628 号文件夹下的TsFile中
+* 插入一条时间戳为 1609459200010 的数据，计算 1609459200010 / 86400000 = 18628，则该数据会被存储到 18628 号文件夹下的TsFile中
 
 ## 使用建议
 

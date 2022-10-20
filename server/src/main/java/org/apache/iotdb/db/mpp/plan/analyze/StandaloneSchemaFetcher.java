@@ -60,6 +60,15 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, false);
+  }
+
+  @Override
+  public ClusterSchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+    return fetchSchema(patternTree, true);
+  }
+
+  private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -72,7 +81,8 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
           SchemaRegionId schemaRegionId =
               localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
           ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-          schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(pathPattern, false));
+          schemaTree.appendMeasurementPaths(
+              schemaRegion.getMeasurementPaths(pathPattern, false, withTags));
         }
       }
     } catch (MetadataException e) {

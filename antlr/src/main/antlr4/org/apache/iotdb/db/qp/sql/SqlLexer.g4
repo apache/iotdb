@@ -198,6 +198,10 @@ END
     : E N D
     ;
 
+ENDTIME
+    : E N D T I M E
+    ;
+
 EVERY
     : E V E R Y
     ;
@@ -443,6 +447,10 @@ REGEXP
     : R E G E X P
     ;
 
+REGIONID
+    : R E G I O N I D
+    ;
+
 REGIONS
     : R E G I O N S
     ;
@@ -483,6 +491,10 @@ SELECT
     : S E L E C T
     ;
 
+SERIESSLOTID
+    : S E R I E S S L O T I D
+    ;
+
 SET
     : S E T
     ;
@@ -513,6 +525,10 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STARTTIME
+    : S T A R T T I M E
     ;
 
 STATELESS
@@ -553,6 +569,10 @@ TIME
 
 TIMESERIES
     : T I M E S E R I E S
+    ;
+
+TIMESLOTID
+    : T I M E S L O T I D
     ;
 
 TIMESTAMP
@@ -867,6 +887,7 @@ LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
 RS_BRACKET : ']';
+DOUBLE_COLON: '::';
 
 
 /**

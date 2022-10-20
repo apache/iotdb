@@ -50,6 +50,8 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StorageGroupPartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupPartitionTable.class);
@@ -366,6 +368,37 @@ public class StorageGroupPartitionTable {
     dataPartitionTable.deserialize(inputStream, protocol);
   }
 
+  public List<TConsensusGroupId> getRegionId(
+      TConsensusGroupType type, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    if (type == TConsensusGroupType.DataRegion) {
+      return dataPartitionTable.getRegionId(seriesSlotId, timeSlotId);
+    } else if (type == TConsensusGroupType.SchemaRegion) {
+      return schemaPartitionTable.getRegionId(seriesSlotId);
+    } else {
+      return new ArrayList<>();
+    }
+  }
+
+  public List<TTimePartitionSlot> getTimeSlotList(
+      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
+    return dataPartitionTable.getTimeSlotList(seriesSlotId, startTime, endTime);
+  }
+
+  public List<TSeriesPartitionSlot> getSeriesSlotList(TConsensusGroupType type) {
+    switch (type) {
+      case DataRegion:
+        return dataPartitionTable.getSeriesSlotList();
+      case SchemaRegion:
+        return schemaPartitionTable.getSeriesSlotList();
+      case PartitionRegion:
+      default:
+        return Stream.concat(
+                schemaPartitionTable.getSeriesSlotList().stream(),
+                dataPartitionTable.getSeriesSlotList().stream())
+            .distinct()
+            .collect(Collectors.toList());
+    }
+  }
   /**
    * update region location
    *
@@ -379,33 +412,33 @@ public class StorageGroupPartitionTable {
     removeRegionOldLocation(regionId, oldNode);
   }
 
-  private boolean addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  private void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn("not find Region Group for region {}", regionId);
-      return false;
+      return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info("Node is already in region locations, node: {}, region: {}", node, regionId);
-      return true;
+      return;
     }
-    return regionGroup.getReplicaSet().getDataNodeLocations().add(node);
+    regionGroup.getReplicaSet().getDataNodeLocations().add(node);
   }
 
-  private boolean removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn("not find Region Group for region {}", regionId);
-      return false;
+      return;
     }
     if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
           "Node is Not in region locations, no need to remove it, node: {}, region: {}",
           node,
           regionId);
-      return true;
+      return;
     }
-    return regionGroup.getReplicaSet().getDataNodeLocations().remove(node);
+    regionGroup.getReplicaSet().getDataNodeLocations().remove(node);
   }
 
   /**

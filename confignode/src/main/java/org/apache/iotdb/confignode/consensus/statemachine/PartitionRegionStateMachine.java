@@ -55,7 +55,6 @@ public class PartitionRegionStateMachine
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
-  private final TEndPoint currentNode;
   private LogWriter logWriter;
   private File logFile;
   private int logFileId;
@@ -63,11 +62,12 @@ public class PartitionRegionStateMachine
   private static final String filePath =
           fileDir + File.separator + "log_inprogress_";
   private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
+  private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
-    this.currentNode =
+    this.currentNodeTEndPoint =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
             .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
@@ -207,19 +207,31 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
-    if (currentNode.equals(newLeader)) {
-      LOGGER.info("Current node {} becomes Leader", newLeader);
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the PartitionRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+
+    if (currentNodeId == newLeaderId) {
+      LOGGER.info(
+          "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+          newLeaderId,
+          currentNodeTEndPoint);
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();
+      configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
+          currentNodeId,
+          currentNodeTEndPoint,
+          newLeaderId);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
+      configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
     }
   }

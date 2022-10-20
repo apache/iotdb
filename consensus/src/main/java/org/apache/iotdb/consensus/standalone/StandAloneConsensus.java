@@ -62,13 +62,15 @@ class StandAloneConsensus implements IConsensus {
   private final Logger logger = LoggerFactory.getLogger(StandAloneConsensus.class);
 
   private final TEndPoint thisNode;
+  private final int thisNodeId;
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
 
   public StandAloneConsensus(ConsensusConfig config, Registry registry) {
-    this.thisNode = config.getThisNode();
+    this.thisNode = config.getThisNodeEndPoint();
+    this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.registry = registry;
   }
@@ -92,7 +94,8 @@ class StandAloneConsensus implements IConsensus {
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
           StandAloneServerImpl consensus =
               new StandAloneServerImpl(
-                  new Peer(consensusGroupId, thisNode), registry.apply(consensusGroupId));
+                  new Peer(consensusGroupId, thisNodeId, thisNode),
+                  registry.apply(consensusGroupId));
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start();
         }
@@ -143,7 +146,7 @@ class StandAloneConsensus implements IConsensus {
           .setException(new IllegalPeerNumException(consensusGroupSize))
           .build();
     }
-    if (!peers.contains(new Peer(groupId, thisNode))) {
+    if (!peers.contains(new Peer(groupId, thisNodeId, thisNode))) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
@@ -226,7 +229,7 @@ class StandAloneConsensus implements IConsensus {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;
     }
-    return new Peer(groupId, thisNode);
+    return new Peer(groupId, thisNodeId, thisNode);
   }
 
   @Override

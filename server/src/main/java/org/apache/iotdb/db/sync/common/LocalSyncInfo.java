@@ -25,12 +25,11 @@ import org.apache.iotdb.commons.sync.persistence.SyncLogReader;
 import org.apache.iotdb.commons.sync.persistence.SyncLogWriter;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
@@ -55,9 +54,8 @@ public class LocalSyncInfo {
     SyncLogReader logReader = new SyncLogReader(new File(SyncPathUtil.getSysDir()));
     try {
       logReader.recover();
-      syncMetadata.setPipes(logReader.getAllPipeInfos());
+      syncMetadata.setPipes(logReader.getPipes());
       syncMetadata.setPipeSinks(logReader.getAllPipeSinks());
-      syncMetadata.setRunningPipe(logReader.getRunningPipeInfo());
     } catch (IOException e) {
       LOGGER.error(
           "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
@@ -105,47 +103,38 @@ public class LocalSyncInfo {
   // endregion
 
   // region Implement of Pipe
-  // TODO: delete this in new-standalone version
-  public void addPipe(CreatePipePlan plan, long createTime) throws PipeException, IOException {
-    if (!syncMetadata.isPipeSinkExist(plan.getPipeSinkName())) {
-      throw new PipeException(String.format("Can not find pipeSink %s.", plan.getPipeSinkName()));
-    }
-    PipeSink pipeSink = getPipeSink(plan.getPipeSinkName());
-    PipeInfo pipeInfo = SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, pipeSink, createTime);
-    syncMetadata.addPipe(pipeInfo, pipeSink);
-    syncLogWriter.addPipe(pipeInfo);
-  }
 
-  public void addPipe(CreatePipeStatement createPipeStatement, long createTime)
-      throws PipeException, IOException {
-    if (!syncMetadata.isPipeSinkExist(createPipeStatement.getPipeSinkName())) {
-      throw new PipeException(
-          String.format("Can not find pipeSink %s.", createPipeStatement.getPipeSinkName()));
-    }
-    PipeSink pipeSink = getPipeSink(createPipeStatement.getPipeSinkName());
-    PipeInfo pipeInfo =
-        SyncPipeUtil.parseCreatePipePlanAsPipeInfo(createPipeStatement, pipeSink, createTime);
-    syncMetadata.addPipe(pipeInfo, pipeSink);
+  public void addPipe(PipeInfo pipeInfo) throws PipeException, IOException, PipeSinkException {
+    syncMetadata.checkAddPipe(pipeInfo);
+    syncMetadata.addPipe(pipeInfo);
     syncLogWriter.addPipe(pipeInfo);
   }
 
   public void operatePipe(String pipeName, SyncOperation syncOperation)
       throws PipeException, IOException {
-    syncMetadata.operatePipe(pipeName, syncOperation);
+    syncMetadata.checkIfPipeExist(pipeName);
+    switch (syncOperation) {
+      case START_PIPE:
+        syncMetadata.setPipeStatus(pipeName, PipeStatus.RUNNING);
+        break;
+      case STOP_PIPE:
+        syncMetadata.setPipeStatus(pipeName, PipeStatus.STOP);
+        break;
+      case DROP_PIPE:
+        syncMetadata.dropPipe(pipeName);
+        break;
+      default:
+        throw new PipeException("Unknown operatorType " + syncOperation);
+    }
     syncLogWriter.operatePipe(pipeName, syncOperation);
   }
 
-  public PipeInfo getPipeInfo(String pipeName, long createTime) {
-    return syncMetadata.getPipeInfo(pipeName, createTime);
+  public PipeInfo getPipeInfo(String pipeName) {
+    return syncMetadata.getPipeInfo(pipeName);
   }
 
   public List<PipeInfo> getAllPipeInfos() {
     return syncMetadata.getAllPipeInfos();
-  }
-
-  /** @return null if no pipe has been created */
-  public PipeInfo getRunningPipeInfo() {
-    return syncMetadata.getRunningPipeInfo();
   }
 
   /**
@@ -153,12 +142,10 @@ public class LocalSyncInfo {
    * NORMAL.
    *
    * @param pipeName name of pipe
-   * @param createTime createTime of pipe
    * @param messageType pipe message type
    */
-  public void changePipeMessage(
-      String pipeName, long createTime, PipeMessage.PipeMessageType messageType) {
-    syncMetadata.changePipeMessage(pipeName, createTime, messageType);
+  public void changePipeMessage(String pipeName, PipeMessage.PipeMessageType messageType) {
+    syncMetadata.changePipeMessage(pipeName, messageType);
   }
 
   // endregion
