@@ -247,7 +247,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
 
     public int processTsBlock(TsBlock tsBlock, int lastReadIndex) {
-      for (; lastReadIndex < tsBlock.getPositionCount(); lastReadIndex++) {
+      while (lastReadIndex < tsBlock.getPositionCount()) {
 
         times[rowCount] = tsBlock.getTimeByIndex(lastReadIndex);
 
@@ -290,6 +290,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         }
 
         ++rowCount;
+        ++lastReadIndex;
         if (rowCount == TABLET_ROW_LIMIT) {
           break;
         }
