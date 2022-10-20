@@ -28,6 +28,9 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -61,6 +64,19 @@ public class TsFileLoader implements ILoader {
   @Override
   public void load() throws PipeDataLoadException {
     try {
+      if (!config.isMppMode()) {
+        PhysicalPlan plan =
+            new OperateFilePlan(
+                tsFile,
+                Operator.OperatorType.LOAD_FILES,
+                true,
+                IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+                true,
+                true);
+        planExecutor.processNonQuery(plan);
+        return;
+      }
+
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setSgLevel(parseSgLevel());
