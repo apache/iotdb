@@ -48,5 +48,5 @@ VOLUME /iotdb/datanode/data
 VOLUME /iotdb/datanode/logs
 VOLUME /iotdb/confignode/data
 VOLUME /iotdb/confignode/logs
-ENV PATH="/iotdb/datanode/sbin/:/iotdb/confignode/sbin/:/iotdb/tools/:${PATH}"
+ENV PATH="/iotdb/:/iotdb/datanode/sbin/:/iotdb/confignode/sbin/:/iotdb/tools/:${PATH}"
 ENTRYPOINT ["/iotdb/start-1c1d.sh"]
