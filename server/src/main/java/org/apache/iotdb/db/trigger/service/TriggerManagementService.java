@@ -135,15 +135,40 @@ public class TriggerManagementService {
     }
   }
 
-  public void updateLocationOfStatefulTrigger(
-      String triggerName, TDataNodeLocation tDataNodeLocation) {
+  public void updateLocationOfStatefulTrigger(String triggerName, TDataNodeLocation newLocation)
+      throws IOException {
     try {
       acquireLock();
       TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
-      triggerInformation.setDataNodeLocation(tDataNodeLocation);
-      triggerTable.setTriggerInformation(triggerName, triggerInformation);
-    } catch (Exception e) {
-      LOGGER.warn("Failed to update location of trigger({}), the cause is: {}", triggerName, e);
+      if (triggerInformation == null || !triggerInformation.isStateful()) {
+        return;
+      }
+      triggerInformation.setDataNodeLocation(newLocation);
+      triggerTable.addTriggerInformation(triggerName, triggerInformation);
+      if (newLocation.getDataNodeId() != DATA_NODE_ID) {
+        // The instance of stateful trigger is created on another DataNode. We need to drop the
+        // instance if it exists on this DataNode
+        TriggerExecutor triggerExecutor = executorMap.remove(triggerName);
+        if (triggerExecutor != null) {
+          triggerExecutor.onDrop();
+        }
+      } else {
+        TriggerExecutor triggerExecutor = executorMap.get(triggerName);
+        if (triggerExecutor != null) {
+          return;
+        }
+        // newLocation of stateful trigger is this DataNode, we need to create its instance if it
+        // does not exist.
+        try (TriggerClassLoader currentActiveClassLoader =
+            TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+          TriggerExecutor newExecutor =
+              new TriggerExecutor(
+                  triggerInformation,
+                  constructTriggerInstance(
+                      triggerInformation.getClassName(), currentActiveClassLoader));
+          executorMap.put(triggerName, newExecutor);
+        }
+      }
     } finally {
       releaseLock();
     }
@@ -182,7 +207,6 @@ public class TriggerManagementService {
 
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {
-
     String triggerName = triggerInformation.getTriggerName();
     String jarName = triggerInformation.getJarName();
     if (triggerTable.containsTrigger(triggerName)

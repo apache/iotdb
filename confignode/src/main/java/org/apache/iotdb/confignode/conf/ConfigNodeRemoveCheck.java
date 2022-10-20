@@ -80,7 +80,8 @@ public class ConfigNodeRemoveCheck {
                   .findFirst()
                   .orElse(null);
         } catch (BadNodeUrlException e2) {
-          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          LOGGER.info(
+              "Usage: remove-confignode.sh <confignode-id> or remove-confignode.sh <internal_address>:<internal_port>");
           return nodeLocation;
         }
       }
@@ -112,6 +113,7 @@ public class ConfigNodeRemoveCheck {
       }
 
       if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode()) {
+        LOGGER.warn("Execute removeConfigNode failed for: {}", status.getMessage());
         break;
       }
     }

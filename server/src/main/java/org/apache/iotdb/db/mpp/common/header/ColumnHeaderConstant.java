@@ -76,10 +76,10 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
   // column names for show triggers statement
-  public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
+  public static final String COLUMN_TRIGGER_NAME = "TriggerName";
   public static final String COLUMN_TRIGGER_EVENT = "Event";
   public static final String COLUMN_TRIGGER_TYPE = "Type";
-  public static final String COLUMN_TRIGGER_STATE = "STATE";
+  public static final String COLUMN_TRIGGER_STATE = "State";
   public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
   public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
   public static final String COLUMN_TRIGGER_LOCATION = "Node ID";

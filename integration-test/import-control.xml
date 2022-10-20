@@ -24,6 +24,7 @@
   <allow class="java.security.SecureRandom" />
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="java.io" />
+  <allow pkg="java.nio"/>
   <allow pkg="java.util" />
   <allow pkg="java.math" />
   <allow pkg="java.sql" />
@@ -35,7 +36,6 @@
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
     <allow pkg="java.text"/>
-    <allow class="java.nio.file.Files"/>
     <allow pkg="org.apache.iotdb.db.it.utils" />
     <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
