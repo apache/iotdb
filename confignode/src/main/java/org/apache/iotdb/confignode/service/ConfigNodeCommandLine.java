@@ -115,8 +115,11 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
+      return;
     }
 
-    LOGGER.info("ConfigNode: {} is removed.", args[1]);
+    LOGGER.info(
+        "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
+        args[1]);
   }
 }

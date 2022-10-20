@@ -182,6 +182,7 @@ public class AsyncClientHandler<Q, R> {
       case DROP_TRIGGER_INSTANCE:
       case ACTIVE_TRIGGER_INSTANCE:
       case INACTIVE_TRIGGER_INSTANCE:
+      case UPDATE_TRIGGER_LOCATION:
       case MERGE:
       case FULL_MERGE:
       case FLUSH:

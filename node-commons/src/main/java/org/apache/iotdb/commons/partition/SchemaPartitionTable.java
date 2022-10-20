@@ -133,7 +133,7 @@ public class SchemaPartitionTable {
     return result;
   }
 
-  public List<TConsensusGroupId> getRouting(TSeriesPartitionSlot seriesSlotId) {
+  public List<TConsensusGroupId> getRegionId(TSeriesPartitionSlot seriesSlotId) {
     if (!schemaPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
     }

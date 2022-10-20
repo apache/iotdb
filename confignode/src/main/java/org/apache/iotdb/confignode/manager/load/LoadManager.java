@@ -146,9 +146,9 @@ public class LoadManager {
    *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
    *     sorting result have higher priority.
    */
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap() {
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap() {
     // Always take the latest locations of RegionGroups as the input parameter
-    return routeBalancer.genLatestRegionRouteMap(getPartitionManager().getAllReplicaSets());
+    return routeBalancer.getLatestRegionRouteMap(getPartitionManager().getAllReplicaSets());
   }
 
   /** Start the load balancing service */
@@ -238,7 +238,7 @@ public class LoadManager {
   }
 
   public void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
+    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = getLatestRegionRouteMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     getNodeManager()
         .filterDataNodeThroughStatus(NodeStatus.Running)

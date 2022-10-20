@@ -122,14 +122,20 @@ public class MemTableFlushTask {
     // sort the IDeviceID in lexicographical order
     deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
     for (IDeviceID deviceID : deviceIDList) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
-
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      // skip the empty device/chunk group
+      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+        continue;
+      }
+      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
       List<String> seriesInOrder = new ArrayList<>(value.keySet());
       seriesInOrder.sort((String::compareTo));
       for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = value.get(seriesId);
+        if (series.count() == 0) {
+          continue;
+        }
         /*
          * sort task (first task of flush pipeline)
          */

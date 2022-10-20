@@ -66,7 +66,7 @@ public class LazyGreedyRouter implements IRouter {
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
     synchronized (disabledDataNodes) {
       // Map<DataNodeId, leaderCount> Count the number of leaders in each DataNodes

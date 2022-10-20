@@ -133,6 +133,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     if (needDecodeChunk()) {

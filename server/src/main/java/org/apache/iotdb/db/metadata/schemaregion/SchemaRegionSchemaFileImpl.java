@@ -87,7 +87,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.external.api.ISeriesNumerLimiter;
+import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -182,14 +182,15 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
-  private final ISeriesNumerLimiter seriesNumerLimiter;
+  // seriesNumberMonitor may be null
+  private final ISeriesNumerMonitor seriesNumerMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionSchemaFileImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
       IStorageGroupMNode storageGroupMNode,
-      ISeriesNumerLimiter seriesNumerLimiter)
+      ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
     storageGroupFullPath = storageGroup.getFullPath();
@@ -215,7 +216,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                   }
                 });
     this.storageGroupMNode = storageGroupMNode;
-    this.seriesNumerLimiter = seriesNumerLimiter;
+    this.seriesNumerMonitor = seriesNumerMonitor;
     init();
   }
 
@@ -409,8 +410,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     int seriesCount = leafMNodes.size();
     schemaStatisticsManager.deleteTimeseries(seriesCount);
-    seriesNumerLimiter.deleteTimeSeries(seriesCount);
-
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(seriesCount);
+    }
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
 
@@ -472,14 +474,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       throw new SeriesOverflowException();
     }
 
-    if (!seriesNumerLimiter.addTimeSeries(1)) {
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
       throw new SeriesNumberOverflowException();
     }
 
     try {
       PartialPath path = plan.getPath();
       IMeasurementMNode leafMNode;
-      // using try-catch to restore seriesNumerLimiter's state while create failed
+      // using try-catch to restore seriesNumberMonitor's state while create failed
       try {
         SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
@@ -494,7 +496,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                 plan.getProps(),
                 plan.getAlias());
       } catch (Throwable t) {
-        seriesNumerLimiter.deleteTimeSeries(1);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(1);
+        }
         throw t;
       }
 
@@ -618,7 +622,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       throw new SeriesOverflowException();
     }
 
-    if (!seriesNumerLimiter.addTimeSeries(seriesCount)) {
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
       throw new SeriesNumberOverflowException();
     }
 
@@ -630,7 +634,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       List<Map<String, String>> tagsList = plan.getTagsList();
       List<Map<String, String>> attributesList = plan.getAttributesList();
       List<IMeasurementMNode> measurementMNodeList;
-      // using try-catch to restore seriesNumerLimiter's state while create failed
+      // using try-catch to restore seriesNumberMonitor's state while create failed
       try {
         for (int i = 0; i < measurements.size(); i++) {
           SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
@@ -646,7 +650,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                 plan.getCompressors(),
                 plan.getAliasList());
       } catch (Throwable t) {
-        seriesNumerLimiter.deleteTimeSeries(seriesCount);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(seriesCount);
+        }
         throw t;
       }
 
@@ -825,7 +831,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     mNodeCache.invalidate(node.getPartialPath());
 
     schemaStatisticsManager.deleteTimeseries(1);
-    seriesNumerLimiter.deleteTimeSeries(1);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(1);
+    }
     return storageGroupPath;
   }
   // endregion

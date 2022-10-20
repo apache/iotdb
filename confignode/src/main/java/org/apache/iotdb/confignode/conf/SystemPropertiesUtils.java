@@ -249,7 +249,7 @@ public class SystemPropertiesUtils {
    * @return The property of config_node_id in confignode-system.properties file
    * @throws IOException When load confignode-system.properties file failed
    */
-  public static int loadConfigNodeId() throws IOException {
+  public static int loadConfigNodeIdWhenRestarted() throws IOException {
     Properties systemProperties = getSystemProperties();
     try {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
