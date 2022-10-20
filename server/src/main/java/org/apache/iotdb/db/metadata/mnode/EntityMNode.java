@@ -114,6 +114,14 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
     this.aliasChildren = aliasChildren;
   }
 
+  /**
+   * In EntityMNode(device node), schemaTemplateId represents the template activated on this node.
+   * The pre deactivation mechanism is implemented by making this value negative. Since value 0 and
+   * -1 are all occupied, the available negative value range is [Int.MIN_VALUE, -2]. The value of a
+   * pre deactivated case equals the negative normal value minus 2. For example, if the id of
+   * activated template is 0, then - 0 - 2 = -2 represents the pre deactivation of this template on
+   * this node.
+   */
   @Override
   public int getSchemaTemplateId() {
     return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
