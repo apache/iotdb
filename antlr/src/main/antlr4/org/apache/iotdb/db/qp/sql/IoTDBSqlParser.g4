@@ -366,7 +366,7 @@ showPathsSetSchemaTemplate
 
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group

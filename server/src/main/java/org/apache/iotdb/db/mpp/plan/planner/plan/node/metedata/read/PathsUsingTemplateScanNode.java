@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -29,16 +31,25 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
 
+  private List<PartialPath> pathPatternList;
+
   private int templateId;
 
-  public PathsUsingTemplateScanNode(PlanNodeId id, int templateId) {
+  public PathsUsingTemplateScanNode(
+      PlanNodeId id, List<PartialPath> pathPatternList, int templateId) {
     super(id);
+    this.pathPatternList = pathPatternList;
     this.templateId = templateId;
+  }
+
+  public List<PartialPath> getPathPatternList() {
+    return pathPatternList;
   }
 
   public int getTemplateId() {
@@ -47,7 +58,7 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new PathsUsingTemplateScanNode(getPlanNodeId(), templateId);
+    return new PathsUsingTemplateScanNode(getPlanNodeId(), pathPatternList, templateId);
   }
 
   @Override
@@ -60,20 +71,31 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.PATHS_USING_TEMPLATE_SCAN.serialize(byteBuffer);
-
+    ReadWriteIOUtils.write(pathPatternList.size(), byteBuffer);
+    for (PartialPath pathPattern : pathPatternList) {
+      pathPattern.serialize(byteBuffer);
+    }
     ReadWriteIOUtils.write(templateId, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.PATHS_USING_TEMPLATE_SCAN.serialize(stream);
-
+    ReadWriteIOUtils.write(pathPatternList.size(), stream);
+    for (PartialPath pathPattern : pathPatternList) {
+      pathPattern.serialize(stream);
+    }
     ReadWriteIOUtils.write(templateId, stream);
   }
 
   public static PathsUsingTemplateScanNode deserialize(ByteBuffer buffer) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    List<PartialPath> pathPatternList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      pathPatternList.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
+    }
     int templateId = ReadWriteIOUtils.readInt(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new PathsUsingTemplateScanNode(planNodeId, templateId);
+    return new PathsUsingTemplateScanNode(planNodeId, pathPatternList, templateId);
   }
 }

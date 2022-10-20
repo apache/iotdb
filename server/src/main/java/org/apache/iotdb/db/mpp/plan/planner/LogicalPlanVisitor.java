@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
@@ -686,9 +687,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    List<PartialPath> pathPatternList = new ArrayList<>();
+    for (PartialPath templateSetPath : analysis.getTemplateSetInfo().right) {
+      // specify the user input path pattern by template set path
+      pathPatternList.addAll(
+          showPathsUsingTemplateStatement.getPathPattern().alterPrefixPath(templateSetPath));
+    }
     planBuilder =
         planBuilder
-            .planPathsUsingTemplateSource(analysis.getTemplateSetInfo().left.getId())
+            .planPathsUsingTemplateSource(
+                pathPatternList, analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
     return planBuilder.getRoot();
   }

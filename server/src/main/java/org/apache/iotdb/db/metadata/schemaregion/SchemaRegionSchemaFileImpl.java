@@ -1912,7 +1912,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

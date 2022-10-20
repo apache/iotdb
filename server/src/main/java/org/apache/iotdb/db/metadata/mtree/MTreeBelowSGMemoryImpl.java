@@ -90,8 +90,6 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
@@ -1589,23 +1587,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return null;
   }
 
-  public void activateTemplate(PartialPath activatePath, int templateSetLevel, Template template)
+  public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
-    if (templateSetLevel <= levelOfSG) {
-      IMNode ancestor = storageGroupMNode;
-      for (int i = levelOfSG; i > templateSetLevel; i--) {
-        ancestor = ancestor.getParent();
-      }
-      ancestor.setSchemaTemplateId(template.getId());
-    }
-
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
-      if (i == templateSetLevel) {
-        cur.setSchemaTemplateId(template.getId());
-      }
     }
 
     IEntityMNode entityMNode;
@@ -1636,17 +1623,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       entityMNode.setAligned(template.isDirectAligned());
     }
     entityMNode.setUseTemplate(true);
+    entityMNode.setSchemaTemplateId(template.getId());
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateSetLevel, int templateId, boolean isAligned) {
+      PartialPath activatePath, int templateId, boolean isAligned) {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
-      if (i == templateSetLevel) {
-        cur.setSchemaTemplateId(templateId);
-      }
     }
 
     IEntityMNode entityMNode;
@@ -1663,38 +1648,41 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       entityMNode.setAligned(isAligned);
     }
     entityMNode.setUseTemplate(true);
+    entityMNode.setSchemaTemplateId(templateId);
   }
 
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
-    List<String> result = new ArrayList<>();
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    Set<String> result = new HashSet<>();
 
-    CollectorTraverser<Set<String>> usingTemplatePaths =
-        new CollectorTraverser<Set<String>>(
-            storageGroupMNode, new PartialPath(ALL_RESULT_NODES), store) {
+    EntityCollector<Set<String>> collector =
+        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-            return false;
-          }
-
-          @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-            if (node.isMeasurement()) {
-              return true;
-            }
-            if (node.getSchemaTemplateId() != NON_TEMPLATE
-                && templateId != ALL_TEMPLATE
-                && node.getSchemaTemplateId() != templateId) {
-              // skip subTree
-              return true;
-            }
-            if (node.isUseTemplate()) {
+          protected void collectEntity(IEntityMNode node) throws MetadataException {
+            if (node.getSchemaTemplateId() == templateId) {
               result.add(node.getFullPath());
             }
-            return false;
           }
         };
+    collector.traverse();
+    return new ArrayList<>(result);
+  }
 
-    usingTemplatePaths.traverse();
+  public List<IEntityMNode> getDeviceMNodeUsingTargetTemplate(
+      PartialPath pathPattern, List<Integer> templateIdList, boolean isPreDeactivated)
+      throws MetadataException {
+    List<IEntityMNode> result = new ArrayList<>();
+    EntityCollector<List<IEntityMNode>> collector =
+        new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectEntity(IEntityMNode node) throws MetadataException {
+            if (templateIdList.contains(node.getSchemaTemplateId())
+                && isPreDeactivated == node.isPreDeactivateTemplate()) {
+              result.add(node);
+            }
+          }
+        };
+    collector.traverse();
     return result;
   }
 

@@ -2786,7 +2786,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowPathsUsingSchemaTemplate(
       IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
-    return new ShowPathsUsingTemplateStatement(parseIdentifier(ctx.templateName.getText()));
+    PartialPath pathPattern;
+    if (ctx.prefixPath() == null) {
+      pathPattern = new PartialPath(SQLConstant.getSingleRootArray());
+    } else {
+      pathPattern = parsePrefixPath(ctx.prefixPath());
+    }
+    return new ShowPathsUsingTemplateStatement(
+        pathPattern, parseIdentifier(ctx.templateName.getText()));
   }
 
   @Override

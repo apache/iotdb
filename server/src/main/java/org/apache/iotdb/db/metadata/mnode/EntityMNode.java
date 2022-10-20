@@ -115,6 +115,36 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public int getSchemaTemplateId() {
+    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
+  }
+
+  @Override
+  public boolean isPreDeactivateTemplate() {
+    return schemaTemplateId < -1;
+  }
+
+  @Override
+  public void preDeactivateTemplate() {
+    if (schemaTemplateId > -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public void rollbackPreDeactivateTemplate() {
+    if (schemaTemplateId < -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public void deactivateTemplate() {
+    schemaTemplateId = -1;
+    setUseTemplate(false);
+  }
+
+  @Override
   public boolean isAligned() {
     return isAligned;
   }
