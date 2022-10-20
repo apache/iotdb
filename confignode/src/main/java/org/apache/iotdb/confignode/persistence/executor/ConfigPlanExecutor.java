@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -186,6 +187,8 @@ public class ConfigPlanExecutor {
         return syncInfo.showPipe((ShowPipePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
+      case GetTriggerLocation:
+        return triggerInfo.getTriggerLocation((GetTriggerLocationPlan) req);
       case GetTriggerJar:
         return triggerInfo.getTriggerJar((GetTriggerJarPlan) req);
       case GetTransferringTriggers:

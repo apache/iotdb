@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -953,6 +954,16 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer());
     Assert.assertEquals(
         getTriggerTablePlan0.isOnlyStateful(), getTriggerTablePlan1.isOnlyStateful());
+  }
+
+  @Test
+  public void GetTriggerLocationPlanTest() throws IOException {
+    GetTriggerLocationPlan getTriggerLocationPlan0 = new GetTriggerLocationPlan("test1");
+    GetTriggerLocationPlan getTriggerLocationPlan1 =
+        (GetTriggerLocationPlan)
+            ConfigPhysicalPlan.Factory.create(getTriggerLocationPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        getTriggerLocationPlan0.getTriggerName(), getTriggerLocationPlan1.getTriggerName());
   }
 
   @Test
