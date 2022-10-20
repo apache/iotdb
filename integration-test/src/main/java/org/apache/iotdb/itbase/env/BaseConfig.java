@@ -71,10 +71,14 @@ public interface BaseConfig {
   }
 
   default boolean isEnablePartition() {
-    return true;
+    return false;
   }
 
   default BaseConfig setPartitionInterval(long partitionInterval) {
+    return this;
+  }
+
+  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
     return this;
   }
 
@@ -247,7 +251,7 @@ public interface BaseConfig {
     return 1;
   }
 
-  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
     return this;
   }
 

@@ -19,41 +19,25 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
-public class GetRoutingResp implements DataSet {
+public class TransferringTriggersResp implements DataSet {
 
-  private TSStatus status;
+  private List<String> transferringTriggers;
 
-  private final List<TConsensusGroupId> dataRegionIdList;
+  public TransferringTriggersResp() {}
 
-  public GetRoutingResp(TSStatus status, List<TConsensusGroupId> dataRegionIdList) {
-    this.status = status;
-    this.dataRegionIdList = dataRegionIdList;
+  public TransferringTriggersResp(List<String> transferringTriggers) {
+    this.transferringTriggers = transferringTriggers;
   }
 
-  public TSStatus getStatus() {
-    return status;
+  public List<String> getTransferringTriggers() {
+    return transferringTriggers;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
-  public TGetRoutingResp convertToRpcGetRoutingResp() {
-    TGetRoutingResp resp = new TGetRoutingResp();
-    resp.setStatus(status);
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.dataRegionIdList = dataRegionIdList;
-    }
-
-    return resp;
+  public void setTransferringTriggers(List<String> transferringTriggers) {
+    this.transferringTriggers = transferringTriggers;
   }
 }

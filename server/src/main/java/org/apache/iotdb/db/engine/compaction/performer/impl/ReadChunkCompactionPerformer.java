@@ -78,13 +78,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
-        writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
-        writer.endChunkGroup();
       }
 
       for (TsFileResource tsFileResource : seqFiles) {
@@ -120,10 +118,15 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     checkThreadInterrupted();
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    if (!checkAlignedSeriesExists(readerAndChunkMetadataList)) {
+      return;
+    }
+    writer.startChunkGroup(device);
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
+    writer.endChunkGroup();
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
@@ -134,12 +137,25 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     }
   }
 
+  private boolean checkAlignedSeriesExists(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+        readerAndChunkMetadataList) {
+      if (!readerListPair.right.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private void compactNotAlignedSeries(
       String device,
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, MetadataException, InterruptedException {
+    writer.startChunkGroup(device);
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
         deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
@@ -155,6 +171,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+    writer.endChunkGroup();
   }
 
   @Override

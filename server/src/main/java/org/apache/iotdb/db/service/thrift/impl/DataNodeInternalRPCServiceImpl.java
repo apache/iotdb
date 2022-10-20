@@ -86,6 +86,8 @@ import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -112,6 +114,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -136,9 +140,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
@@ -1023,6 +1031,50 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .setMessage(e.getMessage());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus updateTriggerLocation(TUpdateTriggerLocationReq req) throws TException {
+    try {
+      TriggerManagementService.getInstance()
+          .updateLocationOfStatefulTrigger(req.triggerName, req.newLocation);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Error occurred during update Location for trigger: {}. The cause is {}.",
+          req.triggerName,
+          e);
+      return new TSStatus(TSStatusCode.UPDATE_TRIGGER_LOCATION_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TFireTriggerResp fireTrigger(TFireTriggerReq req) {
+    String triggerName = req.getTriggerName();
+    TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+    // no executor for given trigger name on this data node
+    if (executor == null) {
+      return new TFireTriggerResp(false, TriggerFireResult.FAILED_NO_TERMINATION.getId());
+    }
+    TriggerFireResult result = TriggerFireResult.SUCCESS;
+    try {
+      boolean fireResult =
+          executor.fire(
+              Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
+      if (!fireResult) {
+        result =
+            executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                ? TriggerFireResult.TERMINATION
+                : TriggerFireResult.FAILED_NO_TERMINATION;
+      }
+    } catch (Exception e) {
+      result =
+          executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+              ? TriggerFireResult.TERMINATION
+              : TriggerFireResult.FAILED_NO_TERMINATION;
+    }
+    return new TFireTriggerResp(true, result.getId());
   }
 
   private TEndPoint getConsensusEndPoint(

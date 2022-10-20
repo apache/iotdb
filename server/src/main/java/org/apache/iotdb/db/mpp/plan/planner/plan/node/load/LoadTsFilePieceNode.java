@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.load.ChunkData;
+import org.apache.iotdb.db.engine.load.TsFileData;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -52,7 +53,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   private File tsFile;
 
   private long dataSize;
-  private List<ChunkData> chunkDataList;
+  private List<TsFileData> tsFileDataList;
 
   public LoadTsFilePieceNode(PlanNodeId id) {
     super(id);
@@ -62,7 +63,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     super(id);
     this.tsFile = tsFile;
     this.dataSize = 0;
-    this.chunkDataList = new ArrayList<>();
+    this.tsFileDataList = new ArrayList<>();
   }
 
   public boolean exceedSize() {
@@ -70,13 +71,13 @@ public class LoadTsFilePieceNode extends WritePlanNode {
         || dataSize >= config.getAllocateMemoryForFree() / 2;
   }
 
-  public void addChunkData(ChunkData chunkData) {
-    chunkDataList.add(chunkData);
-    dataSize += chunkData.getDataSize();
+  public void addTsFileData(TsFileData tsFileData) {
+    tsFileDataList.add(tsFileData);
+    dataSize += tsFileData.getDataSize();
   }
 
-  public List<ChunkData> getAllChunkData() {
-    return chunkDataList;
+  public List<TsFileData> getAllTsFileData() {
+    return tsFileDataList;
   }
 
   public File getTsFile() {
@@ -127,14 +128,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
-    ReadWriteIOUtils.write(chunkDataList.size(), stream);
-    for (ChunkData chunkData : chunkDataList) {
+    ReadWriteIOUtils.write(tsFileDataList.size(), stream);
+    for (TsFileData tsFileData : tsFileDataList) {
       try {
-        chunkData.serialize(stream, tsFile);
+        tsFileData.serialize(stream, tsFile);
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Parse page of TsFile %s error, skip chunk %s", tsFile.getPath(), chunkData));
+                "Parse page of TsFile %s error, skip chunk %s", tsFile.getPath(), tsFileData));
       }
     }
   }
@@ -150,14 +151,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       File tsFile = new File(ReadWriteIOUtils.readString(stream));
       LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
-      int chunkDataSize = ReadWriteIOUtils.readInt(stream);
-      for (int i = 0; i < chunkDataSize; i++) {
-        ChunkData chunkData = ChunkData.deserialize(stream);
-        pieceNode.addChunkData(chunkData);
+      int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
+      for (int i = 0; i < tsFileDataSize; i++) {
+        TsFileData tsFileData = TsFileData.deserialize(stream);
+        pieceNode.addTsFileData(tsFileData);
       }
       pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
       return pieceNode;
-    } catch (IOException | PageException e) {
+    } catch (IOException | PageException | IllegalPathException e) {
       logger.error(String.format("Deserialize %s error.", LoadTsFilePieceNode.class.getName()), e);
       return null;
     }

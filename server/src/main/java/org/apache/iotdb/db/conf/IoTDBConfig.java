@@ -977,6 +977,9 @@ public class IoTDBConfig {
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
 
+  /** How many times will we retry to find an instance of stateful trigger */
+  private int retryNumToFindStatefulTrigger = 3;
+
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
@@ -1042,6 +1045,12 @@ public class IoTDBConfig {
   private long schemaRatisConsensusInitialSleepTimeMs = 100L;
   private long dataRatisConsensusMaxSleepTimeMs = 10000L;
   private long schemaRatisConsensusMaxSleepTimeMs = 10000L;
+
+  private long dataRatisConsensusPreserveWhenPurge = 1000L;
+  private long schemaRatisConsensusPreserveWhenPurge = 1000L;
+
+  private long ratisFirstElectionTimeoutMinMs = 50L;
+  private long ratisFirstElectionTimeoutMaxMs = 150L;
 
   IoTDBConfig() {}
 
@@ -1397,6 +1406,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
+    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
   }
 
   public String getTriggerTemporaryLibDir() {
@@ -3150,6 +3163,14 @@ public class IoTDBConfig {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
 
+  public int getRetryNumToFindStatefulTrigger() {
+    return retryNumToFindStatefulTrigger;
+  }
+
+  public void setRetryNumToFindStatefulTrigger(int retryNumToFindStatefulTrigger) {
+    this.retryNumToFindStatefulTrigger = retryNumToFindStatefulTrigger;
+  }
+
   public int getCoordinatorReadExecutorSize() {
     return coordinatorReadExecutorSize;
   }
@@ -3504,5 +3525,37 @@ public class IoTDBConfig {
 
   public void setSchemaRatisConsensusMaxSleepTimeMs(long schemaRatisConsensusMaxSleepTimeMs) {
     this.schemaRatisConsensusMaxSleepTimeMs = schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public long getDataRatisConsensusPreserveWhenPurge() {
+    return dataRatisConsensusPreserveWhenPurge;
+  }
+
+  public void setDataRatisConsensusPreserveWhenPurge(long dataRatisConsensusPreserveWhenPurge) {
+    this.dataRatisConsensusPreserveWhenPurge = dataRatisConsensusPreserveWhenPurge;
+  }
+
+  public long getSchemaRatisConsensusPreserveWhenPurge() {
+    return schemaRatisConsensusPreserveWhenPurge;
+  }
+
+  public void setSchemaRatisConsensusPreserveWhenPurge(long schemaRatisConsensusPreserveWhenPurge) {
+    this.schemaRatisConsensusPreserveWhenPurge = schemaRatisConsensusPreserveWhenPurge;
+  }
+
+  public long getRatisFirstElectionTimeoutMinMs() {
+    return ratisFirstElectionTimeoutMinMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMinMs(long ratisFirstElectionTimeoutMinMs) {
+    this.ratisFirstElectionTimeoutMinMs = ratisFirstElectionTimeoutMinMs;
+  }
+
+  public long getRatisFirstElectionTimeoutMaxMs() {
+    return ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
+    this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 }

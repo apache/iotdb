@@ -99,10 +99,11 @@ public class SystemInfo {
       return true;
     } else {
       logger.info(
-          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}).",
+          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THERSHOLD ({})",
           dataRegionInfo.getDataRegion().getStorageGroupName(),
           delta,
-          totalStorageGroupMemCost);
+          totalStorageGroupMemCost,
+          REJECT_THERSHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
         if (totalStorageGroupMemCost < memorySizeForWrite) {
@@ -201,6 +202,8 @@ public class SystemInfo {
         (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
   }
 
   @TestOnly

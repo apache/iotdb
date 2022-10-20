@@ -1014,6 +1014,10 @@ public class IoTDBDescriptor {
     conf.setTimePartitionIntervalForStorage(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+
+    if (!conf.isClusterMode()) {
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1762,6 +1766,13 @@ public class IoTDBDescriptor {
 
   private void loadTriggerProps(Properties properties) {
     conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+    conf.setTriggerTemporaryLibDir(
+        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setRetryNumToFindStatefulTrigger(
+        Integer.parseInt(
+            properties.getProperty(
+                "stateful_trigger_retry_num_when_not_found",
+                Integer.toString(conf.getRetryNumToFindStatefulTrigger()))));
 
     int tlogBufferSize =
         Integer.parseInt(
@@ -1963,6 +1974,12 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
+    conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());
+
+    conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
+    conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
   }
 
   public void reclaimConsensusMemory() {

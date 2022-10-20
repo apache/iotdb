@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -28,7 +28,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -39,19 +39,19 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class GetRegionTask implements IConfigTask {
+public class GetRegionIdTask implements IConfigTask {
 
-  private final GetRegionStatement getRegionStatement;
+  private final GetRegionIdStatement getRegionIdStatement;
 
-  public GetRegionTask(GetRegionStatement getRegionStatement) {
-    this.getRegionStatement = getRegionStatement;
+  public GetRegionIdTask(GetRegionIdStatement getRegionStatement) {
+    this.getRegionIdStatement = getRegionStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.getRegion(getRegionStatement);
+    return configTaskExecutor.getRegionId(getRegionIdStatement);
   }
 
   public static void buildTsBlock(TsBlockBuilder builder, TConsensusGroupId tConsensusGroupId) {
@@ -61,16 +61,16 @@ public class GetRegionTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TGetRoutingResp getRoutingResp, SettableFuture<ConfigTaskResult> future) {
+      TGetRegionIdResp getRegionIdResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.getRoutingColumnHeaders.stream()
+        ColumnHeaderConstant.getRegionIdColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    getRoutingResp.getDataRegionIdList().forEach(e -> buildTsBlock(builder, e));
+    getRegionIdResp.getDataRegionIdList().forEach(e -> buildTsBlock(builder, e));
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetRegionHeader();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetRegionIdHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

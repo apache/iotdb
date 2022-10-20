@@ -75,8 +75,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+  public void initTProcessor() {
     initSyncedServiceImpl(null);
     processor = new Processor<>(mppDataExchangeManager.getOrCreateMPPDataExchangeServiceImpl());
   }
@@ -86,8 +85,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     try {
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
@@ -112,7 +110,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
   }
 
   @Override

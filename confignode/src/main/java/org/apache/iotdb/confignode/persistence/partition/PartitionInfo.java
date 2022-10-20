@@ -33,8 +33,8 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
@@ -47,7 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteSt
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.GetRoutingResp;
+import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
@@ -776,16 +776,16 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  public DataSet getRouting(GetRoutingPlan plan) {
+  public DataSet getRegionId(GetRegionIdPlan plan) {
     if (!isStorageGroupExisted(plan.getStorageGroup())) {
-      return new GetRoutingResp(
+      return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
     StorageGroupPartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
-    return new GetRoutingResp(
+    return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        sgPartitionTable.getRouting(
+        sgPartitionTable.getRegionId(
             plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId()));
   }
 

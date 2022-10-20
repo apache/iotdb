@@ -41,7 +41,7 @@ public class LoadScoreGreedyRouter implements IRouter {
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
     Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
 
