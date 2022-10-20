@@ -783,9 +783,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
-            if (node.isPreDeleted()) {
-              return;
-            }
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
@@ -798,6 +795,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setTemplateMap(templateMap);
+    collector.setSkipPreDeletedSchema(true);
     collector.traverse();
     return result;
   }
