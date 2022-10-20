@@ -821,7 +821,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getLocationOfStatefulTrigger(triggerName)
-        : new TGetLocationForTriggerResp(status, null);
+        : new TGetLocationForTriggerResp(status);
   }
 
   @Override

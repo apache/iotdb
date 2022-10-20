@@ -44,6 +44,6 @@ public class TriggerLocationResp implements DataSet {
   }
 
   public TGetLocationForTriggerResp convertToThriftResponse() {
-    return new TGetLocationForTriggerResp(status, dataNodeLocation);
+    return new TGetLocationForTriggerResp(status).setDataNodeLocation(dataNodeLocation);
   }
 }
