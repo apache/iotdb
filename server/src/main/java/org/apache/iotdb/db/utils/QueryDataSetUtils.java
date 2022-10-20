@@ -373,6 +373,32 @@ public class QueryDataSetUtils {
     return tsQueryDataSet;
   }
 
+  // To fetch required amounts of data and combine them through List
+  public static List<ByteBuffer> convertQueryResultByFetchSize(
+          IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
+    int rowCount = 0;
+    List<ByteBuffer> res = new LinkedList<>();
+    while (rowCount < fetchSize) {
+        Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+        if (!optionalByteBuffer.isPresent()) {
+          break;
+        }
+
+        ByteBuffer byteBuffer = optionalByteBuffer.get();
+        byteBuffer.mark();
+        int valueColumnCount = byteBuffer.getInt();
+        for (int i = 0; i < valueColumnCount; i++) {
+          byteBuffer.get();
+        }
+        int positionCount = byteBuffer.getInt();
+        byteBuffer.reset();
+
+        res.add(byteBuffer);
+        rowCount += positionCount;
+    }
+    return res;
+  }
+
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {

@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import org.apache.thrift.TException;
 
 import java.nio.ByteBuffer;
@@ -169,7 +168,7 @@ public class SessionDataSet implements AutoCloseable {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.time, outFields);
+    return new RowRecord(ioTDBRpcDataSet.getTimestamp().getTime(), outFields);
   }
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {

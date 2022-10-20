@@ -67,7 +67,7 @@ public class SourceHandle implements ISourceHandle {
   private final SourceHandleListener sourceHandleListener;
 
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
-  private final Map<Integer, ByteBuffer> sequenceIdToBfBlock = new HashMap<>();
+  private final Map<Integer, ByteBuffer> sequenceIdToTsBlock = new HashMap<>();
 
   private final String threadName;
   private long retryIntervalInMs;
@@ -116,35 +116,11 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized TsBlock receive() {
-    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-
-      checkState();
-
-      if (!blocked.isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
-      }
-
-      ByteBuffer byteBuffer = sequenceIdToBfBlock.remove(currSequenceId);
-      if (byteBuffer == null) {
-        return null;
-      }
-      TsBlock tsBlock = serde.deserialize(byteBuffer);
-
-      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
-      logger.info("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
-      currSequenceId += 1;
-      bufferRetainedSizeInBytes -= retainedSize;
-      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), retainedSize);
-
-      if (sequenceIdToBfBlock.isEmpty() && !isFinished()) {
-        logger.info("[WaitForMoreTsBlock]");
-        blocked = SettableFuture.create();
-      }
-      if (isFinished()) {
-        sourceHandleListener.onFinished(this);
-      }
-      trySubmitGetDataBlocksTask();
-      return tsBlock;
+    ByteBuffer tsBlock = getSerializedTsBlock();
+    if(tsBlock!=null){
+      return serde.deserialize(tsBlock);
+    }else{
+      return null;
     }
   }
 
@@ -158,8 +134,8 @@ public class SourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
 
-      ByteBuffer bfBlock = sequenceIdToBfBlock.remove(currSequenceId);
-      if (bfBlock == null) {
+      ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      if (tsBlock == null) {
         return null;
       }
       long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
@@ -168,7 +144,7 @@ public class SourceHandle implements ISourceHandle {
       bufferRetainedSizeInBytes -= retainedSize;
       localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), retainedSize);
 
-      if (sequenceIdToBfBlock.isEmpty() && !isFinished()) {
+      if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         logger.info("[WaitForMoreTsBlock]");
         blocked = SettableFuture.create();
       }
@@ -176,7 +152,7 @@ public class SourceHandle implements ISourceHandle {
         sourceHandleListener.onFinished(this);
       }
       trySubmitGetDataBlocksTask();
-      return bfBlock;
+      return tsBlock;
     }
   }
 
@@ -419,10 +395,10 @@ public class SourceHandle implements ISourceHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
-            List<ByteBuffer> bfBlocks = new ArrayList<>(resp.getTsBlocks().size());
-            bfBlocks.addAll(resp.getTsBlocks());
+            List<ByteBuffer> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
+            tsBlocks.addAll(resp.getTsBlocks());
 
-            logger.info("[EndPullTsBlocksFromRemote] Count:{}", bfBlocks.size());
+            logger.info("[EndPullTsBlocksFromRemote] Count:{}", tsBlocks.size());
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
@@ -430,7 +406,7 @@ public class SourceHandle implements ISourceHandle {
                 return;
               }
               for (int i = startSequenceId; i < endSequenceId; i++) {
-                sequenceIdToBfBlock.put(i, bfBlocks.get(i - startSequenceId));
+                sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
               }
               logger.info("[PutTsBlocksIntoBuffer]");
               if (!blocked.isDone()) {

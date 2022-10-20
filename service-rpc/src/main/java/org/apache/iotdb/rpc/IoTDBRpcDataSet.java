@@ -64,10 +64,9 @@ public class IoTDBRpcDataSet {
   public long statementId;
   public boolean ignoreTimeStamp;
 
-  public TsBlockSerde serde;
+  public final static TsBlockSerde serde = new TsBlockSerde();
   public List<ByteBuffer> queryResult;
   public TsBlock curTsBlock;
-  public Long time; // used to cache the current time value
   public int queryResultSize; // the length of queryResult
   public int queryResultIndex; // the index of bytebuffer in queryResult
   public int tsBlockSize; // the size of current tsBlock
@@ -149,8 +148,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-
-    serde = new TsBlockSerde();
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -241,7 +238,6 @@ public class IoTDBRpcDataSet {
 
   public void constructOneRow() {
     tsBlockIndex++;
-    time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
     hasCachedRecord = true;
   }
 
@@ -347,7 +343,7 @@ public class IoTDBRpcDataSet {
   public long getLong(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return time;
+      return curTsBlock.getTimeByIndex(tsBlockIndex);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, tsBlockIndex)) {
@@ -399,6 +395,10 @@ public class IoTDBRpcDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
+  public Timestamp getTimestamp() throws StatementExecutionException {
+    return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
+  }
+
   public int findColumn(String columnName) {
     return columnOrdinalMap.get(columnName);
   }
@@ -406,7 +406,7 @@ public class IoTDBRpcDataSet {
   public String getValueByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return String.valueOf(time);
+      return String.valueOf(curTsBlock.getTimeByIndex(tsBlockIndex));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {
@@ -439,7 +439,7 @@ public class IoTDBRpcDataSet {
   public Object getObjectByName(String columnName) throws StatementExecutionException {
     checkRecord();
     if (columnName.equals(TIMESTAMP_STR)) {
-      return time;
+      return curTsBlock.getTimeByIndex(tsBlockIndex);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= columnTypeDeduplicatedList.size() || isNull(index, tsBlockIndex)) {

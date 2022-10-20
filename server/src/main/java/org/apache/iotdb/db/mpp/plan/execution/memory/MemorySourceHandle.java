@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
-import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,6 +37,8 @@ public class MemorySourceHandle implements ISourceHandle {
 
   private final TsBlock result;
   private boolean hasNext;
+
+  private final static TsBlockSerde serde = new TsBlockSerde();
 
   public MemorySourceHandle(TsBlock result) {
     Validate.notNull(result, "the TsBlock should not be null when constructing MemorySourceHandle");
@@ -65,15 +68,15 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock() {
+  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     hasNext = false;
     if (result.isEmpty()) {
       return null;
     } else {
       try {
-        return new TsBlockSerde().serialize(result);
+        return serde.serialize(result);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       }
     }
   }
