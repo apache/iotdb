@@ -1618,7 +1618,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             TSDataType dataType = timeseriesMetadata.getTSDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
               ChunkHeader chunkHeader =
-                  getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata);
+                  getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata); // TODO: speed up
               MeasurementSchema measurementSchema =
                   new MeasurementSchema(
                       timeseriesMetadata.getMeasurementId(),
