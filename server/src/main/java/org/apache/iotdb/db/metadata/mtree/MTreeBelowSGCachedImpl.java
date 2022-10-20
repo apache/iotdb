@@ -350,33 +350,39 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
       Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
       for (int i = 0; i < measurementList.size(); i++) {
-        if (device.hasChild(measurementList.get(i))) {
-          IMNode node = device.getChild(measurementList.get(i));
-          if (node.isMeasurement()) {
-            if (node.getAsMeasurementMNode().isPreDeleted()) {
-              failingMeasurementMap.put(
-                  i,
-                  new MeasurementInBlackListException(
-                      devicePath.concatNode(measurementList.get(i))));
+        try {
+          if (store.hasChild(device, measurementList.get(i))) {
+            IMNode node = store.getChild(device, measurementList.get(i));
+            if (node.isMeasurement()) {
+              if (node.getAsMeasurementMNode().isPreDeleted()) {
+                failingMeasurementMap.put(
+                    i,
+                    new MeasurementInBlackListException(
+                        devicePath.concatNode(measurementList.get(i))));
+              } else {
+                failingMeasurementMap.put(
+                    i,
+                    new MeasurementAlreadyExistException(
+                        devicePath.getFullPath() + "." + measurementList.get(i),
+                        node.getAsMeasurementMNode().getMeasurementPath()));
+              }
             } else {
               failingMeasurementMap.put(
                   i,
-                  new MeasurementAlreadyExistException(
-                      devicePath.getFullPath() + "." + measurementList.get(i),
-                      node.getAsMeasurementMNode().getMeasurementPath()));
+                  new PathAlreadyExistException(
+                      devicePath.getFullPath() + "." + measurementList.get(i)));
             }
-          } else {
+          }
+          if (aliasList != null
+              && aliasList.get(i) != null
+              && store.hasChild(device, aliasList.get(i))) {
             failingMeasurementMap.put(
                 i,
-                new PathAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurementList.get(i)));
+                new AliasAlreadyExistException(
+                    devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
           }
-        }
-        if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
-          failingMeasurementMap.put(
-              i,
-              new AliasAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+        } catch (MetadataException e) {
+          failingMeasurementMap.put(i, e);
         }
       }
       return failingMeasurementMap;

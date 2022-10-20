@@ -48,7 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SchemaRegionTest {
+public class SchemaRegionSnapshotTest {
 
   SchemaEngine schemaEngine = SchemaEngine.getInstance();
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
