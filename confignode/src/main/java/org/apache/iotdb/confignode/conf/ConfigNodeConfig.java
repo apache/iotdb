@@ -30,7 +30,7 @@ import java.io.File;
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** used for communication between data node and config node */
   private int internalPort = 22277;
@@ -45,7 +45,7 @@ public class ConfigNodeConfig {
   private int partitionRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
@@ -161,6 +161,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -641,6 +642,15 @@ public class ConfigNodeConfig {
 
   public void setSchemaRegionRatisLogSegmentSizeMax(long schemaRegionRatisLogSegmentSizeMax) {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
+  }
+
+  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
+    return partitionRegionStandAloneLogSegmentSizeMax;
+  }
+
+  public void setPartitionRegionStandAloneLogSegmentSizeMax(
+      long partitionRegionStandAloneLogSegmentSizeMax) {
+    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
   }
 
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
