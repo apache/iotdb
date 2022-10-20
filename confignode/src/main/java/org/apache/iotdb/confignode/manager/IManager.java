@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,8 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
@@ -54,10 +55,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
@@ -309,6 +311,12 @@ public interface IManager {
   /** Show trigger & DataNode start */
   TGetTriggerTableResp getTriggerTable();
 
+  /** DataNode refresh stateful trigger cache */
+  TGetTriggerTableResp getStatefulTriggerTable();
+
+  /** Get DataNodeLocation of stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName);
+
   /** Get Trigger jar */
   TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);
 
@@ -462,11 +470,13 @@ public interface IManager {
    */
   TShowPipeResp showPipe(TShowPipeReq req);
 
-  TGetRoutingResp getRouting(GetRoutingPlan plan);
+  TGetRegionIdResp getRegionId(GetRegionIdPlan plan);
 
   TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
 
   TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
+
+  TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
 }

@@ -173,12 +173,14 @@ datanode\sbin\start-cli.bat
 
 Linux 移除方式：
 ```
-./confignode/sbin/remove-confignode.sh <id>/<internal_address>:<internal_port>
+./confignode/sbin/remove-confignode.sh <confignode_id>
+./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
 ```
 
 Windows 移除方式：
 ```
-confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
+confignode\sbin\remove-confignode.bat <confignode_id>
+confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 ```
 
 ### 移除 DataNode
@@ -188,13 +190,15 @@ confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
 Linux 移除方式：
 
 ```
-./datanode/sbin/remove-datanode.sh <id>/<rpc_address>:<rpc_port>
+./datanode/sbin/remove-datanode.sh <datanode_id>
+./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
 Windows 移除方式：
 
 ```
-datanode\sbin\remove-datanode.bat <id>/<rpc_address>:<rpc_port>
+datanode\sbin\remove-datanode.bat <datanode_id>
+datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
 ```
 
 ## 快速上手

@@ -135,6 +135,9 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
+  /** The unknown DataNode detect interval in milliseconds */
+  private long unknownDataNodeDetectInterval = heartbeatInterval;
+
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
 
@@ -184,6 +187,34 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
+  /** RatisConsensus protocol, request timeout for ratis client */
+  private long dataRegionRatisRequestTimeoutMs = 10000L;
+
+  private long partitionRegionRatisRequestTimeoutMs = 10000L;
+  private long schemaRegionRatisRequestTimeoutMs = 10000L;
+
+  /** RatisConsensus protocol, exponential back-off retry policy params */
+  private int partitionRegionRatisMaxRetryAttempts = 10;
+
+  private long partitionRegionRatisInitialSleepTimeMs = 100;
+  private long partitionRegionRatisMaxSleepTimeMs = 10000;
+
+  private int dataRegionRatisMaxRetryAttempts = 10;
+  private long dataRegionRatisInitialSleepTimeMs = 100;
+  private long dataRegionRatisMaxSleepTimeMs = 10000;
+
+  private int schemaRegionRatisMaxRetryAttempts = 10;
+  private long schemaRegionRatisInitialSleepTimeMs = 100;
+  private long schemaRegionRatisMaxSleepTimeMs = 10000;
+
+  private long partitionRegionRatisPreserveLogsWhenPurge = 1000;
+  private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
+  private long dataRegionRatisPreserveLogsWhenPurge = 1000;
+
+  /* first election timeout shares between 3 regions */
+  private long ratisFirstElectionTimeoutMinMs = 50;
+  private long ratisFirstElectionTimeoutMaxMs = 150;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -475,6 +506,14 @@ public class ConfigNodeConfig {
     this.heartbeatInterval = heartbeatInterval;
   }
 
+  public long getUnknownDataNodeDetectInterval() {
+    return unknownDataNodeDetectInterval;
+  }
+
+  public void setUnknownDataNodeDetectInterval(long unknownDataNodeDetectInterval) {
+    this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
+  }
+
   public String getRoutingPolicy() {
     return routingPolicy;
   }
@@ -683,5 +722,144 @@ public class ConfigNodeConfig {
       long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
     this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
         schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getDataRegionRatisRequestTimeoutMs() {
+    return dataRegionRatisRequestTimeoutMs;
+  }
+
+  public void setDataRegionRatisRequestTimeoutMs(long dataRegionRatisRequestTimeoutMs) {
+    this.dataRegionRatisRequestTimeoutMs = dataRegionRatisRequestTimeoutMs;
+  }
+
+  public long getPartitionRegionRatisRequestTimeoutMs() {
+    return partitionRegionRatisRequestTimeoutMs;
+  }
+
+  public void setPartitionRegionRatisRequestTimeoutMs(long partitionRegionRatisRequestTimeoutMs) {
+    this.partitionRegionRatisRequestTimeoutMs = partitionRegionRatisRequestTimeoutMs;
+  }
+
+  public long getSchemaRegionRatisRequestTimeoutMs() {
+    return schemaRegionRatisRequestTimeoutMs;
+  }
+
+  public void setSchemaRegionRatisRequestTimeoutMs(long schemaRegionRatisRequestTimeoutMs) {
+    this.schemaRegionRatisRequestTimeoutMs = schemaRegionRatisRequestTimeoutMs;
+  }
+
+  public int getPartitionRegionRatisMaxRetryAttempts() {
+    return partitionRegionRatisMaxRetryAttempts;
+  }
+
+  public void setPartitionRegionRatisMaxRetryAttempts(int partitionRegionRatisMaxRetryAttempts) {
+    this.partitionRegionRatisMaxRetryAttempts = partitionRegionRatisMaxRetryAttempts;
+  }
+
+  public long getPartitionRegionRatisInitialSleepTimeMs() {
+    return partitionRegionRatisInitialSleepTimeMs;
+  }
+
+  public void setPartitionRegionRatisInitialSleepTimeMs(
+      long partitionRegionRatisInitialSleepTimeMs) {
+    this.partitionRegionRatisInitialSleepTimeMs = partitionRegionRatisInitialSleepTimeMs;
+  }
+
+  public long getPartitionRegionRatisMaxSleepTimeMs() {
+    return partitionRegionRatisMaxSleepTimeMs;
+  }
+
+  public void setPartitionRegionRatisMaxSleepTimeMs(long partitionRegionRatisMaxSleepTimeMs) {
+    this.partitionRegionRatisMaxSleepTimeMs = partitionRegionRatisMaxSleepTimeMs;
+  }
+
+  public int getDataRegionRatisMaxRetryAttempts() {
+    return dataRegionRatisMaxRetryAttempts;
+  }
+
+  public void setDataRegionRatisMaxRetryAttempts(int dataRegionRatisMaxRetryAttempts) {
+    this.dataRegionRatisMaxRetryAttempts = dataRegionRatisMaxRetryAttempts;
+  }
+
+  public long getDataRegionRatisInitialSleepTimeMs() {
+    return dataRegionRatisInitialSleepTimeMs;
+  }
+
+  public void setDataRegionRatisInitialSleepTimeMs(long dataRegionRatisInitialSleepTimeMs) {
+    this.dataRegionRatisInitialSleepTimeMs = dataRegionRatisInitialSleepTimeMs;
+  }
+
+  public long getDataRegionRatisMaxSleepTimeMs() {
+    return dataRegionRatisMaxSleepTimeMs;
+  }
+
+  public void setDataRegionRatisMaxSleepTimeMs(long dataRegionRatisMaxSleepTimeMs) {
+    this.dataRegionRatisMaxSleepTimeMs = dataRegionRatisMaxSleepTimeMs;
+  }
+
+  public int getSchemaRegionRatisMaxRetryAttempts() {
+    return schemaRegionRatisMaxRetryAttempts;
+  }
+
+  public void setSchemaRegionRatisMaxRetryAttempts(int schemaRegionRatisMaxRetryAttempts) {
+    this.schemaRegionRatisMaxRetryAttempts = schemaRegionRatisMaxRetryAttempts;
+  }
+
+  public long getSchemaRegionRatisInitialSleepTimeMs() {
+    return schemaRegionRatisInitialSleepTimeMs;
+  }
+
+  public void setSchemaRegionRatisInitialSleepTimeMs(long schemaRegionRatisInitialSleepTimeMs) {
+    this.schemaRegionRatisInitialSleepTimeMs = schemaRegionRatisInitialSleepTimeMs;
+  }
+
+  public long getSchemaRegionRatisMaxSleepTimeMs() {
+    return schemaRegionRatisMaxSleepTimeMs;
+  }
+
+  public void setSchemaRegionRatisMaxSleepTimeMs(long schemaRegionRatisMaxSleepTimeMs) {
+    this.schemaRegionRatisMaxSleepTimeMs = schemaRegionRatisMaxSleepTimeMs;
+  }
+
+  public long getPartitionRegionRatisPreserveLogsWhenPurge() {
+    return partitionRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setPartitionRegionRatisPreserveLogsWhenPurge(
+      long partitionRegionRatisPreserveLogsWhenPurge) {
+    this.partitionRegionRatisPreserveLogsWhenPurge = partitionRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getSchemaRegionRatisPreserveLogsWhenPurge() {
+    return schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setSchemaRegionRatisPreserveLogsWhenPurge(
+      long schemaRegionRatisPreserveLogsWhenPurge) {
+    this.schemaRegionRatisPreserveLogsWhenPurge = schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getDataRegionRatisPreserveLogsWhenPurge() {
+    return dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setDataRegionRatisPreserveLogsWhenPurge(long dataRegionRatisPreserveLogsWhenPurge) {
+    this.dataRegionRatisPreserveLogsWhenPurge = dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getRatisFirstElectionTimeoutMinMs() {
+    return ratisFirstElectionTimeoutMinMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMinMs(long ratisFirstElectionTimeoutMinMs) {
+    this.ratisFirstElectionTimeoutMinMs = ratisFirstElectionTimeoutMinMs;
+  }
+
+  public long getRatisFirstElectionTimeoutMaxMs() {
+    return ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
+    this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 }

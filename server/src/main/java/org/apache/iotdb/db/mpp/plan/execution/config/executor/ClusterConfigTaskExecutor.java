@@ -41,8 +41,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -70,7 +70,7 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -90,7 +90,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -1038,20 +1038,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement) {
+  public SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TGetRoutingResp resp = new TGetRoutingResp();
+    TGetRegionIdResp resp = new TGetRegionIdResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TGetRoutingReq tGetRoutingReq =
-          new TGetRoutingReq(
-              getRegionStatement.getStorageGroup(),
-              getRegionStatement.getPartitionType(),
-              getRegionStatement.getSeriesSlotId());
-      if (getRegionStatement.getTimeSlotId() != null) {
-        tGetRoutingReq.setTimeSlotId(getRegionStatement.getTimeSlotId());
+      TGetRegionIdReq tGetRegionIdReq =
+          new TGetRegionIdReq(
+              getRegionIdStatement.getStorageGroup(),
+              getRegionIdStatement.getPartitionType(),
+              getRegionIdStatement.getSeriesSlotId());
+      if (getRegionIdStatement.getTimeSlotId() != null) {
+        tGetRegionIdReq.setTimeSlotId(getRegionIdStatement.getTimeSlotId());
       }
-      resp = configNodeClient.getRouting(tGetRoutingReq);
+      resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
@@ -1059,7 +1059,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetRegionTask.buildTSBlock(resp, future);
+    GetRegionIdTask.buildTSBlock(resp, future);
     return future;
   }
 
