@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -251,7 +252,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -521,7 +522,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -790,7 +791,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -1077,7 +1078,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -1471,7 +1472,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -1872,7 +1873,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -2283,7 +2284,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -2679,7 +2680,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -3076,7 +3077,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -3483,7 +3484,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -3950,7 +3951,7 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas =
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
@@ -4198,12 +4199,12 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
     TsFileValidationTool.clearMap();
   }
 
-  private Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> readSourceFiles(
+  private Map<PartialPath, List<TimeValuePair>> readSourceFiles(
       List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
-    Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceData = new LinkedHashMap<>();
+    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
     for (int i = 0; i < timeseriesPaths.size(); i++) {
       PartialPath path = timeseriesPaths.get(i);
-      List<Pair<Long, TsPrimitiveType>> dataList = new ArrayList<>();
+      List<TimeValuePair> dataList = new ArrayList<>();
       sourceData.put(path, dataList);
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
@@ -4219,7 +4220,9 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
         IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
         while (iterator.hasNext()) {
           dataList.add(
-              new Pair<>(iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
+              new TimeValuePair(
+                  iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
+          // new Pair<>(iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
           iterator.next();
         }
       }
@@ -4228,10 +4231,10 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
   }
 
   private void validateTargetDatas(
-      Map<PartialPath, List<Pair<Long, TsPrimitiveType>>> sourceDatas, List<TSDataType> dataTypes)
+      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
     int timeseriesIndex = 0;
-    for (Map.Entry<PartialPath, List<Pair<Long, TsPrimitiveType>>> entry : sourceDatas.entrySet()) {
+    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
               entry.getKey(),
@@ -4241,14 +4244,14 @@ public class FastCrossCompactionTest extends AbstractCompactionTest {
               tsFileManager.getTsFileList(true),
               Collections.emptyList(),
               true);
-      List<Pair<Long, TsPrimitiveType>> timeseriesData = entry.getValue();
+      List<TimeValuePair> timeseriesData = entry.getValue();
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
         IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
         while (iterator.hasNext()) {
-          Pair<Long, TsPrimitiveType> data = timeseriesData.remove(0);
-          Assert.assertEquals(data.left.longValue(), iterator.currentTime());
-          Assert.assertTrue(data.right.equals(((TsPrimitiveType[]) iterator.currentValue())[0]));
+          TimeValuePair data = timeseriesData.remove(0);
+          Assert.assertEquals(data.getTimestamp(), iterator.currentTime());
+          Assert.assertEquals(data.getValue(), ((TsPrimitiveType[]) iterator.currentValue())[0]);
           iterator.next();
         }
       }
