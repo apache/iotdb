@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -67,7 +68,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -433,10 +433,10 @@ public interface IManager {
   /**
    * Create Pipe
    *
-   * @param pipeInfo Info about Pipe
+   * @param req Info about Pipe
    * @return TSStatus
    */
-  TSStatus createPipe(TPipeInfo pipeInfo);
+  TSStatus createPipe(TCreatePipeReq req);
 
   /**
    * Start Pipe
