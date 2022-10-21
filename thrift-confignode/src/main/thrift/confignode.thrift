@@ -344,7 +344,7 @@ struct TDropTriggerReq {
 
 struct TGetLocationForTriggerResp {
   1: required common.TSStatus status
-  2: required common.TDataNodeLocation dataNodeLocation
+  2: optional common.TDataNodeLocation dataNodeLocation
 }
 
 // Get trigger table from config node

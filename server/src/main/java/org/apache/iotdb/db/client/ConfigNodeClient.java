@@ -957,7 +957,7 @@ public class ConfigNodeClient
   public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetTriggerTableResp resp = client.getTriggerTable();
+        TGetTriggerTableResp resp = client.getStatefulTriggerTable();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

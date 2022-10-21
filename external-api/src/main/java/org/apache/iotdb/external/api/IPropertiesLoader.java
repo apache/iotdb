@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.external.api;
 
-import java.nio.file.Path;
 import java.util.Properties;
 
 /**
@@ -26,12 +25,17 @@ import java.util.Properties;
  * configurations
  */
 public interface IPropertiesLoader {
-
   /**
    * Load Properties from specific file
    *
-   * @param file The path of the properties file to open
    * @return a property list with values in file.
    */
-  Properties loadProperties(Path file);
+  Properties loadProperties();
+
+  /**
+   * some properties that iotdb does not use by default.
+   *
+   * @return properties.
+   */
+  Properties getCustomizedProperties();
 }
