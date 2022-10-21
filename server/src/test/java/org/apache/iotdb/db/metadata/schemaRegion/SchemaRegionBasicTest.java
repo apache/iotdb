@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -159,10 +160,20 @@ public abstract class SchemaRegionBasicTest {
     SchemaRegionId schemaRegionId = new SchemaRegionId(0);
     SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
     ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
-
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
             new PartialPath("root.sg.wf01.wt01.status"),
+            TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+    schemaRegion.createTimeseries(
+        new CreateTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -206,15 +217,14 @@ public abstract class SchemaRegionBasicTest {
             Arrays.asList("alias1"));
     Assert.assertEquals(0, res2.size());
     // all exist
-    // TODO: 这边没法根据alias来判断？？
     Map<Integer, MetadataException> res3 =
         schemaRegion.checkMeasurementExistence(
             new PartialPath("root.sg.wf01.wt01"),
-            Arrays.asList("status", "s1"),
-            Arrays.asList("", "temp"));
-    Assert.assertEquals(2, res3.size());
+            Arrays.asList("status", "s1", "v1"),
+            Arrays.asList("", "temp", ""));
+    Assert.assertEquals(3, res3.size());
     Assert.assertTrue(res3.get(0) instanceof MeasurementAlreadyExistException);
     Assert.assertTrue(res3.get(1) instanceof AliasAlreadyExistException);
-    // TODO: PathAlreadyExistException
+    Assert.assertTrue(res3.get(2) instanceof PathAlreadyExistException);
   }
 }
