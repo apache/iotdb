@@ -73,6 +73,7 @@ import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -83,6 +84,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@Ignore
 public class SyncTransportTest {
 
   private static LocalConfigNode configNode;
