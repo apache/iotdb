@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for PartitionRegion */
@@ -140,7 +141,10 @@ public class PartitionRegionStateMachine
         createLogFile(logFileId + 1);
       }
       try {
-        logWriter.write(plan.serializeToByteBuffer());
+        ByteBuffer buffer = plan.serializeToByteBuffer();
+        // The method logWriter.write will execute flip() firstly, so we must make position==limit
+        buffer.position(buffer.limit());
+        logWriter.write(buffer);
       } catch (IOException e) {
         LOGGER.error("can't serialize current ConfigPhysicalPlan", e);
       }
@@ -193,6 +197,7 @@ public class PartitionRegionStateMachine
   public void loadSnapshot(File latestSnapshotRootDir) {
     executor.loadSnapshot(latestSnapshotRootDir);
   }
+
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
   protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
@@ -237,48 +242,46 @@ public class PartitionRegionStateMachine
 
   @Override
   public void start() {
-    initStandAloneConfigNode();
-
-    // do nothing
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      initStandAloneConfigNode();
+    }
   }
 
   private void initStandAloneConfigNode() {
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)) {
-      String[] list = new File(fileDir).list();
-      if (list != null && list.length != 0) {
-        for (String logFileName : list) {
-          File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
-          SingleFileLogReader logReader;
+    String[] list = new File(fileDir).list();
+    if (list != null && list.length != 0) {
+      for (String logFileName : list) {
+        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+        SingleFileLogReader logReader;
+        try {
+          logReader = new SingleFileLogReader(logFile);
+        } catch (FileNotFoundException e) {
+          LOGGER.error(
+              "OperationSyncProtector can't open OperationSyncLog: {}, discarded",
+              logFile.getAbsolutePath(),
+              e);
+          continue;
+        }
+        while (logReader.hasNext()) {
+          // read and re-serialize the PhysicalPlan
+          ConfigPhysicalPlan nextPlan = logReader.next();
           try {
-            logReader = new SingleFileLogReader(logFile);
-          } catch (FileNotFoundException e) {
-            LOGGER.error(
-                "OperationSyncProtector can't open OperationSyncLog: {}, discarded",
-                logFile.getAbsolutePath(),
-                e);
-            continue;
+            executor.executeNonQueryPlan(nextPlan);
+          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+            LOGGER.error(e.getMessage());
           }
-          while (logReader.hasNext()) {
-            // read and re-serialize the PhysicalPlan
-            ConfigPhysicalPlan nextPlan = logReader.next();
-            try {
-              executor.executeQueryPlan(nextPlan);
-            } catch (UnknownPhysicalPlanTypeException | AuthException e) {
-              LOGGER.error(e.getMessage());
-            }
-          }
-          logReader.close();
         }
+        logReader.close();
       }
-      for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
-        File file = SystemFileFactory.INSTANCE.getFile(filePath);
-        if (!file.exists()) {
-          logFileId = ID;
-          break;
-        }
-      }
-      createLogFile(logFileId);
     }
+    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
+      File file = SystemFileFactory.INSTANCE.getFile(filePath);
+      if (!file.exists()) {
+        logFileId = ID;
+        break;
+      }
+    }
+    createLogFile(logFileId);
   }
 
   @Override
