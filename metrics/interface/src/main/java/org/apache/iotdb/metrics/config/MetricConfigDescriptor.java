@@ -25,9 +25,10 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
@@ -50,9 +51,9 @@ public class MetricConfigDescriptor {
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
-      try (InputStream inputStream = new FileInputStream(url)) {
+      try (InputStream inputStream = Files.newInputStream(Paths.get(url))) {
         logger.info("Start to read config file {}", url);
-        metricConfig = (MetricConfig) yaml.load(inputStream);
+        metricConfig = yaml.load(inputStream);
       } catch (IOException e) {
         logger.warn(
             "Fail to find config file : {} because of {}, use default config.",
@@ -108,7 +109,7 @@ public class MetricConfigDescriptor {
       // try to get conf folder from IOTDB_HOME
       url = System.getProperty(MetricConstant.IOTDB_HOME, null);
       if (url != null) {
-        url += File.separator + "conf";
+        url += File.separator + "conf" + File.separator + MetricConstant.DATANODE_CONFIG_NAME;
       }
     }
     // second, try to get conf folder of datanode
@@ -118,7 +119,7 @@ public class MetricConfigDescriptor {
         // try to get conf folder from CONFIGNODE_HOME
         url = System.getProperty(MetricConstant.CONFIGNODE_HOME, null);
         if (url != null) {
-          url += File.separator + "conf";
+          url += File.separator + "conf" + File.separator + MetricConstant.CONFIG_NODE_CONFIG_NAME;
         }
       }
     }
@@ -126,13 +127,9 @@ public class MetricConfigDescriptor {
     if (url == null) {
       logger.warn(
           "Cannot find IOTDB_CONF and CONFIGNODE_CONF environment variable when loading "
-              + "config file {}, use default configuration",
-          MetricConstant.CONFIG_NAME);
+              + "config file, use default configuration");
       return null;
-    } else {
-      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
     }
-
     return url;
   }
 
