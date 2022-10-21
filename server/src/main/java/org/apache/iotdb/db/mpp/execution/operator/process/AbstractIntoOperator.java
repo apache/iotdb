@@ -71,7 +71,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
-    this.client = new DataNodeInternalClient(operatorContext.getSessionInfo().getSessionId());
+    this.client = new DataNodeInternalClient(operatorContext.getSessionInfo());
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
@@ -163,6 +163,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
+    client.close();
     child.close();
   }
 
@@ -330,6 +331,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       if (rowCount != TABLET_ROW_LIMIT) {
         times = Arrays.copyOf(times, rowCount);
         for (int i = 0; i < columns.length; i++) {
+          bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
           switch (dataTypes[i]) {
             case BOOLEAN:
               columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
@@ -357,8 +359,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       }
 
       insertTabletStatement.setTimes(times);
-      insertTabletStatement.setColumns(columns);
       insertTabletStatement.setBitMaps(bitMaps);
+      insertTabletStatement.setColumns(columns);
 
       return insertTabletStatement;
     }

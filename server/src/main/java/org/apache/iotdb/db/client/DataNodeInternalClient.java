@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.exception.IntoProcessException;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
@@ -34,11 +37,19 @@ import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class DataNodeInternalClient {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeInternalClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -52,7 +63,7 @@ public class DataNodeInternalClient {
 
   private final long sessionId;
 
-  public DataNodeInternalClient(long sessionId) {
+  public DataNodeInternalClient(SessionInfo sessionInfo) {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
@@ -60,7 +71,31 @@ public class DataNodeInternalClient {
       PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
     }
-    this.sessionId = sessionId;
+    if (!SESSION_MANAGER.checkLogin(sessionInfo.getSessionId())
+        || !Objects.equals(
+            SESSION_MANAGER.getUsername(sessionInfo.getSessionId()), sessionInfo.getUserName())) {
+      try {
+        this.sessionId =
+            SESSION_MANAGER.requestSessionId(
+                sessionInfo.getUserName(),
+                sessionInfo.getZoneId(),
+                IoTDBConstant.ClientVersion.V_0_13);
+        SessionTimeoutManager.getInstance().register(sessionId);
+
+        LOGGER.info(
+            "User: {}, opens internal Session-{} in SELECT INTO",
+            sessionInfo.getUserName(),
+            sessionId);
+      } catch (Exception e) {
+        LOGGER.info(
+            "User {} opens internal Session failed in SELECT INTO", sessionInfo.getUserName());
+        throw new IntoProcessException(
+            String.format(
+                "User %s opens internal Session failed in SELECT INTO", sessionInfo.getUserName()));
+      }
+    } else {
+      this.sessionId = sessionInfo.getSessionId();
+    }
   }
 
   public TSStatus insertTablets(InsertMultiTabletsStatement statement) {
@@ -86,5 +121,9 @@ public class DataNodeInternalClient {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
+  }
+
+  public void close() {
+    SESSION_MANAGER.closeSession(sessionId);
   }
 }
