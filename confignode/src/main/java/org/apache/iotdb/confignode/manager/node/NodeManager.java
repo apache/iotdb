@@ -85,6 +85,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -133,12 +134,15 @@ public class NodeManager {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Unknown-DataNode-Detector");
   private final Set<TDataNodeLocation> oldUnknownNodes;
 
+  private final Random random;
+
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.oldUnknownNodes = new HashSet<>();
+    this.random = new Random(System.currentTimeMillis());
   }
 
   private void setGlobalConfig(DataNodeRegisterResp dataSet) {
@@ -829,26 +833,15 @@ public class NodeManager {
    * @return TDataNodeLocation
    */
   public Optional<TDataNodeLocation> getLowestLoadDataNode() {
-    AtomicInteger result = new AtomicInteger(-1);
-    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+    // TODO get real lowest load data node after scoring algorithm being implemented
+    List<TDataNodeConfiguration> targetDataNodeList =
+        filterDataNodeThroughStatus(NodeStatus.Running);
 
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          long score = heartbeatCache.getLoadScore();
-          if (heartbeatCache.getNodeStatus() == NodeStatus.Running
-              && score < lowestLoadScore.get()) {
-            result.set(dataNodeId);
-            lowestLoadScore.set(score);
-          }
-        });
-
-    if (result.get() == -1) {
+    if (targetDataNodeList == null || targetDataNodeList.isEmpty()) {
       return Optional.empty();
     } else {
-      LOGGER.info(
-          "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-      return Optional.of(
-          configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get()));
+      int index = random.nextInt(targetDataNodeList.size());
+      return Optional.of(targetDataNodeList.get(index).location);
     }
   }
 

@@ -117,7 +117,9 @@ public class CQManager {
     try {
       // 1. shutdown previous cq schedule thread pool
       try {
-        executor.shutdown();
+        if (executor != null) {
+          executor.shutdown();
+        }
       } catch (Throwable t) {
         // just print the error log because we should make sure we can start a new cq schedule pool
         // successfully in the next steps
@@ -166,6 +168,8 @@ public class CQManager {
     } finally {
       lock.writeLock().unlock();
     }
-    previous.shutdown();
+    if (previous != null) {
+      previous.shutdown();
+    }
   }
 }

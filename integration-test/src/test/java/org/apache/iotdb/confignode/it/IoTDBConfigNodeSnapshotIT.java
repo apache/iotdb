@@ -291,8 +291,8 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   private Set<TCQEntry> createCQs(SyncConfigNodeIServiceClient client) throws TException {
-    String sql1 = "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END";
-    String sql2 = "create cq testCq1 BEGIN select s1 into root.backup.d2.s1 from root.sg.d2 END";
+    String sql1 = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.sg.d1 END";
+    String sql2 = "create cq testCq2 BEGIN select s1 into root.backup.d2(s1) from root.sg.d2 END";
     TCreateCQReq req1 =
         new TCreateCQReq(
             "testCq1",
@@ -301,7 +301,7 @@ public class IoTDBConfigNodeSnapshotIT {
             1000,
             0,
             (byte) 0,
-            "select s1 into root.backup.d1.s1 from root.sg.d1",
+            "select s1 into root.backup.d1(s1) from root.sg.d1",
             sql1,
             "Asia");
     TCreateCQReq req2 =
@@ -312,7 +312,7 @@ public class IoTDBConfigNodeSnapshotIT {
             1000,
             0,
             (byte) 1,
-            "select s1 into root.backup.d2.s1 from root.sg.d2",
+            "select s1 into root.backup.d2(s1) from root.sg.d2",
             sql2,
             "Asia");
 
