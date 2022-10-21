@@ -37,6 +37,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getAllReplicaDataNodeRegionGroupMap;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getLeaderDataNodeRegionGroupMap;
 
+/**
+ * This class takes the responsibility of sending region related requests to DataNode for execution,
+ * mainly focus on DataNode selection and retry on failure.
+ *
+ * @param <T>
+ */
 abstract class DataNodeRegionTask<T> {
 
   protected final ConfigNodeProcedureEnv env;
@@ -170,6 +176,14 @@ abstract class DataNodeRegionTask<T> {
     return responseMap;
   }
 
+  /**
+   * This method should be implemented as constructing and send custom DataNode requests and collect
+   * response of each DataNode.
+   *
+   * @param dataNodeLocation the location of target DataNode
+   * @param consensusGroupIdList the target region group to execute request
+   * @return the execution result of each DataNode
+   */
   protected abstract Map<Integer, TSStatus> sendRequest(
       TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList);
 
