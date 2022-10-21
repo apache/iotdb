@@ -699,17 +699,33 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
     TemplateSetInfoResp resp = new TemplateSetInfoResp();
     try {
-      Map<PartialPath, List<Template>> result = new HashMap<>();
+
+      Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
       for (PartialPath pattern : plan.getPatternList()) {
-        Set<Integer> templateIdSet = mTree.getTemplateSetInfo(pattern);
-        if (templateIdSet.isEmpty()) {
+        Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+        if (templateSetInfo.isEmpty()) {
           continue;
         }
-        List<Template> templateList = new ArrayList<>(templateIdSet.size());
-        for (int templateId : templateIdSet) {
+        templateSetInfo.forEach(
+            (templateId, templateSetPathList) -> {
+              for (PartialPath templateSetPath : templateSetPathList) {
+                pattern
+                    .alterPrefixPath(templateSetPath)
+                    .forEach(
+                        path ->
+                            allTemplateSetInfo
+                                .compute(path, (k, v) -> new HashSet<>())
+                                .add(templateId));
+              }
+            });
+      }
+      Map<PartialPath, List<Template>> result = new HashMap<>();
+      for (Map.Entry<PartialPath, Set<Integer>> entry : allTemplateSetInfo.entrySet()) {
+        List<Template> templateList = new ArrayList<>(entry.getValue().size());
+        for (int templateId : entry.getValue()) {
           templateList.add(templateTable.getTemplate(templateId));
         }
-        result.put(pattern, templateList);
+        result.put(entry.getKey(), templateList);
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setPatternTemplateMap(result);

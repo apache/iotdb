@@ -669,8 +669,9 @@ public class ConfigMTree {
     return resSet;
   }
 
-  public Set<Integer> getTemplateSetInfo(PartialPath pathPattern) throws MetadataException {
-    Set<Integer> result = new HashSet<>();
+  public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
+      throws MetadataException {
+    Map<Integer, Set<PartialPath>> result = new HashMap<>();
     CollectorTraverser<List<Integer>> collector =
         new CollectorTraverser<List<Integer>>(root, pathPattern, store) {
           @Override
@@ -678,7 +679,9 @@ public class ConfigMTree {
               throws MetadataException {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
-              result.add(node.getSchemaTemplateId());
+              result
+                  .compute(node.getSchemaTemplateId(), (k, v) -> new HashSet<>())
+                  .add(getCurrentPartialPath(node));
               // descendants of the node cannot set another template, exit from this branch
               return true;
             }
@@ -690,7 +693,9 @@ public class ConfigMTree {
               throws MetadataException {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
-              result.add(node.getSchemaTemplateId());
+              result
+                  .compute(node.getSchemaTemplateId(), (k, v) -> new HashSet<>())
+                  .add(getCurrentPartialPath(node));
             }
             return true;
           }
