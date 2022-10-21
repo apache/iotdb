@@ -46,6 +46,9 @@ public class SnapshotTest {
   private static class EmptyStorageWithOnlySMDir implements RaftStorage {
 
     @Override
+    public void initialize() throws IOException {}
+
+    @Override
     public RaftStorageDirectory getStorageDir() {
       return new RaftStorageDirectory() {
         @Override

@@ -1,18 +1,16 @@
 name: New Standalone IT
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - 'docs/**'
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - 'docs/**'
-  # allow manually run the action:
-  workflow_dispatch:
+#  push:
+#    branches:
+#    paths-ignore:
+#      - 'docs/**'
+#  pull_request:
+#    branches:
+#    paths-ignore:
+#      - 'docs/**'
+#  # allow manually run the action:
+#  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

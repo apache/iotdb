@@ -83,13 +83,18 @@ public enum ConfigPhysicalPlanType {
   GetPipeSink,
   PreCreatePipe,
   SetPipeStatus,
+  DropPipe,
   ShowPipe,
   AddTriggerInTable,
   DeleteTriggerInTable,
   GetTriggerTable,
   UpdateTriggerStateInTable,
   GetTriggerJar,
-  GetRouting,
+  GetRegionId,
   GetSeriesSlotList,
-  GetTimeSlotList
+  GetTimeSlotList,
+  UpdateTriggersOnTransferNodes,
+  UpdateTriggerLocation,
+  GetTransferringTriggers,
+  GetTriggerLocation
 }

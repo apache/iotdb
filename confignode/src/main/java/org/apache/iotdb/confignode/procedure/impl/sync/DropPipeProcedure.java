@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -57,8 +58,12 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to drop PIPE [{}]", pipeName);
-    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
-    return pipeInfo.getStatus().equals(PipeStatus.DROP);
+    try {
+      PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+      return false;
+    } catch (PipeNotExistException e) {
+      return true;
+    }
   }
 
   @Override
@@ -89,8 +94,7 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to drop PIPE [{}] on Config Nodes", pipeName);
-    TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.DROP);
+    TSStatus status = env.getConfigManager().getSyncManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }

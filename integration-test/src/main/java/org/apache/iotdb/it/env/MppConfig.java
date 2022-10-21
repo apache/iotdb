@@ -85,6 +85,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
+    engineProperties.setProperty(
+        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
+    return this;
+  }
+
+  @Override
   public BaseConfig setCompressor(String compressor) {
     engineProperties.setProperty("compressor", compressor);
     return this;
@@ -242,9 +249,9 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+  public BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
     confignodeProperties.setProperty(
-        "time_partition_interval", String.valueOf(timePartitionInterval));
+        "time_partition_interval_for_routing", String.valueOf(timePartitionInterval));
     return this;
   }
 
