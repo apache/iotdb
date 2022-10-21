@@ -628,8 +628,9 @@ public class MTree implements Serializable {
   // endregion
 
   public void setStorageGroup(PartialPath path) throws MetadataException {
-    int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
-    setStorageGroup(path, STORAGE_GROUP_NUM);
+    int virtualStorageGroupNum =
+        IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    setStorageGroup(path, virtualStorageGroupNum);
   }
 
   // region StorageGroup Operation, including set and delete
