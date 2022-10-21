@@ -214,7 +214,7 @@ public abstract class SchemaRegionBasicTest {
         schemaRegion.checkMeasurementExistence(
             new PartialPath("root.sg.wf01"),
             Collections.singletonList("wt01"),
-            Arrays.asList("alias1"));
+            Collections.singletonList("alias1"));
     Assert.assertEquals(0, res2.size());
     // all exist
     Map<Integer, MetadataException> res3 =
