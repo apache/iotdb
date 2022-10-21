@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -469,6 +470,13 @@ public interface IManager {
    * @return TShowPipeResp contains the TShowPipeInfo
    */
   TShowPipeResp showPipe(TShowPipeReq req);
+
+  /**
+   * Get all pipe information. It is used for DataNode registration and restart.
+   *
+   * @return All pipe information.
+   */
+  TGetAllPipeInfoResp getAllPipeInfo();
 
   TGetRegionIdResp getRegionId(GetRegionIdPlan plan);
 

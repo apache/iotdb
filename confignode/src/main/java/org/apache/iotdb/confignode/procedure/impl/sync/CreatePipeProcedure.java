@@ -116,6 +116,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
     LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
+    env.getConfigManager().getSyncManager().unlockSyncMetadata();
     // TODO(sync): roll back logic;
   }
 

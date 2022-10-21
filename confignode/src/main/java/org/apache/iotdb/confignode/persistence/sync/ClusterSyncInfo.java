@@ -47,12 +47,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ClusterSyncInfo implements SnapshotProcessor {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfo.class);
 
   private final SyncMetadata syncMetadata;
+
+  private final ReentrantLock syncMetadataLock = new ReentrantLock();
 
   public ClusterSyncInfo() {
     syncMetadata = new SyncMetadata();
@@ -167,6 +171,27 @@ public class ClusterSyncInfo implements SnapshotProcessor {
       throw new PipeNotExistException(pipeName);
     }
     return pipeInfo;
+  }
+
+  public List<PipeInfo> getAllPipeInfos() {
+    return syncMetadata.getAllPipeInfos();
+  }
+
+  // endregion
+
+  // ======================================================
+  // region Implement of Snapshot
+  // ======================================================
+
+  public void lockSyncMetadata() {
+    LOGGER.info("Lock SyncMetadata");
+    syncMetadataLock.lock();
+    LOGGER.info("Acquire SyncMetadata lock");
+  }
+
+  public void unlockSyncMetadata() {
+    LOGGER.info("Unlock SyncMetadata");
+    syncMetadataLock.unlock();
   }
 
   // endregion
