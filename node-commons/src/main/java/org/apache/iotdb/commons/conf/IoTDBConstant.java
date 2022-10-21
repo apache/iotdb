@@ -241,6 +241,9 @@ public class IoTDBConstant {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
+
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;
   public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;

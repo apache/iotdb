@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -67,6 +69,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -88,12 +91,19 @@ public class ProcedureManager {
   private IProcedureStore store;
   private ConfigNodeProcedureEnv env;
 
+  private long planSizeLimit;
+
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
     this.scheduler = new SimpleProcedureScheduler();
     this.store = new ConfigProcedureStore(configManager, procedureInfo);
     this.env = new ConfigNodeProcedureEnv(configManager, scheduler);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
+    this.planSizeLimit =
+        ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+            - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
   }
 
   public void shiftExecutor(boolean running) {
@@ -241,8 +251,23 @@ public class ProcedureManager {
    * @return SUCCESS_STATUS if trigger created successfully, CREATE_TRIGGER_ERROR otherwise
    */
   public TSStatus createTrigger(TriggerInformation triggerInformation, Binary jarFile) {
-    long procedureId =
-        executor.submitProcedure(new CreateTriggerProcedure(triggerInformation, jarFile));
+    final CreateTriggerProcedure createTriggerProcedure =
+        new CreateTriggerProcedure(triggerInformation, jarFile);
+    try {
+      final int planSize = new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize();
+      if (planSize > planSizeLimit) {
+        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    triggerInformation.getTriggerName()));
+      }
+    } catch (IOException e) {
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
+    long procedureId = executor.submitProcedure(createTriggerProcedure);
     List<TSStatus> statusList = new ArrayList<>();
     boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

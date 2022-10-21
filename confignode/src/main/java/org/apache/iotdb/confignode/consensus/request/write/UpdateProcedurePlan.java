@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,12 +46,24 @@ public class UpdateProcedurePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.UpdateProcedure);
   }
 
+  public UpdateProcedurePlan(Procedure procedure) {
+    this();
+    this.procedure = procedure;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.UpdateProcedure.ordinal());
     if (procedure != null) {
       procedure.serialize(stream);
     }
+  }
+
+  public int getSerializedSize() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeImpl(outputStream);
+    return byteArrayOutputStream.size();
   }
 
   @Override
