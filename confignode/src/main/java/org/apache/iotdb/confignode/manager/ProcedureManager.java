@@ -91,7 +91,7 @@ public class ProcedureManager {
   private IProcedureStore store;
   private ConfigNodeProcedureEnv env;
 
-  private long planSizeLimit;
+  private final long planSizeLimit;
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
