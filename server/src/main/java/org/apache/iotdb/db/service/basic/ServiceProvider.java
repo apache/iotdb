@@ -23,6 +23,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -147,7 +148,9 @@ public abstract class ServiceProvider {
       if (!checkAuthorization(plan, SESSION_MANAGER.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + plan.getOperatorType());
+            "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(plan.getOperatorType())]);
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);

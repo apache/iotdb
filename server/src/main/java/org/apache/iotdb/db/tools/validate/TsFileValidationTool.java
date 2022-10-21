@@ -85,6 +85,15 @@ public class TsFileValidationTool {
   private static final List<File> fileList = new ArrayList<>();
   public static int badFileNum = 0;
 
+  // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
+  private static final Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
+
+  // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
+  private static final Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
+
+  // fileName -> isBadFile
+  private static final Map<String, Boolean> isBadFileMap = new HashMap<>();
+
   /**
    * The form of param is: [path of data dir or tsfile] [-pd = print details or not] [-f = path of
    * outFile]. Eg: xxx/iotdb/data/data1 xxx/xxx.tsfile -pd=true -f=xxx/TsFile_validation_view.txt
@@ -154,6 +163,7 @@ public class TsFileValidationTool {
                         Long.parseLong(f2.getName().split("-")[0])));
             findUncorrectFiles(tsFiles);
           }
+          clearMap();
         }
       }
     }
@@ -166,13 +176,6 @@ public class TsFileValidationTool {
   }
 
   public static void findUncorrectFiles(List<File> tsFiles) {
-    // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
-    Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
-    // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
-    Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
-    // fileName -> isBadFile
-    Map<String, Boolean> isBadFileMap = new HashMap<>();
-
     for (File tsFile : tsFiles) {
       List<String> previousBadFileMsgs = new ArrayList<>();
       try {
@@ -522,7 +525,7 @@ public class TsFileValidationTool {
     }
   }
 
-  public static boolean checkArgs(String[] args) {
+  private static boolean checkArgs(String[] args) {
     if (args.length < 1) {
       System.out.println(
           "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
@@ -560,6 +563,12 @@ public class TsFileValidationTool {
       }
       return true;
     }
+  }
+
+  public static void clearMap() {
+    measurementLastTime.clear();
+    deviceEndTime.clear();
+    isBadFileMap.clear();
   }
 
   private static boolean checkIsDirectory(File dir) {

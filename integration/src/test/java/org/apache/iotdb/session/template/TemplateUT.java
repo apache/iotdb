@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.session.template;
 
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -41,6 +44,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -500,7 +504,11 @@ public class TemplateUT {
     try {
       nSession.createSchemaTemplate(getTemplate("t1"));
     } catch (Exception e) {
-      assertEquals("602: No permissions for this operation CREATE_TEMPLATE", e.getMessage());
+      assertEquals(
+          "602: No permissions for this operation, please add privilege "
+              + PrivilegeType.values()[
+                  AuthorityChecker.translateToPermissionId(Operator.OperatorType.CREATE_TEMPLATE)],
+          e.getMessage());
     }
 
     session.executeNonQueryStatement(
@@ -514,14 +522,22 @@ public class TemplateUT {
     try {
       nSession.setSchemaTemplate("t1", "root.sg2.d1");
     } catch (Exception e) {
-      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+      assertEquals(
+          "602: No permissions for this operation, please add privilege "
+              + PrivilegeType.values()[
+                  AuthorityChecker.translateToPermissionId(Operator.OperatorType.SET_TEMPLATE)],
+          e.getMessage());
     }
 
     session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg1");
     try {
       nSession.setSchemaTemplate("t1", "root.sg2.d1");
     } catch (Exception e) {
-      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+      assertEquals(
+          "602: No permissions for this operation, please add privilege "
+              + PrivilegeType.values()[
+                  AuthorityChecker.translateToPermissionId(Operator.OperatorType.SET_TEMPLATE)],
+          e.getMessage());
     }
 
     session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg2");
@@ -533,7 +549,12 @@ public class TemplateUT {
     try {
       nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
     } catch (Exception e) {
-      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+      assertEquals(
+          "602: No permissions for this operation, please add privilege "
+              + PrivilegeType.values()[
+                  AuthorityChecker.translateToPermissionId(
+                      Operator.OperatorType.DEACTIVATE_TEMPLATE)],
+          e.getMessage());
     }
 
     session.close();
@@ -554,7 +575,12 @@ public class TemplateUT {
     try {
       nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
     } catch (Exception e) {
-      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+      assertEquals(
+          "602: No permissions for this operation, please add privilege "
+              + PrivilegeType.values()[
+                  AuthorityChecker.translateToPermissionId(
+                      Operator.OperatorType.DEACTIVATE_TEMPLATE)],
+          e.getMessage());
     }
 
     session.executeNonQueryStatement(
@@ -647,6 +673,63 @@ public class TemplateUT {
       fail();
     } catch (Exception e) {
       assertEquals("326: Template is in use on root.sg.v1.d1", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSingleMeasurementTemplateAlignment() throws IoTDBConnectionException {
+    try {
+      List<String> str_list = new ArrayList<>();
+      str_list.add("at1");
+      List<TSDataType> type_list = new ArrayList<>();
+      type_list.add(TSDataType.FLOAT);
+      List<TSEncoding> encoding_list = new ArrayList<>();
+      encoding_list.add(TSEncoding.GORILLA);
+      List<CompressionType> compression_type_list = new ArrayList<>();
+      compression_type_list.add(CompressionType.SNAPPY);
+      session.createSchemaTemplate(
+          "t1", str_list, type_list, encoding_list, compression_type_list, true);
+      session.addAlignedMeasurementInTemplate(
+          "t1", "at2", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      session.addAlignedMeasurementInTemplate(
+          "t1", "at3", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+
+      session.executeNonQueryStatement("set template t1 to root.SG1");
+      session.executeNonQueryStatement("create timeseries of schema template on root.SG1.a");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
+
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    try {
+      session = new Session("127.0.0.1", 6667, "root", "root", 16);
+      session.open();
+
+      SessionDataSet res = session.executeQueryStatement("show devices");
+      if (res.hasNext()) {
+        Assert.assertEquals("true", res.next().getFields().get(1).toString());
+      }
+
+      res = session.executeQueryStatement("show timeseries");
+      int cnt = 0;
+      while (res.hasNext()) {
+        cnt++;
+        res.next();
+      }
+      assertEquals(3, cnt);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 

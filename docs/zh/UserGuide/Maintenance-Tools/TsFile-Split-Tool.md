@@ -19,7 +19,7 @@
 
 -->
 
-# TsFile 拆分工具
+## TsFile 拆分工具
 
 0.12 版本的 IoTDB 会产生很大的文件，在运维过程中分析起来比较困难。因此，从 0.12.5 版本和 0.13 版本起，提供TsFile 分离工具，该工具可以将大的 TsFile 文件根据配置项拆分为数个小文件。该启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-{version}\tools\tsfileToolSet` 目录中。
 

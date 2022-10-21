@@ -25,7 +25,9 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-IOTDB_CLI_CONF=${IOTDB_HOME}/conf
+if [ -z "${IOTDB_CLI_CONF}" ]; then
+  IOTDB_CLI_CONF=${IOTDB_HOME}/conf
+fi
 
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 

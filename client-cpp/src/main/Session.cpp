@@ -102,21 +102,117 @@ shared_ptr<TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus &s
     return resp;
 }
 
+void Tablet::createColumns() {
+    for (size_t i = 0; i < schemas.size(); i++) {
+        TSDataType::TSDataType dataType = schemas[i].second;
+        switch (dataType) {
+            case TSDataType::BOOLEAN:
+                values[i] = new bool[maxRowNumber];
+                break;
+            case TSDataType::INT32:
+                values[i] = new int[maxRowNumber];
+                break;
+            case TSDataType::INT64:
+                values[i] = new int64_t[maxRowNumber];
+                break;
+            case TSDataType::FLOAT:
+                values[i] = new float[maxRowNumber];
+                break;
+            case TSDataType::DOUBLE:
+                values[i] = new double[maxRowNumber];
+                break;
+            case TSDataType::TEXT:
+                values[i] = new string[maxRowNumber];
+                break;
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
+    }
+}
+
+void Tablet::deleteColumns() {
+    for (size_t i = 0; i < schemas.size(); i++) {
+        TSDataType::TSDataType dataType = schemas[i].second;
+        switch (dataType) {
+            case TSDataType::BOOLEAN: {
+                bool* valueBuf = (bool*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::INT32: {
+                int* valueBuf = (int*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::INT64: {
+                int64_t* valueBuf = (int64_t*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::FLOAT: {
+                float* valueBuf = (float*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                double* valueBuf = (double*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::TEXT: {
+                string* valueBuf = (string*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
+    }
+}
+
+void Tablet::addValue(int schemaId, int rowIndex, void* value) {
+    TSDataType::TSDataType dataType = schemas[schemaId].second;
+    switch (dataType) {
+        case TSDataType::BOOLEAN: {
+            bool* valueBuf = (bool*)(values[schemaId]);
+            valueBuf[rowIndex] = *((bool*)value);
+            break;
+        }
+        case TSDataType::INT32: {
+            int* valueBuf = (int*)(values[schemaId]);
+            valueBuf[rowIndex] = *((int*)value);
+            break;
+        }
+        case TSDataType::INT64: {
+            int64_t* valueBuf = (int64_t*)(values[schemaId]);
+            valueBuf[rowIndex] = *((int64_t*)value);
+            break;
+        }
+        case TSDataType::FLOAT: {
+            float* valueBuf = (float*)(values[schemaId]);
+            valueBuf[rowIndex] = *((float*)value);
+            break;
+        }
+        case TSDataType::DOUBLE: {
+            double* valueBuf = (double*)(values[schemaId]);
+            valueBuf[rowIndex] = *((double*)value);
+            break;
+        }
+        case TSDataType::TEXT: {
+            string* valueBuf = (string*)(values[schemaId]);
+            valueBuf[rowIndex] = *(string*)value;
+            break;
+        }
+        default:
+            throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+    }
+}
+
 void Tablet::reset() {
     rowSize = 0;
     for (int i = 0; i < schemas.size(); i++) {
         BitMap *bitMap = bitMaps[i].get();
         bitMap->reset();
-    }
-}
-
-void Tablet::createColumns() {
-    // create timestamp column
-    timestamps.resize(maxRowNumber);
-    // create value columns
-    values.resize(schemas.size());
-    for (size_t i = 0; i < schemas.size(); i++) {
-        values[i].resize(maxRowNumber);
     }
 }
 
@@ -143,15 +239,17 @@ int Tablet::getValueByteSize() {
             case TSDataType::DOUBLE:
                 valueOccupation += rowSize * 8;
                 break;
-            case TSDataType::TEXT:
+            case TSDataType::TEXT: {
                 valueOccupation += rowSize * 4;
-                for (const string &value: values[i]) {
-                    valueOccupation += value.size();
+                string* valueBuf = (string*)(values[i]);
+                for (size_t j = 0; j < rowSize; j++) {
+                    valueOccupation += (int)(valueBuf[j].size());
                 }
                 break;
+            }
             default:
                 throw UnSupportedDataTypeException(
-                        string("Data type ") + to_string(schemas[i].second) + " is not supported.");
+                    string("Data type ") + to_string(schemas[i].second) + " is not supported.");
         }
     }
     return valueOccupation;
@@ -173,58 +271,75 @@ string SessionUtils::getValue(const Tablet &tablet) {
     MyStringBuffer valueBuffer;
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
-        BitMap *bitMap = tablet.bitMaps[i].get();
-        switch (dataType) {
-            case TSDataType::BOOLEAN:
+        BitMap* bitMap = tablet.bitMaps[i].get();
+        switch (dataType) { 
+            case TSDataType::BOOLEAN: {
+                bool* valueBuf = (bool*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap->isMarked(index)) {
-                        valueBuffer.putBool(tablet.values[i][index] == "true");
-                    } else {
+                        valueBuffer.putBool(valueBuf[index]);
+                    }
+                    else {
                         valueBuffer.putBool(false);
                     }
                 }
                 break;
-            case TSDataType::INT32:
+            }
+            case TSDataType::INT32: {
+                int* valueBuf = (int*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap->isMarked(index)) {
-                        valueBuffer.putInt(stoi(tablet.values[i][index]));
-                    } else {
+                        valueBuffer.putInt(valueBuf[index]);
+                    }
+                    else {
                         valueBuffer.putInt((numeric_limits<int>::min)());
                     }
                 }
                 break;
-            case TSDataType::INT64:
+            }
+            case TSDataType::INT64: {
+                int64_t* valueBuf = (int64_t*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap->isMarked(index)) {
-                        valueBuffer.putLong(stol(tablet.values[i][index]));
-                    } else {
+                        valueBuffer.putLong(valueBuf[index]);
+                    }
+                    else {
                         valueBuffer.putLong((numeric_limits<int64_t>::min)());
                     }
                 }
                 break;
-            case TSDataType::FLOAT:
+            }
+            case TSDataType::FLOAT: {
+                float* valueBuf = (float*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap->isMarked(index)) {
-                        valueBuffer.putFloat(stof(tablet.values[i][index]));
-                    } else {
+                        valueBuffer.putFloat(valueBuf[index]);
+                    }
+                    else {
                         valueBuffer.putFloat((numeric_limits<float>::min)());
                     }
                 }
                 break;
-            case TSDataType::DOUBLE:
+            }
+            case TSDataType::DOUBLE: {
+                double* valueBuf = (double*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap->isMarked(index)) {
-                        valueBuffer.putDouble(stod(tablet.values[i][index]));
-                    } else {
+                        valueBuffer.putDouble(valueBuf[index]);
+                    }
+                    else {
                         valueBuffer.putDouble((numeric_limits<double>::min)());
                     }
                 }
                 break;
-            case TSDataType::TEXT:
+            }
+            case TSDataType::TEXT: {
+                string* valueBuf = (string*)(tablet.values[i]);
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putString(tablet.values[i][index]);
+                    valueBuffer.putString(valueBuf[index]);
                 }
                 break;
+            }
             default:
                 throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
@@ -274,6 +389,18 @@ bool SessionDataSet::hasNext() {
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
                 tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.pos = 0;
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    valueBuffers.pop_back();
+                    bitmapBuffers.pop_back();
+                }
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    std::string name = columnNameList[i];
+                    valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->valueList[columnMap[name]])));
+                    bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->bitmapList[columnMap[name]])));
+                }
                 rowsIndex = 0;
             }
         }
@@ -474,7 +601,28 @@ bool Session::checkSorted(const vector<int64_t> &times) {
     return true;
 }
 
-void Session::sortTablet(Tablet &tablet) {
+template<typename T>
+std::vector<T> sortList(const std::vector<T>& valueList, const int* index, int indexLength) {
+    std::vector<T> sortedValues(valueList.size());
+    for (int i = 0; i < indexLength; i++) {
+        sortedValues[i] = valueList[index[i]];
+    }
+    return sortedValues;
+}
+
+template<typename T>
+void sortValuesList(T* valueList, const int* index, int indexLength) {
+    T* sortedValues = new T[indexLength];
+    for (int i = 0; i < indexLength; i++) {
+        sortedValues[i] = valueList[index[i]];
+    }
+    for (int i = 0; i < indexLength; i++) {
+        valueList[i] = sortedValues[i];
+    }
+    delete[] sortedValues;
+}
+
+void Session::sortTablet(Tablet& tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -488,7 +636,35 @@ void Session::sortTablet(Tablet &tablet) {
     this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
     tablet.timestamps = sortList(tablet.timestamps, index, tablet.rowSize);
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
-        tablet.values[i] = sortList(tablet.values[i], index, tablet.rowSize);
+        TSDataType::TSDataType dataType = tablet.schemas[i].second;
+        switch (dataType) {
+            case TSDataType::BOOLEAN: {
+                sortValuesList((bool*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::INT32: {
+                sortValuesList((int*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::INT64: {
+                sortValuesList((int64_t*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::FLOAT: {
+                sortValuesList((float*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                sortValuesList((double*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::TEXT: {
+                sortValuesList((string*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
     }
 
     delete[] index;
@@ -546,7 +722,7 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType> &types, const 
                 appendValues(buf, values[i], sizeof(double));
                 break;
             case TSDataType::TEXT: {
-                int len = strlen(values[i]);
+                int len = (int)strlen(values[i]);
                 appendValues(buf, (char *) (&len), sizeof(int));
                 // no need to change the byte order of string value
                 buf.append(values[i], len);
@@ -909,14 +1085,14 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
     if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
-            index[i] = i;
+            index[i] = (int)i;
         }
 
-        this->sortIndexByTimestamp(index, times, times.size());
-        times = sortList(times, index, times.size());
-        measurementsList = sortList(measurementsList, index, times.size());
-        typesList = sortList(typesList, index, times.size());
-        valuesList = sortList(valuesList, index, times.size());
+        this->sortIndexByTimestamp(index, times, (int)(times.size()));
+        times = sortList(times, index, (int)(times.size()));
+        measurementsList = sortList(measurementsList, index, (int)(times.size()));
+        typesList = sortList(typesList, index, (int)(times.size()));
+        valuesList = sortList(valuesList, index, (int)(times.size()));
         delete[] index;
     }
     TSInsertRecordsOfOneDeviceReq request;
@@ -961,14 +1137,14 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
     if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
-            index[i] = i;
+            index[i] = (int)i;
         }
 
-        this->sortIndexByTimestamp(index, times, times.size());
-        times = sortList(times, index, times.size());
-        measurementsList = sortList(measurementsList, index, times.size());
-        typesList = sortList(typesList, index, times.size());
-        valuesList = sortList(valuesList, index, times.size());
+        this->sortIndexByTimestamp(index, times, (int)(times.size()));
+        times = sortList(times, index, (int)(times.size()));
+        measurementsList = sortList(measurementsList, index, (int)(times.size()));
+        typesList = sortList(typesList, index, (int)(times.size()));
+        valuesList = sortList(valuesList, index, (int)(times.size()));
         delete[] index;
     }
     TSInsertRecordsOfOneDeviceReq request;
@@ -1743,4 +1919,18 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
         throw IoTDBConnectionException(e.what());
     }
     return resp->measurements;
+}
+
+bool Session::checkTemplateExists(const string& template_name) {
+    try {
+        std::unique_ptr<SessionDataSet> dataset;
+        dataset = executeQueryStatement("SHOW NODES IN SCHEMA TEMPLATE " + template_name);
+        bool isExisted = dataset->hasNext();
+        dataset->closeOperationHandle();
+        return isExisted;
+    }
+    catch (exception& e) {
+        std::cout << e.what() << std::endl;
+        throw IoTDBConnectionException(e.what());
+    }
 }

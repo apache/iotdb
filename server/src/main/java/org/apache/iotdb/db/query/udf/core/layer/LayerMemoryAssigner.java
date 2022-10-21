@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 
 import java.util.HashMap;
@@ -51,9 +52,12 @@ public class LayerMemoryAssigner {
     int memoryPartitions = 0;
     for (Entry<Expression, Integer> expressionReferenceEntry :
         expressionReferenceCount.entrySet()) {
-      memoryPartitions +=
-          expressionReferenceEntry.getValue()
-              * (expressionReferenceEntry.getKey() instanceof FunctionExpression ? 2 : 1);
+      Expression expression = expressionReferenceEntry.getKey();
+      if (expression instanceof FunctionExpression) {
+        memoryPartitions += 2;
+      } else if (!(expression instanceof ConstantOperand)) {
+        memoryPartitions += 1;
+      }
     }
     memoryBudgetForSingleReference =
         memoryPartitions == 0 ? memoryBudgetInMB : memoryBudgetInMB / memoryPartitions;

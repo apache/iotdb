@@ -187,6 +187,7 @@ With less memory footprint and time cost of serialization, the insert performanc
 (if not, the default dtypes are also ok).
 
 ```python
+import numpy as np
 data_types_ = [
     TSDataType.BOOLEAN,
     TSDataType.INT32,

@@ -278,7 +278,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());

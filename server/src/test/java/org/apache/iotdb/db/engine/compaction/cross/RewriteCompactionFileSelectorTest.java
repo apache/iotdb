@@ -97,12 +97,12 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, 400000);
+        new RewriteCompactionFileSelector(resource, 100000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
-    assertEquals(seqResources.subList(0, 4), seqSelected);
-    assertEquals(unseqResources.subList(0, 4), unseqSelected);
+    assertEquals(seqResources.subList(0, 3), seqSelected);
+    assertEquals(unseqResources.subList(0, 3), unseqSelected);
     resource.clear();
   }
 
@@ -265,8 +265,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "seq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -285,8 +284,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "unseq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -344,8 +342,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -364,8 +361,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -407,8 +403,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -427,8 +422,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -470,7 +464,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
                   10
-                      + "seq"
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -490,7 +483,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
                   10
-                      + "unseq"
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -533,8 +525,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -553,8 +544,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -600,8 +590,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -622,8 +611,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR

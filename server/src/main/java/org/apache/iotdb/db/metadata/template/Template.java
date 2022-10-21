@@ -89,7 +89,7 @@ public class Template {
         isAlign = true;
       } else {
         // If sublist of measurements has only one item,
-        // but it share prefix with other aligned sublist, it will be aligned too
+        // but it shares prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =

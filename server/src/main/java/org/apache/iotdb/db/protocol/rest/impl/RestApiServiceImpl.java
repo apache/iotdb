@@ -19,11 +19,13 @@ package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
 import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanConstructionHandler;
+import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanHandler;
 import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
@@ -31,8 +33,10 @@ import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -45,6 +49,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.List;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -72,6 +77,45 @@ public class RestApiServiceImpl extends RestApiService {
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
+      }
+
+      if (physicalPlan instanceof SelectIntoPlan) {
+        final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+        QueryContext context =
+            serviceProvider.genQueryContext(
+                queryId,
+                physicalPlan.isDebug(),
+                System.currentTimeMillis(),
+                sql.getSql(),
+                IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+        final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
+        final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
+
+        InsertTabletPlansIterator insertTabletPlansIterator =
+            new InsertTabletPlansIterator(
+                queryPlan,
+                serviceProvider.createQueryDataSet(
+                    context, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE),
+                selectIntoPlan.getFromPath(),
+                selectIntoPlan.getIntoPaths(),
+                selectIntoPlan.isIntoPathsAligned());
+        while (insertTabletPlansIterator.hasNext()) {
+          List<InsertTabletPlan> insertTabletPlans = insertTabletPlansIterator.next();
+          if (insertTabletPlans.isEmpty()) {
+            continue;
+          }
+
+          InsertMultiTabletPlan insertMultiTabletsPlan =
+              PhysicalPlanHandler.insertTabletsInternally(
+                  authorizationHandler, securityContext, insertTabletPlans);
+          serviceProvider.executeNonQuery(insertMultiTabletsPlan);
+        }
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                    .message(TSStatusCode.SUCCESS_STATUS.name()))
+            .build();
       }
 
       return Response.ok()

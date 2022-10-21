@@ -383,12 +383,12 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 * avg\_series\_point\_number\_threshold
 
-|Name| avg\_series\_point\_number\_threshold |
-|:---:|:---|
-|Description| max average number of point of each series in memtable|
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restarting system|
+|Name| avg\_series\_point\_number\_threshold                  |
+|:---:|:-------------------------------------------------------|
+|Description| max average number of point of each series in memtable |
+|Type| Int32                                                  |
+|Default| 100000                                                 |
+|Effective| After restarting system                                |
 
 * tsfile\_size\_threshold
 

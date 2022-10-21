@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,7 +106,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -123,6 +124,14 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for timeIndex */
   private double timeIndexMemoryProportion = 0.2;
+
+  /** The proportion of write memory for write process */
+  private double writeProportion = 0.8;
+
+  private double chunkMetadataSizeProportionInWrite = 0.1;
+
+  /** The proportion of write memory for compaction */
+  private double compactionProportion = 0.2;
 
   /** Flush proportion for system */
   private double flushProportion = 0.4;
@@ -358,7 +367,7 @@ public class IoTDBConfig {
   private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space copaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
@@ -390,6 +399,8 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+
+  private double chunkMetadataMemorySizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -423,6 +434,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -778,6 +792,8 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
+  private int patternMatchingThreshold = 1000000;
+
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
@@ -830,8 +846,10 @@ public class IoTDBConfig {
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
+  private int secondarySessionPoolMaxSize = 10;
+
   // The transmitting concurrency size of operation sync SessionPool
-  private int OperationSyncSessionConcurrencySize = 8;
+  private int operationSyncSessionConcurrencySize = 8;
 
   // OperationSyncLog dir
   private String operationSyncLogDir =
@@ -845,11 +863,18 @@ public class IoTDBConfig {
 
   // OperationSyncProducer DML cache size
   private int operationSyncProducerCacheSize = 1024;
-  // OperationSyncConsumer concurrency size
-  private int operationSyncConsumerConcurrencySize = 4;
+
+  // OperationSyncProducer DML cache number
+  private int operationSyncProducerCacheNum = 8;
 
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
+
+  /** number of threads given to archiving tasks */
+  private int archivingThreadNum = 2;
+
+  // customizedProperties, this should be empty by default.
+  private Properties customizedProperties = new Properties();
 
   public IoTDBConfig() {
     // empty constructor
@@ -1499,14 +1524,6 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getCrossCompactionMemoryBudget() {
-    return crossCompactionMemoryBudget;
-  }
-
-  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
-    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1555,12 +1572,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForWrite() {
-    return allocateMemoryForWrite;
+  public long getAllocateMemoryForStorageEngine() {
+    return allocateMemoryForStorageEngine;
   }
 
-  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
-    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
+    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -2566,6 +2583,14 @@ public class IoTDBConfig {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
   public long getCompactionSubmissionIntervalInMs() {
     return compactionSubmissionIntervalInMs;
   }
@@ -2662,12 +2687,20 @@ public class IoTDBConfig {
     this.secondaryPassword = secondaryPassword;
   }
 
+  public int getSecondarySessionPoolMaxSize() {
+    return secondarySessionPoolMaxSize;
+  }
+
+  public void setSecondarySessionPoolMaxSize(int secondarySessionPoolMaxSize) {
+    this.secondarySessionPoolMaxSize = secondarySessionPoolMaxSize;
+  }
+
   public int getOperationSyncSessionConcurrencySize() {
-    return OperationSyncSessionConcurrencySize;
+    return operationSyncSessionConcurrencySize;
   }
 
   public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
-    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
+    this.operationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
   }
 
   public String getOperationSyncLogDir() {
@@ -2710,12 +2743,12 @@ public class IoTDBConfig {
     this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
   }
 
-  public int getOperationSyncConsumerConcurrencySize() {
-    return operationSyncConsumerConcurrencySize;
+  public int getOperationSyncProducerCacheNum() {
+    return operationSyncProducerCacheNum;
   }
 
-  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
-    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
+  public void setOperationSyncProducerCacheNum(int operationSyncProducerCacheNum) {
+    this.operationSyncProducerCacheNum = operationSyncProducerCacheNum;
   }
 
   public int getSchemaQueryFetchSize() {
@@ -2724,5 +2757,53 @@ public class IoTDBConfig {
 
   public void setSchemaQueryFetchSize(int schemaQueryFetchSize) {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
+  }
+
+  public int getArchivingThreadNum() {
+    return archivingThreadNum;
+  }
+
+  public void setArchivingThreadNum(int archivingThreadNum) {
+    this.archivingThreadNum = archivingThreadNum;
+  }
+
+  public double getWriteProportion() {
+    return writeProportion;
+  }
+
+  public void setWriteProportion(double writeProportion) {
+    this.writeProportion = writeProportion;
+  }
+
+  public double getCompactionProportion() {
+    return compactionProportion;
+  }
+
+  public void setCompactionProportion(double compactionProportion) {
+    this.compactionProportion = compactionProportion;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
+  }
+
+  public double getChunkMetadataMemorySizeProportion() {
+    return chunkMetadataMemorySizeProportion;
+  }
+
+  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
+    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
   }
 }

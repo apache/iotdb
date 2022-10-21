@@ -93,7 +93,7 @@ public class AuthorityChecker {
     return false;
   }
 
-  private static int translateToPermissionId(Operator.OperatorType type) {
+  public static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
@@ -119,6 +119,8 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+      case DELETE_STORAGE_GROUP:
+        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();

@@ -19,9 +19,9 @@
 
 -->
 
-# C++ 原生接口
+## C++ 原生接口
 
-## 依赖
+### 依赖
 
 - Java 8+
 - Maven 3.5+
@@ -32,9 +32,9 @@
 - GCC 5.5.0+
 
 
-## 安装
+### 安装
 
-### 安装相关依赖
+#### 安装相关依赖
 
 - **MAC**
 
@@ -104,7 +104,7 @@
        * 下载安装 [OpenSSL](http://slproweb.com/products/Win32OpenSSL.html) 。
 
 
-### 执行编译
+#### 执行编译
 
 从 git 克隆源代码:
 ```shell
@@ -133,11 +133,11 @@ git checkout rel/0.13
 编译成功后，打包好的 zip 文件位于 `client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip`
 
 
-## 基本接口说明
+### 基本接口说明
 
 下面将给出 Session 接口的简要介绍和原型定义：
 
-### 初始化
+#### 初始化
 
 - 开启 Session
 ```cpp
@@ -155,9 +155,9 @@ void open(bool enableRPCCompression);
 void close(); 
 ```
 
-### 数据定义接口（DDL）
+#### 数据定义接口（DDL）
 
-#### 存储组管理
+##### 存储组管理
 
 - 设置存储组
 ```cpp
@@ -170,7 +170,7 @@ void deleteStorageGroup(const std::string &storageGroup);
 void deleteStorageGroups(const std::vector<std::string> &storageGroups);
 ```
 
-#### 时间序列管理
+##### 时间序列管理
 
 - 创建单个或多个非对齐时间序列
 ```cpp
@@ -207,7 +207,7 @@ void deleteTimeseries(const std::vector<std::string> &paths);
 bool checkTimeseriesExists(const std::string &path);
 ```
 
-#### 元数据模版
+##### 元数据模版
 
 - 创建元数据模板
 ```cpp
@@ -279,9 +279,9 @@ std::vector<std::string> showMeasurementsInTemplate(const std::string &template_
 ```
 
 
-### 数据操作接口（DML）
+#### 数据操作接口（DML）
 
-#### 数据写入
+##### 数据写入
 
 > 推荐使用 insertTablet 帮助提高写入效率。
 
@@ -321,7 +321,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<std::vector<char *>> &valuesList);
 ```
 
-#### 带有类型推断的写入
+##### 带有类型推断的写入
 
 服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢。
 
@@ -342,7 +342,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
                               const std::vector<std::vector<std::string>> &valuesList);
 ```
 
-#### 对齐时间序列写入
+##### 对齐时间序列写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
 
@@ -352,7 +352,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
 - insertAlignedTablet 
 - insertAlignedTablets
 
-#### 数据删除
+##### 数据删除
 
 - 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 ```cpp
@@ -360,7 +360,7 @@ void deleteData(const std::string &path, int64_t time);
 void deleteData(const std::vector<std::string> &deviceId, int64_t time);
 ```
 
-### IoTDB-SQL 接口
+#### IoTDB-SQL 接口
 
 - 执行查询语句
 ```cpp
@@ -373,7 +373,7 @@ void executeNonQueryStatement(const std::string &sql);
 ```
 
 
-## 示例代码
+### 示例代码
 
 示例工程源代码：
 
@@ -382,9 +382,9 @@ void executeNonQueryStatement(const std::string &sql);
 
 编译成功后，示例代码工程位于 `example/client-cpp-example/target`
 
-## FAQ
+### FAQ
 
-### Thrift 编译相关问题
+#### Thrift 编译相关问题
 
 1. MAC：本地 Maven 编译 Thrift 时如出现以下链接的问题，可以尝试将 xcode-commandline 版本从 12 降低到 11.5
    https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087

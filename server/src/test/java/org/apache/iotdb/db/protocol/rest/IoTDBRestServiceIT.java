@@ -513,7 +513,7 @@ public class IoTDBRestServiceIT {
         new ArrayList<Object>() {
           {
             add("storage group");
-            add("ttl");
+            add("ttl(ms)");
           }
         };
     List<Object> values1 =

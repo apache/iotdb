@@ -43,8 +43,10 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -55,6 +57,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -74,8 +77,8 @@ public class RewriteFileTool {
   // output file path
   private static String outputLogFilePath;
 
-  private static final String HostIP = "localhost";
-  private static final String rpcPort = "6667";
+  private static String HostIP = "localhost";
+  private static String rpcPort = "6667";
   private static String user = "root";
   private static String password = "root";
 
@@ -86,7 +89,8 @@ public class RewriteFileTool {
 
   /**
    * -b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path
-   * of output log] -u=[username, default="root"] -pw=[password, default="root"]
+   * of output log] -u=[username, default="root"] -pw=[password, default="root"] -p=[rpc port,
+   * default="6667"] -h=[rpc host, default="localhost"]
    */
   public static void main(String[] args) throws IOException {
     if (!checkArgs(args)) {
@@ -195,12 +199,71 @@ public class RewriteFileTool {
       byte marker;
       String curDevice = null;
       long chunkHeaderOffset = -1;
+
+      // Used for rewriting aligned chunk group
+      List<PageHeader> timePageHeaders = new ArrayList<>();
+      List<ByteBuffer> timePageDatas = new ArrayList<>();
+      List<List<PageHeader>> valuePageHeadersList = new ArrayList<>();
+      List<List<ByteBuffer>> valuePageDatasList = new ArrayList<>();
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<List<TimeRange>> deleteIntervalsList = new ArrayList<>();
+
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
+          case MetaMarker.TIME_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+            ChunkHeader header = reader.readChunkHeader(marker);
+            int dataSize = header.getDataSize();
+            while (dataSize > 0) {
+              PageHeader pageHeader =
+                  reader.readPageHeader(
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              timePageHeaders.add(pageHeader);
+              timePageDatas.add(pageData);
+              dataSize -= pageHeader.getSerializedPageSize();
+            }
+            break;
+          case MetaMarker.VALUE_CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
+            chunkHeaderOffset = reader.position() - 1;
+            header = reader.readChunkHeader(marker);
+            MeasurementSchema measurementSchema =
+                new MeasurementSchema(
+                    header.getMeasurementID(),
+                    header.getDataType(),
+                    header.getEncodingType(),
+                    header.getCompressionType());
+            measurementSchemas.add(measurementSchema);
+
+            // read delete time range from old modification file
+            deleteIntervalsList.add(
+                getOldSortedDeleteIntervals(
+                    curDevice, measurementSchema, chunkHeaderOffset, modifications));
+
+            dataSize = header.getDataSize();
+            int pageIndex = 0;
+            while (dataSize > 0) {
+              PageHeader pageHeader =
+                  reader.readPageHeader(
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              if (valuePageHeadersList.size() == pageIndex) {
+                valuePageHeadersList.add(new ArrayList<>());
+                valuePageDatasList.add(new ArrayList<>());
+              }
+              valuePageHeadersList.get(pageIndex).add(pageHeader);
+              valuePageDatasList.get(pageIndex).add(pageData);
+              pageIndex++;
+              dataSize -= pageHeader.getSerializedPageSize();
+            }
+            break;
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             chunkHeaderOffset = reader.position() - 1;
-            ChunkHeader header = reader.readChunkHeader(marker);
+            header = reader.readChunkHeader(marker);
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -209,19 +272,20 @@ public class RewriteFileTool {
                 Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
             // 1. construct MeasurementSchema from chunkHeader
             String measurement = header.getMeasurementID();
-            MeasurementSchema measurementSchema =
+            measurementSchema =
                 new MeasurementSchema(
                     measurement,
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType());
             // 2. record data point of each measurement
-            int dataSize = header.getDataSize();
+            dataSize = header.getDataSize();
             while (dataSize > 0) {
               valueDecoder.reset();
               PageHeader pageHeader =
                   reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
                   new PageReader(
@@ -282,10 +346,32 @@ public class RewriteFileTool {
             }
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            if (!timePageHeaders.isEmpty()) {
+              rewriteAlignedChunkGroup(
+                  timePageHeaders,
+                  timePageDatas,
+                  valuePageHeadersList,
+                  valuePageDatasList,
+                  measurementSchemas,
+                  deleteIntervalsList,
+                  curDevice,
+                  session);
+            }
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             curDevice = chunkGroupHeader.getDeviceID();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
+            if (!timePageHeaders.isEmpty()) {
+              rewriteAlignedChunkGroup(
+                  timePageHeaders,
+                  timePageDatas,
+                  valuePageHeadersList,
+                  valuePageDatasList,
+                  measurementSchemas,
+                  deleteIntervalsList,
+                  curDevice,
+                  session);
+            }
             reader.readPlanIndex();
             reader.getMinPlanIndex();
             reader.getMaxPlanIndex();
@@ -293,6 +379,17 @@ public class RewriteFileTool {
           default:
             MetaMarker.handleUnexpectedMarker(marker);
         }
+      }
+      if (!timePageHeaders.isEmpty()) {
+        rewriteAlignedChunkGroup(
+            timePageHeaders,
+            timePageDatas,
+            valuePageHeadersList,
+            valuePageDatasList,
+            measurementSchemas,
+            deleteIntervalsList,
+            curDevice,
+            session);
       }
     } catch (IllegalPathException
         | IOException
@@ -304,9 +401,107 @@ public class RewriteFileTool {
     }
   }
 
+  private static void rewriteAlignedChunkGroup(
+      List<PageHeader> timePageHeaders,
+      List<ByteBuffer> timePageDatas,
+      List<List<PageHeader>> valuePageHeadersList,
+      List<List<ByteBuffer>> valuePageDatasList,
+      List<MeasurementSchema> measurementSchemas,
+      List<List<TimeRange>> deleteIntervalsList,
+      String curDevice,
+      Session session)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    Decoder defaultTimeDecoder =
+        Decoder.getDecoderByType(
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+            TSDataType.INT64);
+
+    List<Decoder> valueDecoders = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      Decoder valueDecoder =
+          Decoder.getDecoderByType(
+              measurementSchema.getEncodingType(), measurementSchema.getType());
+      valueDecoders.add(valueDecoder);
+      dataTypes.add(measurementSchema.getType());
+    }
+
+    for (int pageIndex = 0; pageIndex < timePageHeaders.size(); pageIndex++) {
+      AlignedPageReader alignedPageReader =
+          new AlignedPageReader(
+              timePageHeaders.get(pageIndex),
+              timePageDatas.get(pageIndex),
+              defaultTimeDecoder,
+              valuePageHeadersList.get(pageIndex),
+              valuePageDatasList.get(pageIndex),
+              dataTypes,
+              valueDecoders,
+              null);
+
+      alignedPageReader.setDeleteIntervalList(deleteIntervalsList);
+      BatchData batchData = alignedPageReader.getAllSatisfiedPageData();
+      int maxRow = batchData.length();
+      Tablet tablet = new Tablet(curDevice, measurementSchemas, maxRow);
+
+      long curTabletSize = 0;
+      while (batchData.hasCurrent()) {
+        tablet.addTimestamp(tablet.rowSize, batchData.currentTime());
+        tablet.addValues(tablet.rowSize, (TsPrimitiveType[]) batchData.currentValue());
+        tablet.rowSize++;
+        // calculate curTabletSize based on timestamp and value
+        curTabletSize += 8;
+        for (int i = 0; i < dataTypes.size(); i++) {
+          TSDataType dataType = dataTypes.get(i);
+          switch (dataType) {
+            case BOOLEAN:
+              curTabletSize += 1;
+              break;
+            case INT32:
+            case FLOAT:
+              curTabletSize += 4;
+              break;
+            case INT64:
+            case DOUBLE:
+              curTabletSize += 8;
+              break;
+            case TEXT:
+              curTabletSize +=
+                  4 + ((TsPrimitiveType[]) batchData.currentValue())[i].getBinary().getLength();
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", dataType));
+          }
+        }
+
+        if (curTabletSize >= MAX_TABLET_SIZE) {
+          session.insertAlignedTablet(tablet);
+          curTabletSize = 0;
+          tablet.reset();
+        }
+        batchData.next();
+      }
+      if (tablet.rowSize > 0) {
+        session.insertAlignedTablet(tablet);
+      }
+
+      for (Decoder decoder : valueDecoders) {
+        decoder.reset();
+      }
+      defaultTimeDecoder.reset();
+    }
+
+    timePageHeaders.clear();
+    timePageDatas.clear();
+    valuePageHeadersList.clear();
+    valuePageDatasList.clear();
+    measurementSchemas.clear();
+    deleteIntervalsList.clear();
+  }
+
   private static boolean checkArgs(String[] args) {
     String paramConfig =
-        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log] -u=[username, default=\"root\"] -pw=[password, default=\"root\"]";
+        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log] -u=[username, default=\"root\"] -pw=[password, default=\"root\"] -p=[rpc port, default=6667] -h=[rpc host, default=\"localhost\"]";
     for (String arg : args) {
       if (arg.startsWith("-b")) {
         backUpDirPath = arg.substring(arg.indexOf('=') + 1);
@@ -320,6 +515,10 @@ public class RewriteFileTool {
         user = arg.substring(arg.indexOf('=') + 1);
       } else if (arg.startsWith("-pw")) {
         password = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-p")) {
+        rpcPort = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-h")) {
+        HostIP = arg.substring(arg.indexOf('=') + 1);
       } else {
         System.out.println("Param incorrect!" + paramConfig);
         return false;

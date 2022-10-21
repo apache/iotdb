@@ -104,10 +104,10 @@ public class AuthorPlan extends PhysicalPlan {
       case UPDATE_USER:
         this.setOperatorType(Operator.OperatorType.MODIFY_PASSWORD);
         break;
-      case GRANT_ROLE_TO_USER:
-        this.setOperatorType(Operator.OperatorType.GRANT_ROLE_PRIVILEGE);
+      case GRANT_USER_ROLE:
+        this.setOperatorType(Operator.OperatorType.GRANT_USER_ROLE);
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         this.setOperatorType(Operator.OperatorType.REVOKE_USER_ROLE);
         break;
       case LIST_USER_PRIVILEGE:
@@ -157,7 +157,7 @@ public class AuthorPlan extends PhysicalPlan {
         type = AuthorType.CREATE_USER;
         break;
       case REVOKE_USER_ROLE:
-        type = AuthorType.REVOKE_ROLE_FROM_USER;
+        type = AuthorType.REVOKE_USER_ROLE;
         break;
       case REVOKE_ROLE_PRIVILEGE:
         type = AuthorType.REVOKE_ROLE;
@@ -166,13 +166,13 @@ public class AuthorPlan extends PhysicalPlan {
         type = AuthorType.REVOKE_USER;
         break;
       case GRANT_ROLE_PRIVILEGE:
-        type = AuthorType.GRANT_ROLE_TO_USER;
+        type = AuthorType.GRANT_ROLE;
         break;
       case GRANT_USER_PRIVILEGE:
         type = AuthorType.GRANT_USER;
         break;
       case GRANT_USER_ROLE:
-        type = AuthorType.GRANT_ROLE;
+        type = AuthorType.GRANT_USER_ROLE;
         break;
       case MODIFY_PASSWORD:
         type = AuthorType.UPDATE_USER;

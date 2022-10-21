@@ -94,6 +94,39 @@ public class IoTDBQueryWithComplexValueFilterIT {
     }
   }
 
+  @Test
+  public void testRawQuery3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.sg1.d1(time,s3) values(1,'\"')");
+      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s3=\"\\\"\"");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      hasResultSet = statement.execute("select * from root.sg1.d1 where s3=\'\\\"\'");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -43,6 +43,34 @@ e.g.,
 docker build -t my-iotdb:<version> -f Dockerfile-<version>
 ```
 
+# How to build with multi-platform
+
+After 0.13.1, we add Dockerfile who can build multi-platform with buildx.
+
+First, upgrade your docker version to support dockerx, use the following command.
+
+```shell
+# Make sure the current version supports buildx
+docker buildx version
+```
+
+Enable buildx.
+
+```shell
+# Specify buildx uses docker container
+docker buildx create --name mybuilder --driver docker-container
+docker buildx use mybuilder
+# run a image to build multiple platforms using buildx.
+docker run --rm --privileged tonistiigi/binfmt:latest --install all 
+```
+
+Finally use buildx to build images and push to docker-hub.
+
+```shell
+# build and push to remote hub.
+docker buildx build --platform linux/amd64,linux/arm64/v8,linux/arm/v7 -t <username>/iotdb:latest -f <DockerFile> . --push
+```
+
 # How to run IoTDB server 
 
 Actually, we maintain a repo on dockerhub, so that you can get the docker image directly.

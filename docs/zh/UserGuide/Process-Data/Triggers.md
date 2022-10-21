@@ -19,7 +19,7 @@
 
 -->
 
-# 触发器
+## 触发器
 
 触发器提供了一种侦听序列数据变动的机制。配合用户自定义逻辑，可完成告警、数据清洗、数据转发等功能。
 
@@ -27,9 +27,9 @@
 
 根据此文档，您将会很快学会触发器的编写与管理。
 
-## 编写触发器
+### 编写触发器
 
-### 触发器依赖
+#### 触发器依赖
 
 触发器的逻辑需要您编写 Java 类进行实现。
 
@@ -46,7 +46,7 @@
 
 请注意选择和目标服务器版本相同的依赖版本。
 
-### 用户编程接口
+#### 用户编程接口
 
 编写一个触发器需要实现`org.apache.iotdb.db.engine.trigger.api.Trigger`类。
 
@@ -54,7 +54,7 @@
 
 下面是所有可供用户进行实现的接口的说明。
 
-#### 生命周期钩子
+##### 生命周期钩子
 
 | 接口定义                                                     | 描述                                                         |
 | :----------------------------------------------------------- | ------------------------------------------------------------ |
@@ -63,13 +63,13 @@
 | `void onStart() throws Exception`                            | 当您使用`START TRIGGER`语句手动启动（被`STOP TRIGGER`语句停止的）触发器后，该钩子会被调用。 |
 | `void onStop() throws Exception`                             | 当您使用`STOP TRIGGER`语句手动停止触发器后，该钩子会被调用。 |
 
-#### 数据变动侦听钩子
+##### 数据变动侦听钩子
 
 目前触发器仅能侦听数据插入的操作。
 
 数据变动侦听钩子的调用时机由`CREATE TRIGGER`语句显式指定，在编程接口层面不作区分。
 
-##### 单点数据插入侦听钩子
+###### 单点数据插入侦听钩子
 
 ``` java
 Integer fire(long timestamp, Integer value) throws Exception;
@@ -84,7 +84,7 @@ Binary fire(long timestamp, Binary value) throws Exception;
 
 注意，目前钩子的返回值是没有任何意义的。
 
-##### 批量数据插入侦听钩子
+###### 批量数据插入侦听钩子
 
 ```java
 int[] fire(long[] timestamps, int[] values) throws Exception;
@@ -111,17 +111,17 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 
 注意，目前钩子的返回值是没有任何意义的。
 
-#### 重要注意事项
+##### 重要注意事项
 
 * 每条序列上注册的触发器都是一个完整的触发器类的实例，因此您可以在触发器中维护一些状态数据。
 * 触发器维护的状态会在系统停止后被清空（除非您在钩子中主动将状态持久化）。换言之，系统启动后触发器的状态将会默认为初始值。
 * 一个触发器所有钩子的调用都是串行化的。
 
-## 管理触发器
+### 管理触发器
 
 您可以通过 SQL 语句注册、卸载、启动或停止一个触发器实例，您也可以通过 SQL 语句查询到所有已经注册的触发器。
 
-### 触发器的状态
+#### 触发器的状态
 
 触发器有两种运行状态：`STARTED`和`STOPPED`，您需要执行`START TRIGGER`或者`STOP TRIGGER`来启动或者停止一个触发器。
 
@@ -129,7 +129,7 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 
 注意，通过`CREATE TRIGGER`语句注册的触发器默认是`STARTED`的。
 
-### 注册触发器
+#### 注册触发器
 
 触发器只能注册在一个已经存在的时间序列上。任何时间序列只允许注册一个触发器。
 
@@ -195,7 +195,7 @@ WITH (
 
 请注意，`CLASSNAME`以及属性值中的`KEY`和`VALUE`都需要被单引号或者双引号引用起来。
 
-### 卸载触发器
+#### 卸载触发器
 
 触发器会在下面几种情景下被卸载：
 
@@ -217,7 +217,7 @@ DROP TRIGGER <TRIGGER-NAME>
 DROP TRIGGER `alert-listener-sg1d1s1`
 ```
 
-### 启动触发器
+#### 启动触发器
 
 该操作是“停止触发器”的逆操作。它将运行状态为`STOPPED`的触发器的运行状态变更为`STARTED`，这会使得触发器重新侦听被注册序列上的操作，并对数据变动产生响应。
 
@@ -237,7 +237,7 @@ START TRIGGER `alert-listener-sg1d1s1`
 
 注意，通过`CREATE TRIGGER`语句注册的触发器默认是`STARTED`的。
 
-### 停止触发器
+#### 停止触发器
 
 该操作将触发器的状态由`STARTED`变为`STOPPED`。当一个触发器的状态为`STOPPED`时，它将不会响应被注册序列上的操作（如插入数据点的操作），对外表现就会像是这个序列没有被注册过触发器一样。您可以使用`START TRIGGER`语句重新启动一个触发器。
 
@@ -255,7 +255,7 @@ STOP TRIGGER <TRIGGER-NAME>
 STOP TRIGGER `alert-listener-sg1d1s1`
 ```
 
-### 查询所有注册的触发器
+#### 查询所有注册的触发器
 
 查询触发器的 SQL 语句如下：
 
@@ -265,7 +265,7 @@ SHOW TRIGGERS
 
 该语句展示已注册触发器的 ID、运行状态、触发时机、被注册的序列、触发器实例的全类名和注册触发器时用到的自定义属性。
 
-### 用户权限管理
+#### 用户权限管理
 
 用户在使用触发器时会涉及到 4 种权限：
 
@@ -276,11 +276,11 @@ SHOW TRIGGERS
 
 更多用户权限相关的内容，请参考 [权限管理语句](../Operation%20Manual/Administration.md)。
 
-## 实用工具类
+### 实用工具类
 
 实用工具类为常见的需求提供了编程范式和执行框架，它能够简化您编写触发器的一部分工作。
 
-### 窗口工具类
+#### 窗口工具类
 
 窗口工具类能够辅助您定义滑动窗口以及窗口上的数据处理逻辑。它能够构造两类滑动窗口：一种滑动窗口是固定窗口内时间长度的（`SlidingTimeWindowEvaluationHandler`），另一种滑动窗口是固定窗口内数据点数的（`SlidingSizeWindowEvaluationHandler`）。
 
@@ -290,9 +290,9 @@ SHOW TRIGGERS
 
 `Window`与`Evaluator`接口的定义见`org.apache.iotdb.db.utils.windowing.api`包。
 
-#### 固定窗口内数据点数的滑动窗口
+##### 固定窗口内数据点数的滑动窗口
 
-##### 窗口构造
+###### 窗口构造
 
 共两种构造方法。
 
@@ -327,7 +327,7 @@ SlidingSizeWindowEvaluationHandler handler =
 
 窗口大小、滑动步长必须为正数。
 
-#####  数据接收
+######  数据接收
 
 ``` java
 final long timestamp = 0;
@@ -341,9 +341,9 @@ hander.collect(timestamp, value);
 
 还需要注意的是，`collect`方法不是线程安全的。
 
-#### 固定窗口内时间长度的滑动窗口
+##### 固定窗口内时间长度的滑动窗口
 
-##### 窗口构造
+###### 窗口构造
 
 共两种构造方法。
 
@@ -378,7 +378,7 @@ SlidingTimeWindowEvaluationHandler handler =
 
 窗口内时间长度、滑动步长必须为正数。
 
-#####  数据接收
+######  数据接收
 
 ``` java
 final long timestamp = 0;
@@ -392,7 +392,7 @@ hander.collect(timestamp, value);
 
 还需要注意的是，`collect`方法不是线程安全的。
 
-#### 拒绝策略
+##### 拒绝策略
 
 窗口计算的任务执行是异步的。
 
@@ -427,23 +427,23 @@ SlidingTimeWindowEvaluationHandler handler =
     });
 ```
 
-#### 配置参数
+##### 配置参数
 
-##### concurrent_window_evaluation_thread
+###### concurrent_window_evaluation_thread
 
 窗口计算线程池的默认线程数。默认为 CPU 核数。
 
-##### max_pending_window_evaluation_tasks
+###### max_pending_window_evaluation_tasks
 
 最多允许堆积的窗口计算任务。默认为 64 个。
 
-### Sink 工具类
+#### Sink 工具类
 
 Sink 工具类为触发器提供了连接外部系统的能力。
 
 它提供了一套编程范式。每一个 Sink 工具都包含一个用于处理数据发送的`Handler`、一个用于配置`Handler`的`Configuration`，还有一个用于描述发送数据的`Event`。
 
-#### LocalIoTDBSink
+##### LocalIoTDBSink
 
 `LocalIoTDBSink`用于向本地序列写入数据点。
 
@@ -480,7 +480,7 @@ for (int i = 0; i < 100; ++i) {
 }
 ```
 
-#### MQTTSink
+##### MQTTSink
 
 触发器可以使用`MQTTSink`向其他的 IoTDB 实例发送数据点。
 
@@ -510,7 +510,7 @@ for (int i = 0; i < 100; ++i) {
 }
 ```
 
-#### AlertManagerSink
+##### AlertManagerSink
 
 触发器可以使用`AlertManagerSink` 向 AlertManager 发送消息。
 
@@ -614,7 +614,7 @@ annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
 alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
 ```
 
-## 完整的 Maven 示例项目
+### 完整的 Maven 示例项目
 
 如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 **trigger-example**。
 
@@ -810,7 +810,7 @@ public class TriggerExample implements Trigger {
 
 以上就是基本的使用方法，希望您能喜欢 :D
 
-## 重要注意事项
+### 重要注意事项
 
 * 触发器是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
 

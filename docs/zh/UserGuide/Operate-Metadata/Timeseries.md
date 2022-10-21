@@ -19,9 +19,9 @@
 
 -->
 
-# 时间序列管理
+## 时间序列管理
 
-## 创建时间序列
+### 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的 SQL 语句如下所示：
 
@@ -53,7 +53,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见 [编码方式](../Data-Concept/Encoding.md)。
 
-## 创建对齐时间序列
+### 创建对齐时间序列
 
 创建一组对齐时间序列的SQL语句如下所示：
 
@@ -65,7 +65,7 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 对齐的时间序列暂不支持设置别名、标签、属性。
 
-## 删除时间序列
+### 删除时间序列
 
 我们可以使用`DELETE TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
@@ -75,7 +75,7 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-## 查看时间序列
+### 查看时间序列
 
 * SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
@@ -143,7 +143,7 @@ show timeseries root.ln.** limit 10 offset 10
   
 需要注意的是，当查询路径不存在时，系统会返回 0 条时间序列。
 
-## 统计时间序列总数
+### 统计时间序列总数
 
 IoTDB 支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL 语句如下所示：
 ```
@@ -221,7 +221,7 @@ It costs 0.002s
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
 
-## 标签点管理
+### 标签点管理
 
 我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
 

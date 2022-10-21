@@ -41,7 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class OperationSyncProtector implements Runnable {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProtector.class);
-  protected static final int logFileValidity =
+  protected static final int LOG_FILE_VALIDITY =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity();
 
   // For transmit log files
@@ -105,7 +105,7 @@ public abstract class OperationSyncProtector implements Runnable {
 
       try {
         // Sleep a while before next check
-        TimeUnit.SECONDS.sleep(logFileValidity);
+        TimeUnit.SECONDS.sleep(LOG_FILE_VALIDITY);
       } catch (InterruptedException e) {
         LOGGER.warn("OperationSyncProtector been interrupted", e);
       }
@@ -126,7 +126,7 @@ public abstract class OperationSyncProtector implements Runnable {
             e);
         continue;
       }
-
+      LOGGER.info("begin trans " + logFileName);
       while (logReader.hasNext()) {
         // read and re-serialize the PhysicalPlan
         PhysicalPlan nextPlan = logReader.next();
@@ -140,7 +140,7 @@ public abstract class OperationSyncProtector implements Runnable {
         protectorByteStream.reset();
         transmitPhysicalPlan(nextBuffer, nextPlan);
       }
-
+      LOGGER.info("end trans " + logFileName);
       logReader.close();
       try {
         // sleep one second then delete OperationSyncLog

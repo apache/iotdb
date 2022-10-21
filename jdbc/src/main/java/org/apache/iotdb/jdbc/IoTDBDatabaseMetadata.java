@@ -672,6 +672,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       dataSet.putRecord(record);
     }
     dataSet.setDataTypes(listType);
+    dataSet.setColumnNum(listType.size());
   }
 
   @Override
@@ -736,14 +737,23 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
+      if (catalog.contains("%")) {
+        catalog = catalog.replaceAll("%", "*");
+      }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      if (schemaPattern.contains("%")) {
+        schemaPattern = schemaPattern.replaceAll("%", "*");
+      }
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
             || schemaPattern != null && schemaPattern.length() > 0)
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
+      if (tableNamePattern.contains("%")) {
+        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+      }
       sql = sql + "." + tableNamePattern;
     }
 
@@ -1878,14 +1888,23 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
+      if (catalog.contains("%")) {
+        catalog = catalog.replaceAll("%", "*");
+      }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      if (schemaPattern.contains("%")) {
+        schemaPattern = schemaPattern.replaceAll("%", "*");
+      }
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
             || schemaPattern != null && schemaPattern.length() > 0)
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
+      if (tableNamePattern.contains("%")) {
+        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+      }
       sql = sql + "." + tableNamePattern;
     }
 
@@ -2017,8 +2036,14 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
+      if (catalog.contains("%")) {
+        catalog = catalog.replaceAll("%", "*");
+      }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      if (schemaPattern.contains("%")) {
+        schemaPattern = schemaPattern.replaceAll("%", "*");
+      }
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
@@ -2262,14 +2287,23 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
     String sql = "SHOW timeseries";
     if (catalog != null && catalog.length() > 0) {
+      if (catalog.contains("%")) {
+        catalog = catalog.replaceAll("%", "*");
+      }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      if (schemaPattern.contains("%")) {
+        schemaPattern = schemaPattern.replaceAll("%", "*");
+      }
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
             || schemaPattern != null && schemaPattern.length() > 0)
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
+      if (tableNamePattern.contains("%")) {
+        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+      }
       sql = sql + "." + tableNamePattern;
     }
     ResultSet rs = stmt.executeQuery(sql);

@@ -23,12 +23,37 @@ echo ---------------------
 echo Starting IoTDB
 echo ---------------------
 
+
+if [ "x$IOTDB_INCLUDE" = "x" ]; then
+    # Locations (in order) to use when searching for an include file.
+    for include in "`dirname "$0"`/iotdb.in.sh" \
+                   "$HOME/.iotdb.in.sh" \
+                   /usr/share/iotdb/iotdb.in.sh \
+                   /etc/iotdb/iotdb.in.sh \
+                   /opt/iotdb/iotdb.in.sh; do
+        if [ -r "$include" ]; then
+            . "$include"
+            break
+        fi
+    done
+# ...otherwise, source the specified include.
+elif [ -r "$IOTDB_INCLUDE" ]; then
+    . "$IOTDB_INCLUDE"
+fi
+
+
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
-IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
+if [ -z "${IOTDB_CONF}" ]; then
+  export IOTDB_CONF=${IOTDB_HOME}/conf
+fi
+
+if [ -z "${IOTDB_LOG_DIR}" ]; then
+  export IOTDB_LOG_DIR=${IOTDB_HOME}/logs
+fi
+
 
 is_conf_path=false
 for arg do
