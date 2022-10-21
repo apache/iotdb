@@ -66,7 +66,12 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
     }
     MetricService.getInstance()
         .getOrCreateHistogram(
-            Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "syncLogTimePerRequest")
+            Metric.STAGE.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            "syncLogTimePerRequest",
+            Tag.REGION.toString(),
+            this.thread.getPeer().getGroupId().toString())
         .update((System.currentTimeMillis() - createTime) / batch.getBatches().size());
   }
 

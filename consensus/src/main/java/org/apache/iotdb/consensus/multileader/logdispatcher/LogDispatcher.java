@@ -299,7 +299,12 @@ public class LogDispatcher {
           }
           MetricService.getInstance()
               .getOrCreateHistogram(
-                  Metric.STAGE.toString(), MetricLevel.CORE, Tag.TYPE.toString(), "constructBatch")
+                  Metric.STAGE.toString(),
+                  MetricLevel.CORE,
+                  Tag.TYPE.toString(),
+                  "constructBatch",
+                  Tag.REGION.toString(),
+                  peer.getGroupId().toString())
               .update((System.currentTimeMillis() - startTime) / batch.getBatches().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
