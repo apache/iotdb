@@ -93,6 +93,7 @@ public enum ConfigPhysicalPlanType {
   GetRegionId,
   GetSeriesSlotList,
   GetTimeSlotList,
+  UpdateLoadStatistics,
   UpdateTriggersOnTransferNodes,
   UpdateTriggerLocation,
   GetTransferringTriggers,
