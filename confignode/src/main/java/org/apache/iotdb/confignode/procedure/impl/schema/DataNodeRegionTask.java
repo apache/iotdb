@@ -160,7 +160,7 @@ abstract class DataNodeRegionTask<T> {
           return availableDataNodeLocation;
         } else {
           availableDataNodeLocation
-              .compute(selectedDataNode, (k, v) -> new ArrayList<>())
+              .computeIfAbsent(selectedDataNode, k -> new ArrayList<>())
               .add(consensusGroupId);
         }
       }
@@ -169,7 +169,7 @@ abstract class DataNodeRegionTask<T> {
   }
 
   protected void saveDataNodeResponse(Integer dataNodeId, T response) {
-    responseMap.compute(dataNodeId, (k, v) -> new ArrayList<>()).add(response);
+    responseMap.computeIfAbsent(dataNodeId, k -> new ArrayList<>()).add(response);
   }
 
   Map<Integer, List<T>> getResponseMap() {

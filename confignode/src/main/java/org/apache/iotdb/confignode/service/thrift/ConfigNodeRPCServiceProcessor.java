@@ -627,7 +627,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
-    return null;
+    return configManager.deactivateSchemaTemplate(req);
   }
 
   @Override

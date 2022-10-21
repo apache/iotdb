@@ -681,7 +681,7 @@ public class ConfigMTree {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
               result
-                  .compute(node.getSchemaTemplateId(), (k, v) -> new HashSet<>())
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
                   .add(getCurrentPartialPath(node));
               // descendants of the node cannot set another template, exit from this branch
               return true;
@@ -695,10 +695,12 @@ public class ConfigMTree {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
               result
-                  .compute(node.getSchemaTemplateId(), (k, v) -> new HashSet<>())
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
                   .add(getCurrentPartialPath(node));
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
             }
-            return true;
+            return false;
           }
         };
     collector.traverse();

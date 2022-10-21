@@ -2133,6 +2133,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       for (IEntityMNode entityMNode :
           mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
         entityMNode.deactivateTemplate();
+        mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
         try {
           writeToMLog(plan);
         } catch (IOException e) {

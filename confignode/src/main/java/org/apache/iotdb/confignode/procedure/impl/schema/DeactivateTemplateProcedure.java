@@ -235,6 +235,7 @@ public class DeactivateTemplateProcedure
           }
         };
     deleteDataTask.execute();
+    setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
   }
 
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {

@@ -719,7 +719,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                     .forEach(
                         path ->
                             allTemplateSetInfo
-                                .compute(path, (k, v) -> new HashSet<>())
+                                .computeIfAbsent(path, k -> new HashSet<>())
                                 .add(templateId));
               }
             });

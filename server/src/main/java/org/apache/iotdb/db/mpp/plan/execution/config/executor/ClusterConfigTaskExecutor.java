@@ -821,10 +821,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
       String queryId, DeactivateTemplateStatement deactivateTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeactivateSchemaTemplateReq req =
-        new TDeactivateSchemaTemplateReq(
-            queryId,
-            serializePatternListToByteBuffer(deactivateTemplateStatement.getPathPatternList()));
+    TDeactivateSchemaTemplateReq req = new TDeactivateSchemaTemplateReq();
+    req.setQueryId(queryId);
+    req.setTemplateName(deactivateTemplateStatement.getTemplateName());
+    req.setPathPatternTree(
+        serializePatternListToByteBuffer(deactivateTemplateStatement.getPathPatternList()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
             ConfigNodeInfo.partitionRegionId)) {

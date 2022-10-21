@@ -210,7 +210,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 deviceGroup.forEach(
                     (deviceGroupId, schemaRegionReplicaSet) ->
                         storageGroupSchemaRegionMap
-                            .compute(storageGroup, (k, v) -> new HashSet<>())
+                            .computeIfAbsent(storageGroup, k -> new HashSet<>())
                             .add(schemaRegionReplicaSet));
               });
 
