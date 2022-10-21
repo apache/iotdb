@@ -205,7 +205,7 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 <img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/Trigger_Process_Strategy.jpg?raw=true">
 
 
-#### 示例
+### 示例
 
 如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 trigger-example。
 您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。后续我们会加入更多的示例项目供您参考。
