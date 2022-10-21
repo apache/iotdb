@@ -23,9 +23,9 @@
 
 # Triggers
 
-The trigger provides a mechanism for listening to changes in time series data. With user-defined logic, tasks such as alerting, data cleaning, and data forwarding can be conducted.
+The trigger provides a mechanism for listening to changes in time series data. With user-defined logic, tasks such as alerting data forwarding can be conducted.
 
-The trigger is implemented based on the reflection mechanism. Users can monitor data changes by implementing the Java interfaces. IoTDB allows users to dynamically register and drop triggers without restarting the server.
+The trigger is implemented based on the reflection mechanism. Users can monitor data changes by implementing the Java interfaces. IoTDB allows users to dynamically create and drop triggers without restarting the server.
 
 The document will help you learn to define and manage triggers.
 
