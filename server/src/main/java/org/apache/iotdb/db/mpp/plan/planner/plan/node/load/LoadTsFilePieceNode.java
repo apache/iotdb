@@ -71,6 +71,10 @@ public class LoadTsFilePieceNode extends WritePlanNode {
         || dataSize >= config.getAllocateMemoryForFree() / 2;
   }
 
+  public long getDataSize() {
+    return dataSize;
+  }
+
   public void addTsFileData(TsFileData tsFileData) {
     tsFileDataList.add(tsFileData);
     dataSize += tsFileData.getDataSize();

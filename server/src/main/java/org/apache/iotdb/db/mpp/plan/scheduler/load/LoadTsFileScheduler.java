@@ -159,7 +159,7 @@ public class LoadTsFileScheduler implements IScheduler {
             // TODO: retry.
             logger.error(
                 String.format(
-                    "Dispatch one piece  to ReplicaSet %s error, result status code %s.",
+                    "Dispatch one piece to ReplicaSet %s error, result status code %s.",
                     entry.getKey(),
                     TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
             logger.error(
@@ -172,7 +172,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 logger.error(String.format("Sub status message %s.", status.getMessage()));
               }
             }
-            logger.error(String.format("Dispatch piece node:%n%s", pieceNode));
+            logger.error(String.format("Dispatch piece node error:%n%s", pieceNode));
             stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
             return false;
           }

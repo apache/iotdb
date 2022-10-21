@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -37,6 +38,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -77,6 +79,11 @@ public class AlignedChunkData implements ChunkData {
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
 
+  private long totalDataSize;
+  private PublicBAOS byteStream;
+  private DataOutputStream stream;
+  private boolean needDecodeChunk;
+
   public AlignedChunkData(long timeOffset, String device, ChunkHeader chunkHeader) {
     this.offset = new ArrayList<>();
     this.dataSize = new ArrayList<>();
@@ -87,6 +94,15 @@ public class AlignedChunkData implements ChunkData {
 
     offset.add(timeOffset);
     dataSize.add(0L);
+    chunkHeaderList.add(chunkHeader);
+  }
+
+  public AlignedChunkData(String device, ChunkHeader chunkHeader, boolean needDecodeChunk) {
+    this.totalDataSize = 0;
+    this.device = device;
+    this.chunkHeaderList = new ArrayList<>();
+    this.needDecodeChunk = needDecodeChunk;
+
     chunkHeaderList.add(chunkHeader);
   }
 
@@ -161,6 +177,10 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
+  public void addValueChunk(ChunkHeader chunkHeader) {
+    this.chunkHeaderList.add(chunkHeader);
+  }
+
   public void addValueChunkDataSize(long dataSize) {
     int lastIndex = this.dataSize.size() - 1;
     this.dataSize.set(lastIndex, this.dataSize.get(lastIndex) + dataSize);
@@ -172,6 +192,14 @@ public class AlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     serializeTsFileData(stream, tsFile);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
+    ReadWriteIOUtils.write(isAligned(), stream);
+    serializeAttr(stream);
+    ReadWriteIOUtils.write(needDecodeChunk, stream);
+    byteStream.writeTo(stream);
   }
 
   private void serializeAttr(DataOutputStream stream) throws IOException {
@@ -201,6 +229,12 @@ public class AlignedChunkData implements ChunkData {
     satisfiedTimeBatchLength = null;
   }
 
+  public void writeEntireChunk(ByteBuffer chunkData, ChunkMetadata chunkMetadata)
+      throws IOException {
+    totalDataSize += ReadWriteIOUtils.write(chunkData, stream);
+    chunkMetadata.getStatistics().serialize(stream);
+  }
+
   private void serializeEntireChunk(
       DataOutputStream stream,
       TsFileSequenceReader reader,
@@ -213,6 +247,74 @@ public class AlignedChunkData implements ChunkData {
             chunkHeader.getDataSize());
     ReadWriteIOUtils.write(chunkData, stream);
     chunkMetadata.getStatistics().serialize(stream);
+  }
+
+  public void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
+    totalDataSize += ReadWriteIOUtils.write(false, stream);
+    pageHeader.serializeTo(stream);
+    totalDataSize += ReadWriteIOUtils.write(pageData, stream);
+  }
+
+  public void writeDecodePage(long[] times, Object[] values, int satisfiedLength)
+      throws IOException {
+    long startTime = timePartitionSlot.getStartTime();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    totalDataSize += ReadWriteIOUtils.write(true, stream);
+    totalDataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
+
+    for (int i = 0; i < times.length; i++) {
+      if (times[i] < startTime) {
+        continue;
+      } else if (times[i] >= endTime) {
+        break;
+      }
+      totalDataSize += ReadWriteIOUtils.write(times[i], stream);
+    }
+  }
+
+  public void writeDecodeValuePage(
+      long[] times, Object[] values, int satisfiedLength, TSDataType dataType) throws IOException {
+    long startTime = timePartitionSlot.getStartTime();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    totalDataSize += ReadWriteIOUtils.write(true, stream);
+    totalDataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
+
+    for (int i = 0; i < times.length; i++) {
+      if (times[i] < startTime) {
+        continue;
+      } else if (times[i] >= endTime) {
+        break;
+      }
+
+      if (values[i] == null) {
+        totalDataSize += ReadWriteIOUtils.write(true, stream);
+        continue;
+      }
+      totalDataSize += ReadWriteIOUtils.write(false, stream);
+      switch (dataType) {
+        case INT32:
+          totalDataSize += ReadWriteIOUtils.write((int) values[i], stream);
+          break;
+        case INT64:
+          totalDataSize += ReadWriteIOUtils.write((long) values[i], stream);
+          break;
+        case FLOAT:
+          totalDataSize += ReadWriteIOUtils.write((float) values[i], stream);
+          break;
+        case DOUBLE:
+          totalDataSize += ReadWriteIOUtils.write((double) values[i], stream);
+          break;
+        case BOOLEAN:
+          totalDataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
+          break;
+        case TEXT:
+          totalDataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
+      }
+    }
   }
 
   private void serializeDecodeChunk(
