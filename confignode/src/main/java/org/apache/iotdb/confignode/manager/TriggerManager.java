@@ -21,12 +21,14 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
@@ -67,9 +69,17 @@ public class TriggerManager {
   private final ConfigManager configManager;
   private final TriggerInfo triggerInfo;
 
+  private final long jarSizeLimit;
+
   public TriggerManager(ConfigManager configManager, TriggerInfo triggerInfo) {
     this.configManager = configManager;
     this.triggerInfo = triggerInfo;
+
+    this.jarSizeLimit =
+        ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+            - IoTDBConstant.MB;
   }
 
   public TriggerInfo getTriggerInfo() {
@@ -91,6 +101,15 @@ public class TriggerManager {
    * @return status of create this trigger
    */
   public TSStatus createTrigger(TCreateTriggerReq req) {
+    byte[] jarFile = req.getJarFile();
+    if (jarFile.length > jarSizeLimit) {
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                  req.getTriggerName()));
+    }
+
     boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
     TDataNodeLocation dataNodeLocation =
         isStateful ? configManager.getNodeManager().getLowestLoadDataNode() : null;
@@ -108,7 +127,7 @@ public class TriggerManager {
             req.getJarMD5());
     return configManager
         .getProcedureManager()
-        .createTrigger(triggerInformation, new Binary(req.getJarFile()));
+        .createTrigger(triggerInformation, new Binary(jarFile));
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {
