@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -69,8 +70,6 @@ import java.util.Map;
 public class IoTDBConfigNodeSnapshotIT {
 
   protected static String originalConfigNodeConsensusProtocolClass;
-  private static final String testConfigNodeConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   protected static int originalRatisSnapshotTriggerThreshold;
   private static final int testRatisSnapshotTriggerThreshold = 10;
@@ -82,8 +81,7 @@ public class IoTDBConfigNodeSnapshotIT {
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(testConfigNodeConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
 
     originalRatisSnapshotTriggerThreshold =
         ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();

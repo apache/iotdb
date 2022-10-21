@@ -360,6 +360,15 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
     nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
+
+    // Log current NodeStatistics
+    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
+    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
+      LOGGER.info(
+          "[UpdateLoadStatistics]\t {}={}",
+          "nodeId{" + nodeCacheEntry.getKey() + "}",
+          nodeCacheEntry.getValue());
+    }
   }
 
   /** Only used when the ConfigNode-Leader is switched */

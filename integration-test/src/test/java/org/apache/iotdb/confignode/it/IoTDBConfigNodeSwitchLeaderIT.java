@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.confignode.it;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -38,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -63,13 +62,11 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBSwitchLeaderIT {
+public class IoTDBConfigNodeSwitchLeaderIT {
 
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
@@ -88,9 +85,10 @@ public class IoTDBSwitchLeaderIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig()
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
@@ -188,6 +186,9 @@ public class IoTDBSwitchLeaderIT {
 
       // Shutdown a DataNode
       EnvFactory.getEnv().shutdownDataNode(0);
+      // Waiting for DataNode shutdown
+      TimeUnit.SECONDS.sleep(1);
+
       boolean isDetectedUnknown = false;
       for (int retry = 0; retry < 30; retry++) {
         showDataNodesResp0 = client.showDataNodes();
@@ -227,27 +228,7 @@ public class IoTDBSwitchLeaderIT {
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
 
-      // Check leadership
-      Map<TConsensusGroupId, Integer> oldLeaderMap = new HashMap<>();
-      showRegionResp0
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (RegionRoleType.Leader.getStatus().equals(regionInfo.getRoleType())) {
-                  oldLeaderMap.put(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId());
-                }
-              });
-      TShowRegionResp showRegionResp1 = client.showRegion(new TShowRegionReq());
-      Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
-      showRegionResp1
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (RegionRoleType.Leader.getStatus().equals(regionInfo.getRoleType())) {
-                  newLeaderMap.put(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId());
-                }
-              });
-      Assert.assertEquals(oldLeaderMap, newLeaderMap);
+      // TODO: Check RegionGroup leadership after the leader allocation policy is optimized
 
       // TODO: Check NodeStatus after the heartbeat check is optimized
     }

@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -82,8 +83,6 @@ public class IoTDBClusterPartitionIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
@@ -105,9 +104,10 @@ public class IoTDBClusterPartitionIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig()
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();

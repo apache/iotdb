@@ -694,6 +694,17 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
     regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+
+    // Log current RegionGroupStatistics
+    LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
+    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+        regionGroupStatisticsMap.entrySet()) {
+      LOGGER.info(
+          "[UpdateLoadStatistics]\t {}={}",
+          regionGroupStatisticsEntry.getKey(),
+          regionGroupStatisticsEntry.getValue());
+    }
+
     return RpcUtils.SUCCESS_STATUS;
   }
 

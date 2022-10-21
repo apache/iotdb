@@ -299,6 +299,9 @@ public class ConfigPlanExecutor {
       case DropPipe:
         return syncInfo.dropPipe((DropPipePlan) physicalPlan);
       case UpdateLoadStatistics:
+        LOGGER.info(
+            "[UpdateLoadStatistics] Update cluster load statistics, timestamp: {}",
+            System.currentTimeMillis());
         nodeInfo.updateNodeStatistics((UpdateLoadStatisticsPlan) physicalPlan);
         return partitionInfo.updateRegionGroupStatistics((UpdateLoadStatisticsPlan) physicalPlan);
       default:
