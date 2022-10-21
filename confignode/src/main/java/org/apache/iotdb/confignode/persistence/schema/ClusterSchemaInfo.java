@@ -696,6 +696,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return new AllTemplateSetInfoResp(outputStream.toByteArray());
   }
 
+  /**
+   * Get the templateId set on paths covered by input path pattern. Resolve the input path patterns
+   * into specified path pattern start with template set path. The result set is organized as
+   * specified path pattern -> template id
+   */
   public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
     TemplateSetInfoResp resp = new TemplateSetInfoResp();
     try {

@@ -577,30 +577,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
       Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
-    PartialPath storageGroupPattern = getStorageGroupPattern(consensusGroupId);
+
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
     Map<PartialPath, List<Integer>> result = new HashMap<>();
     templateSetInfo.forEach(
         (k, v) -> {
-          if (storageGroupPattern.overlapWith(k)) {
+          if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
             result.put(k, v);
           }
         });
     return result;
   }
 
-  private PartialPath getStorageGroupPattern(TConsensusGroupId consensusGroupId) {
-    PartialPath storageGroupPattern = null;
+  private PartialPath getStorageGroupPath(TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPath = null;
     try {
-      storageGroupPattern =
+      storageGroupPath =
           new PartialPath(
-                  schemaEngine
-                      .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                      .getStorageGroupFullPath())
-              .concatNode(MULTI_LEVEL_PATH_WILDCARD);
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getStorageGroupFullPath());
     } catch (IllegalPathException ignored) {
       // won't reach here
     }
-    return storageGroupPattern;
+    return storageGroupPath;
   }
 
   @Override
