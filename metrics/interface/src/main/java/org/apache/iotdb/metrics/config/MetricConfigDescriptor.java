@@ -109,27 +109,47 @@ public class MetricConfigDescriptor {
       // try to get conf folder from IOTDB_HOME
       url = System.getProperty(MetricConstant.IOTDB_HOME, null);
       if (url != null) {
-        url += File.separator + "conf" + File.separator + MetricConstant.DATANODE_CONFIG_NAME;
+        url += File.separator + "conf";
       }
     }
-    // second, try to get conf folder of datanode
+
+    if (url == null) {
+      logger.warn(
+          "Cannot find IOTDB_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          MetricConstant.DATANODE_CONFIG_NAME);
+    } else {
+      url += (File.separatorChar + MetricConstant.DATANODE_CONFIG_NAME);
+      if (new File(url).exists()) {
+        return url;
+      } else {
+        url = null;
+      }
+    }
+
+    // second, try to get conf folder of confignode
     if (url == null) {
       url = System.getProperty(MetricConstant.CONFIGNODE_CONF, null);
       if (url == null) {
         // try to get conf folder from CONFIGNODE_HOME
         url = System.getProperty(MetricConstant.CONFIGNODE_HOME, null);
         if (url != null) {
-          url += File.separator + "conf" + File.separator + MetricConstant.CONFIG_NODE_CONFIG_NAME;
+          url += File.separator + "conf";
         }
       }
     }
+
     // finally, return null when not find
     if (url == null) {
       logger.warn(
-          "Cannot find IOTDB_CONF and CONFIGNODE_CONF environment variable when loading "
-              + "config file, use default configuration");
+          "Cannot find CONFIGNODE_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          MetricConstant.CONFIG_NODE_CONFIG_NAME);
       return null;
+    } else {
+      url += (File.separatorChar + MetricConstant.CONFIG_NODE_CONFIG_NAME);
     }
+
     return url;
   }
 
