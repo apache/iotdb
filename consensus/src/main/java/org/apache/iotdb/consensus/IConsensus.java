@@ -97,13 +97,14 @@ public interface IConsensus {
   ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer);
 
   /**
-   * Tell the group to update an active Peer.The modifiable part of {@link Peer} is TEndPoint.
+   * Tell the group to update an active Peer. The modifiable part of {@link Peer} is TEndPoint.
    *
    * @param groupId the consensus group this peer belongs
-   * @param peer the modified peer
+   * @param oldPeer the peer to be updated
+   * @param newPeer the peer to be updated to
    */
   // TODO: @SzyWilliam @SpriCoder Please implement this method
-  ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer peer);
+  ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer);
 
   /**
    * Change group configuration. This method allows you to add/remove multiple Peers at once. This
