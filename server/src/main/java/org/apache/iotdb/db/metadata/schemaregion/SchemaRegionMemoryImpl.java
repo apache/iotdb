@@ -2093,7 +2093,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
-          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue(), false)) {
+          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
         entityMNode.preDeactivateTemplate();
         preDeactivateNum++;
         try {
@@ -2112,7 +2112,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
-          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue(), true)) {
+          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        if (!entityMNode.isPreDeactivateTemplate()) {
+          continue;
+        }
         entityMNode.rollbackPreDeactivateTemplate();
         try {
           writeToMLog(plan);
@@ -2128,7 +2131,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
-          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue(), true)) {
+          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
         entityMNode.deactivateTemplate();
         try {
           writeToMLog(plan);

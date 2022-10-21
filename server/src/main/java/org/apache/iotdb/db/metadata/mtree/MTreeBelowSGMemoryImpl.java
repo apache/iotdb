@@ -1667,15 +1667,30 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   public List<IEntityMNode> getDeviceMNodeUsingTargetTemplate(
-      PartialPath pathPattern, List<Integer> templateIdList, boolean isPreDeactivated)
-      throws MetadataException {
+      PartialPath pathPattern, List<Integer> templateIdList) throws MetadataException {
+    List<IEntityMNode> result = new ArrayList<>();
+    EntityCollector<List<IEntityMNode>> collector =
+        new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectEntity(IEntityMNode node) throws MetadataException {
+            if (templateIdList.contains(node.getSchemaTemplateId())) {
+              result.add(node);
+            }
+          }
+        };
+    collector.traverse();
+    return result;
+  }
+
+  public List<IEntityMNode> getPreDeactivatedDeviceMNode(
+      PartialPath pathPattern, List<Integer> templateIdList) throws MetadataException {
     List<IEntityMNode> result = new ArrayList<>();
     EntityCollector<List<IEntityMNode>> collector =
         new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
             if (templateIdList.contains(node.getSchemaTemplateId())
-                && isPreDeactivated == node.isPreDeactivateTemplate()) {
+                && node.isPreDeactivateTemplate()) {
               result.add(node);
             }
           }
