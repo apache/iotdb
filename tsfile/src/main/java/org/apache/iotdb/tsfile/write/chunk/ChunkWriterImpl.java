@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -350,12 +349,16 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
-    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
+    return pageWriter.getPointNumber() >= pointNum
+        || pageWriter.estimateMaxMemSize() >= size
+        || pageWriter.getPointNumber() == 0;
   }
 
   @Override
   public boolean checkIsChunkSizeOverThreshold(long size, long pointNum) {
-    return estimateMaxSeriesMemSize() >= size || statistics.getCount() >= pointNum;
+    return estimateMaxSeriesMemSize() >= size
+        || statistics.getCount() >= pointNum
+        || (statistics.getCount() == 0 && pageWriter.getPointNumber() == 0);
   }
 
   public TSDataType getDataType() {

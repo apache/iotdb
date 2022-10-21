@@ -46,9 +46,15 @@ public interface IChunkWriter {
   /** set the current pageWriter to null, friendly for gc */
   void clearPageWriter();
 
-  /** used for compaction to check whether the chunk is over threshold or not. */
+  /**
+   * used for compaction to check whether the chunk is over threshold or not. Return true if there
+   * is no unsealed chunk.
+   */
   boolean checkIsChunkSizeOverThreshold(long size, long pointNum);
 
-  /** used for compaction to check whether the unsealed page is over threshold or not. */
+  /**
+   * used for compaction to check whether the unsealed page is over threshold or not. Return true if
+   * there is no unsealed page.
+   */
   boolean checkIsUnsealedPageOverThreshold(long size, long pointNum);
 }

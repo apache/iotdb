@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -45,8 +46,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
@@ -81,6 +80,15 @@ public class AbstractCompactionTest {
 
   private static final int oldMaxCrossCompactionFileNum =
       IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+
+  private final int oldMaxDegreeOfIndexNode =
+      TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
+
+  private final long oldLowerTargetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+
+  private final long oldLowerTargetChunkPointNum =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -372,8 +380,15 @@ public class AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkSizeLowerBoundInCompaction(oldTargetChunkPointNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkPointNumLowerBoundInCompaction(oldLowerTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(oldMaxDegreeOfIndexNode);
     EnvironmentUtils.cleanEnv();
     if (SEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(SEQ_DIRS);
