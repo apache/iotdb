@@ -105,7 +105,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -3083,19 +3083,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitGetRegion(IoTDBSqlParser.GetRegionContext ctx) {
+  public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    GetRegionStatement getRegionStatement =
-        new GetRegionStatement(
+    GetRegionIdStatement getRegionIdStatement =
+        new GetRegionIdStatement(
             ctx.prefixPath().getText(),
             type,
             new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
     if (ctx.timeSlot != null) {
-      getRegionStatement.setTimeSlotId(
+      getRegionIdStatement.setTimeSlotId(
           new TTimePartitionSlot(Integer.parseInt(ctx.timeSlot.getText())));
     }
-    return getRegionStatement;
+    return getRegionIdStatement;
   }
 
   @Override

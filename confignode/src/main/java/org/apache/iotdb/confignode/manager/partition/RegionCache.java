@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -32,17 +32,8 @@ public class RegionCache {
 
   private final List<RegionHeartbeatSample> slidingWindow;
 
-  // Indicates the version of the statistics
-  private volatile long versionTimestamp;
-  private volatile RegionStatus status;
-  private volatile boolean isLeader;
-
   public RegionCache() {
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
-
-    this.versionTimestamp = 0;
-    this.status = RegionStatus.Unknown;
-    this.isLeader = false;
   }
 
   public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
@@ -60,29 +51,21 @@ public class RegionCache {
     }
   }
 
-  public void updateStatistics() {
+  public RegionStatistics getRegionStatistics() {
+    RegionHeartbeatSample lastSample;
     synchronized (slidingWindow) {
-      RegionHeartbeatSample lastSample = getLastSample();
-      if (lastSample.getSendTimestamp() > versionTimestamp) {
-        versionTimestamp = lastSample.getSendTimestamp();
-        isLeader = lastSample.isLeader();
-        status = lastSample.getStatus();
-      }
+      lastSample = getLastSample();
     }
 
     // TODO: Optimize judge logic
-    if (System.currentTimeMillis() - versionTimestamp > HEARTBEAT_TIMEOUT_TIME) {
+    RegionStatus status;
+    if (System.currentTimeMillis() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME) {
       status = RegionStatus.Unknown;
+    } else {
+      status = lastSample.getStatus();
     }
-  }
 
-  public RegionStatus getStatus() {
-    return status;
-  }
-
-  /** @return Pair<Last update time, is leader> */
-  public Pair<Long, Boolean> isLeader() {
-    return new Pair<>(versionTimestamp, isLeader);
+    return new RegionStatistics(lastSample.getSendTimestamp(), lastSample.isLeader(), status);
   }
 
   private RegionHeartbeatSample getLastSample() {

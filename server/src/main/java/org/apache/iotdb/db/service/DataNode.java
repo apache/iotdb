@@ -73,6 +73,7 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -108,6 +109,10 @@ public class DataNode implements DataNodeMBean {
   /** Hold the information of trigger, udf...... */
   private final ResourcesInformationHolder resourcesInformationHolder =
       new ResourcesInformationHolder();
+
+  /** Responsible for keeping trigger information up to date */
+  private final TriggerInformationUpdater triggerInformationUpdater =
+      new TriggerInformationUpdater();
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -517,6 +522,9 @@ public class DataNode implements DataNodeMBean {
       logger.debug(
           "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
     }
+
+    // start TriggerInformationUpdater
+    triggerInformationUpdater.startTriggerInformationUpdater();
   }
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
@@ -545,10 +553,6 @@ public class DataNode implements DataNodeMBean {
     List<TriggerInformation> res = new ArrayList<>();
     for (TriggerInformation triggerInformation :
         resourcesInformationHolder.getTriggerInformationList()) {
-      if (triggerInformation.isStateful()) {
-        // jar of stateful trigger is not needed
-        continue;
-      }
       // jar does not exist, add current triggerInformation to list
       if (!TriggerExecutableManager.getInstance()
           .hasFileUnderLibRoot(triggerInformation.getJarName())) {
@@ -619,10 +623,15 @@ public class DataNode implements DataNodeMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB DataNode...");
+    stopTriggerRelatedServices();
     // stopThreadPools();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB DataNode is deactivated.");
+  }
+
+  private void stopTriggerRelatedServices() {
+    triggerInformationUpdater.stopTriggerInformationUpdater();
   }
 
   private void setUncaughtExceptionHandler() {

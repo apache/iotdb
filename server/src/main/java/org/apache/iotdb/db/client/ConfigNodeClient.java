@@ -59,11 +59,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -139,7 +140,7 @@ public class ConfigNodeClient
 
   private int cursor = 0;
 
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
 
@@ -939,10 +940,42 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetLocationForTriggerResp resp = client.getLocationOfStatefulTrigger(triggerName);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
   public TGetTriggerTableResp getTriggerTable() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TGetTriggerTableResp resp = client.getTriggerTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTriggerTableResp resp = client.getStatefulTriggerTable();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
@@ -1195,10 +1228,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetRoutingResp getRouting(TGetRoutingReq req) throws TException {
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetRoutingResp resp = client.getRouting(req);
+        TGetRegionIdResp resp = client.getRegionId(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

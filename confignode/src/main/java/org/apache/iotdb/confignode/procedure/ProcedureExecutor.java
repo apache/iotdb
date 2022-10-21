@@ -382,7 +382,7 @@ public class ProcedureExecutor<Env> {
       rootProcStack.release();
 
       if (proc.isSuccess()) {
-        LOG.info("{} finished in {} successfully.", proc, proc.elapsedTime());
+        LOG.info("{} finished in {}ms successfully.", proc, proc.elapsedTime());
         if (proc.getProcId() == rootProcId) {
           rootProcedureCleanup(proc);
         } else {

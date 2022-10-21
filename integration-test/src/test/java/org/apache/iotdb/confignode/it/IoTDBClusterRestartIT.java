@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.AbstractEnv;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
@@ -88,6 +89,7 @@ public class IoTDBClusterRestartIT {
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ratisConsensusProtocolClass);
     ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass);
     ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
 
     originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();

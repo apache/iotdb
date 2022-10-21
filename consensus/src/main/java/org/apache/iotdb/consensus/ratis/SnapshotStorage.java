@@ -111,7 +111,7 @@ public class SnapshotStorage implements StateMachineStorage {
       if (file.endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
+      FileInfo fileInfo = new FileInfo(file, null);
       fileInfos.add(fileInfo);
     }
 

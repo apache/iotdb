@@ -465,10 +465,10 @@ public class ConfigNodeProcedureEnv {
         (dataNodeId, regionStatus) ->
             getPartitionManager()
                 .cacheHeartbeatSample(
+                    dataNodeId,
                     regionGroupId,
-                    new RegionHeartbeatSample(
-                        currentTime, currentTime, dataNodeId, false, regionStatus)));
-    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionStatistics();
+                    new RegionHeartbeatSample(currentTime, currentTime, false, regionStatus)));
+    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionGroupStatistics();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
@@ -487,9 +487,6 @@ public class ConfigNodeProcedureEnv {
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    // TODO: The request sent to DataNodes which stateful triggerInstance needn't to be created
-    // don't set
-    // JarFile
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
