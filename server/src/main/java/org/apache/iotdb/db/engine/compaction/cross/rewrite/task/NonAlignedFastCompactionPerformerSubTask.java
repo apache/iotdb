@@ -191,7 +191,7 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
    * 0 means that there is data on this page been deleted. <br>
    * 1 means that all data on this page has been deleted.
    */
-  protected int isPageModified(PageElement pageElement) {
+  protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;
     long endTime = pageElement.pageHeader.getEndTime();
     return checkIsModified(

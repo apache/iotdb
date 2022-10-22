@@ -51,6 +51,12 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
+  protected enum ModifiedStatus {
+    AllDeleted,
+    PartialDeleted,
+    NoneDeleted;
+  }
+
   @FunctionalInterface
   public interface RemovePage {
     void call(PageElement pageElement)
@@ -216,24 +222,46 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
       PageElement firstPageElement = pageQueue.peek();
-      int modifiedStatus = isPageModified(firstPageElement);
+      ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
 
-      if (modifiedStatus == 1) {
+      if (modifiedStatus == ModifiedStatus.AllDeleted) {
         // all data on this page has been deleted, remove it
         removePage(firstPageElement);
         continue;
       }
 
-      List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
-      boolean isPageOverlap = overlappedPages.size() > 1;
+      List<PageElement> overlapPages = findOverlapPages(firstPageElement);
+      boolean isPageOverlap = isPageOverlap(firstPageElement);
+      //      if (overlapPages.size() > 1) {
+      //        for (PageElement pageElement : overlapPages) {
+      //          if (pageElement.equals(firstPageElement)) {
+      //            continue;
+      //          }
+      //          if (checkIsModified(
+      //                  pageElement.startTime,
+      //                  Math.min(
+      //                      firstPageElement.pageHeader.getEndTime(),
+      //                      pageElement.pageHeader.getEndTime()),
+      //                  pageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())
+      //              != ModifiedStatus.AllDeleted) {
+      //            isPageOverlap = true;
+      //            break;
+      //          }
+      //        }
+      //      }
 
-      if (isPageOverlap || modifiedStatus == 0) {
+      if (isPageOverlap || modifiedStatus == ModifiedStatus.PartialDeleted) {
         // has overlap or modified pages, then deserialize it
-        pointPriorityReader.addNewPage(overlappedPages.remove(0));
+        pointPriorityReader.addNewPage(overlapPages.remove(0));
+        addOverlappedPagesIntoList(overlapPages);
         compactWithOverlapPages();
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
-        compactWithNonOverlapPage(firstPageElement);
+        compactWithNonOverlapPage(overlapPages.remove(0));
+        if (overlapPages.size() > 0) {
+          addOverlappedPagesIntoList(overlapPages);
+          compactWithOverlapPages();
+        }
       }
     }
   }
@@ -285,8 +313,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         PageElement nextPageElement = overlappedPages.get(0);
 
         int oldSize = overlappedPages.size();
-        // write currentPage.point.time < nextPage.startTime to chunk writer
-        while (pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
+      // write currentPage.point.time < nextPage.startTime to chunk writer
+      while (pointPriorityReader.hasNext()
+          && pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
           // write data point to chunk writer
           compactionWriter.write(
               pointPriorityReader.currentPoint().left,
@@ -303,17 +332,19 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
           }
         }
 
-        int nextPageModifiedStatus = isPageModified(nextPageElement);
+      ModifiedStatus nextPageModifiedStatus = isPageModified(nextPageElement);
 
-        if (nextPageModifiedStatus == 1) {
+      if (nextPageModifiedStatus == ModifiedStatus.AllDeleted) {
           // all data on next page has been deleted, remove it
           removePage(nextPageElement);
         } else {
-          boolean isNextPageOverlap =
-              pointPriorityReader.currentPoint().left <= nextPageElement.pageHeader.getEndTime()
-                  || isPageOverlap(nextPageElement);
+        boolean isNextPageOverlap =
+            (pointPriorityReader.hasNext()
+                    && pointPriorityReader.currentPoint().left
+                        <= nextPageElement.pageHeader.getEndTime())
+                || isPageOverlap(nextPageElement);
 
-          if (isNextPageOverlap || nextPageModifiedStatus == 0) {
+        if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PartialDeleted) {
             // has overlap or modified pages, then deserialize it
             pointPriorityReader.addNewPage(nextPageElement);
           } else {
@@ -342,6 +373,32 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         // the new overlapped pages, then start compacting them
         compactWithOverlapPages();
       }
+    }
+  }
+
+  /**
+   * Add the new overlapped pages into the global list and sort it according to the startTime of the
+   * page from small to large, so that each page can be compacted in order. If the page has been
+   * deleted completely, we remove it.
+   */
+  private void addOverlappedPagesIntoList(List<PageElement> newOverlappedPages)
+      throws IllegalPathException, IOException {
+    int oldSize = newOverlappedPages.size();
+    overlappedPages.addAll(newOverlappedPages);
+    //    for (PageElement pageElement : newOverlappedPages) {
+    //      if (isPageModified(pageElement) == ModifiedStatus.AllDeleted) {
+    //        removePage(pageElement);
+    //        continue;
+    //      }
+    //      overlappedPages.add(pageElement);
+    //    }
+    if (oldSize != 0 && overlappedPages.size() > oldSize) {
+      // if there is no pages in the overlappedPages, then we don't need to sort it after adding the
+      // new overlapped pages, because newOverlappedPages is already sorted. When there is pages in
+      // list before and there is new pages added into list, then we need to sort it again.
+      // we should ensure that the list is ordered according to the startTime of the page from small
+      // to large, so that each page can be compacted in order
+      overlappedPages.sort(Comparator.comparingLong(o -> o.startTime));
     }
   }
 
@@ -415,7 +472,13 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         continue;
       }
       // only check pages later than the specific page
-      if (element.startTime >= startTime && element.startTime <= endTime) {
+      if (element.startTime >= startTime
+          && element.startTime <= endTime
+          && checkIsModified(
+                  element.startTime,
+                  endTime,
+                  element.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())
+              != ModifiedStatus.AllDeleted) {
         return true;
       }
     }
@@ -440,19 +503,20 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
    * if and only if no data exists on all value pages is deleted
    */
-  protected abstract int isPageModified(PageElement pageElement);
+  protected abstract ModifiedStatus isPageModified(PageElement pageElement);
 
-  protected int checkIsModified(long startTime, long endTime, Collection<TimeRange> deletions) {
-    int status = -1;
+  protected ModifiedStatus checkIsModified(
+      long startTime, long endTime, Collection<TimeRange> deletions) {
+    ModifiedStatus status = ModifiedStatus.NoneDeleted;
     if (deletions != null) {
       for (TimeRange range : deletions) {
         if (range.contains(startTime, endTime)) {
           // all data on this page or chunk has been deleted
-          return 1;
+          return ModifiedStatus.AllDeleted;
         }
         if (range.overlaps(new TimeRange(startTime, endTime))) {
           // exist data on this page or chunk been deleted
-          status = 0;
+          status = ModifiedStatus.PartialDeleted;
         }
       }
     }
@@ -483,10 +547,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       // finished compacting yet, so there may be other pages overlap with it.
       // when deserializing new chunks into page queue or first page is removed from page queue, we
       // should find new overlapped pages and put them into list}
-      overlappedPages.addAll(findOverlapPages(pageQueue.peek()));
-      // we should ensure that the list is ordered according to the startTime of the page from small
-      // to large, so that each page can be compacted in order
-      overlappedPages.sort(Comparator.comparingLong(o -> o.startTime));
+      addOverlappedPagesIntoList(findOverlapPages(pageQueue.peek()));
     }
   }
 

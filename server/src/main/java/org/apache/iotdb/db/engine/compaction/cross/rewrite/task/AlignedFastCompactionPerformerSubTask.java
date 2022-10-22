@@ -291,30 +291,30 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
    * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
    * if value page has no data or all data being deleted.
    */
-  protected int isPageModified(PageElement pageElement) {
+  protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;
     long endTime = pageElement.pageHeader.getEndTime();
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) pageElement.chunkMetadataElement.chunkMetadata;
-    int lastPageStatus = Integer.MIN_VALUE;
+    ModifiedStatus lastPageStatus = null;
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      int currentPageStatus =
+      ModifiedStatus currentPageStatus =
           valueChunkMetadata == null
-              ? 1
+              ? ModifiedStatus.AllDeleted
               : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
-      if (currentPageStatus == 0) {
+      if (currentPageStatus == ModifiedStatus.PartialDeleted) {
         // one of the value pages exist data been deleted partially
-        return 0;
+        return ModifiedStatus.PartialDeleted;
       }
-      if (lastPageStatus == Integer.MIN_VALUE) {
+      if (lastPageStatus == null) {
         // first page
         lastPageStatus = currentPageStatus;
         continue;
       }
-      if (currentPageStatus != lastPageStatus) {
+      if (!currentPageStatus.equals(lastPageStatus)) {
         // there are at least two value pages, one is that all data is deleted, the other is that no
         // data is deleted
-        lastPageStatus = -1;
+        lastPageStatus = ModifiedStatus.NoneDeleted;
       }
     }
     return lastPageStatus;
