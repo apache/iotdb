@@ -420,7 +420,12 @@ public class IoTDBRpcDataSet {
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
-      return curTsBlock.getColumn(index).getInt(tsBlockIndex);
+      TSDataType type = curTsBlock.getColumn(index).getDataType();
+      if(type==TSDataType.INT64){
+        return (int)curTsBlock.getColumn(index).getLong(tsBlockIndex);
+      }else{
+        return curTsBlock.getColumn(index).getInt(tsBlockIndex);
+      }
     } else {
       lastReadWasNull = true;
       return 0;
@@ -439,7 +444,12 @@ public class IoTDBRpcDataSet {
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
-      return curTsBlock.getColumn(index).getLong(tsBlockIndex);
+      TSDataType type = curTsBlock.getColumn(index).getDataType();
+      if(type==TSDataType.INT32){
+        return curTsBlock.getColumn(index).getInt(tsBlockIndex);
+      }else{
+        return curTsBlock.getColumn(index).getLong(tsBlockIndex);
+      }
     } else {
       lastReadWasNull = true;
       return 0;
@@ -542,22 +552,7 @@ public class IoTDBRpcDataSet {
   }
 
   public Object getObject(int index, TSDataType tsDataType) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return curTsBlock.getColumn(index).getBoolean(tsBlockIndex);
-      case INT32:
-        return curTsBlock.getColumn(index).getInt(tsBlockIndex);
-      case INT64:
-        return curTsBlock.getColumn(index).getLong(tsBlockIndex);
-      case FLOAT:
-        return curTsBlock.getColumn(index).getFloat(tsBlockIndex);
-      case DOUBLE:
-        return curTsBlock.getColumn(index).getDouble(tsBlockIndex);
-      case TEXT:
-        return curTsBlock.getColumn(index).getBinary(tsBlockIndex).getStringValue();
-      default:
-        return null;
-    }
+    return curTsBlock.getColumn(index).getObject(tsBlockIndex);
   }
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
@@ -581,13 +576,16 @@ public class IoTDBRpcDataSet {
   }
 
   public void setQueryResult(List<ByteBuffer> queryResult) {
+
+    this.queryResult = queryResult;
+    this.queryResultSize = 0;
     if (queryResult != null) {
-      this.queryResult = queryResult;
       this.queryResultSize = queryResult.size();
-      this.queryResultIndex = 0;
-      this.tsBlockSize = 0;
-      this.tsBlockIndex = -1;
-      this.emptyResultSet = queryResult.size() == 0;
     }
+    this.queryResultIndex = 0;
+    this.tsBlockSize = 0;
+    this.tsBlockIndex = -1;
+    this.emptyResultSet = queryResult.size() == 0;
+
   }
 }
