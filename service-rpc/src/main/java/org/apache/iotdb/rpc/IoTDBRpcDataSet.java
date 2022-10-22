@@ -150,6 +150,7 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
+    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public IoTDBRpcDataSet(
@@ -239,6 +240,7 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
+    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -585,6 +587,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-    this.emptyResultSet = queryResult.size() == 0;
+    this.emptyResultSet = this.queryResultSize == 0;
   }
 }
