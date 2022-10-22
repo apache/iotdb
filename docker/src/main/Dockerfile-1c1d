@@ -52,5 +52,5 @@ EXPOSE 40010
 EXPOSE 50010
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
-ENV PATH="/iotdb/:/iotdb/sbin/:/iotdb/tools/:${PATH}"
+ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
 ENTRYPOINT ["/iotdb/start-1c1d.sh"]
