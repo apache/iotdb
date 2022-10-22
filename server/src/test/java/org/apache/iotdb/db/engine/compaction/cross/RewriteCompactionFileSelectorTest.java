@@ -97,12 +97,12 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, 400000);
+        new RewriteCompactionFileSelector(resource, 100000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
-    assertEquals(seqResources.subList(0, 4), seqSelected);
-    assertEquals(unseqResources.subList(0, 4), unseqSelected);
+    assertEquals(seqResources.subList(0, 3), seqSelected);
+    assertEquals(unseqResources.subList(0, 3), unseqSelected);
     resource.clear();
   }
 

@@ -53,7 +53,7 @@ public class SystemMetrics implements IMetricSet {
     collectSystemMemInfo(metricService);
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null != currentServiceFuture) {
+    if (metricService.isEnable() && null == currentServiceFuture) {
       currentServiceFuture =
           service.scheduleAtFixedRate(
               this::collect,

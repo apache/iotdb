@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -341,6 +341,11 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    conf.setChunkMetadataMemorySizeProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_memory_size_proportion",
+                Double.toString(conf.getChunkMetadataMemorySizeProportion()))));
     conf.setEstimatedSeriesSize(
         Integer.parseInt(
             properties.getProperty(
@@ -479,6 +484,15 @@ public class IoTDBDescriptor {
 
     if (conf.getConcurrentSubRawQueryThread() <= 0) {
       conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
+    }
+
+    conf.setArchivingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "archiving_thread_num", Integer.toString(conf.getArchivingThreadNum()))));
+
+    if (conf.getArchivingThreadNum() <= 0) {
+      conf.setArchivingThreadNum(2);
     }
 
     conf.setRawQueryBlockingQueueCapacity(
@@ -914,6 +928,13 @@ public class IoTDBDescriptor {
         .setDfsClientFailoverProxyProvider(
             properties.getProperty(
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setUseKerberos(
@@ -1496,7 +1517,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 

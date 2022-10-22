@@ -143,7 +143,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -170,8 +173,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * return MeasurementIterator, who iterates the measurements of not aligned device
    *
    * @param device the full path of the device to be iterated
-   * @return
-   * @throws IOException
    */
   public MeasurementIterator iterateNotAlignedSeries(
       String device, boolean derserializeTimeseriesMetadata) throws IOException {
@@ -188,7 +189,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @return a list of pair(TsFileSequenceReader, the list of AlignedChunkMetadata for current
    *     device)
-   * @throws IOException
    */
   public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
@@ -384,9 +384,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
      *
      * <p>If there are any modifications for these chunk, we will apply them to the metadata. Use
      * `ChunkMetadata.getDeleteIntervalList() == null` to judge if the chunk is modified.
-     *
-     * @return
-     * @throws IllegalPathException
      */
     public LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
         getMetadataListForCurrentSeries() throws IllegalPathException {

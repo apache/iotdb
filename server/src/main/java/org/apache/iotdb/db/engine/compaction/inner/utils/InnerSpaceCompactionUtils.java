@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -64,20 +65,28 @@ public class InnerSpaceCompactionUtils {
   public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
       throws IOException, MetadataException, InterruptedException {
 
+    // size for file writer is 5% of per compaction task memory budget
+    long sizeForFileWriter =
+        (long)
+            (((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                    / (double)
+                        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataMemorySizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
-        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
+        TsFileIOWriter writer =
+            new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
-        writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
+          writer.startChunkGroup(device);
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
+          writer.endChunkGroup();
         }
-        writer.endChunkGroup();
       }
 
       for (TsFileResource tsFileResource : tsFileResources) {
@@ -119,6 +128,7 @@ public class InnerSpaceCompactionUtils {
           new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+    writer.checkMetadataSizeAndMayFlush();
   }
 
   private static void compactAlignedSeries(
@@ -130,10 +140,26 @@ public class InnerSpaceCompactionUtils {
     checkThreadInterrupted(targetResource);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    if (!checkAlignedSeriesValid(readerAndChunkMetadataList)) {
+      return;
+    }
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
+  }
+
+  /** Ensure that there is at least one chunk that is not empty. */
+  private static boolean checkAlignedSeriesValid(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerMetadataPair :
+        readerAndChunkMetadataList) {
+      if (!readerMetadataPair.right.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static boolean deleteTsFilesInDisk(
