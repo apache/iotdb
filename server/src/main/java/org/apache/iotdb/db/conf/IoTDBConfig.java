@@ -1450,7 +1450,7 @@ public class IoTDBConfig {
             new RuntimeException("System mode is set to ERROR"));
         System.exit(-1);
       }
-    } else {
+    } else if (status != newStatus) {
       logger.warn("Set system mode from {} to {}.", status, newStatus);
     }
     this.status = newStatus;

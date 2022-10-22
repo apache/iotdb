@@ -76,8 +76,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
-  private long fileId = 0;
-  private long lastFlushedId = 0;
+  private volatile long fileId = 0;
+  private volatile long lastFlushedId = 0;
 
   private int bufferedLogNum = 0;
 
@@ -221,11 +221,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void notifyEndFlush() {
+    // sleep a while to make sure last file is closed
+    long deleteFileId = lastFlushedId + 1;
+    while (deleteFileId == fileId) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when waiting for last file closed");
+        Thread.currentThread().interrupt();
+      }
+    }
     lock.lock();
     try {
-      File logFile =
-          SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + deleteFileId);
       discard(logFile);
+      lastFlushedId = deleteFileId;
     } finally {
       lock.unlock();
     }
