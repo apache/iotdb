@@ -234,7 +234,10 @@ public class IoTDBRpcDataSet {
     }
 
     this.queryResult = queryResult;
-    this.queryResultSize = queryResult.size();
+    this.queryResultSize = 0;
+    if(queryResult!=null){
+      this.queryResultSize = queryResult.size();
+    }
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
