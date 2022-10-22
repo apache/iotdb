@@ -22,9 +22,9 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.BitSet;
@@ -46,7 +46,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       String sql,
       long queryId,
       long sessionId,
-      TSQueryDataSet dataset,
+      List<ByteBuffer> dataset,
       TSTracingInfo tracingInfo,
       long timeout,
       String operationType,
@@ -67,7 +67,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         timeout,
         sgColumns,
         aliasColumnMap);
-    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    ioTDBRpcDataSet.setQueryResult(dataset);
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -87,7 +87,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       String sql,
       long queryId,
       long sessionId,
-      TSQueryDataSet dataset,
+      List<ByteBuffer> dataset,
       TSTracingInfo tracingInfo,
       long timeout,
       boolean isRpcFetchResult)
@@ -104,7 +104,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sessionId,
         timeout,
         isRpcFetchResult);
-    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    ioTDBRpcDataSet.setQueryResult(dataset);
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -131,12 +131,19 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   @Override
   protected boolean hasCachedResults() {
-    return ioTDBRpcDataSet.hasCachedResults();
+    return ioTDBRpcDataSet.hasCachedBlock() || ioTDBRpcDataSet.hasCachedByteBuffer();
   }
 
   @Override
   protected void constructOneRow() {
-    ioTDBRpcDataSet.constructOneRow();
+    if (ioTDBRpcDataSet.hasCachedBlock()) {
+      ioTDBRpcDataSet.constructOneRow();
+      return;
+    }
+    if (ioTDBRpcDataSet.hasCachedByteBuffer()) {
+      ioTDBRpcDataSet.constructOneTsBlock();
+      ioTDBRpcDataSet.constructOneRow();
+    }
   }
 
   @Override

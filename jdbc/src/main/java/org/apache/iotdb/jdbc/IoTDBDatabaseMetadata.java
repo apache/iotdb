@@ -27,6 +27,9 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -47,6 +50,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -69,6 +73,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private long sessionId;
   private WatermarkEncoder groupedLSBWatermarkEncoder;
   private static String sqlKeywordsThatArentSQL92;
+  private static TsBlockSerde serde = new TsBlockSerde();
 
   IoTDBDatabaseMetadata(
       IoTDBConnection connection, IClientRPCService.Iface client, long sessionId) {
@@ -362,9 +367,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getAttributes(String arg0, String arg1, String arg2, String arg3)
       throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
       Field[] fields = new Field[21];
@@ -418,9 +423,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getBestRowIdentifier(
       String arg0, String arg1, String arg2, int arg3, boolean arg4) throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
       Field[] fields = new Field[8];
@@ -474,28 +479,26 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getCatalogs() throws SQLException {
     Statement stmt = this.connection.createStatement();
     ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
-    Field[] fields = new Field[1];
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigpaths = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<TSDataType> tsDataTypeList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    tsDataTypeList.add(TSDataType.TEXT);
+
     while (rs.next()) {
-      List<Map> paths = new ArrayList<Map>();
-      Map<String, Object> m = new HashMap<>();
-      m.put("type", TSDataType.TEXT);
-      m.put("val", rs.getString(1));
-      paths.add(m);
-      bigpaths.add(paths);
+      List<Object> values = new ArrayList<>();
+      values.add(rs.getString(1));
+      valuesList.add(values);
     }
-    addToDataSet(bigpaths, dataSet);
     columnNameList.add("TYPE_CAT");
     columnTypeList.add("TEXT");
     columnNameIndex.put("TYPE_CAT", 0);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -511,7 +514,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -634,6 +637,43 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return tsQueryDataSet;
   }
 
+  public static ByteBuffer convertTsBlock(
+      List<List<Object>> valuesList, List<TSDataType> tsDataTypeList) throws IOException {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
+    for (List<Object> valuesInRow : valuesList) {
+      for (int j = 0; j < tsDataTypeList.size(); j++) {
+        TSDataType columnType = tsDataTypeList.get(j);
+        switch (columnType) {
+          case TEXT:
+            tsBlockBuilder.getColumnBuilder(j).writeBinary((Binary) valuesInRow.get(j));
+            break;
+          case FLOAT:
+            tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));
+            break;
+          case INT32:
+            tsBlockBuilder.getColumnBuilder(j).writeInt((int) valuesInRow.get(j));
+            break;
+          case INT64:
+            tsBlockBuilder.getColumnBuilder(j).writeLong((long) valuesInRow.get(j));
+            break;
+          case DOUBLE:
+            tsBlockBuilder.getColumnBuilder(j).writeDouble((double) valuesInRow.get(j));
+            break;
+          case BOOLEAN:
+            tsBlockBuilder.getColumnBuilder(j).writeBoolean((boolean) valuesInRow.get(j));
+            break;
+        }
+      }
+      tsBlockBuilder.declarePosition();
+    }
+    TsBlock tsBlock = tsBlockBuilder.build();
+    if (tsBlock == null) {
+      return null;
+    } else {
+      return serde.serialize(tsBlock);
+    }
+  }
+
   private void addToDataSet(List<List<Map>> listbigPaths, ListDataSet dataSet) {
     List<TSDataType> listType = new ArrayList<>();
     int i = 0;
@@ -680,35 +720,31 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getClientInfoProperties() throws SQLException {
     Statement stmt = this.connection.createStatement();
     ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
     fields[1] = new Field("", "MAX_LEN", "INT32");
     fields[2] = new Field("", "DEFAULT_VALUE", "INT32");
     fields[3] = new Field("", "DESCRIPTION", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.TEXT);
-    List<Object> listVal = Arrays.asList("fetch_size", 10, 10, "");
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    List<Map> properties = new ArrayList<Map>();
-    ListDataSet dataSet = new ListDataSet();
+    List<Object> values = Arrays.asList("fetch_size", 10, 10, "");
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
+    valuesList.add(values);
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
-      Map<String, Object> m = new HashMap<>();
-      m.put("type", listType.get(i));
-      m.put("val", listVal.get(i));
-      properties.add(m);
     }
-    bigproperties.add(properties);
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -724,7 +760,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -776,7 +812,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[5] = new Field("", "GRANTEE", "TEXT");
     fields[6] = new Field("", "PRIVILEGE", "TEXT");
     fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -786,42 +822,38 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valuesInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i < 4) {
-          m.put("val", rs.getString(1));
+          valuesInRow.add(rs.getString(1));
         } else if (i == 5) {
-          m.put("val", getUserName());
+          valuesInRow.add(getUserName());
         } else if (i == 6) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 7) {
-          m.put("val", "NO");
+          valuesInRow.add("NO");
         } else {
-          m.put("val", "");
+          valuesInRow.add("");
         }
-
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valuesInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -837,7 +869,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -852,9 +884,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getCrossReference(
       String arg0, String arg1, String arg2, String arg3, String arg4, String arg5)
       throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
       Field[] fields = new Field[14];
@@ -1044,7 +1076,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[14] = new Field("", "ORDINAL_POSITION", "INT32");
     fields[15] = new Field("", "IS_NULLABLE", "TEXT");
     fields[16] = new Field("", "SPECIFIC_NAME", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -1063,37 +1095,34 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.INT32,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valuesInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i == 2) {
-          m.put("val", rs.getString(1));
+          valuesInRow.add(rs.getString(1));
         } else if ("INT32".equals(fields[i].getSqlType())) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else {
-          m.put("val", "");
+          valuesInRow.add("");
         }
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valuesInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1109,7 +1138,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1127,7 +1156,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[3] = new Field("", "REMARKS", "TEXT");
     fields[4] = new Field("", "FUNCTION_TYPE", "INT32");
     fields[5] = new Field("", "SPECIFIC_NAME", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -1135,38 +1164,34 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i == 2) {
-          m.put("val", rs.getString(1));
+          valueInRow.add(rs.getString(1));
         } else if (i == 4) {
-          m.put("val", 0);
+          valueInRow.add(0);
         } else {
-          m.put("val", "");
+          valueInRow.add("");
         }
-
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valueInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1182,7 +1207,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1442,10 +1467,10 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
     Statement stmt = connection.createStatement();
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<TSDataType> listType =
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -1453,11 +1478,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
-    List<Object> listValSub_1 = Arrays.asList(catalog, "", table, "time", 1, "PRIMARY");
-    List<Object> listValSub_2 = Arrays.asList(catalog, "", table, "deivce", 2, "PRIMARY");
-    List<List<Object>> listVal = Arrays.asList(listValSub_1, listValSub_2);
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
     Field[] fields = new Field[6];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1465,26 +1485,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[3] = new Field("", "COLUMN_NAME", "TEXT");
     fields[4] = new Field("", "KEY_SEQ", "INT32");
     fields[5] = new Field("", "PK_NAME", "TEXT");
+
+    List<Object> listValSub_1 = Arrays.asList(catalog, "", table, "time", 1, "PRIMARY");
+    List<Object> listValSub_2 = Arrays.asList(catalog, "", table, "deivce", 2, "PRIMARY");
+    List<List<Object>> valuesList = Arrays.asList(listValSub_1, listValSub_2);
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    for (List<Object> listob : listVal) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        m.put("val", listob.get(i));
-        properties.add(m);
-      }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1500,7 +1513,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1509,9 +1522,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getProcedureColumns(String arg0, String arg1, String arg2, String arg3)
       throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
 
@@ -1569,9 +1582,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getProcedures(String arg0, String arg1, String arg2) throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
       Field[] fields = new Field[6];
@@ -1625,7 +1638,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[9] = new Field("", "REMARKS", "TEXT");
     fields[10] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
     fields[11] = new Field("", "IS_NULLABLE", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -1639,30 +1652,23 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
-    List<Object> listVal =
+
+    List<Object> value =
         Arrays.asList(
             catalog, catalog, tableNamePattern, "times", Types.BIGINT, 1, 0, 2, "", "", 13, "NO");
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    List<Map> properties = new ArrayList<Map>();
-    ListDataSet dataSet = new ListDataSet();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
-      Map<String, Object> m = new HashMap<>();
-      m.put("type", listType.get(i));
-      m.put("val", listVal.get(i));
-      properties.add(m);
     }
-    bigproperties.add(properties);
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1678,7 +1684,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1716,32 +1722,29 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     Field[] fields = new Field[2];
     fields[0] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
-    List<TSDataType> listType = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<TSDataType> tsDataTypeList = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        m.put("val", rs.getString(1));
-        properties.add(m);
+        valueInRow.add(rs.getString(1));
       }
-      bigproperties.add(properties);
+      valuesList.add(valueInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1757,7 +1760,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1781,8 +1784,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Statement stmt = connection.createStatement();
     try {
@@ -1820,9 +1823,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern)
       throws SQLException {
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     Statement stmt = connection.createStatement();
     try {
       Field[] fields = new Field[6];
@@ -1919,7 +1922,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[5] = new Field("", "GRANTEE", "TEXT");
     fields[6] = new Field("", "PRIVILEGE", "TEXT");
     fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -1929,42 +1932,38 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i < 4) {
-          m.put("val", rs.getString(1));
+          valueInRow.add(rs.getString(1));
         } else if (i == 5) {
-          m.put("val", getUserName());
+          valueInRow.add(getUserName());
         } else if (i == 6) {
-          m.put("val", "");
+          valueInRow.add("");
         } else if (i == 7) {
-          m.put("val", "NO");
+          valueInRow.add("NO");
         } else {
-          m.put("val", "");
+          valueInRow.add("");
         }
-
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valueInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -1980,7 +1979,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -1989,25 +1988,22 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getTableTypes() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigpaths = new ArrayList<List<Map>>();
-    List<Map> paths = new ArrayList<Map>();
-    ListDataSet dataSet = new ListDataSet();
-    Map<String, Object> m = new HashMap<>();
-    m.put("type", TSDataType.TEXT);
-    m.put("val", "table");
-    paths.add(m);
-    bigpaths.add(paths);
-    addToDataSet(bigpaths, dataSet);
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<TSDataType> tsDataTypeList = new ArrayList<>();
+    List<Object> value = new ArrayList<>();
+
+    tsDataTypeList.add(TSDataType.TEXT);
+    value.add("table");
     columnNameList.add("TABLE_TYPE");
     columnTypeList.add("TEXT");
     columnNameIndex.put("TABLE_TYPE", 0);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(Collections.singletonList(value), tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -2023,7 +2019,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -2092,7 +2088,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[22] = new Field("", "IS_AUTOINCREMENT", "TEXT");
     fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
 
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -2118,74 +2114,68 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.INT32,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valuesInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i < 4) {
-          m.put("val", rs.getString(1));
+          valuesInRow.add(1);
         } else if (i == 4) {
-          m.put("val", getSQLType(fields[i].getSqlType()));
+          valuesInRow.add(getSQLType(fields[i].getSqlType()));
         } else if (i == 6) {
-          m.put("val", getTypePrecision(fields[i].getSqlType()));
+          valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
         } else if (i == 7) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else if (i == 8) {
-          m.put("val", getTypeScale(fields[i].getSqlType()));
+          valuesInRow.add(getTypeScale(fields[i].getSqlType()));
         } else if (i == 9) {
-          m.put("val", 10);
+          valuesInRow.add(10);
         } else if (i == 10) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else if (i == 11) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 12) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 13) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else if (i == 14) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else if (i == 15) {
-          m.put("val", getTypePrecision(fields[i].getSqlType()));
+          valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
         } else if (i == 16) {
-          m.put("val", 1);
+          valuesInRow.add(1);
         } else if (i == 17) {
-          m.put("val", "NO");
+          valuesInRow.add("NO");
         } else if (i == 18) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 19) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 20) {
-          m.put("val", "");
+          valuesInRow.add("");
         } else if (i == 21) {
-          m.put("val", 0);
+          valuesInRow.add(0);
         } else if (i == 22) {
-          m.put("val", "NO");
+          valuesInRow.add("NO");
         } else if (i == 23) {
-          m.put("val", "NO");
+          valuesInRow.add("NO");
         } else {
-          m.put("val", "");
+          valuesInRow.add("");
         }
-
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valuesInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -2201,7 +2191,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -2323,7 +2313,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[8] = new Field("", "SELF_REFERENCING_COL_NAME", "TEXT");
     fields[9] = new Field("", "REF_GENERATION", "TEXT");
 
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -2335,39 +2325,36 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
+      List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
         if (i < 2) {
-          m.put("val", rs.getString(3));
+          valueInRow.add(rs.getString(3));
         } else if (i == 2) {
-          m.put("val", rs.getString(1));
+          valueInRow.add(rs.getString(1));
         } else if (i == 3) {
-          m.put("val", "TABLE");
+          valueInRow.add("TABLE");
         } else {
-          m.put("val", "");
+          valueInRow.add("");
         }
-        properties.add(m);
       }
-      bigproperties.add(properties);
+      valuesList.add(valueInRow);
     }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -2381,7 +2368,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);
@@ -2414,7 +2401,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[15] = new Field("", "SQL_DATA_TYPE", "INT32");
     fields[16] = new Field("", "SQL_DATETIME_SUB", "INT32");
     fields[17] = new Field("", "NUM_PREC_RADIX", "INT32");
-    List<TSDataType> listType =
+    List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.INT32,
@@ -2554,35 +2541,21 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             0,
             0,
             10);
-    List<List<Object>> listVal =
+    List<List<Object>> valuesList =
         Arrays.asList(
             listValSub_1, listValSub_2, listValSub_3, listValSub_4, listValSub_5, listValSub_6);
-    List<String> columnNameList = new ArrayList<String>();
-    List<String> columnTypeList = new ArrayList<String>();
-    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
-    ListDataSet dataSet = new ListDataSet();
+    List<String> columnNameList = new ArrayList<>();
+    List<String> columnTypeList = new ArrayList<>();
+    Map<String, Integer> columnNameIndex = new HashMap<>();
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
-      Map<String, Object> m = new HashMap<>();
     }
-    for (List<Object> listob : listVal) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        m.put("val", listob.get(i));
-        properties.add(m);
-      }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
+
+    ByteBuffer tsBlock = null;
     try {
-      tsdataset =
-          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
@@ -2598,7 +2571,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         0,
         sessionId,
-        tsdataset,
+        Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
         false);

@@ -258,17 +258,18 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
-    TSExecuteStatementResp execResp = client.executeStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeStatementV2(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
+    // TODO ??
     deepCopyResp(execResp);
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
-      if (execResp.queryDataSet == null) {
+      if (execResp.queryResult == null) {
         BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
         this.resultSet =
             new IoTDBNonAlignJDBCResultSet(
@@ -299,7 +300,7 @@ public class IoTDBStatement implements Statement {
                 sql,
                 queryId,
                 sessionId,
-                execResp.queryDataSet,
+                execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
                 true);
@@ -406,7 +407,7 @@ public class IoTDBStatement implements Statement {
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
-    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeQueryStatementV2(execReq);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -421,7 +422,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
       aliasColumn = listToBitSet(execResp.getAliasColumns());
     }
-    if (execResp.queryDataSet == null) {
+    if (execResp.queryResult == null) {
       this.resultSet =
           new IoTDBNonAlignJDBCResultSet(
               this,
@@ -451,7 +452,7 @@ public class IoTDBStatement implements Statement {
               sql,
               queryId,
               sessionId,
-              execResp.queryDataSet,
+              execResp.queryResult,
               execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
@@ -555,7 +556,7 @@ public class IoTDBStatement implements Statement {
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeUpdateStatementV2(execReq);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }

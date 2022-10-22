@@ -34,6 +34,7 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,95 @@ public class IoTDBRpcDataSet {
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
+          int index = columnNameIndex.get(name);
+          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
+            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+          }
+          columnOrdinalMap.put(name, index + START_INDEX);
+        }
+      }
+    } else {
+      this.columnTypeDeduplicatedList = new ArrayList<>();
+      int index = START_INDEX;
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = columnNameList.get(i);
+        this.columnNameList.add(name);
+        this.columnTypeList.add(columnTypeList.get(i));
+        if (!columnOrdinalMap.containsKey(name)) {
+          columnOrdinalMap.put(name, index++);
+          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        }
+      }
+    }
+
+    this.queryResult = queryResult;
+    this.queryResultSize = 0;
+    if (queryResult != null) {
+      queryResultSize = queryResult.size();
+    }
+    this.queryResultIndex = 0;
+    this.tsBlockSize = 0;
+    this.tsBlockIndex = -1;
+  }
+
+  public IoTDBRpcDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      int fetchSize,
+      long timeout,
+      List<String> sgList,
+      BitSet aliasColumnMap) {
+    this.sessionId = sessionId;
+    this.statementId = statementId;
+    this.ignoreTimeStamp = ignoreTimeStamp;
+    this.sql = sql;
+    this.queryId = queryId;
+    this.client = client;
+    this.fetchSize = fetchSize;
+    this.timeout = timeout;
+    columnSize = columnNameList.size();
+
+    this.columnNameList = new ArrayList<>();
+    this.columnTypeList = new ArrayList<>();
+    if (!ignoreTimeStamp) {
+      this.columnNameList.add(TIMESTAMP_STR);
+      this.columnTypeList.add(String.valueOf(TSDataType.INT64));
+    }
+    // deduplicate and map
+    this.columnOrdinalMap = new HashMap<>();
+    if (!ignoreTimeStamp) {
+      this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+    }
+
+    // deduplicate and map
+    if (columnNameIndex != null) {
+      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
+      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
+      for (int i = 0; i < deduplicatedColumnSize; i++) {
+        columnTypeDeduplicatedList.add(null);
+      }
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = "";
+        if (sgList != null
+            && sgList.size() > 0
+            && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
+          name = sgList.get(i) + "." + columnNameList.get(i);
+        } else {
+          name = columnNameList.get(i);
+        }
+
+        this.columnNameList.add(name);
+        this.columnTypeList.add(columnTypeList.get(i));
+        // "Time".equals(name) -> to allow the Time column appear in value columns
+        if (!columnOrdinalMap.containsKey(name) || "Time".equals(name)) {
           int index = columnNameIndex.get(name);
           if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
             columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
@@ -486,6 +576,17 @@ public class IoTDBRpcDataSet {
         || queryResult == null
         || curTsBlock == null) {
       throw new StatementExecutionException("No record remains");
+    }
+  }
+
+  public void setQueryResult(List<ByteBuffer> queryResult) {
+    if (queryResult != null) {
+      this.queryResult = queryResult;
+      this.queryResultSize = queryResult.size();
+      this.queryResultIndex = 0;
+      this.tsBlockSize = 0;
+      this.tsBlockIndex = -1;
+      this.emptyResultSet = queryResult.size() == 0;
     }
   }
 }

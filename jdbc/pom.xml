@@ -64,6 +64,11 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile</artifactId>
+            <version>0.14.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
     <build>
         <resources>
