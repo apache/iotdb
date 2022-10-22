@@ -24,9 +24,9 @@
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
-        <file>${CONFIGNODE_HOME}/logs/log_error.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-error-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-error-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
@@ -43,9 +43,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
-        <file>${CONFIGNODE_HOME}/logs/log_warn.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-warn-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-warn-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
@@ -62,9 +62,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
-        <file>${CONFIGNODE_HOME}/logs/log_info.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-info-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-info-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
@@ -81,9 +81,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
-        <file>${CONFIGNODE_HOME}/logs/log_debug.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
@@ -111,9 +111,9 @@
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
-        <file>${CONFIGNODE_HOME}/logs/log_all.log</file>
+        <file>${CONFIGNODE_HOME}/logs/log_confignode_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-all-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${CONFIGNODE_HOME}/logs/log-confignode-all-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>

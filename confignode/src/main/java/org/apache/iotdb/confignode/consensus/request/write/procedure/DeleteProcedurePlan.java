@@ -17,41 +17,53 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.procedure;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class DropFunctionPlan extends ConfigPhysicalPlan {
+public class DeleteProcedurePlan extends ConfigPhysicalPlan {
 
-  private String functionName;
+  private long procId;
 
-  public DropFunctionPlan() {
-    super(ConfigPhysicalPlanType.DropFunction);
+  public long getProcId() {
+    return procId;
   }
 
-  public DropFunctionPlan(String functionName) {
-    super(ConfigPhysicalPlanType.DropFunction);
-    this.functionName = functionName;
+  public void setProcId(long procId) {
+    this.procId = procId;
   }
 
-  public String getFunctionName() {
-    return functionName;
+  public DeleteProcedurePlan() {
+    super(ConfigPhysicalPlanType.DeleteProcedure);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
-    ReadWriteIOUtils.write(functionName, stream);
+    stream.writeInt(ConfigPhysicalPlanType.DeleteProcedure.ordinal());
+    stream.writeLong(procId);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    functionName = ReadWriteIOUtils.readString(buffer);
+    this.procId = buffer.getLong();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DeleteProcedurePlan that = (DeleteProcedurePlan) o;
+    return procId == that.procId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(procId);
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 import java.util.LinkedList;
 
@@ -32,49 +33,66 @@ public abstract class BaseNodeCache {
   public static final int MAXIMUM_WINDOW_SIZE = 100;
 
   /** SlidingWindow stores the heartbeat sample data */
-  final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
+  protected final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
 
-  /** The current status of the Node */
-  volatile NodeStatus status = NodeStatus.Unknown;
-  /** The reason why lead to the current NodeStatus (for showing cluster) */
-  volatile String statusReason;
+  protected volatile NodeStatistics statistics;
+
+  /** Constructor for NodeCache with default NodeStatistics */
+  protected BaseNodeCache() {
+    this.statistics = NodeStatistics.generateDefaultNodeStatistics();
+  }
 
   /**
    * Cache the newest HeartbeatSample
    *
    * @param newHeartbeatSample The newest HeartbeatSample
    */
-  public abstract void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample);
+  public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
+    synchronized (slidingWindow) {
+      // Only sequential heartbeats are accepted.
+      // And un-sequential heartbeats will be discarded.
+      if (slidingWindow.size() == 0
+          || slidingWindow.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
+        slidingWindow.add(newHeartbeatSample);
+      }
+
+      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
+        slidingWindow.removeFirst();
+      }
+    }
+  }
 
   /**
-   * Invoking periodically to update Nodes' current running status
+   * Invoking periodically to update Nodes' current load statistics
    *
-   * @return True if the specific Node's status changed, false otherwise
+   * @return NodeStatistics if some fields of statistics changed, null otherwise
    */
-  public abstract boolean updateNodeStatus();
+  public abstract NodeStatistics updateNodeStatistics();
 
   /**
    * TODO: The loadScore of each Node will be changed to Double
    *
    * @return The latest load score of a node, the higher the score the higher the load
    */
-  public abstract long getLoadScore();
+  public long getLoadScore() {
+    return statistics.getLoadScore();
+  }
 
   /** @return The current status of the Node */
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    return NodeStatus.parse(status.getStatus());
+    return NodeStatus.parse(statistics.getStatus().getStatus());
   }
 
   public String getNodeStatusWithReason() {
-    if (statusReason == null) {
-      return status.getStatus();
+    if (statistics.getStatusReason() == null) {
+      return statistics.getStatus().getStatus();
     } else {
-      return status.getStatus() + "(" + statusReason + ")";
+      return statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
     }
   }
 
   public void setRemoving() {
-    this.status = NodeStatus.Removing;
+    this.statistics.setRemoving();
   }
 }

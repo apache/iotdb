@@ -124,7 +124,8 @@ public interface Trigger {
 }
 ```
 
-该类主要提供了两类编程接口：生命周期相关接口和数据变动侦听相关接口。该类中所有的接口都不是必须实现的，当您不实现它们时，它们不会对流经的数据操作产生任何响应。您可以根据实际需要，只实现其中若干接口。
+该类主要提供了两类编程接口：**生命周期相关接口**和**数据变动侦听相关接口**。该类中所有的接口都不是必须实现的，当您不实现它们时，它们不会对流经的数据操作产生任何响应。您可以根据实际需要，只实现其中若干接口。
+
 下面是所有可供用户进行实现的接口的说明。
 
 #### 生命周期相关接口
@@ -184,7 +185,7 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 
 在触发器触发失败时，我们会根据侦听策略接口设置的策略进行相应的操作，您可以通过下述接口设置 `org.apache.iotdb.trigger.api.enums.FailureStrategy`，目前有乐观和悲观两种策略：
 - 乐观策略：触发失败的触发器不影响后续触发器的触发，也不影响写入流程，即我们不对触发失败涉及的序列做额外处理，仅打日志记录失败，最后返回用户写入数据成功，但触发部分失败。
-- 悲观策略：失败触发器影响后续所有 Pipeline 的处理，即我们认为该 Trigger 触发失败会导致后续所有触发流程不再进行，写入也不再进行，直接返回写入失败。
+- 悲观策略：失败触发器影响后续所有 Pipeline 的处理，即我们认为该 Trigger 触发失败会导致后续所有触发流程不再进行。如果该触发器的触发时机为 BEFORE INSERT，那么写入也不再进行，直接返回写入失败。
 
 ```java
   /**
@@ -207,9 +208,10 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 
 ### 示例
 
-如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 trigger-example。
-您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。后续我们会加入更多的示例项目供您参考。
+如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 trigger-example。您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。后续我们会加入更多的示例项目供您参考。
+
 下面是其中一个示例项目的代码：
+
 ```java
 /*
  * Licensed to the Apache Software Foundation (ASF) under one

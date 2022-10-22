@@ -78,7 +78,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(
-            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback-datanode.xml",
             "-DIOTDB_HOME=" + workDir,
             "-DTSFILE_HOME=" + workDir,
             "-DIOTDB_CONF=" + confDir,

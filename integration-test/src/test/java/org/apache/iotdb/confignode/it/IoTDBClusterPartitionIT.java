@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -82,10 +83,8 @@ public class IoTDBClusterPartitionIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
-  protected static int originSchemaReplicationFactor;
+  protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
@@ -105,11 +104,12 @@ public class IoTDBClusterPartitionIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig()
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
 
-    originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
+    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
     ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
@@ -123,12 +123,17 @@ public class IoTDBClusterPartitionIT {
   @After
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
+
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+
+    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
   }
 
@@ -148,7 +153,7 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetAndCreateSchemaPartition()
-      throws TException, IOException, IllegalPathException {
+      throws TException, IOException, IllegalPathException, InterruptedException {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -759,7 +764,7 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetSchemaNodeManagementPartition()
-      throws IOException, TException, IllegalPathException {
+      throws IOException, TException, IllegalPathException, InterruptedException {
     final String sg = "root.sg";
     final int storageGroupNum = 2;
 
