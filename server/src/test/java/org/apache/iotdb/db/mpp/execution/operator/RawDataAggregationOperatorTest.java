@@ -453,6 +453,70 @@ public class RawDataAggregationOperatorTest {
     assertEquals(6, count);
   }
 
+  @Test
+  public void onePointInOneEqualEventWindowTest() throws IllegalPathException {
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.EVENT_WINDOW, TSDataType.INT32, CompareType.EQUAL, 0, false, false, 0);
+    onePointInOneWindowTest(windowParameter);
+  }
+
+  @Test
+  public void onePointInOneVariationEventWindowTest() throws IllegalPathException {
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.EVENT_WINDOW, TSDataType.INT32, CompareType.VARIATION, 0, false, false, 0.5);
+    onePointInOneWindowTest(windowParameter);
+  }
+
+  private void onePointInOneWindowTest(WindowParameter windowParameter)
+      throws IllegalPathException {
+    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.COUNT);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.MIN_TIME);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+
+    int resultMinTime1 = -1, resultMinTime2 = -1;
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < resultTsBlock.getColumn(i).getPositionCount(); j++) {
+          assertEquals(1, resultTsBlock.getColumn(i).getLong(j));
+        }
+      }
+      // Here, a resultTsBlock has many aggregation results instead of one.
+      for (int i = 2; i < 4; i++) {
+        if (i == 2) {
+          for (int j = 0; j < resultTsBlock.getColumn(i).getPositionCount(); j++) {
+            assertEquals(++resultMinTime1, resultTsBlock.getColumn(i).getLong(j));
+          }
+        } else if (i == 3) {
+          for (int j = 0; j < resultTsBlock.getColumn(i).getPositionCount(); j++) {
+            assertEquals(++resultMinTime2, resultTsBlock.getColumn(i).getLong(j));
+          }
+        }
+      }
+    }
+    assertEquals(resultMinTime1, 499);
+    assertEquals(resultMinTime2, 499);
+  }
+
   private RawDataAggregationOperator initRawDataAggregationOperator(
       List<AggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
