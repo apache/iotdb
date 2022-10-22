@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence.partition;
+package org.apache.iotdb.confignode.persistence.partition.maintainer;
 
 public enum RegionMaintainType {
   CREATE,

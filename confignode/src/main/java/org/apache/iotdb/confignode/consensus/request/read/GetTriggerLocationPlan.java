@@ -17,53 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class DeleteProcedurePlan extends ConfigPhysicalPlan {
+public class GetTriggerLocationPlan extends ConfigPhysicalPlan {
 
-  private long procId;
+  String triggerName;
 
-  public long getProcId() {
-    return procId;
+  public GetTriggerLocationPlan() {
+    super(ConfigPhysicalPlanType.GetTriggerLocation);
   }
 
-  public void setProcId(long procId) {
-    this.procId = procId;
+  public GetTriggerLocationPlan(String triggerName) {
+    this();
+    this.triggerName = triggerName;
   }
 
-  public DeleteProcedurePlan() {
-    super(ConfigPhysicalPlanType.DeleteProcedure);
+  public String getTriggerName() {
+    return triggerName;
+  }
+
+  public void setTriggerName(String triggerName) {
+    this.triggerName = triggerName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteProcedure.ordinal());
-    stream.writeLong(procId);
+    stream.writeInt(ConfigPhysicalPlanType.GetTriggerLocation.ordinal());
+
+    ReadWriteIOUtils.write(triggerName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.procId = buffer.getLong();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    DeleteProcedurePlan that = (DeleteProcedurePlan) o;
-    return procId == that.procId;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(procId);
+    this.triggerName = ReadWriteIOUtils.readString(buffer);
   }
 }

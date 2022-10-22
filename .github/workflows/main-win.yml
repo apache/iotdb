@@ -106,5 +106,5 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true
+        run: source ~/.bash_profile && mvn -B clean test -Dtest.port.closed=true -Diotdb.test.skip=true
 
