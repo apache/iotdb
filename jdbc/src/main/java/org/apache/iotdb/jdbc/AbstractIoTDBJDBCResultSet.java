@@ -714,11 +714,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     }
     if (ioTDBRpcDataSet.hasCachedByteBuffer()) {
       ioTDBRpcDataSet.constructOneTsBlock();
-      // the value in new tsBlock may be null
-      if(ioTDBRpcDataSet.tsBlockSize != 0){
-        ioTDBRpcDataSet.constructOneRow();
-        return true;
-      }
+      ioTDBRpcDataSet.constructOneRow();
+      return true;
     }
     if (ioTDBRpcDataSet.emptyResultSet) {
       return false;

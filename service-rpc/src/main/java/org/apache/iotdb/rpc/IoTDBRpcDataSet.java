@@ -421,9 +421,9 @@ public class IoTDBRpcDataSet {
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       TSDataType type = curTsBlock.getColumn(index).getDataType();
-      if(type==TSDataType.INT64){
-        return (int)curTsBlock.getColumn(index).getLong(tsBlockIndex);
-      }else{
+      if (type == TSDataType.INT64) {
+        return (int) curTsBlock.getColumn(index).getLong(tsBlockIndex);
+      } else {
         return curTsBlock.getColumn(index).getInt(tsBlockIndex);
       }
     } else {
@@ -445,9 +445,9 @@ public class IoTDBRpcDataSet {
     if (!isNull(index, tsBlockIndex)) {
       lastReadWasNull = false;
       TSDataType type = curTsBlock.getColumn(index).getDataType();
-      if(type==TSDataType.INT32){
+      if (type == TSDataType.INT32) {
         return curTsBlock.getColumn(index).getInt(tsBlockIndex);
-      }else{
+      } else {
         return curTsBlock.getColumn(index).getLong(tsBlockIndex);
       }
     } else {
@@ -586,6 +586,5 @@ public class IoTDBRpcDataSet {
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
     this.emptyResultSet = queryResult.size() == 0;
-
   }
 }

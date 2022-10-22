@@ -392,8 +392,9 @@ public class QueryDataSetUtils {
       }
       int positionCount = byteBuffer.getInt();
       byteBuffer.reset();
-
-      res.add(byteBuffer);
+      if (positionCount != 0) {
+        res.add(byteBuffer);
+      }
       rowCount += positionCount;
     }
     return res;
