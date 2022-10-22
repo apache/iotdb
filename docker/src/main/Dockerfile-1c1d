@@ -29,12 +29,12 @@ RUN apt update \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && mv /start-1c1d.sh /iotdb \
+  && mv /start-1c1d.sh /iotdb/sbin \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y \
-RUN dos2unix /iotdb/start-1c1d.sh
+RUN dos2unix /iotdb/sbin/start-1c1d.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
 RUN dos2unix /iotdb/sbin/start-datanode.sh
@@ -53,4 +53,4 @@ EXPOSE 50010
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/start-1c1d.sh"]
+ENTRYPOINT ["/iotdb/sbin/start-1c1d.sh"]

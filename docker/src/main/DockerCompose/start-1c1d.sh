@@ -17,5 +17,5 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-. "sbin/start-confignode.sh" &
-. "sbin/start-datanode.sh" &
+./start-confignode.sh &
+./start-datanode.sh &
