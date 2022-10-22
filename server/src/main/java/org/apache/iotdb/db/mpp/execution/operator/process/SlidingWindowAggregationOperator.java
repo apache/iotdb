@@ -24,8 +24,12 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -50,10 +54,17 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
-    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
     this.timeRangeIterator = timeRangeIterator;
     this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }

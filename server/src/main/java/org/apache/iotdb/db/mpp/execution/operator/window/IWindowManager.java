@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Used to customize all the type of window managers, such as TimeWindowManager,
@@ -52,13 +59,6 @@ public interface IWindowManager {
   void next();
 
   /**
-   * Used to get the output time of current window
-   *
-   * @return the output time of current window
-   */
-  long currentOutputTime();
-
-  /**
    * Used to get current window
    *
    * @return current window
@@ -88,4 +88,18 @@ public interface IWindowManager {
    * @return whether there are extra points for the next window
    */
   boolean isTsBlockOutOfBound(TsBlock inputTsBlock);
+
+  default List<TSDataType> getResultDataTypes(List<Aggregator> aggregators) {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    return dataTypes;
+  }
+
+  TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators);
+
+  void appendAggregationResult(TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators);
+
+  boolean notInitedLastTimeWindow();
 }

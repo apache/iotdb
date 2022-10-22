@@ -106,6 +106,9 @@ import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperat
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.window.CompareType;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -1280,13 +1283,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           calculateMaxAggregationResultSize(
               aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
+      WindowParameter windowParameter =
+          new WindowParameter(
+              WindowType.TIME_WINDOW, TSDataType.INT64, CompareType.EQUAL, 0, false, false, 0);
+
       return new RawDataAggregationOperator(
           operatorContext,
           aggregators,
           timeRangeIterator,
           children.get(0),
           ascending,
-          maxReturnSize);
+          maxReturnSize,
+          windowParameter);
     } else {
       OperatorContext operatorContext =
           context

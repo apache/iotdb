@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;
+
+import java.util.List;
 
 public class TimeWindowManager implements IWindowManager {
 
@@ -66,11 +70,6 @@ public class TimeWindowManager implements IWindowManager {
     this.needSkip = true;
     this.initialized = false;
     this.curWindow.update(this.timeRangeIterator.nextTimeRange());
-  }
-
-  @Override
-  public long currentOutputTime() {
-    return timeRangeIterator.currentOutputTime();
   }
 
   @Override
@@ -129,5 +128,22 @@ public class TimeWindowManager implements IWindowManager {
         && (this.ascending
             ? inputTsBlock.getEndTime() > this.curWindow.getCurMaxTime()
             : inputTsBlock.getEndTime() < this.curWindow.getCurMinTime());
+  }
+
+  @Override
+  public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
+    return new TsBlockBuilder(getResultDataTypes(aggregators));
+  }
+
+  @Override
+  public void appendAggregationResult(
+      TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
+    AggregationUtil.appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+  }
+
+  @Override
+  public boolean notInitedLastTimeWindow() {
+    return !this.initialized;
   }
 }

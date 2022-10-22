@@ -50,7 +50,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
         return i;
@@ -71,7 +71,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
         return i;
@@ -92,7 +92,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
         return i;
@@ -113,7 +113,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
         return i;
@@ -134,7 +134,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
         return i;
@@ -155,7 +155,7 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
         return i;

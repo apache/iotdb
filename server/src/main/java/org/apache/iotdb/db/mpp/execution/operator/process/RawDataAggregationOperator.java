@@ -25,11 +25,11 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
-import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowManagerFactory;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 /**
@@ -52,9 +52,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
-      long maxReturnSize) {
-    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
-    this.windowManager = new TimeWindowManager(timeRangeIterator);
+      long maxReturnSize,
+      WindowParameter windowParameter) {
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
+    this.windowManager =
+        new WindowManagerFactory().genWindowManager(windowParameter, timeRangeIterator);
+    this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 
   private boolean hasMoreData() {
@@ -79,9 +82,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // if child still has next but can't be invoked now
         return false;
       } else {
-        // If there are no points belong to last window, the last window will not
-        // initialize window and aggregators
-        if (!windowManager.isCurWindowInit()) {
+        // If there are no points belong to last time window, the last time window will not
+        // initialize window and aggregators. Specially for time window.
+        if (windowManager.notInitedLastTimeWindow()) {
           initWindowAndAggregators();
         }
         break;
@@ -135,7 +138,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
+    windowManager.appendAggregationResult(resultTsBlockBuilder, aggregators);
   }
 
   private boolean skipPreviousWindowAndInitCurWindow() {

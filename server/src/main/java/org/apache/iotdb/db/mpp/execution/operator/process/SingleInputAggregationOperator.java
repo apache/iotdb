@@ -20,17 +20,13 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -46,7 +42,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
-  protected final TsBlockBuilder resultTsBlockBuilder;
+  protected TsBlockBuilder resultTsBlockBuilder;
 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
@@ -56,19 +52,11 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       List<Aggregator> aggregators,
       Operator child,
       boolean ascending,
-      ITimeRangeIterator timeRangeIterator,
       long maxReturnSize) {
     this.operatorContext = operatorContext;
     this.ascending = ascending;
     this.child = child;
     this.aggregators = aggregators;
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Aggregator aggregator : aggregators) {
-      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
-    }
-    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
-
     this.maxRetainedSize = child.calculateMaxReturnSize();
     this.maxReturnSize = maxReturnSize;
   }

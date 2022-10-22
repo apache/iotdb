@@ -59,7 +59,7 @@ public class TimeWindow implements IWindow {
   }
 
   @Override
-  public void mergeOnePoint() {
+  public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
     // do nothing
   }
 
