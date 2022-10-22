@@ -72,8 +72,7 @@ public class IoTDBRpcDataSet {
   public int queryResultIndex; // the index of bytebuffer in queryResult
   public int tsBlockSize; // the size of current tsBlock
   public int tsBlockIndex; // the row index in current tsBlock
-  public static final int FLAG =
-      0x80; // used to do `and` operation with bitmap to judge whether the value is null
+
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
@@ -199,7 +198,7 @@ public class IoTDBRpcDataSet {
         columnTypeDeduplicatedList.add(null);
       }
       for (int i = 0; i < columnNameList.size(); i++) {
-        String name = "";
+        String name;
         if (sgList != null
             && sgList.size() > 0
             && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
@@ -235,7 +234,7 @@ public class IoTDBRpcDataSet {
 
     this.queryResult = queryResult;
     this.queryResultSize = 0;
-    if(queryResult!=null){
+    if (queryResult != null) {
       this.queryResultSize = queryResult.size();
     }
     this.queryResultIndex = 0;
