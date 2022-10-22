@@ -73,7 +73,6 @@ public class IoTDBRpcDataSet {
   public int tsBlockSize; // the size of current tsBlock
   public int tsBlockIndex; // the row index in current tsBlock
 
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
       String sql,
