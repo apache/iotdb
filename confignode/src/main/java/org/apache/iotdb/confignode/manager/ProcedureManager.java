@@ -56,8 +56,8 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -272,7 +272,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus createPipe(TPipeInfo req) {
+  public TSStatus createPipe(TCreatePipeReq req) {
     try {
       long procedureId = executor.submitProcedure(new CreatePipeProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
