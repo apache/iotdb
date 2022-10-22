@@ -21,7 +21,7 @@ package org.apache.iotdb.lsm.manager;
 import org.apache.iotdb.lsm.context.RequestContext;
 
 // used to implement lsm manager
-public interface LSMManager<T, C extends RequestContext> {
+public interface LSMManager<T, R, C extends RequestContext> {
 
   /**
    * preprocessing of the root memory node
@@ -30,7 +30,7 @@ public interface LSMManager<T, C extends RequestContext> {
    * @param context request context
    * @throws Exception
    */
-  void preProcess(T root, C context) throws Exception;
+  void preProcess(T root, R request, C context) throws Exception;
 
   /**
    * postprocessing of the root memory node
@@ -39,7 +39,7 @@ public interface LSMManager<T, C extends RequestContext> {
    * @param context request context
    * @throws Exception
    */
-  void postProcess(T root, C context) throws Exception;
+  void postProcess(T root, R request, C context) throws Exception;
 
   /**
    * use this method to process root memory node
@@ -47,5 +47,5 @@ public interface LSMManager<T, C extends RequestContext> {
    * @param memNode memory node
    * @param context request context
    */
-  void process(T memNode, C context) throws Exception;
+  void process(T memNode, R request, C context) throws Exception;
 }

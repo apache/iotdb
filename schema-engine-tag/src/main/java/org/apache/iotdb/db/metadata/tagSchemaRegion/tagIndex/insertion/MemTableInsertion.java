@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
@@ -27,7 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** insertion for MemTable */
-public class MemTableInsertion extends InsertLevelProcess<MemTable, MemChunkGroup> {
+public class MemTableInsertion
+    extends InsertLevelProcess<MemTable, MemChunkGroup, InsertionRequest> {
 
   /**
    * get all MemChunkGroups that need to be processed in the current MemTable
@@ -37,10 +39,11 @@ public class MemTableInsertion extends InsertLevelProcess<MemTable, MemChunkGrou
    * @return A list of saved MemChunkGroups
    */
   @Override
-  public List<MemChunkGroup> getChildren(MemTable memNode, InsertRequestContext context) {
+  public List<MemChunkGroup> getChildren(
+      MemTable memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
     if (memNode.isImmutable()) return new ArrayList<>();
     List<MemChunkGroup> memChunkGroups = new ArrayList<>();
-    String tagKey = (String) context.getKey();
+    String tagKey = insertionRequest.getKey(context);
     MemChunkGroup child = memNode.get(tagKey);
     if (child != null) memChunkGroups.add(child);
     return memChunkGroups;
@@ -53,9 +56,10 @@ public class MemTableInsertion extends InsertLevelProcess<MemTable, MemChunkGrou
    * @param context insert request context
    */
   @Override
-  public void insert(MemTable memNode, InsertRequestContext context) {
+  public void insert(
+      MemTable memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
     if (memNode.isImmutable()) return;
-    String tagKey = (String) context.getKey();
+    String tagKey = insertionRequest.getKey(context);
     memNode.put(tagKey);
   }
 }

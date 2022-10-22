@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
@@ -25,7 +26,7 @@ import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
 import java.util.List;
 
 /** insertion for MemChunk */
-public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object> {
+public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object, InsertionRequest> {
 
   /**
    * MemChunk is the last layer of memory nodes, no children
@@ -35,7 +36,8 @@ public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object> {
    * @return null
    */
   @Override
-  public List<Object> getChildren(MemChunk memNode, InsertRequestContext context) {
+  public List<Object> getChildren(
+      MemChunk memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
     return null;
   }
 
@@ -46,8 +48,9 @@ public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object> {
    * @param context insert request context
    */
   @Override
-  public void insert(MemChunk memNode, InsertRequestContext context) {
-    Integer deviceID = (Integer) context.getValue();
+  public void insert(
+      MemChunk memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
+    Integer deviceID = insertionRequest.getValue();
     memNode.put(deviceID);
   }
 }

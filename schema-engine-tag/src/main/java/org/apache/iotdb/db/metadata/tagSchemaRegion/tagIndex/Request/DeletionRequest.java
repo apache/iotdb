@@ -16,26 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
 import org.apache.iotdb.lsm.context.RequestContext;
 
-/** the processing method corresponding to each layer of memory nodes */
-public interface LevelProcess<I, O, R, C extends RequestContext> {
+import java.util.List;
 
-  /**
-   * add the LevelProcess of the next layer of memory nodes
-   *
-   * @param next LevelProcess of the next layer
-   * @return LevelProcess of the next layer
-   */
-  <T> LevelProcess<O, T, R, C> nextLevel(LevelProcess<O, T, R, C> next);
+public class DeletionRequest
+    extends org.apache.iotdb.lsm.request.DeletionRequest<String, Integer, RequestStatus> {
 
-  /**
-   * use this method to process memory nodes at each layer according to the access strategy
-   *
-   * @param memNode memory node
-   * @param context request context
-   */
-  void process(I memNode, R request, C context);
+  List<String> keys;
+
+  int value;
+
+  RequestStatus requestStatus;
+
+  public DeletionRequest(List<String> keys, int value) {
+    super();
+    this.keys = keys;
+    this.value = value;
+    requestStatus = new RequestStatus();
+  }
+
+  @Override
+  public String getKey(RequestContext context) {
+    return keys.get(context.getLevel());
+  }
+
+  @Override
+  public RequestStatus getResult() {
+    return requestStatus;
+  }
+
+  @Override
+  public void setResult(RequestStatus result) {
+    requestStatus = result;
+  }
+
+  @Override
+  public List<String> getKeys() {
+    return keys;
+  }
+
+  @Override
+  public Integer getValue() {
+    return value;
+  }
 }

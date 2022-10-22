@@ -21,7 +21,8 @@ package org.apache.iotdb.lsm.levelProcess;
 import org.apache.iotdb.lsm.context.FlushRequestContext;
 
 /** indicates the flush method of each layer of memory nodes */
-public abstract class FlushLevelProcess<I, O> extends BasicLevelProcess<I, O, FlushRequestContext> {
+public abstract class FlushLevelProcess<I, O>
+    extends BasicLevelProcess<I, O, Object, FlushRequestContext> {
 
   /**
    * the flush method of memory node
@@ -31,7 +32,7 @@ public abstract class FlushLevelProcess<I, O> extends BasicLevelProcess<I, O, Fl
    */
   public abstract void flush(I memNode, FlushRequestContext context);
 
-  public void handle(I memNode, FlushRequestContext context) {
+  public void handle(I memNode, Object request, FlushRequestContext context) {
     flush(memNode, context);
   }
 }

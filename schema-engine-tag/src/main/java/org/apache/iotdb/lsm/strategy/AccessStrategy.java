@@ -31,6 +31,6 @@ public interface AccessStrategy {
    * @param memNode memory node
    * @param context request context
    */
-  <I, O, C extends RequestContext> void execute(
-      BasicLevelProcess<I, O, C> levelProcess, I memNode, C context);
+  <I, O, R, C extends RequestContext> void execute(
+      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context);
 }

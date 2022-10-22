@@ -22,14 +22,14 @@ import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 
 /** */
-public class BasicLSMManager<T, C extends RequestContext> implements LSMManager<T, C> {
+public class BasicLSMManager<T, R, C extends RequestContext> implements LSMManager<T, R, C> {
 
   // the level process of the first layer of memory nodes
-  LevelProcessChain<T, C> levelProcessChain;
+  LevelProcessChain<T, R, C> levelProcessChain;
 
   public BasicLSMManager() {}
 
-  public BasicLSMManager(LevelProcessChain<T, C> levelProcessChain) {
+  public BasicLSMManager(LevelProcessChain<T, R, C> levelProcessChain) {
     this.levelProcessChain = levelProcessChain;
   }
 
@@ -41,7 +41,7 @@ public class BasicLSMManager<T, C extends RequestContext> implements LSMManager<
    * @throws Exception
    */
   @Override
-  public void preProcess(T root, C context) throws Exception {}
+  public void preProcess(T root, R request, C context) throws Exception {}
 
   /**
    * postprocessing of the root memory node
@@ -51,7 +51,7 @@ public class BasicLSMManager<T, C extends RequestContext> implements LSMManager<
    * @throws Exception
    */
   @Override
-  public void postProcess(T root, C context) throws Exception {}
+  public void postProcess(T root, R request, C context) throws Exception {}
 
   /**
    * processing of the root memory node
@@ -61,13 +61,13 @@ public class BasicLSMManager<T, C extends RequestContext> implements LSMManager<
    * @throws Exception
    */
   @Override
-  public void process(T root, C context) throws Exception {
-    preProcess(root, context);
-    levelProcessChain.process(root, context);
-    postProcess(root, context);
+  public void process(T root, R request, C context) throws Exception {
+    preProcess(root, request, context);
+    levelProcessChain.process(root, request, context);
+    postProcess(root, request, context);
   }
 
-  public void setLevelProcessChain(LevelProcessChain<T, C> levelProcessChain) {
+  public void setLevelProcessChain(LevelProcessChain<T, R, C> levelProcessChain) {
     this.levelProcessChain = levelProcessChain;
   }
 }

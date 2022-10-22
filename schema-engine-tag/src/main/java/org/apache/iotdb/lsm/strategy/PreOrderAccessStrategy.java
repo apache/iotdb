@@ -34,19 +34,19 @@ public class PreOrderAccessStrategy implements AccessStrategy {
    * @param context request context
    */
   @Override
-  public <I, O, C extends RequestContext> void execute(
-      BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
+  public <I, O, R, C extends RequestContext> void execute(
+      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context) {
     int currentLevel = context.getLevel();
     // process the current memory node
-    levelProcess.handle(memNode, context);
+    levelProcess.handle(memNode, request, context);
     // get all memory nodes to be processed in the next layer
-    List<O> children = levelProcess.getChildren(memNode, context);
+    List<O> children = levelProcess.getChildren(memNode, request, context);
 
     if (levelProcess.hasNext()) {
       context.setLevel(currentLevel + 1);
       for (O child : children) {
         // process next level memory node
-        levelProcess.getNext().process(child, context);
+        levelProcess.getNext().process(child, request, context);
       }
     }
     context.setLevel(currentLevel);

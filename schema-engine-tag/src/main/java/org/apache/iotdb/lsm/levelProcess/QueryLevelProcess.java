@@ -21,7 +21,8 @@ package org.apache.iotdb.lsm.levelProcess;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
 
 /** indicates the query method of each layer of memory nodes */
-public abstract class QueryLevelProcess<I, O> extends BasicLevelProcess<I, O, QueryRequestContext> {
+public abstract class QueryLevelProcess<I, O, R>
+    extends BasicLevelProcess<I, O, R, QueryRequestContext> {
 
   /**
    * the query method of memory node
@@ -29,10 +30,10 @@ public abstract class QueryLevelProcess<I, O> extends BasicLevelProcess<I, O, Qu
    * @param memNode memory node
    * @param context query request context
    */
-  public abstract void query(I memNode, QueryRequestContext context);
+  public abstract void query(I memNode, R request, QueryRequestContext context);
 
   @Override
-  public void handle(I memNode, QueryRequestContext context) {
-    query(memNode, context);
+  public void handle(I memNode, R request, QueryRequestContext context) {
+    query(memNode, request, context);
   }
 }

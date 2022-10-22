@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
@@ -27,7 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** deletion for MemChunkGroup */
-public class MemChunkGroupDeletion extends DeleteLevelProcess<MemChunkGroup, MemChunk> {
+public class MemChunkGroupDeletion
+    extends DeleteLevelProcess<MemChunkGroup, MemChunk, DeletionRequest> {
 
   /**
    * get all MemChunks that need to be processed in the current MemChunkGroup
@@ -37,9 +39,10 @@ public class MemChunkGroupDeletion extends DeleteLevelProcess<MemChunkGroup, Mem
    * @return A list of saved MemChunks
    */
   @Override
-  public List<MemChunk> getChildren(MemChunkGroup memNode, DeleteRequestContext context) {
+  public List<MemChunk> getChildren(
+      MemChunkGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
     List<MemChunk> memChunks = new ArrayList<>();
-    String tagValue = (String) context.getKey();
+    String tagValue = deletionRequest.getKey(context);
     MemChunk child = memNode.get(tagValue);
     if (child != null) memChunks.add(child);
     return memChunks;
@@ -52,8 +55,9 @@ public class MemChunkGroupDeletion extends DeleteLevelProcess<MemChunkGroup, Mem
    * @param context deletion request context
    */
   @Override
-  public void delete(MemChunkGroup memNode, DeleteRequestContext context) {
-    String tagValue = (String) context.getKey();
+  public void delete(
+      MemChunkGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
+    String tagValue = deletionRequest.getKey(context);
     MemChunk child = memNode.get(tagValue);
     if (child == null || child.isEmpty()) {
       memNode.remove(tagValue);

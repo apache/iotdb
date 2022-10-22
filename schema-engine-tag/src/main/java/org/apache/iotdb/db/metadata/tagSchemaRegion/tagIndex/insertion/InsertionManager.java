@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
@@ -27,7 +28,8 @@ import org.apache.iotdb.lsm.manager.BasicLSMManager;
 import java.io.IOException;
 
 /** manage insertion to MemTable */
-public class InsertionManager extends BasicLSMManager<MemTable, InsertRequestContext> {
+public class InsertionManager
+    extends BasicLSMManager<MemTable, InsertionRequest, InsertRequestContext> {
 
   // use wal manager object to write wal file on insertion
   private WALManager walManager;
@@ -45,15 +47,16 @@ public class InsertionManager extends BasicLSMManager<MemTable, InsertRequestCon
    * @throws Exception
    */
   @Override
-  public void preProcess(MemTable root, InsertRequestContext context) throws IOException {
-    if (!context.isRecover()) {
-      walManager.write(context);
-    }
+  public void preProcess(
+      MemTable root, InsertionRequest insertionRequest, InsertRequestContext context)
+      throws IOException {
+    walManager.write(insertionRequest);
   }
 
   /** set the insert operation for each layer of memory nodes */
   private void initLevelProcess() {
-    LevelProcessChain<MemTable, InsertRequestContext> levelProcessChain = new LevelProcessChain<>();
+    LevelProcessChain<MemTable, InsertionRequest, InsertRequestContext> levelProcessChain =
+        new LevelProcessChain<>();
     levelProcessChain
         .nextLevel(new MemTableInsertion())
         .nextLevel(new MemChunkGroupInsertion())

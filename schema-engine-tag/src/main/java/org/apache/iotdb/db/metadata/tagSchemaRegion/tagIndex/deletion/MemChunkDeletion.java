@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcess;
@@ -25,7 +26,7 @@ import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcess;
 import java.util.List;
 
 /** deletion for MemChunk */
-public class MemChunkDeletion extends DeleteLevelProcess<MemChunk, Object> {
+public class MemChunkDeletion extends DeleteLevelProcess<MemChunk, Object, DeletionRequest> {
 
   /**
    * MemChunk is the last layer of memory nodes, no children
@@ -35,7 +36,8 @@ public class MemChunkDeletion extends DeleteLevelProcess<MemChunk, Object> {
    * @return null
    */
   @Override
-  public List<Object> getChildren(MemChunk memNode, DeleteRequestContext context) {
+  public List<Object> getChildren(
+      MemChunk memNode, DeletionRequest request, DeleteRequestContext context) {
     return null;
   }
 
@@ -46,8 +48,8 @@ public class MemChunkDeletion extends DeleteLevelProcess<MemChunk, Object> {
    * @param context deletion request context
    */
   @Override
-  public void delete(MemChunk memNode, DeleteRequestContext context) {
-    Integer deviceID = (Integer) context.getValue();
+  public void delete(MemChunk memNode, DeletionRequest request, DeleteRequestContext context) {
+    Integer deviceID = request.getValue();
     memNode.remove(deviceID);
   }
 }

@@ -16,19 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
-import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
+import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.request.Request;
 
-/**
- * represents the context of a insertion request, this class can be extended to implement a custom
- * context
- */
-public class InsertRequestContext extends RequestContext {
+import org.roaringbitmap.RoaringBitmap;
 
-  public InsertRequestContext() {
+import java.util.List;
+
+public class QueryRequest extends Request<String, RoaringBitmap> {
+
+  List<String> keys;
+
+  RoaringBitmap roaringBitmap;
+
+  public QueryRequest(List<String> keys) {
     super();
-    // preorder traversal strategy is used by default
-    accessStrategy = new PreOrderAccessStrategy();
+    this.keys = keys;
+    roaringBitmap = new RoaringBitmap();
+  }
+
+  @Override
+  public String getKey(RequestContext context) {
+    return keys.get(context.getLevel());
+  }
+
+  @Override
+  public RoaringBitmap getResult() {
+    return roaringBitmap;
+  }
+
+  @Override
+  public void setResult(RoaringBitmap result) {
+    roaringBitmap = result;
+  }
+
+  @Override
+  public List<String> getKeys() {
+    return keys;
   }
 }

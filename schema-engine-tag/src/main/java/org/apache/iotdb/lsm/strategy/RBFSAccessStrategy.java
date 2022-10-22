@@ -34,8 +34,8 @@ public class RBFSAccessStrategy implements AccessStrategy {
    * @param context request context
    */
   @Override
-  public <I, O, C extends RequestContext> void execute(
-      BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
+  public <I, O, R, C extends RequestContext> void execute(
+      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context) {
     int currentLevel = context.getLevel();
 
     // if the upper bound has not been set and there is no next-level processing method, set the
@@ -49,11 +49,11 @@ public class RBFSAccessStrategy implements AccessStrategy {
       // if all the next level nodes of the root node have not been processed
       while (context.getLevelUpperBound() != currentLevel) {
         // process all pending next-level nodes
-        List<O> children = levelProcess.getChildren(memNode, context);
+        List<O> children = levelProcess.getChildren(memNode, request, context);
         for (O child : children) {
           context.setLevel(currentLevel + 1);
           // use the processing method of the next layer to process the next layer of nodes
-          levelProcess.getNext().process(child, context);
+          levelProcess.getNext().process(child, request, context);
           context.setLevel(currentLevel);
         }
 
@@ -62,7 +62,7 @@ public class RBFSAccessStrategy implements AccessStrategy {
       }
 
       // process the current memory node
-      levelProcess.handle(memNode, context);
+      levelProcess.handle(memNode, request, context);
       return;
     }
 
@@ -70,15 +70,15 @@ public class RBFSAccessStrategy implements AccessStrategy {
 
     // only process memory nodes with equal level and upper bound
     if (currentLevel == context.getLevelUpperBound()) {
-      levelProcess.handle(memNode, context);
+      levelProcess.handle(memNode, request, context);
       return;
     }
 
     // process all pending next-level nodes
-    List<O> children = levelProcess.getChildren(memNode, context);
+    List<O> children = levelProcess.getChildren(memNode, request, context);
     for (O child : children) {
       context.setLevel(currentLevel + 1);
-      levelProcess.getNext().process(child, context);
+      levelProcess.getNext().process(child, request, context);
       context.setLevel(currentLevel);
     }
   }

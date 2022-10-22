@@ -21,6 +21,9 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.DeletionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.InsertionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
@@ -96,11 +99,11 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   /**
    * insert tags and id using insert request context
    *
-   * @param context insert request context
+   * @param insertionRequest insert request context
    */
   @Override
-  public synchronized void addTags(InsertRequestContext context) {
-    int id = (int) context.getValue();
+  public synchronized void addTags(InsertionRequest insertionRequest) {
+    int id = insertionRequest.getValue();
     // if the device id can not be saved to the current working MemTable
     if (!inWorkingMemTable(id)) {
       workingMemTable.setStatus(MemTable.IMMUTABLE);
@@ -110,7 +113,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     MemTable memTable = workingMemTable;
     maxDeviceID = id;
     try {
-      insertionManager.process(memTable, context);
+      insertionManager.process(memTable, insertionRequest, new InsertRequestContext());
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -144,11 +147,11 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   /**
    * delete tags and id using delete request context
    *
-   * @param context delete request context
+   * @param deletionRequest delete request context
    */
   @Override
-  public void removeTags(DeleteRequestContext context) {
-    int id = (int) context.getValue();
+  public void removeTags(DeletionRequest deletionRequest) {
+    int id = deletionRequest.getValue();
     MemTable memTable = null;
     if (inWorkingMemTable(id)) {
       memTable = workingMemTable;
@@ -156,7 +159,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       memTable = immutableMemTables.get(id / numOfDeviceIdsInMemTable);
     }
     try {
-      deletionManager.process(memTable, context);
+      deletionManager.process(memTable, deletionRequest, new DeleteRequestContext());
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -238,26 +241,33 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     return id / numOfDeviceIdsInMemTable == maxDeviceID / numOfDeviceIdsInMemTable;
   }
 
+  private List<String> generateKeys(String tagKey, String tagValue) {
+    List<String> keys = new ArrayList<>();
+    keys.add(tagKey);
+    keys.add(tagValue);
+    return keys;
+  }
+
   private void addTag(MemTable memTable, String tagKey, String tagValue, int id) throws Exception {
-    InsertRequestContext insertContext = new InsertRequestContext(id, tagKey, tagValue);
-    insertionManager.process(memTable, insertContext);
+    InsertionRequest insertionRequest = new InsertionRequest(generateKeys(tagKey, tagValue), id);
+    insertionManager.process(memTable, insertionRequest, new InsertRequestContext());
   }
 
   private void removeTag(List<MemTable> memTables, String tagKey, String tagValue, int id)
       throws Exception {
-    DeleteRequestContext deleteContext = new DeleteRequestContext(id, tagKey, tagValue);
+    DeletionRequest deletionRequest = new DeletionRequest(generateKeys(tagKey, tagValue), id);
     for (MemTable memTable : memTables) {
-      deletionManager.process(memTable, deleteContext);
+      deletionManager.process(memTable, deletionRequest, new DeleteRequestContext());
     }
   }
 
   private RoaringBitmap getMatchedIDs(List<MemTable> memTables, String tagKey, String tagValue)
       throws Exception {
-    QueryRequestContext queryContext = new QueryRequestContext(tagKey, tagValue);
+    QueryRequest queryRequest = new QueryRequest(generateKeys(tagKey, tagValue));
     for (MemTable memTable : memTables) {
-      queryManager.process(memTable, queryContext);
+      queryManager.process(memTable, queryRequest, new QueryRequestContext());
     }
-    return (RoaringBitmap) queryContext.getResult();
+    return queryRequest.getResult();
   }
 
   @TestOnly

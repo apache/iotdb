@@ -16,19 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
+import org.apache.iotdb.lsm.context.RequestContext;
 
-/**
- * represents the context of a insertion request, this class can be extended to implement a custom
- * context
- */
-public class InsertRequestContext extends RequestContext {
+import java.util.List;
 
-  public InsertRequestContext() {
-    super();
-    // preorder traversal strategy is used by default
-    accessStrategy = new PreOrderAccessStrategy();
+public abstract class Request<K, R> {
+
+  RequestType requestType;
+
+  public Request() {
+    requestType = RequestType.NONE;
+  }
+
+  public abstract K getKey(RequestContext context);
+
+  public abstract R getResult();
+
+  public abstract void setResult(R result);
+
+  public abstract List<K> getKeys();
+
+  public RequestType getRequestType() {
+    return requestType;
+  }
+
+  public void setRequestType(RequestType requestType) {
+    this.requestType = requestType;
   }
 }

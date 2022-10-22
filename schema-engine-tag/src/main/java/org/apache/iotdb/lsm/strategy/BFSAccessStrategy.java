@@ -40,27 +40,27 @@ public class BFSAccessStrategy implements AccessStrategy {
    * @param context request context
    */
   @Override
-  public <I, O, C extends RequestContext> void execute(
-      BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
+  public <I, O, R, C extends RequestContext> void execute(
+      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context) {
     List<O> children = new ArrayList<>();
     int currentLevel = context.getLevel();
     if (sameLevelMemNodes == null) {
       sameLevelMemNodes = new LinkedList<>();
       // process the current memory node
-      levelProcess.handle(memNode, context);
+      levelProcess.handle(memNode, request, context);
       // get all memory nodes to be processed in the next layer
-      children = levelProcess.getChildren(memNode, context);
+      children = levelProcess.getChildren(memNode, request, context);
     } else {
       while (!sameLevelMemNodes.isEmpty()) {
         I node = (I) sameLevelMemNodes.poll();
-        levelProcess.handle(node, context);
-        children.addAll(levelProcess.getChildren(node, context));
+        levelProcess.handle(node, request, context);
+        children.addAll(levelProcess.getChildren(node, request, context));
       }
     }
     sameLevelMemNodes.addAll(children);
     context.setLevel(currentLevel + 1);
     if (levelProcess.hasNext() && !sameLevelMemNodes.isEmpty()) {
-      levelProcess.getNext().process(null, context);
+      levelProcess.getNext().process(null, request, context);
     }
   }
 }

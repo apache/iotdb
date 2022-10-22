@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 import org.apache.iotdb.lsm.manager.BasicLSMManager;
 
 /** manage insertion to MemTable */
-public class QueryManager extends BasicLSMManager<MemTable, QueryRequestContext> {
+public class QueryManager extends BasicLSMManager<MemTable, QueryRequest, QueryRequestContext> {
 
   public QueryManager() {
     initLevelProcess();
@@ -32,7 +33,8 @@ public class QueryManager extends BasicLSMManager<MemTable, QueryRequestContext>
 
   /** set the query operation for each layer of memory nodes */
   private void initLevelProcess() {
-    LevelProcessChain<MemTable, QueryRequestContext> levelProcessChain = new LevelProcessChain<>();
+    LevelProcessChain<MemTable, QueryRequest, QueryRequestContext> levelProcessChain =
+        new LevelProcessChain<>();
     levelProcessChain
         .nextLevel(new MemTableQuery())
         .nextLevel(new MemChunkGroupQuery())

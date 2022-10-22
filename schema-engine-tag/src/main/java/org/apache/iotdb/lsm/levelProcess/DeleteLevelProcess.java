@@ -21,8 +21,8 @@ package org.apache.iotdb.lsm.levelProcess;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
 
 /** indicates the deletion method of each layer of memory nodes */
-public abstract class DeleteLevelProcess<I, O>
-    extends BasicLevelProcess<I, O, DeleteRequestContext> {
+public abstract class DeleteLevelProcess<I, O, R>
+    extends BasicLevelProcess<I, O, R, DeleteRequestContext> {
 
   /**
    * the deletion method of memory node
@@ -30,10 +30,10 @@ public abstract class DeleteLevelProcess<I, O>
    * @param memNode memory node
    * @param context deletion request context
    */
-  public abstract void delete(I memNode, DeleteRequestContext context);
+  public abstract void delete(I memNode, R request, DeleteRequestContext context);
 
   @Override
-  public void handle(I memNode, DeleteRequestContext context) {
-    delete(memNode, context);
+  public void handle(I memNode, R request, DeleteRequestContext context) {
+    delete(memNode, request, context);
   }
 }

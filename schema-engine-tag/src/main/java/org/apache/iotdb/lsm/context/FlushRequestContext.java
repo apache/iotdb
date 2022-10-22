@@ -27,7 +27,6 @@ import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 public class FlushRequestContext extends RequestContext {
   public FlushRequestContext() {
     super();
-    type = RequestType.FLUSH;
     // use the reverse breadth-first traversal strategy to access memory nodes
     accessStrategy = new RBFSAccessStrategy();
   }

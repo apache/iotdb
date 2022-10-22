@@ -24,9 +24,6 @@ import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 /** represents the context of a request */
 public class RequestContext {
 
-  // request type
-  RequestType type;
-
   // memory Structure Access Policy
   AccessStrategy accessStrategy;
 
@@ -36,19 +33,11 @@ public class RequestContext {
   // the maximum level of memory nodes that can be processed
   int levelUpperBound;
 
-  // return value after request processing is complete
-  Object result;
-
-  // whether the request context is only used for recovery
-  boolean recover;
-
   public RequestContext() {
     // preorder traversal strategy is used by default
     accessStrategy = new PreOrderAccessStrategy();
-    type = RequestType.NONE;
     level = 0;
     levelUpperBound = Integer.MAX_VALUE;
-    recover = false;
   }
 
   public void setLevel(int level) {
@@ -57,22 +46,6 @@ public class RequestContext {
 
   public int getLevel() {
     return level;
-  }
-
-  public RequestType getType() {
-    return type;
-  }
-
-  public void setType(RequestType type) {
-    this.type = type;
-  }
-
-  public Object getResult() {
-    return result;
-  }
-
-  public void setResult(Object result) {
-    this.result = result;
   }
 
   public AccessStrategy getAccessStrategy() {
@@ -89,13 +62,5 @@ public class RequestContext {
 
   public void setLevelUpperBound(int levelUpperBound) {
     this.levelUpperBound = levelUpperBound;
-  }
-
-  public boolean isRecover() {
-    return recover;
-  }
-
-  public void setRecover(boolean recover) {
-    this.recover = recover;
   }
 }

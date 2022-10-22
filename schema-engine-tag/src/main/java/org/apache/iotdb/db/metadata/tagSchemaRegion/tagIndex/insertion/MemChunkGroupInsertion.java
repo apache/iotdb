@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
@@ -27,7 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** insertion for MemChunkGroup */
-public class MemChunkGroupInsertion extends InsertLevelProcess<MemChunkGroup, MemChunk> {
+public class MemChunkGroupInsertion
+    extends InsertLevelProcess<MemChunkGroup, MemChunk, InsertionRequest> {
 
   /**
    * get all MemChunks that need to be processed in the current MemChunkGroup
@@ -37,9 +39,10 @@ public class MemChunkGroupInsertion extends InsertLevelProcess<MemChunkGroup, Me
    * @return A list of saved MemChunks
    */
   @Override
-  public List<MemChunk> getChildren(MemChunkGroup memNode, InsertRequestContext context) {
+  public List<MemChunk> getChildren(
+      MemChunkGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
     List<MemChunk> memChunks = new ArrayList<>();
-    String tagValue = (String) context.getKey();
+    String tagValue = insertionRequest.getKey(context);
     MemChunk child = memNode.get(tagValue);
     if (child != null) memChunks.add(child);
     return memChunks;
@@ -52,8 +55,9 @@ public class MemChunkGroupInsertion extends InsertLevelProcess<MemChunkGroup, Me
    * @param context insert request context
    */
   @Override
-  public void insert(MemChunkGroup memNode, InsertRequestContext context) {
-    String tagValue = (String) context.getKey();
+  public void insert(
+      MemChunkGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
+    String tagValue = insertionRequest.getKey(context);
     memNode.put(tagValue);
   }
 }

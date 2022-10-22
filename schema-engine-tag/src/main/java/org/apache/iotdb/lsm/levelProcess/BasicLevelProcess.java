@@ -23,11 +23,11 @@ import org.apache.iotdb.lsm.context.RequestContext;
 import java.util.List;
 
 /** the processing method corresponding to each layer of memory nodes */
-public abstract class BasicLevelProcess<I, O, C extends RequestContext>
-    implements LevelProcess<I, O, C> {
+public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
+    implements LevelProcess<I, O, R, C> {
 
   // the next level process
-  LevelProcess<O, ?, C> next;
+  LevelProcess<O, ?, R, C> next;
 
   /**
    * process the current layer memory node
@@ -35,7 +35,7 @@ public abstract class BasicLevelProcess<I, O, C extends RequestContext>
    * @param memNode memory node
    * @param context request context
    */
-  public abstract void handle(I memNode, C context);
+  public abstract void handle(I memNode, R request, C context);
 
   /**
    * get the memory node that needs to be processed in the next layer
@@ -44,7 +44,7 @@ public abstract class BasicLevelProcess<I, O, C extends RequestContext>
    * @param context request context
    * @return all next-level memory nodes that need to be processed
    */
-  public abstract List<O> getChildren(I memNode, C context);
+  public abstract List<O> getChildren(I memNode, R request, C context);
 
   /**
    * add the LevelProcess of the next layer of memory nodes
@@ -53,7 +53,7 @@ public abstract class BasicLevelProcess<I, O, C extends RequestContext>
    * @return the next level process
    */
   @Override
-  public <T> LevelProcess<O, T, C> nextLevel(LevelProcess<O, T, C> next) {
+  public <T> LevelProcess<O, T, R, C> nextLevel(LevelProcess<O, T, R, C> next) {
     this.next = next;
     return next;
   }
@@ -65,15 +65,15 @@ public abstract class BasicLevelProcess<I, O, C extends RequestContext>
    * @param context request context
    */
   @Override
-  public void process(I memNode, C context) {
-    context.getAccessStrategy().execute(this, memNode, context);
+  public void process(I memNode, R request, C context) {
+    context.getAccessStrategy().execute(this, memNode, request, context);
   }
 
   public boolean hasNext() {
     return next != null;
   }
 
-  public LevelProcess<O, ?, C> getNext() {
+  public LevelProcess<O, ?, R, C> getNext() {
     return next;
   }
 }

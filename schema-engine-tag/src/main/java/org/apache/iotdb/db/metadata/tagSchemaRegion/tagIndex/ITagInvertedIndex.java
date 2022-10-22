@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
-import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -30,9 +30,9 @@ public interface ITagInvertedIndex {
   /**
    * insert tags and id using insert request context
    *
-   * @param context insert request context
+   * @param insertionRequest insert request context
    */
-  void addTags(InsertRequestContext context);
+  void addTags(InsertionRequest insertionRequest);
 
   /**
    * insert tags and device id
@@ -45,9 +45,9 @@ public interface ITagInvertedIndex {
   /**
    * delete tags and id using delete request context
    *
-   * @param context delete request context
+   * @param deletionRequest delete request context
    */
-  void removeTags(DeleteRequestContext context);
+  void removeTags(DeletionRequest deletionRequest);
 
   /**
    * delete tags and id using delete request context

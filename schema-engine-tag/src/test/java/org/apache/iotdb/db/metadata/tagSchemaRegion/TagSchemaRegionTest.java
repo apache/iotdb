@@ -214,7 +214,7 @@ public class TagSchemaRegionTest {
     tagSchemaRegion.createAlignedTimeSeries(plan);
     plan =
         new CreateAlignedTimeSeriesPlan(
-            new PartialPath(storageGroup + "tag1.x.tag2.y"),
+            new PartialPath(storageGroup + ".tag1.x.tag2.y"),
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(
                 TSDataType.valueOf("FLOAT"),

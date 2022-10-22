@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
@@ -25,7 +26,8 @@ import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 import org.apache.iotdb.lsm.manager.BasicLSMManager;
 
 /** manage deletion to MemTable */
-public class DeletionManager extends BasicLSMManager<MemTable, DeleteRequestContext> {
+public class DeletionManager
+    extends BasicLSMManager<MemTable, DeletionRequest, DeleteRequestContext> {
 
   // use wal manager object to write wal file on deletion
   private WALManager walManager;
@@ -43,15 +45,16 @@ public class DeletionManager extends BasicLSMManager<MemTable, DeleteRequestCont
    * @throws Exception
    */
   @Override
-  public void preProcess(MemTable root, DeleteRequestContext context) throws Exception {
-    if (!context.isRecover()) {
-      walManager.write(context);
-    }
+  public void preProcess(
+      MemTable root, DeletionRequest deletionRequest, DeleteRequestContext context)
+      throws Exception {
+    walManager.write(deletionRequest);
   }
 
   /** set the delete operation for each layer of memory nodes */
   private void initLevelProcess() {
-    LevelProcessChain<MemTable, DeleteRequestContext> levelProcessChain = new LevelProcessChain<>();
+    LevelProcessChain<MemTable, DeletionRequest, DeleteRequestContext> levelProcessChain =
+        new LevelProcessChain<>();
     levelProcessChain
         .nextLevel(new MemTableDeletion())
         .nextLevel(new MemChunkGroupDeletion())

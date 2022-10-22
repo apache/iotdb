@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
@@ -27,7 +28,7 @@ import org.roaringbitmap.RoaringBitmap;
 import java.util.List;
 
 /** query for MemChunk */
-public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object> {
+public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object, QueryRequest> {
 
   /**
    * MemChunk is the last layer of memory nodes, no children
@@ -37,7 +38,8 @@ public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object> {
    * @return null
    */
   @Override
-  public List<Object> getChildren(MemChunk memNode, QueryRequestContext context) {
+  public List<Object> getChildren(
+      MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
     return null;
   }
 
@@ -48,10 +50,10 @@ public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object> {
    * @param context query request context
    */
   @Override
-  public void query(MemChunk memNode, QueryRequestContext context) {
-    RoaringBitmap roaringBitmap = (RoaringBitmap) context.getResult();
+  public void query(MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
+    RoaringBitmap roaringBitmap = queryRequest.getResult();
     if (roaringBitmap == null) roaringBitmap = new RoaringBitmap();
     RoaringBitmap now = RoaringBitmap.or(roaringBitmap, memNode.getRoaringBitmap());
-    context.setResult(now);
+    queryRequest.setResult(now);
   }
 }

@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
+public abstract class DeletionRequest<K, V, R> extends Request<K, R> {
 
-/**
- * represents the context of a insertion request, this class can be extended to implement a custom
- * context
- */
-public class InsertRequestContext extends RequestContext {
-
-  public InsertRequestContext() {
-    super();
-    // preorder traversal strategy is used by default
-    accessStrategy = new PreOrderAccessStrategy();
+  public DeletionRequest() {
+    requestType = RequestType.DELETE;
   }
+
+  public abstract V getValue();
 }

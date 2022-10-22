@@ -21,8 +21,8 @@ package org.apache.iotdb.lsm.levelProcess;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 
 /** indicates the insertion method of each layer of memory nodes */
-public abstract class InsertLevelProcess<I, O>
-    extends BasicLevelProcess<I, O, InsertRequestContext> {
+public abstract class InsertLevelProcess<I, O, R>
+    extends BasicLevelProcess<I, O, R, InsertRequestContext> {
 
   /**
    * the insertion method of memory node
@@ -30,10 +30,10 @@ public abstract class InsertLevelProcess<I, O>
    * @param memNode memory node
    * @param context insertion request context
    */
-  public abstract void insert(I memNode, InsertRequestContext context);
+  public abstract void insert(I memNode, R request, InsertRequestContext context);
 
   @Override
-  public void handle(I memNode, InsertRequestContext context) {
-    insert(memNode, context);
+  public void handle(I memNode, R request, InsertRequestContext context) {
+    insert(memNode, request, context);
   }
 }

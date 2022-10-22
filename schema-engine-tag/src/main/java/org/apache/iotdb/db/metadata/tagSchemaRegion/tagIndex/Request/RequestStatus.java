@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
-public enum RequestType {
-  NONE,
-  INSERT,
-  QUERY,
-  DELETE,
-  FLUSH;
+public class RequestStatus {
+
+  Boolean success;
+
+  public RequestStatus() {
+    success = true;
+  }
+
+  public RequestStatus(Boolean success) {
+    this.success = success;
+  }
+
+  public Boolean getSuccess() {
+    return success;
+  }
+
+  public void setSuccess(Boolean success) {
+    this.success = success;
+  }
 }
