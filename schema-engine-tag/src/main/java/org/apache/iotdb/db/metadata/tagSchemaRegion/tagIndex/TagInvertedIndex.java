@@ -39,15 +39,9 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemTableGroup
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemTableQuery;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
-import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.engine.LSMEngine;
-import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
-import org.apache.iotdb.lsm.manager.DeletionManager;
-import org.apache.iotdb.lsm.manager.InsertionManager;
-import org.apache.iotdb.lsm.manager.QueryManager;
-import org.apache.iotdb.lsm.manager.RecoverManager;
+import org.apache.iotdb.lsm.engine.LSMEngineDirector;
+import org.apache.iotdb.lsm.property.Property;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -72,27 +66,30 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   LSMEngine<MemTableGroup> lsmEngine;
 
   public TagInvertedIndex(String schemaDirPath) {
-    LevelProcessChain<MemTableGroup, InsertionRequest, InsertRequestContext>
-        insertionLevelProcessChain = new LevelProcessChain<>();
-    LevelProcessChain<MemTableGroup, DeletionRequest, DeleteRequestContext>
-        deletionLevelProcessChain = new LevelProcessChain<>();
-    LevelProcessChain<MemTableGroup, QueryRequest, QueryRequestContext> queryLevelProcessChain =
-        new LevelProcessChain<>();
-    insertionLevelProcessChain
-        .nextLevel(new MemTableGroupInsertion())
-        .nextLevel(new MemTableInsertion())
-        .nextLevel(new MemChunkGroupInsertion())
-        .nextLevel(new MemChunkInsertion());
-    deletionLevelProcessChain
-        .nextLevel(new MemTableGroupDeletion())
-        .nextLevel(new MemTableDeletion())
-        .nextLevel(new MemChunkGroupDeletion())
-        .nextLevel(new MemChunkDeletion());
-    queryLevelProcessChain
-        .nextLevel(new MemTableGroupQuery())
-        .nextLevel(new MemTableQuery())
-        .nextLevel(new MemChunkGroupQuery())
-        .nextLevel(new MemChunkQuery());
+
+    List<String> insertionLevelProcessClass = new ArrayList<String>();
+    insertionLevelProcessClass.add(MemTableGroupInsertion.class.getName());
+    insertionLevelProcessClass.add(MemTableInsertion.class.getName());
+    insertionLevelProcessClass.add(MemChunkGroupInsertion.class.getName());
+    insertionLevelProcessClass.add(MemChunkInsertion.class.getName());
+
+    List<String> deletionLevelProcessClass = new ArrayList<>();
+    deletionLevelProcessClass.add(MemTableGroupDeletion.class.getName());
+    deletionLevelProcessClass.add(MemTableDeletion.class.getName());
+    deletionLevelProcessClass.add(MemChunkGroupDeletion.class.getName());
+    deletionLevelProcessClass.add(MemChunkDeletion.class.getName());
+
+    List<String> queryLevelProcessClass = new ArrayList<>();
+    queryLevelProcessClass.add(MemTableGroupQuery.class.getName());
+    queryLevelProcessClass.add(MemTableQuery.class.getName());
+    queryLevelProcessClass.add(MemChunkGroupQuery.class.getName());
+    queryLevelProcessClass.add(MemChunkQuery.class.getName());
+
+    Property property = new Property();
+    property.setDeletionLevelProcessClass(deletionLevelProcessClass);
+    property.setInsertionLevelProcessClass(insertionLevelProcessClass);
+    property.setQueryLevelProcessClass(queryLevelProcessClass);
+
     try {
       WALManager walManager =
           new WALManager(
@@ -101,21 +98,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               tagSchemaConfig.getWalBufferSize(),
               new WALEntry(),
               false);
-      InsertionManager<MemTableGroup, InsertionRequest> insertionManager =
-          new InsertionManager<>(walManager);
-      DeletionManager<MemTableGroup, DeletionRequest> deletionManager =
-          new DeletionManager<>(walManager);
-      QueryManager<MemTableGroup, QueryRequest> queryManager = new QueryManager<>();
-      RecoverManager<LSMEngine<MemTableGroup>> recoverManager = new RecoverManager<>(walManager);
-      insertionManager.setLevelProcessChain(insertionLevelProcessChain);
-      deletionManager.setLevelProcessChain(deletionLevelProcessChain);
-      queryManager.setLevelProcessChain(queryLevelProcessChain);
-      lsmEngine = new LSMEngine<>();
-      lsmEngine.setDeletionManager(deletionManager);
-      lsmEngine.setInsertionManager(insertionManager);
-      lsmEngine.setQueryManager(queryManager);
-      lsmEngine.setWalManager(walManager);
-      lsmEngine.setRecoverManager(recoverManager);
+      LSMEngineDirector<MemTableGroup> lsmEngineDirector = new LSMEngineDirector<>();
+      lsmEngine = lsmEngineDirector.getLSMEngine(property, walManager);
       lsmEngine.setRootMemNode(new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable()));
       lsmEngine.recover();
     } catch (Exception e) {

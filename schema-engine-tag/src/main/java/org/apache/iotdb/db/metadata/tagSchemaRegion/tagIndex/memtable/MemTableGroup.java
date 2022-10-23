@@ -35,6 +35,8 @@ public class MemTableGroup {
   // the largest device id saved by the current MemTable
   private int maxDeviceID;
 
+  public MemTableGroup() {}
+
   public MemTableGroup(int numOfDeviceIdsInMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
     workingMemTable = new MemTable(MemTable.WORKING);
