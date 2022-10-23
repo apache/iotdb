@@ -127,6 +127,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSSyncConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -2193,6 +2194,14 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  @Override
+  public TSSyncConfigurationResp getSyncConfigurationResp() {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    TSSyncConfigurationResp syncConf = new TSSyncConfigurationResp(conf.isEnableOperationSync());
+    syncConf.setSecondaryAddress(conf.getSecondaryAddress());
+    syncConf.setSecondaryPort(conf.getSecondaryPort());
+    return syncConf;
+  }
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       if (isEnableOperationSync) {

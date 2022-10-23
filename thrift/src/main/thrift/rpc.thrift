@@ -432,6 +432,12 @@ struct TSOperationSyncWriteReq {
   3: required binary physicalPlan
 }
 
+struct TSSyncConfigurationResp {
+  1: required bool enableOperationSync
+  2: optional string secondaryAddress
+  3: optional i32 secondaryPort
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -530,4 +536,6 @@ service TSIService {
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
   TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
+
+  TSSyncConfigurationResp getSyncConfigurationResp();
 }
