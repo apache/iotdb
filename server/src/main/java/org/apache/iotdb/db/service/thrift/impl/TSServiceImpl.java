@@ -2202,6 +2202,7 @@ public class TSServiceImpl implements TSIService.Iface {
     syncConf.setSecondaryPort(conf.getSecondaryPort());
     return syncConf;
   }
+
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       if (isEnableOperationSync) {
