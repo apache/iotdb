@@ -573,8 +573,6 @@ public class IoTDBSimpleQueryIT {
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
-        System.out.println(resultSet.getFetchSize());
-        System.out.println(resultSet.getRow());
         while (resultSet.next()) {
           count++;
         }
@@ -608,8 +606,6 @@ public class IoTDBSimpleQueryIT {
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
-        System.out.println(resultSet.getFetchSize());
-        System.out.println(resultSet.getRow());
         while (resultSet.next()) {
           count++;
         }
