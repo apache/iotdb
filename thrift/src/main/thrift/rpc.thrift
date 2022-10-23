@@ -538,5 +538,5 @@ service TSIService {
 
   TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
 
-  TSBackupConfigurationResp getBackupConfigurationResp();
+  TSBackupConfigurationResp getBackupConfiguration();
 }

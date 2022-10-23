@@ -677,7 +677,7 @@ public class SessionTest {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
     try {
-      TSBackupConfigurationResp resp = session.getBackupConfigurationResp();
+      TSBackupConfigurationResp resp = session.getBackupConfiguration();
       assertEquals("127.0.0.1", resp.getSecondaryAddress());
     } catch (Exception e) {
       fail();

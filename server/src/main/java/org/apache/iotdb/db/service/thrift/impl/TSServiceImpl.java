@@ -2195,7 +2195,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSBackupConfigurationResp getBackupConfigurationResp() {
+  public TSBackupConfigurationResp getBackupConfiguration() {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     TSBackupConfigurationResp syncConf =
         new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));

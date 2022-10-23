@@ -1051,16 +1051,16 @@ public class SessionConnection {
     }
   }
 
-  protected TSBackupConfigurationResp getBackupConfigurationResp()
+  protected TSBackupConfigurationResp getBackupConfiguration()
       throws StatementExecutionException, IoTDBConnectionException {
     TSBackupConfigurationResp execResp;
     try {
-      execResp = client.getBackupConfigurationResp();
+      execResp = client.getBackupConfiguration();
       verifySuccessWrapper(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
-          execResp = client.getBackupConfigurationResp();
+          execResp = client.getBackupConfiguration();
           verifySuccessWrapper(execResp.getStatus());
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);

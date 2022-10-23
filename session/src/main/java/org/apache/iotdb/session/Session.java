@@ -3105,9 +3105,9 @@ public class Session {
     this.enableCacheLeader = enableCacheLeader;
   }
 
-  public TSBackupConfigurationResp getBackupConfigurationResp()
+  public TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.getBackupConfigurationResp();
+    return defaultSessionConnection.getBackupConfiguration();
   }
 
   public static class Builder {
