@@ -16,56 +16,59 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+package org.apache.iotdb.confignode.consensus.request.write.procedure;
+
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RegisterDataNodePlan extends ConfigPhysicalPlan {
+public class UpdateProcedurePlan extends ConfigPhysicalPlan {
 
-  private TDataNodeConfiguration info;
+  private Procedure procedure;
 
-  public RegisterDataNodePlan() {
-    super(ConfigPhysicalPlanType.RegisterDataNode);
+  public Procedure getProcedure() {
+    return procedure;
   }
 
-  public RegisterDataNodePlan(TDataNodeConfiguration info) {
-    this();
-    this.info = info;
+  public void setProcedure(Procedure procedure) {
+    this.procedure = procedure;
   }
 
-  public TDataNodeConfiguration getInfo() {
-    return info;
+  public UpdateProcedurePlan() {
+    super(ConfigPhysicalPlanType.UpdateProcedure);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);
+    stream.writeInt(ConfigPhysicalPlanType.UpdateProcedure.ordinal());
+    if (procedure != null) {
+      procedure.serialize(stream);
+    }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    info = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    Procedure procedure = ProcedureFactory.getInstance().create(buffer);
+    this.procedure = procedure;
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RegisterDataNodePlan that = (RegisterDataNodePlan) o;
-    return info.equals(that.info);
+    UpdateProcedurePlan that = (UpdateProcedurePlan) o;
+    return Objects.equals(procedure, that.procedure);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(info);
+    return Objects.hash(procedure);
   }
 }

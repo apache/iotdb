@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.it;
 
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.AbstractEnv;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -37,8 +38,6 @@ import java.util.concurrent.TimeUnit;
 public class IoTDBClusterRestartIT {
 
   protected static String originalConfigNodeConsensusProtocolClass;
-  private static final String ratisConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 3;
@@ -47,7 +46,7 @@ public class IoTDBClusterRestartIT {
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ratisConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
 
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);

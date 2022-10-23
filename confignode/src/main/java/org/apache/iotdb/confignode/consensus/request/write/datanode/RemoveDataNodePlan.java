@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -60,33 +60,20 @@ public class RemoveDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-
-    RemoveDataNodePlan other = (RemoveDataNodePlan) o;
-    if (getDataNodeLocationSize() != other.getDataNodeLocationSize()) {
-      return false;
-    }
-
-    return dataNodeLocations.containsAll(other.getDataNodeLocations());
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    RemoveDataNodePlan that = (RemoveDataNodePlan) o;
+    return dataNodeLocations.equals(that.dataNodeLocations);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeLocations);
+    return Objects.hash(super.hashCode(), dataNodeLocations);
   }
 
   public List<TDataNodeLocation> getDataNodeLocations() {
     return dataNodeLocations;
-  }
-
-  public int getDataNodeLocationSize() {
-    return dataNodeLocations.size();
   }
 
   @Override

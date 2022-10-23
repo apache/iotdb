@@ -44,11 +44,11 @@ public interface IActivateTemplateInClusterPlan extends ISchemaRegionPlan {
 
   int getTemplateSetLevel();
 
-  void setTemplateSetLevel(int templateId);
+  void setTemplateSetLevel(int templateSetLevel);
 
   int getTemplateId();
 
-  void setTemplateId(int templateSetLevel);
+  void setTemplateId(int templateId);
 
   boolean isAligned();
 

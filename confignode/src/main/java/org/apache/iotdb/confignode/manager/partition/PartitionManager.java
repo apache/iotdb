@@ -46,9 +46,9 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -69,9 +69,10 @@ import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
-import org.apache.iotdb.confignode.persistence.partition.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -752,7 +753,7 @@ public class PartitionManager {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
             if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-              int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+              int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
               if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
                 result.put(consensusGroupId, -1);
               } else {
@@ -771,7 +772,7 @@ public class PartitionManager {
     } else {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
-            int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+            int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
             if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
               result.put(consensusGroupId, -1);
             } else {
@@ -800,7 +801,10 @@ public class PartitionManager {
                       .anyMatch(
                           s ->
                               s.equals(
-                                  regionGroupCacheMap.get(regionGroupId).getRegionGroupStatus()));
+                                  regionGroupCacheMap
+                                      .get(regionGroupId)
+                                      .getStatistics()
+                                      .getRegionGroupStatus()));
             })
         .collect(Collectors.toList());
   }
@@ -814,7 +818,7 @@ public class PartitionManager {
    */
   public RegionStatus getRegionStatus(TConsensusGroupId consensusGroupId, int dataNodeId) {
     return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getRegionStatus(dataNodeId)
+        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionStatus(dataNodeId)
         : RegionStatus.Unknown;
   }
 
@@ -826,16 +830,39 @@ public class PartitionManager {
    */
   public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
     return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getRegionGroupStatus()
+        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionGroupStatus()
         : RegionGroupStatus.Disabled;
   }
 
   public void cacheHeartbeatSample(
-      TConsensusGroupId regionGroupId, RegionHeartbeatSample regionHeartbeatSample) {
+      int belongedDataNodeId,
+      TConsensusGroupId regionGroupId,
+      RegionHeartbeatSample regionHeartbeatSample) {
     regionGroupCacheMap
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-        .cacheHeartbeatSample(regionHeartbeatSample);
-    regionGroupCacheMap.get(regionGroupId).updateRegionStatistics();
+        .cacheHeartbeatSample(belongedDataNodeId, regionHeartbeatSample);
+    regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
+  }
+
+  /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  public void recoverRegionGroupCacheMap() {
+    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
+        partitionInfo.getRegionGroupStatisticsMap();
+    regionGroupCacheMap.clear();
+
+    getAllReplicaSets()
+        .forEach(
+            regionReplicaSet -> {
+              TConsensusGroupId groupId = regionReplicaSet.getRegionId();
+              regionGroupCacheMap.put(
+                  groupId,
+                  new RegionGroupCache(
+                      groupId,
+                      regionGroupStatisticsMap.getOrDefault(
+                          groupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics())));
+            });
+
+    LOGGER.info("Inherit RegionGroupStatistics: {}", regionGroupStatisticsMap);
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

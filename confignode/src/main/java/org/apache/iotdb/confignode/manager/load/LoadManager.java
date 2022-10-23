@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -46,9 +47,11 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -61,7 +64,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +75,7 @@ public class LoadManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
 
   private final IManager configManager;
 
@@ -82,12 +85,11 @@ public class LoadManager {
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
 
-  /** Load balancing executor service */
-  private Future<?> currentLoadBalancingFuture;
+  /** Load statistics executor service */
+  private Future<?> currentLoadStatisticsFuture;
 
-  private final ScheduledExecutorService loadBalancingExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
-  // Monitor for leadership change
+  private final ScheduledExecutorService loadStatisticsExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
   private final Object scheduleMonitor = new Object();
 
   public LoadManager(IManager configManager) {
@@ -154,15 +156,15 @@ public class LoadManager {
   /** Start the load balancing service */
   public void startLoadBalancingService() {
     synchronized (scheduleMonitor) {
-      if (currentLoadBalancingFuture == null) {
-        currentLoadBalancingFuture =
+      if (currentLoadStatisticsFuture == null) {
+        currentLoadStatisticsFuture =
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                loadBalancingExecutor,
-                this::updateNodeLoadStatistic,
+                loadStatisticsExecutor,
+                this::updateLoadStatistics,
                 0,
-                NodeManager.HEARTBEAT_INTERVAL,
+                HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("LoadBalancing service is started successfully.");
+        LOGGER.info("LoadStatistics service is started successfully.");
       }
     }
   }
@@ -170,69 +172,48 @@ public class LoadManager {
   /** Stop the load balancing service */
   public void stopLoadBalancingService() {
     synchronized (scheduleMonitor) {
-      if (currentLoadBalancingFuture != null) {
-        currentLoadBalancingFuture.cancel(false);
-        currentLoadBalancingFuture = null;
-        LOGGER.info("LoadBalancing service is stopped successfully.");
+      if (currentLoadStatisticsFuture != null) {
+        currentLoadStatisticsFuture.cancel(false);
+        currentLoadStatisticsFuture = null;
+        LOGGER.info("LoadStatistics service is stopped successfully.");
       }
     }
   }
 
-  private void updateNodeLoadStatistic() {
-    AtomicBoolean existDataNodeChangesStatus = new AtomicBoolean(false);
-    AtomicBoolean existSchemaRegionGroupChangesLeader = new AtomicBoolean(false);
-    AtomicBoolean existDataRegionGroupChangesLeader = new AtomicBoolean(false);
-    boolean isNeedBroadcast = false;
+  private void updateLoadStatistics() {
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan = new UpdateLoadStatisticsPlan();
 
+    // Update NodeStatistics
     getNodeManager()
         .getNodeCacheMap()
-        .values()
         .forEach(
-            nodeCache -> {
-              boolean updateResult = nodeCache.updateNodeStatus();
-              if (nodeCache instanceof DataNodeHeartbeatCache) {
-                // Check if some DataNodes changes status
-                existDataNodeChangesStatus.compareAndSet(false, updateResult);
+            (nodeId, nodeCache) -> {
+              // Check if NodeStatistics needs to be updated
+              NodeStatistics nodeStatistics = nodeCache.updateNodeStatistics();
+              if (nodeStatistics != null) {
+                updateLoadStatisticsPlan.putNodeStatistics(nodeId, nodeStatistics);
               }
             });
 
+    // Update RegionGroupStatistics
     getPartitionManager()
         .getRegionGroupCacheMap()
-        .values()
         .forEach(
-            regionGroupCache -> {
-              boolean updateResult = regionGroupCache.updateRegionStatistics();
-              switch (regionGroupCache.getConsensusGroupId().getType()) {
-                  // Check if some RegionGroups change their leader
-                case SchemaRegion:
-                  existSchemaRegionGroupChangesLeader.compareAndSet(false, updateResult);
-                  break;
-                case DataRegion:
-                  existDataRegionGroupChangesLeader.compareAndSet(false, updateResult);
-                  break;
+            (consensusGroupId, regionGroupCache) -> {
+              // Check if RegionGroupStatistics needs to be updated
+              RegionGroupStatistics regionGroupStatistics =
+                  regionGroupCache.updateRegionGroupStatistics();
+              if (regionGroupStatistics != null) {
+                updateLoadStatisticsPlan.putRegionGroupStatistics(
+                    consensusGroupId, regionGroupStatistics);
               }
             });
 
-    if (existDataNodeChangesStatus.get()) {
-      // The RegionRouteMap must be broadcast if some DataNodes change status
-      isNeedBroadcast = true;
-    }
+    // Update LoadStatistics if necessary
+    if (updateLoadStatisticsPlan.isNeedUpdate()) {
+      getConsensusManager().write(updateLoadStatisticsPlan);
 
-    if (RouteBalancer.LEADER_POLICY.equals(CONF.getRoutingPolicy())) {
-      // Check the condition of leader routing policy
-      if (existSchemaRegionGroupChangesLeader.get()) {
-        // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
-        isNeedBroadcast = true;
-      }
-      if (!ConsensusFactory.MultiLeaderConsensus.equals(CONF.getDataRegionConsensusProtocolClass())
-          && existDataRegionGroupChangesLeader.get()) {
-        // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
-        // and the consensus protocol isn't MultiLeader
-        isNeedBroadcast = true;
-      }
-    }
-
-    if (isNeedBroadcast) {
+      // TODO: Broadcast the latest RegionRouteMap in RegionBalancer
       broadcastLatestRegionRouteMap();
     }
   }
@@ -272,6 +253,15 @@ public class LoadManager {
               .map(TDataNodeLocation::getDataNodeId)
               .collect(Collectors.toList()));
     }
+  }
+
+  /**
+   * Recover the cluster heartbeat cache through loadStatistics when the ConfigNode-Leader is
+   * switched
+   */
+  public void recoverHeartbeatCache() {
+    getNodeManager().recoverNodeCacheMap();
+    getPartitionManager().recoverRegionGroupCacheMap();
   }
 
   public RouteBalancer getRouteBalancer() {

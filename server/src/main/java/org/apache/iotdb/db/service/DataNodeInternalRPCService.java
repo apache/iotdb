@@ -78,7 +78,7 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
   }
 
   @Override

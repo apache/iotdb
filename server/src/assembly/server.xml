@@ -36,9 +36,11 @@
             <directory>src/assembly/resources</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-        </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf/iotdb-datanode-metric.yml</source>
+            <destName>conf/iotdb-datanode-metric.yml</destName>
+        </file>
+    </files>
 </assembly>
