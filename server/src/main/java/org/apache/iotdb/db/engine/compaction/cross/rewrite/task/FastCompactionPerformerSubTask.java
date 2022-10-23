@@ -93,7 +93,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
   protected String deviceId;
 
-  private List<PageElement> overlappedPages = new ArrayList<>();
+  // Pages in the list will be sequentially judged whether there is a real overlap to choose whether
+  // to put them in the point priority reader to deserialize or directly flush to chunk writer
+  private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
 
   public FastCompactionPerformerSubTask(
       FastCrossCompactionWriter compactionWriter,
@@ -231,24 +233,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       }
 
       List<PageElement> overlapPages = findOverlapPages(firstPageElement);
-      boolean isPageOverlap = isPageOverlap(firstPageElement);
-      //      if (overlapPages.size() > 1) {
-      //        for (PageElement pageElement : overlapPages) {
-      //          if (pageElement.equals(firstPageElement)) {
-      //            continue;
-      //          }
-      //          if (checkIsModified(
-      //                  pageElement.startTime,
-      //                  Math.min(
-      //                      firstPageElement.pageHeader.getEndTime(),
-      //                      pageElement.pageHeader.getEndTime()),
-      //                  pageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())
-      //              != ModifiedStatus.AllDeleted) {
-      //            isPageOverlap = true;
-      //            break;
-      //          }
-      //        }
-      //      }
+      boolean isPageOverlap = overlapPages.size() > 1;
 
       if (isPageOverlap || modifiedStatus == ModifiedStatus.PartialDeleted) {
         // has overlap or modified pages, then deserialize it
@@ -257,11 +242,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         compactWithOverlapPages();
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
-        compactWithNonOverlapPage(overlapPages.remove(0));
-        if (overlapPages.size() > 0) {
-          addOverlappedPagesIntoList(overlapPages);
-          compactWithOverlapPages();
-        }
+        compactWithNonOverlapPage(firstPageElement);
       }
     }
   }
@@ -304,15 +285,23 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   /**
    * Compact a series of pages that overlap with each other. Eg: The parameters are page 1 and page
    * 2, that is, page 1 only overlaps with page 2, while page 2 overlap with page 3, page 3 overlap
-   * with page 4,and so on, there are 10 pages in total. This method will merge all 10 pages.
+   * with page 4,and so on, there are 10 pages in total. This method will compact all 10 pages.
+   * Pages in the candidate overlapped pages list will be sequentially judged whether there is a
+   * real overlap, if so, it will be put into the point priority reader and deserialized; if not, it
+   * means that the page is located in a gap inside another pages, and it can be directly flushed to
+   * chunk writer. There will be new overlapped pages added into the list during the process of
+   * compacting overlapped pages. Notice: for a real overlap page, it will be removed from candidate
+   * list after it has been adding into point priority reader and deserializing. For a fake overlap
+   * page, it will be removed from candidate list after it has been flushing to chunk writer
+   * completely.
    */
   private void compactWithOverlapPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-      // write point.time < the last overlapped page.startTime
-      while (overlappedPages.size() > 0) {
-        PageElement nextPageElement = overlappedPages.get(0);
+    // write point.time < the last overlapped page.startTime
+    while (candidateOverlappedPages.size() > 0) {
+      PageElement nextPageElement = candidateOverlappedPages.get(0);
 
-        int oldSize = overlappedPages.size();
+      int oldSize = candidateOverlappedPages.size();
       // write currentPage.point.time < nextPage.startTime to chunk writer
       while (pointPriorityReader.hasNext()
           && pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
@@ -322,13 +311,13 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
               pointPriorityReader.currentPoint().right,
               subTaskId);
           pointPriorityReader.next();
-          if (overlappedPages.size() > oldSize) {
-            // during the process of writing overlapped points, if the first page is compacted
-            // completely or a new chunk is deserialized, there may be new pages overlapped with the
-            // first page in page queue which are added into the list. If so, the next overlapped
-            // page in the list may be changed, so we should re-get next overlap page here.
-            oldSize = overlappedPages.size();
-            nextPageElement = overlappedPages.get(0);
+        if (candidateOverlappedPages.size() > oldSize) {
+          // during the process of writing overlapped points, if the first page is compacted
+          // completely or a new chunk is deserialized, there may be new pages overlapped with the
+          // first page in page queue which are added into the list. If so, the next overlapped
+          // page in the list may be changed, so we should re-get next overlap page here.
+          oldSize = candidateOverlappedPages.size();
+          nextPageElement = candidateOverlappedPages.get(0);
           }
         }
 
@@ -352,7 +341,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
             compactWithNonOverlapPage(nextPageElement);
           }
         }
-        overlappedPages.remove(0);
+      candidateOverlappedPages.remove(0);
       }
 
     // write remaining data points, of which point.time >= the last overlapped page.startTime
@@ -368,7 +357,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
           pointPriorityReader.currentPoint().right,
           subTaskId);
       pointPriorityReader.next();
-      if (overlappedPages.size() > 0) {
+      if (candidateOverlappedPages.size() > 0) {
         // finish compacting the first page or there are new chunks being deserialized and find
         // the new overlapped pages, then start compacting them
         compactWithOverlapPages();
@@ -381,24 +370,16 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * page from small to large, so that each page can be compacted in order. If the page has been
    * deleted completely, we remove it.
    */
-  private void addOverlappedPagesIntoList(List<PageElement> newOverlappedPages)
-      throws IllegalPathException, IOException {
-    int oldSize = newOverlappedPages.size();
-    overlappedPages.addAll(newOverlappedPages);
-    //    for (PageElement pageElement : newOverlappedPages) {
-    //      if (isPageModified(pageElement) == ModifiedStatus.AllDeleted) {
-    //        removePage(pageElement);
-    //        continue;
-    //      }
-    //      overlappedPages.add(pageElement);
-    //    }
-    if (oldSize != 0 && overlappedPages.size() > oldSize) {
+  private void addOverlappedPagesIntoList(List<PageElement> newOverlappedPages) {
+    int oldSize = candidateOverlappedPages.size();
+    candidateOverlappedPages.addAll(newOverlappedPages);
+    if (oldSize != 0 && candidateOverlappedPages.size() > oldSize) {
       // if there is no pages in the overlappedPages, then we don't need to sort it after adding the
       // new overlapped pages, because newOverlappedPages is already sorted. When there is pages in
       // list before and there is new pages added into list, then we need to sort it again.
       // we should ensure that the list is ordered according to the startTime of the page from small
       // to large, so that each page can be compacted in order
-      overlappedPages.sort(Comparator.comparingLong(o -> o.startTime));
+      candidateOverlappedPages.sort(Comparator.comparingLong(o -> o.startTime));
     }
   }
 
@@ -472,13 +453,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         continue;
       }
       // only check pages later than the specific page
-      if (element.startTime >= startTime
-          && element.startTime <= endTime
-          && checkIsModified(
-                  element.startTime,
-                  endTime,
-                  element.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())
-              != ModifiedStatus.AllDeleted) {
+      if (element.startTime >= startTime && element.startTime <= endTime) {
         return true;
       }
     }
@@ -541,12 +516,18 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
     }
 
     if ((isFirstPage || hasNewOverlappedChunks)
-        && pointPriorityReader.hasNext()
+        && (pointPriorityReader.hasNext() || candidateOverlappedPages.size() > 0)
         && pageQueue.size() != 0) {
+      // During the procession of compacting overlapped pages, when deserializing new chunks into
+      // page queue or first page is removed from page queue, we should find new overlapped pages
+      // and put them into list.
+      // If (candidateOverlappedPages.size() > 0 || pointPriorityReader.hasNext()) is true, it
+      // indicates that it is still in the process of compacting overlapped pages.
       // pointPriorityReader.hasNext() indicates that the new first page in page queue has not been
-      // finished compacting yet, so there may be other pages overlap with it.
-      // when deserializing new chunks into page queue or first page is removed from page queue, we
-      // should find new overlapped pages and put them into list}
+      // finished compacting yet,  so there may be other pages overlap with it.
+      // Due to modifications of this page, the new first page in page queue may not been
+      // deserialized into pointPriorityReader yet, but it is still in the candidateOverlappedPages
+      // list, so there may be other pages overlap with it.
       addOverlappedPagesIntoList(findOverlapPages(pageQueue.peek()));
     }
   }
