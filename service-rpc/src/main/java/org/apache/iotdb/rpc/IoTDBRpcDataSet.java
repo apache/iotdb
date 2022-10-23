@@ -312,7 +312,13 @@ public class IoTDBRpcDataSet {
       } else {
         queryResult = resp.getQueryResult();
         queryResultIndex = 0;
-        queryResultSize = queryResult.size();
+        queryResultSize = 0;
+        if (queryResult != null) {
+          queryResultSize = queryResult.size();
+        }
+        this.tsBlockSize = 0;
+        this.tsBlockIndex = -1;
+        this.emptyResultSet = this.queryResultSize == 0;
       }
       return resp.hasResultSet;
     } catch (TException e) {

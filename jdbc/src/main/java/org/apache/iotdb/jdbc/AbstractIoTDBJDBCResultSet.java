@@ -720,7 +720,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     if (ioTDBRpcDataSet.emptyResultSet) {
       return false;
     }
-    if (isRpcFetchResult && fetchResults()) {
+    if (isRpcFetchResult && fetchResults() && ioTDBRpcDataSet.hasCachedByteBuffer()) {
       ioTDBRpcDataSet.constructOneRow();
       ioTDBRpcDataSet.constructOneTsBlock();
       return true;
