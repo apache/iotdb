@@ -44,7 +44,7 @@ public class InsertionRequest
 
   @Override
   public String getKey(RequestContext context) {
-    return keys.get(context.getLevel());
+    return keys.get(context.getLevel() - 1);
   }
 
   @Override

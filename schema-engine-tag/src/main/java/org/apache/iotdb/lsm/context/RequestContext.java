@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.lsm.context;
 
-import org.apache.iotdb.lsm.strategy.AccessStrategy;
+import org.apache.iotdb.lsm.strategy.IAccessStrategy;
 import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
 /** represents the context of a request */
 public class RequestContext {
 
   // memory Structure Access Policy
-  AccessStrategy accessStrategy;
+  IAccessStrategy accessStrategy;
 
   // the tree level of the currently pending memory node
   int level;
@@ -48,11 +48,11 @@ public class RequestContext {
     return level;
   }
 
-  public AccessStrategy getAccessStrategy() {
+  public IAccessStrategy getAccessStrategy() {
     return accessStrategy;
   }
 
-  public void setAccessStrategy(AccessStrategy accessStrategy) {
+  public void setAccessStrategy(IAccessStrategy accessStrategy) {
     this.accessStrategy = accessStrategy;
   }
 

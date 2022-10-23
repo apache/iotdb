@@ -20,33 +20,23 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
-import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
-import org.apache.iotdb.lsm.manager.BasicLSMManager;
+import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
 
-/** manage insertion to MemTable */
-public class QueryManager extends BasicLSMManager<MemTable, QueryRequest, QueryRequestContext> {
+import java.util.ArrayList;
+import java.util.List;
 
-  public QueryManager() {
-    initLevelProcess();
-  }
-
-  /** set the query operation for each layer of memory nodes */
-  private void initLevelProcess() {
-    LevelProcessChain<MemTable, QueryRequest, QueryRequestContext> levelProcessChain =
-        new LevelProcessChain<>();
-    levelProcessChain
-        .nextLevel(new MemTableQuery())
-        .nextLevel(new MemChunkGroupQuery())
-        .nextLevel(new MemChunkQuery());
-    setLevelProcessChain(levelProcessChain);
+public class MemTableGroupQuery extends QueryLevelProcess<MemTableGroup, MemTable, QueryRequest> {
+  @Override
+  public List<MemTable> getChildren(
+      MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {
+    List<MemTable> memTables = new ArrayList<>();
+    memTables.add(memNode.getWorkingMemTable());
+    memTables.addAll(memNode.getImmutableMemTables().values());
+    return memTables;
   }
 
   @Override
-  public void preProcess(MemTable root, QueryRequest request, QueryRequestContext context)
-      throws Exception {}
-
-  @Override
-  public void postProcess(MemTable root, QueryRequest request, QueryRequestContext context)
-      throws Exception {}
+  public void query(MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {}
 }

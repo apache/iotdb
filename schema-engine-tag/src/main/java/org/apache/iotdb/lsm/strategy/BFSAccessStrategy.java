@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Queue;
 
 /** breadth-first access strategy implementation class */
-public class BFSAccessStrategy implements AccessStrategy {
+public class BFSAccessStrategy implements IAccessStrategy {
 
   // same level memory nodes, used to implement BFSAccessStrategy
   Queue<Object> sameLevelMemNodes;

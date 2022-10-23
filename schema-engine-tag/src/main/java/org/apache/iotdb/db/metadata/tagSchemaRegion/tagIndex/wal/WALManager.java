@@ -18,58 +18,32 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.lsm.request.Request;
 import org.apache.iotdb.lsm.wal.WALReader;
-import org.apache.iotdb.lsm.wal.WALWriter;
+import org.apache.iotdb.lsm.wal.WALRecord;
 
-import java.io.File;
 import java.io.IOException;
 
 /** Manage wal entry writes and reads */
-public class WALManager {
-
-  private static final String WAL_FILE_NAME = "tag_inverted_index.log";
-
+public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
   private static final int INSERT = 1;
 
   private static final int DELETE = 2;
 
-  private final TagSchemaConfig tagSchemaConfig =
-      TagSchemaDescriptor.getInstance().getTagSchemaConfig();
-
-  private final String schemaDirPath;
-
-  private File walFile;
-
-  // directly use the wal writer that comes with the lsm framework
-  private WALWriter walWriter;
-
-  // directly use the wal reader that comes with the lsm framework
-  private WALReader walReader;
-
-  private boolean recover;
-
-  public WALManager(String schemaDirPath) throws IOException {
-    this.schemaDirPath = schemaDirPath;
-    initFile(schemaDirPath);
-    int walBufferSize = tagSchemaConfig.getWalBufferSize();
-    walWriter = new WALWriter(walFile, walBufferSize, false);
-    walReader = new WALReader(walFile, new WALEntry());
-    recover = false;
+  public WALManager(
+      String schemaDirPath,
+      String walFileName,
+      int walBufferSize,
+      WALRecord walRecord,
+      boolean forceEachWrite)
+      throws IOException {
+    super(schemaDirPath, walFileName, walBufferSize, walRecord, forceEachWrite);
   }
 
-  private void initFile(String schemaDirPath) throws IOException {
-    File schemaDir = new File(schemaDirPath);
-    schemaDir.mkdirs();
-    walFile = new File(this.schemaDirPath, WAL_FILE_NAME);
-    if (!walFile.exists()) {
-      walFile.createNewFile();
-    }
+  public WALManager(String schemaDirPath) {
+    super(schemaDirPath);
   }
 
   /**
@@ -78,6 +52,7 @@ public class WALManager {
    * @param request request context
    * @throws IOException
    */
+  @Override
   public synchronized void write(Request request) throws IOException {
     if (isRecover()) return;
     switch (request.getRequestType()) {
@@ -97,9 +72,11 @@ public class WALManager {
    *
    * @return request context
    */
+  @Override
   public synchronized Request read() {
+    WALReader walReader = getWalReader();
     if (walReader.hasNext()) {
-      WALEntry walEntry = (WALEntry) walReader.next();
+      WALEntry walEntry = (WALEntry) getWalReader().next();
       if (walEntry.getType() == INSERT) {
         return generateInsertRequest(walEntry);
       }
@@ -138,7 +115,7 @@ public class WALManager {
    */
   private void process(InsertionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(INSERT, request.getKeys(), request.getValue());
-    walWriter.write(walEntry);
+    getWalWriter().write(walEntry);
   }
 
   /**
@@ -149,20 +126,6 @@ public class WALManager {
    */
   private void process(DeletionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(DELETE, request.getKeys(), request.getValue());
-    walWriter.write(walEntry);
-  }
-
-  @TestOnly
-  public void close() throws IOException {
-    walWriter.close();
-    walReader.close();
-  }
-
-  public boolean isRecover() {
-    return recover;
-  }
-
-  public void setRecover(boolean recover) {
-    this.recover = recover;
+    getWalWriter().write(walEntry);
   }
 }

@@ -16,27 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
+package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
-import org.apache.iotdb.lsm.manager.BasicLSMManager;
+import org.apache.iotdb.lsm.request.InsertionRequest;
 
 import java.io.IOException;
 
 /** manage insertion to MemTable */
-public class InsertionManager
-    extends BasicLSMManager<MemTable, InsertionRequest, InsertRequestContext> {
+public class InsertionManager<T, R extends InsertionRequest>
+    extends BasicLSMManager<T, R, InsertRequestContext> {
 
   // use wal manager object to write wal file on insertion
   private WALManager walManager;
 
   public InsertionManager(WALManager walManager) {
     this.walManager = walManager;
-    initLevelProcess();
   }
 
   /**
@@ -47,24 +42,11 @@ public class InsertionManager
    * @throws Exception
    */
   @Override
-  public void preProcess(
-      MemTable root, InsertionRequest insertionRequest, InsertRequestContext context)
+  public void preProcess(T root, R insertionRequest, InsertRequestContext context)
       throws IOException {
     walManager.write(insertionRequest);
   }
 
   @Override
-  public void postProcess(MemTable root, InsertionRequest request, InsertRequestContext context)
-      throws Exception {}
-
-  /** set the insert operation for each layer of memory nodes */
-  private void initLevelProcess() {
-    LevelProcessChain<MemTable, InsertionRequest, InsertRequestContext> levelProcessChain =
-        new LevelProcessChain<>();
-    levelProcessChain
-        .nextLevel(new MemTableInsertion())
-        .nextLevel(new MemChunkGroupInsertion())
-        .nextLevel(new MemChunkInsertion());
-    setLevelProcessChain(levelProcessChain);
-  }
+  public void postProcess(T root, R request, InsertRequestContext context) throws Exception {}
 }

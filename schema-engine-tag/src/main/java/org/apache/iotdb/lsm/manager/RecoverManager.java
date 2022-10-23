@@ -16,35 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.wal;
+package org.apache.iotdb.lsm.manager;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.apache.iotdb.lsm.recover.IRecoverable;
+import org.apache.iotdb.lsm.request.Request;
 
-/** represents a wal record, which can be extended to implement more complex wal records */
-public interface WALRecord<K, V> extends Cloneable {
+/** for memory structure recovery */
+public class RecoverManager<T extends IRecoverable> {
 
-  /**
-   * serialize the wal record
-   *
-   * @param buffer byte buffer
-   */
-  void serialize(ByteBuffer buffer);
+  private WALManager walManager;
+
+  public RecoverManager(WALManager walManager) {
+    this.walManager = walManager;
+    walManager.setRecover(true);
+  }
 
   /**
-   * deserialize via input stream
+   * recover
    *
-   * @param stream data input stream
-   * @throws IOException
+   * @param t
    */
-  void deserialize(DataInputStream stream) throws IOException;
-
-  // generate wal record using prototyping pattern
-  WALRecord clone();
-
-  List<K> getKeys();
-
-  V getValue();
+  public void recover(T t) throws Exception {
+    while (true) {
+      Request request = walManager.read();
+      if (request == null) {
+        walManager.setRecover(false);
+        return;
+      }
+      t.recover(request);
+    }
+  }
 }

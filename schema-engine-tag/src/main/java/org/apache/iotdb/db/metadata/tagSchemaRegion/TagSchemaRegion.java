@@ -55,7 +55,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.TagInvertedIndex;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.InvertedIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.MeasurementPathUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.PathTagConverterUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUtils;
@@ -110,7 +110,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   private final String schemaRegionDirPath;
 
   // tag inverted index
-  private final TagInvertedIndex tagInvertedIndex;
+  private final InvertedIndex tagInvertedIndex;
 
   // manager timeSeries, and use a deviceID list manager device id -> INT32 id
   private final IDTableWithDeviceIDListImpl idTableWithDeviceIDList;
@@ -131,7 +131,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     this.seriesNumerLimiter = seriesNumerLimiter;
     File schemaRegionDir = new File(schemaRegionDirPath);
     idTableWithDeviceIDList = new IDTableWithDeviceIDListImpl(schemaRegionDir);
-    tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
+    tagInvertedIndex = new InvertedIndex(schemaRegionDirPath);
     init();
   }
 

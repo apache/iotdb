@@ -24,10 +24,10 @@ import java.util.List;
 
 /** the processing method corresponding to each layer of memory nodes */
 public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
-    implements LevelProcess<I, O, R, C> {
+    implements ILevelProcess<I, O, R, C> {
 
   // the next level process
-  LevelProcess<O, ?, R, C> next;
+  ILevelProcess<O, ?, R, C> next;
 
   /**
    * process the current layer memory node
@@ -53,7 +53,7 @@ public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
    * @return the next level process
    */
   @Override
-  public <T> LevelProcess<O, T, R, C> nextLevel(LevelProcess<O, T, R, C> next) {
+  public <T> ILevelProcess<O, T, R, C> nextLevel(ILevelProcess<O, T, R, C> next) {
     this.next = next;
     return next;
   }
@@ -73,7 +73,7 @@ public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
     return next != null;
   }
 
-  public LevelProcess<O, ?, R, C> getNext() {
+  public ILevelProcess<O, ?, R, C> getNext() {
     return next;
   }
 }

@@ -19,13 +19,14 @@
 package org.apache.iotdb.lsm.levelProcess;
 
 import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.request.Request;
 
-public class LevelProcessChain<T, R, C extends RequestContext> {
+public class LevelProcessChain<T, R extends Request, C extends RequestContext> {
 
   // the level process of the first layer of memory nodes
-  LevelProcess<T, ?, R, C> headLevelProcess;
+  ILevelProcess<T, ?, R, C> headLevelProcess;
 
-  public <O> LevelProcess<T, O, R, C> nextLevel(LevelProcess<T, O, R, C> next) {
+  public <O> ILevelProcess<T, O, R, C> nextLevel(ILevelProcess<T, O, R, C> next) {
     this.headLevelProcess = next;
     return next;
   }

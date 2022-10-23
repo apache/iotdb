@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** represents a record in the wal file */
-public class WALEntry implements WALRecord {
+public class WALEntry implements WALRecord<String, Integer> {
 
   // can be insertion(1) or deletion(2)
   private int type;
@@ -105,8 +105,14 @@ public class WALEntry implements WALRecord {
     this.type = type;
   }
 
+  @Override
   public List<String> getKeys() {
     return keys;
+  }
+
+  @Override
+  public Integer getValue() {
+    return getDeviceID();
   }
 
   public void setKeys(List<String> keys) {

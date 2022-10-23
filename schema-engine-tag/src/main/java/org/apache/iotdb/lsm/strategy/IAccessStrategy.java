@@ -16,35 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.wal;
+package org.apache.iotdb.lsm.strategy;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
-/** represents a wal record, which can be extended to implement more complex wal records */
-public interface WALRecord<K, V> extends Cloneable {
+/** access strategy for memory nodes */
+public interface IAccessStrategy {
 
   /**
-   * serialize the wal record
+   * implementation of access strategy
    *
-   * @param buffer byte buffer
+   * @param levelProcess current level process
+   * @param memNode memory node
+   * @param context request context
    */
-  void serialize(ByteBuffer buffer);
-
-  /**
-   * deserialize via input stream
-   *
-   * @param stream data input stream
-   * @throws IOException
-   */
-  void deserialize(DataInputStream stream) throws IOException;
-
-  // generate wal record using prototyping pattern
-  WALRecord clone();
-
-  List<K> getKeys();
-
-  V getValue();
+  <I, O, R, C extends RequestContext> void execute(
+      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context);
 }

@@ -16,21 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.strategy;
+package org.apache.iotdb.lsm.levelProcess;
 
 import org.apache.iotdb.lsm.context.RequestContext;
-import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
-/** access strategy for memory nodes */
-public interface AccessStrategy {
+/** the processing method corresponding to each layer of memory nodes */
+public interface ILevelProcess<I, O, R, C extends RequestContext> {
 
   /**
-   * implementation of access strategy
+   * add the LevelProcess of the next layer of memory nodes
    *
-   * @param levelProcess current level process
+   * @param next LevelProcess of the next layer
+   * @return LevelProcess of the next layer
+   */
+  <T> ILevelProcess<O, T, R, C> nextLevel(ILevelProcess<O, T, R, C> next);
+
+  /**
+   * use this method to process memory nodes at each layer according to the access strategy
+   *
    * @param memNode memory node
    * @param context request context
    */
-  <I, O, R, C extends RequestContext> void execute(
-      BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context);
+  void process(I memNode, R request, C context);
 }

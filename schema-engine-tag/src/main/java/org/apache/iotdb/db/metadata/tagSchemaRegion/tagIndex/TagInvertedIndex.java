@@ -87,7 +87,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       numOfDeviceIdsInMemTable = tagSchemaConfig.getNumOfDeviceIdsInMemTable();
       maxDeviceID = 0;
       recover();
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.error("create TagInvertedIndex fail", e);
     }
   }

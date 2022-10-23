@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 import java.util.List;
 
 /** pre-order traversal access strategy implementation class */
-public class PreOrderAccessStrategy implements AccessStrategy {
+public class PreOrderAccessStrategy implements IAccessStrategy {
 
   /**
    * pre-order traversal access strategy

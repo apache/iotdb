@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 import java.util.List;
 
 /** post-order traversal access strategy implementation class */
-public class PostOrderAccessStrategy implements AccessStrategy {
+public class PostOrderAccessStrategy implements IAccessStrategy {
 
   /**
    * post-order traversal access strategy
@@ -37,7 +37,7 @@ public class PostOrderAccessStrategy implements AccessStrategy {
   public <I, O, R, C extends RequestContext> void execute(
       BasicLevelProcess<I, O, R, C> levelProcess, I memNode, R request, C context) {
     int currentLevel = context.getLevel();
-    AccessStrategy accessStrategy = context.getAccessStrategy();
+    IAccessStrategy accessStrategy = context.getAccessStrategy();
     // get all memory nodes to be processed in the next layer
     List<O> children = levelProcess.getChildren(memNode, request, context);
     if (levelProcess.hasNext()) {

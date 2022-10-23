@@ -16,35 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.wal;
+package org.apache.iotdb.lsm.manager;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.request.QueryRequest;
 
-/** represents a wal record, which can be extended to implement more complex wal records */
-public interface WALRecord<K, V> extends Cloneable {
+/** manage query to MemTable */
+public class QueryManager<T, R extends QueryRequest>
+    extends BasicLSMManager<T, R, QueryRequestContext> {
+  @Override
+  public void preProcess(T root, R request, QueryRequestContext context) throws Exception {}
 
-  /**
-   * serialize the wal record
-   *
-   * @param buffer byte buffer
-   */
-  void serialize(ByteBuffer buffer);
-
-  /**
-   * deserialize via input stream
-   *
-   * @param stream data input stream
-   * @throws IOException
-   */
-  void deserialize(DataInputStream stream) throws IOException;
-
-  // generate wal record using prototyping pattern
-  WALRecord clone();
-
-  List<K> getKeys();
-
-  V getValue();
+  @Override
+  public void postProcess(T root, R request, QueryRequestContext context) throws Exception {}
 }

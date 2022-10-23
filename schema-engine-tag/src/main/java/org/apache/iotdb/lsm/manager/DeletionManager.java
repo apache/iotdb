@@ -18,34 +18,32 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.request.DeletionRequest;
 
-// used to implement lsm manager
-public interface LSMManager<T, R, C extends RequestContext> {
+/** manage deletion to MemTable */
+public class DeletionManager<T, R extends DeletionRequest>
+    extends BasicLSMManager<T, R, DeleteRequestContext> {
+
+  // use wal manager object to write wal file on deletion
+  private WALManager walManager;
+
+  public DeletionManager(WALManager walManager) {
+    this.walManager = walManager;
+  }
 
   /**
-   * preprocessing of the root memory node
+   * write wal file on deletion
    *
    * @param root root memory node
    * @param context request context
    * @throws Exception
    */
-  void preProcess(T root, R request, C context) throws Exception;
+  @Override
+  public void preProcess(T root, R deletionRequest, DeleteRequestContext context) throws Exception {
+    walManager.write(deletionRequest);
+  }
 
-  /**
-   * postprocessing of the root memory node
-   *
-   * @param root root memory node
-   * @param context request context
-   * @throws Exception
-   */
-  void postProcess(T root, R request, C context) throws Exception;
-
-  /**
-   * use this method to process root memory node
-   *
-   * @param memNode memory node
-   * @param context request context
-   */
-  void process(T memNode, R request, C context) throws Exception;
+  @Override
+  public void postProcess(T root, R request, DeleteRequestContext context) throws Exception {}
 }

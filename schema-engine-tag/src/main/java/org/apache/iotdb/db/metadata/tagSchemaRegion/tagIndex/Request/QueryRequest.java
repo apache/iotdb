@@ -19,13 +19,12 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
 import org.apache.iotdb.lsm.context.RequestContext;
-import org.apache.iotdb.lsm.request.Request;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.util.List;
 
-public class QueryRequest extends Request<String, RoaringBitmap> {
+public class QueryRequest extends org.apache.iotdb.lsm.request.QueryRequest<String, RoaringBitmap> {
 
   List<String> keys;
 
@@ -39,7 +38,7 @@ public class QueryRequest extends Request<String, RoaringBitmap> {
 
   @Override
   public String getKey(RequestContext context) {
-    return keys.get(context.getLevel());
+    return keys.get(context.getLevel() - 1);
   }
 
   @Override

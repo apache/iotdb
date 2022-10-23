@@ -16,26 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.RequestContext;
 
-/** the processing method corresponding to each layer of memory nodes */
-public interface LevelProcess<I, O, R, C extends RequestContext> {
+// used to implement lsm manager
+public interface ILSMManager<T, R, C extends RequestContext> {
 
   /**
-   * add the LevelProcess of the next layer of memory nodes
+   * preprocessing of the root memory node
    *
-   * @param next LevelProcess of the next layer
-   * @return LevelProcess of the next layer
+   * @param root root memory node
+   * @param context request context
+   * @throws Exception
    */
-  <T> LevelProcess<O, T, R, C> nextLevel(LevelProcess<O, T, R, C> next);
+  void preProcess(T root, R request, C context) throws Exception;
 
   /**
-   * use this method to process memory nodes at each layer according to the access strategy
+   * postprocessing of the root memory node
+   *
+   * @param root root memory node
+   * @param context request context
+   * @throws Exception
+   */
+  void postProcess(T root, R request, C context) throws Exception;
+
+  /**
+   * use this method to process root memory node
    *
    * @param memNode memory node
    * @param context request context
    */
-  void process(I memNode, R request, C context);
+  void process(T memNode, R request, C context) throws Exception;
 }

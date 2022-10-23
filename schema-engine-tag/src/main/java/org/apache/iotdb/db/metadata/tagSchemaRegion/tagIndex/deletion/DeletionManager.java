@@ -51,6 +51,10 @@ public class DeletionManager
     walManager.write(deletionRequest);
   }
 
+  @Override
+  public void postProcess(MemTable root, DeletionRequest request, DeleteRequestContext context)
+      throws Exception {}
+
   /** set the delete operation for each layer of memory nodes */
   private void initLevelProcess() {
     LevelProcessChain<MemTable, DeletionRequest, DeleteRequestContext> levelProcessChain =

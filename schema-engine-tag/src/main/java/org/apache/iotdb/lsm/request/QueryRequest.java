@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.request;
 
-public abstract class QueryRequest<K, R> extends Request<K, R> {
+public abstract class QueryRequest<K, R> extends Request<K, Object, R> {
 
   public QueryRequest() {
     requestType = RequestType.QUERY;

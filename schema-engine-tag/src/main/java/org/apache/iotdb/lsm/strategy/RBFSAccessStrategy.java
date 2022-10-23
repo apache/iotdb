@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 import java.util.List;
 
 /** reverse breadth first traversal access strategy implementation class */
-public class RBFSAccessStrategy implements AccessStrategy {
+public class RBFSAccessStrategy implements IAccessStrategy {
 
   /**
    * reverse breadth first traversal access strategy

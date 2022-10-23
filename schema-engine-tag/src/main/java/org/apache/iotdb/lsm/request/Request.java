@@ -22,7 +22,7 @@ import org.apache.iotdb.lsm.context.RequestContext;
 
 import java.util.List;
 
-public abstract class Request<K, R> {
+public abstract class Request<K, V, R> {
 
   RequestType requestType;
 
