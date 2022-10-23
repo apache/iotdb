@@ -62,6 +62,7 @@ public class DataNodeInternalClient {
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   private final long sessionId;
+  private boolean isNewSession = false;
 
   public DataNodeInternalClient(SessionInfo sessionInfo) {
     if (config.isClusterMode()) {
@@ -81,6 +82,7 @@ public class DataNodeInternalClient {
                 sessionInfo.getZoneId(),
                 IoTDBConstant.ClientVersion.V_0_13);
         SessionTimeoutManager.getInstance().register(sessionId);
+        this.isNewSession = true;
 
         LOGGER.info(
             "User: {}, opens internal Session-{} in SELECT INTO",
@@ -124,6 +126,8 @@ public class DataNodeInternalClient {
   }
 
   public void close() {
-    SESSION_MANAGER.closeSession(sessionId);
+    if (isNewSession) {
+      SESSION_MANAGER.closeSession(sessionId);
+    }
   }
 }
