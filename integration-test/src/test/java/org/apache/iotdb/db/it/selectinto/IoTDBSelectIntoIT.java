@@ -25,13 +25,21 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 // TODO add LocalStandaloneIT back while deleting old standalone
@@ -166,7 +174,7 @@ public class IoTDBSelectIntoIT {
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into root.sg_agg.d1(count_s1, last_value_s2), root.sg_agg.d2(count_s1, last_value_s2) "
+            + "into root.sg_agg.d1(count_s1, last_value_s2), aligned root.sg_agg.d2(count_s1, last_value_s2) "
             + "from root.sg;",
         selectIntoHeader,
         intoRetArray);
@@ -191,7 +199,7 @@ public class IoTDBSelectIntoIT {
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into root.sg_agg.d1(count_s1, last_value_s2), root.sg_agg.d2(count_s1, last_value_s2) "
+            + "into aligned root.sg_agg.d1(count_s1, last_value_s2), root.sg_agg.d2(count_s1, last_value_s2) "
             + "from root.sg group by ([1, 13), 3ms);",
         selectIntoHeader,
         intoRetArray);
@@ -249,7 +257,7 @@ public class IoTDBSelectIntoIT {
           "root.sg.d1.s2,root.sg_bk.new_d2.t2,9,"
         };
     resultSetEqualTest(
-        "select s1, s2, s1, s2 into root.sg_bk.new_d1(t1, t2), root.sg_bk.new_d2(t1, t2) from root.sg.d1;",
+        "select s1, s2, s1, s2 into root.sg_bk.new_d1(t1, t2), aligned root.sg_bk.new_d2(t1, t2) from root.sg.d1;",
         selectIntoHeader,
         intoRetArray);
 
@@ -361,7 +369,7 @@ public class IoTDBSelectIntoIT {
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into root.sg_agg.${2}(count_s1, last_value_s2) "
+            + "into aligned root.sg_agg.${2}(count_s1, last_value_s2) "
             + "from root.sg.* group by ([1, 13), 3ms) align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
@@ -454,5 +462,59 @@ public class IoTDBSelectIntoIT {
     resultSetEqualTest(
         "select s1, s2 into root.sg_bk.new_${2}(::) from root.sg1.d1, root.sg1.d2 align by device;",
         selectIntoAlignByDeviceHeader, new String[] {});
+  }
+
+  // -------------------------------------- CHECK EXCEPTION -------------------------------------
+
+  @Test
+  public void testDataTypeInconsistent() {
+    executeNonQuery("CREATE TIMESERIES root.sg_bk.new_d.t1 TEXT;");
+    assertTestFail(
+        "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "executeStatement failed. Task was cancelled.");
+  }
+
+  @Test
+  public void testAlignmentInconsistent() {
+    executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_bk.new_d(t1 INT32, t2 INT32);");
+    assertTestFail(
+        "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "executeStatement failed. Task was cancelled.");
+  }
+
+  @Test
+  public void testPermission() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser1 'temppw1'");
+      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES INSERT_TIMESERIES on root.sg_bk.**;");
+
+      adminStmt.execute("CREATE USER tempuser2 'temppw2'");
+      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_TIMESERIES on root.sg.**;");
+
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.executeQuery(
+            "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
+        fail("No exception!");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "No permissions for this operation, please add privilege READ_TIMESERIES"));
+      }
+
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.executeQuery(
+            "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
+        fail("No exception!");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("executeStatement failed. Task was cancelled."));
+      }
+    }
   }
 }
