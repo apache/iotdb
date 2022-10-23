@@ -30,6 +30,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -71,6 +72,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       String sql,
       long queryId,
       long sessionId,
+      List<ByteBuffer> queryResult,
       long timeout,
       List<String> sgColumns,
       BitSet aliasColumnMap)
@@ -86,7 +88,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             ((IoTDBStatement) statement).getStmtId(),
             client,
             sessionId,
-            null,
+            queryResult,
             statement.getFetchSize(),
             timeout,
             sgColumns,
@@ -106,6 +108,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       String sql,
       long queryId,
       long sessionId,
+      List<ByteBuffer> queryResult,
       long timeout,
       boolean isRpcFetchResult)
       throws SQLException {
@@ -120,7 +123,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             ((IoTDBStatement) statement).getStmtId(),
             client,
             sessionId,
-            null,
+            queryResult,
             statement.getFetchSize(),
             timeout);
     this.statement = statement;
@@ -539,7 +542,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public int getRow() throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return ioTDBRpcDataSet.tsBlockSize;
+    //    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override

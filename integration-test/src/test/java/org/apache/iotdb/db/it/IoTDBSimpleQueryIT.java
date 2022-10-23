@@ -556,7 +556,7 @@ public class IoTDBSimpleQueryIT {
   public void testShowTimeseriesDataSet1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.setFetchSize(10);
+      statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -573,6 +573,8 @@ public class IoTDBSimpleQueryIT {
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        System.out.println(resultSet.getFetchSize());
+        System.out.println(resultSet.getRow());
         while (resultSet.next()) {
           count++;
         }
@@ -606,6 +608,8 @@ public class IoTDBSimpleQueryIT {
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        System.out.println(resultSet.getFetchSize());
+        System.out.println(resultSet.getRow());
         while (resultSet.next()) {
           count++;
         }
@@ -655,7 +659,7 @@ public class IoTDBSimpleQueryIT {
   public void testShowTimeseriesDataSet4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.setFetchSize(10);
+      statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");

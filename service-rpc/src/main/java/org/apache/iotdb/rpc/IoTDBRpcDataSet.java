@@ -582,17 +582,4 @@ public class IoTDBRpcDataSet {
       throw new StatementExecutionException("No record remains");
     }
   }
-
-  public void setQueryResult(List<ByteBuffer> queryResult) {
-
-    this.queryResult = queryResult;
-    this.queryResultSize = 0;
-    if (queryResult != null) {
-      this.queryResultSize = queryResult.size();
-    }
-    this.queryResultIndex = 0;
-    this.tsBlockSize = 0;
-    this.tsBlockIndex = -1;
-    this.emptyResultSet = this.queryResultSize == 0;
-  }
 }

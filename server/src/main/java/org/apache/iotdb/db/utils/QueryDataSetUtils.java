@@ -38,6 +38,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -377,13 +378,12 @@ public class QueryDataSetUtils {
   public static List<ByteBuffer> convertQueryResultByFetchSize(
       IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
     int rowCount = 0;
-    List<ByteBuffer> res = new LinkedList<>();
+    List<ByteBuffer> res = new ArrayList<>();
     while (rowCount < fetchSize) {
       Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
-
       ByteBuffer byteBuffer = optionalByteBuffer.get();
       byteBuffer.mark();
       int valueColumnCount = byteBuffer.getInt();

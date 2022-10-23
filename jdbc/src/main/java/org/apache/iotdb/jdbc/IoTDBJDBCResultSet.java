@@ -64,10 +64,10 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sql,
         queryId,
         sessionId,
+        dataset,
         timeout,
         sgColumns,
         aliasColumnMap);
-    ioTDBRpcDataSet.setQueryResult(dataset);
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -102,9 +102,9 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sql,
         queryId,
         sessionId,
+        dataset,
         timeout,
         isRpcFetchResult);
-    ioTDBRpcDataSet.setQueryResult(dataset);
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
