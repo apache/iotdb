@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.lsm.annotation.DeletionProcess;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcess;
 
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** deletion for MemChunkGroup */
+@DeletionProcess(level = 2)
 public class MemChunkGroupDeletion
     extends DeleteLevelProcess<MemChunkGroup, MemChunk, DeletionRequest> {
 

@@ -24,24 +24,11 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.MemChunkDeletion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.MemChunkGroupDeletion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.MemTableDeletion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.MemTableGroupDeletion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.MemChunkGroupInsertion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.MemChunkInsertion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.MemTableGroupInsertion;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.MemTableInsertion;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemChunkGroupQuery;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemChunkQuery;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemTableGroupQuery;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.MemTableQuery;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.engine.LSMEngine;
 import org.apache.iotdb.lsm.engine.LSMEngineDirector;
-import org.apache.iotdb.lsm.property.Property;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -66,30 +53,6 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   LSMEngine<MemTableGroup> lsmEngine;
 
   public TagInvertedIndex(String schemaDirPath) {
-
-    List<String> insertionLevelProcessClass = new ArrayList<String>();
-    insertionLevelProcessClass.add(MemTableGroupInsertion.class.getName());
-    insertionLevelProcessClass.add(MemTableInsertion.class.getName());
-    insertionLevelProcessClass.add(MemChunkGroupInsertion.class.getName());
-    insertionLevelProcessClass.add(MemChunkInsertion.class.getName());
-
-    List<String> deletionLevelProcessClass = new ArrayList<>();
-    deletionLevelProcessClass.add(MemTableGroupDeletion.class.getName());
-    deletionLevelProcessClass.add(MemTableDeletion.class.getName());
-    deletionLevelProcessClass.add(MemChunkGroupDeletion.class.getName());
-    deletionLevelProcessClass.add(MemChunkDeletion.class.getName());
-
-    List<String> queryLevelProcessClass = new ArrayList<>();
-    queryLevelProcessClass.add(MemTableGroupQuery.class.getName());
-    queryLevelProcessClass.add(MemTableQuery.class.getName());
-    queryLevelProcessClass.add(MemChunkGroupQuery.class.getName());
-    queryLevelProcessClass.add(MemChunkQuery.class.getName());
-
-    Property property = new Property();
-    property.setDeletionLevelProcessClass(deletionLevelProcessClass);
-    property.setInsertionLevelProcessClass(insertionLevelProcessClass);
-    property.setQueryLevelProcessClass(queryLevelProcessClass);
-
     try {
       WALManager walManager =
           new WALManager(
@@ -99,7 +62,9 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               new WALEntry(),
               false);
       LSMEngineDirector<MemTableGroup> lsmEngineDirector = new LSMEngineDirector<>();
-      lsmEngine = lsmEngineDirector.getLSMEngine(property, walManager);
+      lsmEngine =
+          lsmEngineDirector.getLSMEngine(
+              "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex", walManager);
       lsmEngine.setRootMemNode(new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable()));
       lsmEngine.recover();
     } catch (Exception e) {

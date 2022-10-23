@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
+import org.apache.iotdb.lsm.annotation.InsertionProcess;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
 
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@InsertionProcess(level = 0)
 public class MemTableGroupInsertion
     extends InsertLevelProcess<MemTableGroup, MemTable, InsertionRequest> {
 

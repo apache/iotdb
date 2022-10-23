@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.lsm.annotation.QueryProcess;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
 
@@ -28,6 +29,7 @@ import org.roaringbitmap.RoaringBitmap;
 import java.util.List;
 
 /** query for MemChunk */
+@QueryProcess(level = 3)
 public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object, QueryRequest> {
 
   /**

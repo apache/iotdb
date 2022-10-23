@@ -27,6 +27,7 @@ import org.apache.iotdb.lsm.levelProcess.ILevelProcess;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.property.Property;
+import org.apache.iotdb.lsm.property.PropertyDescriptor;
 import org.apache.iotdb.lsm.request.InsertionRequest;
 import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.request.Request;
@@ -67,6 +68,16 @@ public class LSMEngineDirector<T> {
           .buildRecoverManager()
           .builder();
 
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+    }
+    return null;
+  }
+
+  public LSMEngine<T> getLSMEngine(String packageName, WALManager walManager) {
+    try {
+      Property property = PropertyDescriptor.getProperty(packageName);
+      return getLSMEngine(property, walManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
