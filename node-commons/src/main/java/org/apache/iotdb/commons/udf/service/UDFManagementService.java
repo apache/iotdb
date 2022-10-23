@@ -59,14 +59,24 @@ public class UDFManagementService {
 
   /** invoked by config leader for validation before registration */
   public void validate(UDFInformation udfInformation) {
-    validateFunctionName(udfInformation);
-    checkIfRegistered(udfInformation);
+    try {
+      acquireLock();
+      validateFunctionName(udfInformation);
+      checkIfRegistered(udfInformation);
+    } finally {
+      releaseLock();
+    }
   }
 
   public void register(UDFInformation udfInformation) throws UDFManagementException {
-    validateFunctionName(udfInformation);
-    checkIfRegistered(udfInformation);
-    doRegister(udfInformation);
+    try {
+      acquireLock();
+      validateFunctionName(udfInformation);
+      checkIfRegistered(udfInformation);
+      doRegister(udfInformation);
+    } finally {
+      releaseLock();
+    }
   }
 
   private static void validateFunctionName(UDFInformation udfInformation)
@@ -152,7 +162,6 @@ public class UDFManagementService {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     try {
-      acquireLock();
       UDFClassLoader currentActiveClassLoader =
           UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
       updateAllRegisteredClasses(currentActiveClassLoader);
@@ -173,8 +182,6 @@ public class UDFManagementService {
               functionName, className, e);
       LOGGER.warn(errorMessage, e);
       throw new UDFManagementException(errorMessage);
-    } finally {
-      releaseLock();
     }
   }
 
@@ -189,6 +196,7 @@ public class UDFManagementService {
 
   public void deregister(String functionName) throws UDFManagementException {
     try {
+      acquireLock();
       UDFInformation information = udfTable.getUDFInformation(functionName);
       if (information != null && information.isBuiltin()) {
         String errorMessage =
