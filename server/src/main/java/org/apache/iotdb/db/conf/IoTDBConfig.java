@@ -701,7 +701,7 @@ public class IoTDBConfig {
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
    */
-  private int selectIntoInsertTabletPlanRowLimit = 5;
+  private int selectIntoInsertTabletPlanRowLimit = 10000;
 
   /**
    * When the insert plan column count reaches the specified threshold, which means that the plan is
