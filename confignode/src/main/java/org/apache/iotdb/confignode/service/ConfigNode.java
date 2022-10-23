@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -194,7 +193,6 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(CONF.getTemporaryLibDir(), CONF.getUdfLibDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
-    registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
     registerManager.register(MetricService.getInstance());
     LOGGER.info("Successfully setup internal services.");

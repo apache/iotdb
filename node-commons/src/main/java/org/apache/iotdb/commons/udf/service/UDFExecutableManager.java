@@ -91,7 +91,11 @@ public class UDFExecutableManager extends ExecutableManager implements IService,
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
     return SnapshotUtils.takeSnapshotForDir(
             temporaryLibRoot,
-            snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary")
+            snapshotDir.getAbsolutePath()
+                + File.separator
+                + "ext"
+                + File.separator
+                + "udf_temporary")
         && SnapshotUtils.takeSnapshotForDir(
             libRoot,
             snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf");
@@ -100,7 +104,7 @@ public class UDFExecutableManager extends ExecutableManager implements IService,
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
     SnapshotUtils.loadSnapshotForDir(
-        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary",
+        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf_temporary",
         temporaryLibRoot);
     SnapshotUtils.loadSnapshotForDir(
         snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf", libRoot);

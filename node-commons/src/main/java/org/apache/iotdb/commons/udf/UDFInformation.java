@@ -17,31 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.service;
+package org.apache.iotdb.commons.udf;
 
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.udf.api.UDTF;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 
-public class UDFRegistrationInformation {
+public class UDFInformation {
 
   private final String functionName;
   private final String className;
-  private final List<String> uris;
-  private final boolean isBuiltin;
+  private boolean isBuiltin;
 
   private Class<?> functionClass;
 
-  public UDFRegistrationInformation(
-      String functionName,
-      String className,
-      List<String> uris,
-      boolean isBuiltin,
-      Class<?> functionClass) {
-    this.functionName = functionName;
+  public UDFInformation(String functionName, String className) {
+    this.functionName = functionName.toUpperCase();
     this.className = className;
-    this.uris = uris;
+  }
+
+  public UDFInformation(
+      String functionName, String className, boolean isBuiltin, Class<?> functionClass) {
+    this.functionName = functionName.toUpperCase();
+    this.className = className;
     this.isBuiltin = isBuiltin;
     this.functionClass = functionClass;
   }
@@ -52,10 +51,6 @@ public class UDFRegistrationInformation {
 
   public String getClassName() {
     return className;
-  }
-
-  public List<String> getUris() {
-    return uris;
   }
 
   public boolean isBuiltin() {
