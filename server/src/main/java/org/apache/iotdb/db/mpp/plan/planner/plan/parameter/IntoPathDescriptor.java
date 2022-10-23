@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG;
 import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 
 public class IntoPathDescriptor {
@@ -65,8 +66,7 @@ public class IntoPathDescriptor {
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {
     if (targetDeviceToAlignedMap.containsKey(targetDevice)
         && targetDeviceToAlignedMap.get(targetDevice) != isAligned) {
-      throw new SemanticException(
-          "select into: alignment property must be the same for the same device.");
+      throw new SemanticException(DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG);
     }
     targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
