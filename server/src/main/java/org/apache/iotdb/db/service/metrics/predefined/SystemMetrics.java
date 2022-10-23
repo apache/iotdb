@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service.metrics.predefined;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -27,18 +28,28 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.sun.management.OperatingSystemMXBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class SystemMetrics implements IMetricSet {
+  private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
   private com.sun.management.OperatingSystemMXBean osMXBean;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final Set<FileStore> fileStores = new HashSet<>();
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
@@ -165,6 +176,25 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      Path path = Paths.get(dataDir);
+      FileStore fileStore = null;
+      try {
+        fileStore = Files.getFileStore(path);
+      } catch (IOException e) {
+        // check parent if path is not exists
+        path = path.getParent();
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", dataDir, innerException);
+        }
+      }
+      if (null != fileStore) {
+        fileStores.add(fileStore);
+      }
+    }
     metricService.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
@@ -182,6 +212,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void removeSystemDiskInfo(AbstractMetricService metricService) {
+    fileStores.clear();
     metricService.remove(
         MetricType.GAUGE, Metric.SYS_DISK_TOTAL_SPACE.toString(), Tag.NAME.toString(), "system");
     metricService.remove(
@@ -189,12 +220,15 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collect() {
-    File[] files = File.listRoots();
     long sysTotalSpace = 0L;
     long sysFreeSpace = 0L;
-    for (File file : files) {
-      sysTotalSpace += file.getTotalSpace();
-      sysFreeSpace += file.getFreeSpace();
+    for (FileStore fileStore : fileStores) {
+      try {
+        sysTotalSpace += fileStore.getTotalSpace();
+        sysFreeSpace += fileStore.getUsableSpace();
+      } catch (Exception e) {
+        logger.error("Failed to statistic the size of {}, because ", fileStore, e);
+      }
     }
     systemDiskTotalSpace = sysTotalSpace;
     systemDiskFreeSpace = sysFreeSpace;
