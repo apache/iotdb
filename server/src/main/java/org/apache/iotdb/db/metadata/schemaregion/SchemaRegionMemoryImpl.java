@@ -2170,7 +2170,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     private boolean isFailed() {
-      return e == null;
+      return e != null;
     }
 
     private Exception getException() {
