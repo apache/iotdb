@@ -432,10 +432,11 @@ struct TSOperationSyncWriteReq {
   3: required binary physicalPlan
 }
 
-struct TSSyncConfigurationResp {
-  1: required bool enableOperationSync
-  2: optional string secondaryAddress
-  3: optional i32 secondaryPort
+struct TSBackupConfigurationResp {
+  1: required TSStatus status
+  2: optional bool enableOperationSync
+  3: optional string secondaryAddress
+  4: optional i32 secondaryPort
 }
 
 service TSIService {
@@ -537,5 +538,5 @@ service TSIService {
 
   TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
 
-  TSSyncConfigurationResp getSyncConfigurationResp();
+  TSBackupConfigurationResp getBackupConfigurationResp();
 }

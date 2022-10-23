@@ -86,6 +86,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -127,7 +128,6 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSSyncConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -2195,9 +2195,11 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSSyncConfigurationResp getSyncConfigurationResp() {
+  public TSBackupConfigurationResp getBackupConfigurationResp() {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    TSSyncConfigurationResp syncConf = new TSSyncConfigurationResp(conf.isEnableOperationSync());
+    TSBackupConfigurationResp syncConf =
+        new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    syncConf.setEnableOperationSync(conf.isEnableOperationSync());
     syncConf.setSecondaryAddress(conf.getSecondaryAddress());
     syncConf.setSecondaryPort(conf.getSecondaryPort());
     return syncConf;
