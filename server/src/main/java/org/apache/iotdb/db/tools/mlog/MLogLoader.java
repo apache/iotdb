@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -66,6 +67,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -120,6 +123,13 @@ public class MLogLoader {
   private List<Map<String, String>> tags;
   private List<Map<String, String>> attributes;
 
+  // statistics
+  private long successCnt = 0;
+  private long skipCnt = 0;
+  private long failedCnt = 0;
+  // scheduled print log
+  private final ScheduledExecutorService scheduledExecutorService;
+
   private MLogLoader(CommandLine commandLine) throws ParseException {
     initBuffer();
     mLogFile = CommandLineUtils.checkRequiredArg(MLOG_FILE_ARGS, MLOG_FILE_NAME, commandLine);
@@ -128,6 +138,9 @@ public class MLogLoader {
       host = "127.0.0.1";
     }
     tLogFile = commandLine.getOptionValue(TLOG_FILE_ARGS);
+    if (tLogFile == null) {
+      logger.warn("No specify tlog.txt file to parse, tag and attributes will be ignored.");
+    }
     String portTmp = commandLine.getOptionValue(PORT_ARGS);
     port = portTmp == null ? 6667 : Integer.parseInt(portTmp);
     user = commandLine.getOptionValue(USER_ARGS);
@@ -146,6 +159,18 @@ public class MLogLoader {
             .password(password)
             .version(Version.V_0_13)
             .build();
+    scheduledExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MLogLogger");
+    scheduledExecutorService.scheduleWithFixedDelay(
+        () ->
+            logger.info(
+                "MLog successfully loaded {} entries, failed {} entries, and skipped {} entries",
+                successCnt,
+                failedCnt,
+                skipCnt),
+        1,
+        5,
+        TimeUnit.SECONDS);
   }
 
   /**
@@ -257,15 +282,12 @@ public class MLogLoader {
       session.open(false);
       while (mLogReader.hasNext()) {
         PhysicalPlan plan = mLogReader.next();
-        logger.info("Start load plan {}", plan);
         try {
           switch (plan.getOperatorType()) {
             case CREATE_TIMESERIES:
               CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
               if (createTimeSeriesPlan.getTagOffset() != -1) {
                 if (tLogFile == null) {
-                  logger.warn(
-                      "No specify tlog.txt file to parse, tag and attributes will be ignored.");
                   createTimeSeriesPlan.setTags(Collections.emptyMap());
                   createTimeSeriesPlan.setAttributes(Collections.emptyMap());
                 } else {
@@ -277,7 +299,6 @@ public class MLogLoader {
             case CREATE_ALIGNED_TIMESERIES:
               CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
                   (CreateAlignedTimeSeriesPlan) plan;
-              logger.info("create aligned");
               session.createAlignedTimeseries(
                   createAlignedTimeSeriesPlan.getPrefixPath().getFullPath(),
                   createAlignedTimeSeriesPlan.getMeasurements(),
@@ -285,6 +306,7 @@ public class MLogLoader {
                   createAlignedTimeSeriesPlan.getEncodings(),
                   createAlignedTimeSeriesPlan.getCompressors(),
                   createAlignedTimeSeriesPlan.getAliasList());
+              successCnt++;
               break;
             case DELETE_TIMESERIES:
               flushBuffer();
@@ -292,9 +314,11 @@ public class MLogLoader {
                   plan.getPaths().stream()
                       .map(PartialPath::getFullPath)
                       .collect(Collectors.toList()));
+              successCnt++;
               break;
             case SET_STORAGE_GROUP:
               session.setStorageGroup(((SetStorageGroupPlan) plan).getPath().getFullPath());
+              successCnt++;
               break;
             case DELETE_STORAGE_GROUP:
               flushBuffer();
@@ -302,6 +326,7 @@ public class MLogLoader {
                   plan.getPaths().stream()
                       .map(PartialPath::getFullPath)
                       .collect(Collectors.toList()));
+              successCnt++;
               break;
             case TTL:
               SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
@@ -313,6 +338,7 @@ public class MLogLoader {
                     String.format(
                         "set ttl to %s %d", setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL()));
               }
+              successCnt++;
               break;
             case CHANGE_ALIAS:
               flushBuffer();
@@ -321,13 +347,15 @@ public class MLogLoader {
                   String.format(
                       "ALTER timeseries %s UPSERT ALIAS=%s",
                       changeAliasPlan.getPath(), changeAliasPlan.getAlias()));
+              successCnt++;
               break;
             case CHANGE_TAG_OFFSET:
               flushBuffer();
               if (tLogFile == null) {
-                logger.warn("No specify tlog.txt file to parse, skip ChangeTagOffsetPlan.");
+                skipCnt++;
               } else {
                 session.executeNonQueryStatement(genAlterTimeSeriesSQL((ChangeTagOffsetPlan) plan));
+                successCnt++;
               }
               break;
             case CREATE_TEMPLATE:
@@ -350,6 +378,7 @@ public class MLogLoader {
                   encodings,
                   compressors,
                   template.isDirectAligned());
+              successCnt++;
               break;
             case APPEND_TEMPLATE:
               AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
@@ -368,45 +397,59 @@ public class MLogLoader {
                     appendTemplatePlan.getEncodings(),
                     appendTemplatePlan.getCompressors());
               }
+              successCnt++;
               break;
             case PRUNE_TEMPLATE:
               PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
               session.deleteNodeInTemplate(
                   pruneTemplatePlan.getName(), pruneTemplatePlan.getPrunedMeasurements().get(0));
+              successCnt++;
               break;
             case SET_TEMPLATE:
               flushBuffer();
               SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
               session.setSchemaTemplate(
                   setTemplatePlan.getTemplateName(), setTemplatePlan.getPrefixPath());
+              successCnt++;
               break;
             case UNSET_TEMPLATE:
               UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
               session.unsetSchemaTemplate(
                   unsetTemplatePlan.getPrefixPath(), unsetTemplatePlan.getTemplateName());
+              successCnt++;
               break;
             case DROP_TEMPLATE:
               session.dropSchemaTemplate(((DropTemplatePlan) plan).getName());
+              successCnt++;
               break;
             case ACTIVATE_TEMPLATE:
               session.createTimeseriesOfTemplateOnPath(
                   ((ActivateTemplatePlan) plan).getPrefixPath().getFullPath());
+              successCnt++;
               break;
             case DEACTIVATE_TEMPLATE:
               DeactivateTemplatePlan deactivateTemplatePlan = (DeactivateTemplatePlan) plan;
               session.deactivateTemplateOn(
                   deactivateTemplatePlan.getTemplateName(),
                   deactivateTemplatePlan.getPrefixPath().getFullPath());
+              successCnt++;
               break;
             default:
-              //              logger.warn("Skip load plan {}", plan);
+              // ignored unrecognizable command
           }
         } catch (Exception e) {
+          failedCnt++;
           logger.error("Fail to load plan {} because {}", plan, e.getMessage());
         }
       }
       flushBuffer();
     } finally {
+      scheduledExecutorService.shutdown();
+      logger.info(
+          "MLog loading complete.{} entries loaded successfully, {} entries failed, and {} entries skipped.",
+          successCnt,
+          failedCnt,
+          skipCnt);
       if (tagManager != null) {
         tagManager.clear();
       }
@@ -514,6 +557,7 @@ public class MLogLoader {
       logger.info("Flush buffer and CreateMultiTimeseries.");
       session.createMultiTimeseries(
           paths, dataTypes, encodings, compressors, props, tags, attributes, alias);
+      successCnt += batchNum;
     }
     initBuffer();
   }
