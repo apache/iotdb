@@ -225,21 +225,29 @@ public class CQScheduleTask implements Runnable {
                 .getConsensusManager()
                 .write(new UpdateCQLastExecTimePlan(cqId, executionTime, md5));
 
-        if (result.isSuccessful()) {
-          if (needSubmit()) {
-            updateExecutionTime();
-            submitSelf();
-          } else {
-            LOGGER.info(
-                "Stop submitting CQ {} because current node is not leader or current scheduled thread pool is shut down.",
-                cqId);
-          }
-        } else {
+        // while leadership changed, the update last exec time operation for CQTasks in new leader
+        // may still update failed because stale CQTask in old leader may update it in advance
+        if (!result.isSuccessful()) {
           LOGGER.warn(
               "Failed to update the last execution time {} of CQ {}, because {}",
               executionTime,
               cqId,
               result.getErrorMessage());
+          // no such cq, we don't need to submit it again
+          if (result.getStatus() != null
+              && result.getStatus().code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+            LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getStatus().message);
+            return;
+          }
+        }
+
+        if (needSubmit()) {
+          updateExecutionTime();
+          submitSelf();
+        } else {
+          LOGGER.info(
+              "Stop submitting CQ {} because current node is not leader or current scheduled thread pool is shut down.",
+              cqId);
         }
 
       } else {
