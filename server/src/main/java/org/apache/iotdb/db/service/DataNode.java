@@ -449,7 +449,7 @@ public class DataNode implements DataNodeMBean {
     try {
       for (TriggerInformation triggerInformation :
           resourcesInformationHolder.getTriggerInformationList()) {
-        TriggerManagementService.getInstance().doRegister(triggerInformation);
+        TriggerManagementService.getInstance().doRegister(triggerInformation, true);
       }
     } catch (Exception e) {
       throw new StartupException(e);
