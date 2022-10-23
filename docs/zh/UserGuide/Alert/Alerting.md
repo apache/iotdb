@@ -333,15 +333,17 @@ public class ClusterAlertingExample implements Trigger {
     return true;
   }
 }
+```
+
 ### 创建 trigger
 
 如下的 sql 语句在 `root.ln.wf01.wt01.temperature` 
 时间序列上注册了名为 `root-ln-wf01-wt01-alert`、
-运行逻辑由 `org.apache.iotdb.trigger.AlertingExample` 
+运行逻辑由 `org.apache.iotdb.trigger.ClusterAlertingExample` 
 类定义的触发器。
 
 ``` sql
-  CREATE STATELSS TRIGGER `root-ln-wf01-wt01-alert`
+  CREATE STATELESS TRIGGER `root-ln-wf01-wt01-alert`
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
   AS "org.apache.iotdb.trigger.ClusterAlertingExample"

@@ -22,9 +22,9 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -58,7 +58,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   public synchronized void validateBeforeRegistration(
       String functionName, String className, List<String> uris) throws Exception {
-    udfRegistrationService.validate(new UDFInformation(functionName,className));
+    udfRegistrationService.validate(new UDFInformation(functionName, className));
 
     if (uris.isEmpty()) {
       fetchExecutablesAndCheckInstantiation(className);
@@ -94,7 +94,7 @@ public class UDFInfo implements SnapshotProcessor {
     final List<String> uris = req.getUris();
 
     try {
-      udfRegistrationService.register(new UDFInformation(functionName,className));
+      udfRegistrationService.register(new UDFInformation(functionName, className));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
