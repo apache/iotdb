@@ -35,7 +35,7 @@ public class ConfigNodeConfig {
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
-  private String internalAddress = "127.0.0.1";
+  private String internalAddress = "0.0.0.0";
 
   /** used for communication between data node and config node */
   private int internalPort = 22277;
@@ -50,7 +50,7 @@ public class ConfigNodeConfig {
   private int partitionRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
