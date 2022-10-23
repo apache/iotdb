@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /** represents a wal record, which can be extended to implement more complex wal records */
-public interface WALRecord<K, V> extends Cloneable {
+public interface IWALRecord<K, V> extends Cloneable {
 
   /**
    * serialize the wal record
@@ -42,7 +42,7 @@ public interface WALRecord<K, V> extends Cloneable {
   void deserialize(DataInputStream stream) throws IOException;
 
   // generate wal record using prototyping pattern
-  WALRecord clone();
+  IWALRecord clone();
 
   List<K> getKeys();
 

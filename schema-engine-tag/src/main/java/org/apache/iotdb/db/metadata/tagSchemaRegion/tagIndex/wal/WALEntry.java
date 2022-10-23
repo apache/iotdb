@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
-import org.apache.iotdb.lsm.wal.WALRecord;
+import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** represents a record in the wal file */
-public class WALEntry implements WALRecord<String, Integer> {
+public class WALEntry implements IWALRecord<String, Integer> {
 
   // can be insertion(1) or deletion(2)
   private int type;
@@ -89,9 +89,9 @@ public class WALEntry implements WALRecord<String, Integer> {
    * @return wal record
    */
   @Override
-  public WALRecord clone() {
+  public IWALRecord clone() {
     try {
-      return (WALRecord) super.clone();
+      return (IWALRecord) super.clone();
     } catch (CloneNotSupportedException e) {
       throw new AssertionError(e.getMessage());
     }

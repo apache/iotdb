@@ -44,5 +44,5 @@ public interface IWALReader {
    *
    * @throws FileNotFoundException
    */
-  WALRecord next() throws FileNotFoundException;
+  IWALRecord next() throws FileNotFoundException;
 }

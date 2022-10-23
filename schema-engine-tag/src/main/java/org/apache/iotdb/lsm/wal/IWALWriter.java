@@ -29,7 +29,7 @@ public interface IWALWriter {
    * @param walRecord record to be written
    * @throws IOException
    */
-  void write(WALRecord walRecord) throws IOException;
+  void write(IWALRecord walRecord) throws IOException;
 
   /**
    * force brush

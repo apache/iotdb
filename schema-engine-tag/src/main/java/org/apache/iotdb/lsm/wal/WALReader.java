@@ -35,13 +35,13 @@ public class WALReader implements IWALReader {
   // wal file
   private final File logFile;
   // wal record prototype, clone on read
-  private final WALRecord prototype;
+  private final IWALRecord prototype;
   private DataInputStream logStream;
   // next wal record
-  private WALRecord nextRecord;
+  private IWALRecord nextRecord;
   private boolean fileCorrupted = false;
 
-  public WALReader(File logFile, WALRecord prototype) throws IOException {
+  public WALReader(File logFile, IWALRecord prototype) throws IOException {
     this.logFile = logFile;
     this.logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
@@ -83,11 +83,11 @@ public class WALReader implements IWALReader {
   }
 
   @Override
-  public WALRecord next() {
+  public IWALRecord next() {
     if (nextRecord == null) {
       throw new NoSuchElementException();
     }
-    WALRecord walRecord = nextRecord;
+    IWALRecord walRecord = nextRecord;
     nextRecord = null;
     return walRecord;
   }

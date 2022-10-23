@@ -59,7 +59,7 @@ public class WALWriter implements IWALWriter {
    * @throws IOException
    */
   @Override
-  public void write(WALRecord walRecord) throws IOException {
+  public void write(IWALRecord walRecord) throws IOException {
     if (channel == null) {
       fileOutputStream = new FileOutputStream(logFile, true);
       channel = fileOutputStream.getChannel();

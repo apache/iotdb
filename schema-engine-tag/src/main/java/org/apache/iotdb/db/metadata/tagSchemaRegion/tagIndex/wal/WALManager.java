@@ -21,8 +21,8 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
-import org.apache.iotdb.lsm.wal.WALRecord;
 
 import java.io.IOException;
 
@@ -36,7 +36,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
       String schemaDirPath,
       String walFileName,
       int walBufferSize,
-      WALRecord walRecord,
+      IWALRecord walRecord,
       boolean forceEachWrite)
       throws IOException {
     super(schemaDirPath, walFileName, walBufferSize, walRecord, forceEachWrite);

@@ -19,8 +19,8 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
-import org.apache.iotdb.lsm.wal.WALRecord;
 import org.apache.iotdb.lsm.wal.WALWriter;
 
 import java.io.File;
@@ -49,7 +49,7 @@ public abstract class WALManager {
       String schemaDirPath,
       String walFileName,
       int walBufferSize,
-      WALRecord walRecord,
+      IWALRecord walRecord,
       boolean forceEachWrite)
       throws IOException {
     this.schemaDirPath = schemaDirPath;
