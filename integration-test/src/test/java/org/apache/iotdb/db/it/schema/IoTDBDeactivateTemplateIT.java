@@ -153,6 +153,31 @@ public class IoTDBDeactivateTemplateIT {
 
   @Test
   public void deactivateTemplateCrossStorageGroupTest() throws Exception {
+    String insertSql = "insert into root.sg%d.d2(time, s1, s2) values(%d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      for (int j = 1; j <= 2; j++) {
+        statement.execute(String.format(insertSql, j, i, i, i));
+      }
+    }
+
+    statement.execute("DEACTIVATE TEMPLATE FROM root.*.d1");
+    String[] retArray =
+        new String[] {"1,1,1.0,1,1.0,", "2,2,2.0,2,2.0,", "3,3,3.0,3,3.0,", "4,4,4.0,4,4.0,"};
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      Assert.assertEquals(5, resultSetMetaData.getColumnCount());
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        Assert.assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray.length, cnt);
+    }
+
     statement.execute("DEACTIVATE TEMPLATE FROM root.**, root.sg1.*");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
