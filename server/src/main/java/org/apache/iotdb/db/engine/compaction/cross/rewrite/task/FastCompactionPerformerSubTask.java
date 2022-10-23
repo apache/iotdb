@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -305,12 +306,12 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       // write currentPage.point.time < nextPage.startTime to chunk writer
       while (pointPriorityReader.hasNext()
           && pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
-          // write data point to chunk writer
-          compactionWriter.write(
-              pointPriorityReader.currentPoint().left,
-              pointPriorityReader.currentPoint().right,
-              subTaskId);
-          pointPriorityReader.next();
+        // write data point to chunk writer
+        compactionWriter.write(
+            pointPriorityReader.currentPoint().left,
+            pointPriorityReader.currentPoint().right,
+            subTaskId);
+        pointPriorityReader.next();
         if (candidateOverlappedPages.size() > oldSize) {
           // during the process of writing overlapped points, if the first page is compacted
           // completely or a new chunk is deserialized, there may be new pages overlapped with the
@@ -318,15 +319,15 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
           // page in the list may be changed, so we should re-get next overlap page here.
           oldSize = candidateOverlappedPages.size();
           nextPageElement = candidateOverlappedPages.get(0);
-          }
         }
+      }
 
       ModifiedStatus nextPageModifiedStatus = isPageModified(nextPageElement);
 
       if (nextPageModifiedStatus == ModifiedStatus.AllDeleted) {
-          // all data on next page has been deleted, remove it
-          removePage(nextPageElement);
-        } else {
+        // all data on next page has been deleted, remove it
+        removePage(nextPageElement);
+      } else {
         boolean isNextPageOverlap =
             (pointPriorityReader.hasNext()
                     && pointPriorityReader.currentPoint().left
@@ -334,15 +335,15 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
                 || isPageOverlap(nextPageElement);
 
         if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PartialDeleted) {
-            // has overlap or modified pages, then deserialize it
-            pointPriorityReader.addNewPage(nextPageElement);
-          } else {
-            // has none overlap or modified pages, flush it to chunk writer directly
-            compactWithNonOverlapPage(nextPageElement);
-          }
+          // has overlap or modified pages, then deserialize it
+          pointPriorityReader.addNewPage(nextPageElement);
+        } else {
+          // has none overlap or modified pages, flush it to chunk writer directly
+          compactWithNonOverlapPage(nextPageElement);
         }
-      candidateOverlappedPages.remove(0);
       }
+      candidateOverlappedPages.remove(0);
+    }
 
     // write remaining data points, of which point.time >= the last overlapped page.startTime
     writeRemainingPoints();
