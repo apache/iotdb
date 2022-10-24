@@ -83,6 +83,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -364,7 +365,7 @@ public class MTree implements Serializable {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
-      if (alias != null && cur.hasChild(alias)) {
+      if (!StringUtils.isEmpty(alias) && cur.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
@@ -387,10 +388,10 @@ public class MTree implements Serializable {
               entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
-              alias);
+              StringUtils.isEmpty(alias) ? null : alias);
       entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
-      if (alias != null) {
+      if (!StringUtils.isEmpty(alias)) {
         entityMNode.addAlias(alias, measurementMNode);
       }
       return measurementMNode;

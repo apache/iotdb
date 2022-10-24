@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -38,12 +39,15 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.utils.CommandLineUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
@@ -63,6 +67,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -93,13 +99,79 @@ public class MLogLoader {
 
   private static final String HELP_ARGS = "help";
 
-  private static String mLogFile;
-  private static String tLogFile;
-  private static String host;
-  private static int port;
-  private static String user;
-  private static String password;
-  private static TagManager tagManager;
+  private Session session;
+  private String mLogFile;
+  private String tLogFile;
+  private String host;
+  private int port;
+  private String user;
+  private String password;
+  private TagManager tagManager;
+
+  // buffer
+  private static final int BATCH_NUM_THRESHOLD = 1000;
+  private static final int BATCH_MEM_THRESHOLD = 10 * 1024 * 1024;
+
+  private int batchNum;
+  private long batchMem;
+  private List<String> paths;
+  private List<TSDataType> dataTypes;
+  private List<TSEncoding> encodings;
+  private List<CompressionType> compressors;
+  private List<String> alias;
+  private List<Map<String, String>> props;
+  private List<Map<String, String>> tags;
+  private List<Map<String, String>> attributes;
+
+  // statistics
+  private long successCnt = 0;
+  private long skipCnt = 0;
+  private long failedCnt = 0;
+  // scheduled print log
+  private final ScheduledExecutorService scheduledExecutorService;
+
+  private MLogLoader(CommandLine commandLine) throws ParseException {
+    initBuffer();
+    mLogFile = CommandLineUtils.checkRequiredArg(MLOG_FILE_ARGS, MLOG_FILE_NAME, commandLine);
+    host = commandLine.getOptionValue(HOST_ARGS);
+    if (host == null) {
+      host = "127.0.0.1";
+    }
+    tLogFile = commandLine.getOptionValue(TLOG_FILE_ARGS);
+    if (tLogFile == null) {
+      logger.warn("No specify tlog.txt file to parse, tag and attributes will be ignored.");
+    }
+    String portTmp = commandLine.getOptionValue(PORT_ARGS);
+    port = portTmp == null ? 6667 : Integer.parseInt(portTmp);
+    user = commandLine.getOptionValue(USER_ARGS);
+    if (user == null) {
+      user = "root";
+    }
+    password = commandLine.getOptionValue(PASSWORD_ARGS);
+    if (password == null) {
+      password = "root";
+    }
+    session =
+        new Session.Builder()
+            .host(host)
+            .port(port)
+            .username(user)
+            .password(password)
+            .version(Version.V_0_13)
+            .build();
+    scheduledExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MLogLogger");
+    scheduledExecutorService.scheduleWithFixedDelay(
+        () ->
+            logger.info(
+                "MLog successfully loaded {} entries, failed {} entries, and skipped {} entries",
+                successCnt,
+                failedCnt,
+                skipCnt),
+        1,
+        5,
+        TimeUnit.SECONDS);
+  }
 
   /**
    * create the commandline options.
@@ -198,69 +270,31 @@ public class MLogLoader {
       return;
     }
     try {
-      parseBasicParams(commandLine);
-      parseFileAndLoad();
+      MLogLoader mLogLoader = new MLogLoader(commandLine);
+      mLogLoader.parseFileAndLoad();
     } catch (Exception e) {
       logger.error("Encounter an error, because: {} ", e.getMessage());
     }
   }
 
-  public static void parseBasicParams(CommandLine commandLine) throws ParseException, IOException {
-    mLogFile = CommandLineUtils.checkRequiredArg(MLOG_FILE_ARGS, MLOG_FILE_NAME, commandLine);
-    host = commandLine.getOptionValue(HOST_ARGS);
-    if (host == null) {
-      host = "127.0.0.1";
-    }
-    tLogFile = commandLine.getOptionValue(TLOG_FILE_ARGS);
-    String portTmp = commandLine.getOptionValue(PORT_ARGS);
-    port = portTmp == null ? 6667 : Integer.parseInt(portTmp);
-    user = commandLine.getOptionValue(USER_ARGS);
-    if (user == null) {
-      user = "root";
-    }
-    password = commandLine.getOptionValue(PASSWORD_ARGS);
-    if (password == null) {
-      password = "root";
-    }
-  }
-
-  public static void parseFileAndLoad() throws Exception {
-    Session session =
-        new Session.Builder()
-            .host(host)
-            .port(port)
-            .username(user)
-            .password(password)
-            .version(Version.V_0_13)
-            .build();
+  public void parseFileAndLoad() throws Exception {
     try (MLogReader mLogReader = new MLogReader(mLogFile)) {
       session.open(false);
       while (mLogReader.hasNext()) {
         PhysicalPlan plan = mLogReader.next();
-        logger.info("Start load plan {}", plan);
         try {
           switch (plan.getOperatorType()) {
             case CREATE_TIMESERIES:
               CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
               if (createTimeSeriesPlan.getTagOffset() != -1) {
                 if (tLogFile == null) {
-                  logger.warn(
-                      "No specify tlog.txt file to parse, tag and attributes will be ignored.");
                   createTimeSeriesPlan.setTags(Collections.emptyMap());
                   createTimeSeriesPlan.setAttributes(Collections.emptyMap());
                 } else {
                   fillTagsAndOffset(createTimeSeriesPlan);
                 }
               }
-              session.createTimeseries(
-                  createTimeSeriesPlan.getPath().getFullPath(),
-                  createTimeSeriesPlan.getDataType(),
-                  createTimeSeriesPlan.getEncoding(),
-                  createTimeSeriesPlan.getCompressor(),
-                  createTimeSeriesPlan.getProps(),
-                  createTimeSeriesPlan.getTags(),
-                  createTimeSeriesPlan.getAttributes(),
-                  createTimeSeriesPlan.getAlias());
+              addBatchAndCheck(createTimeSeriesPlan);
               break;
             case CREATE_ALIGNED_TIMESERIES:
               CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
@@ -272,21 +306,27 @@ public class MLogLoader {
                   createAlignedTimeSeriesPlan.getEncodings(),
                   createAlignedTimeSeriesPlan.getCompressors(),
                   createAlignedTimeSeriesPlan.getAliasList());
+              successCnt++;
               break;
             case DELETE_TIMESERIES:
+              flushBuffer();
               session.deleteTimeseries(
                   plan.getPaths().stream()
                       .map(PartialPath::getFullPath)
                       .collect(Collectors.toList()));
+              successCnt++;
               break;
             case SET_STORAGE_GROUP:
               session.setStorageGroup(((SetStorageGroupPlan) plan).getPath().getFullPath());
+              successCnt++;
               break;
             case DELETE_STORAGE_GROUP:
+              flushBuffer();
               session.deleteStorageGroups(
                   plan.getPaths().stream()
                       .map(PartialPath::getFullPath)
                       .collect(Collectors.toList()));
+              successCnt++;
               break;
             case TTL:
               SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
@@ -298,19 +338,24 @@ public class MLogLoader {
                     String.format(
                         "set ttl to %s %d", setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL()));
               }
+              successCnt++;
               break;
             case CHANGE_ALIAS:
+              flushBuffer();
               ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
               session.executeNonQueryStatement(
                   String.format(
                       "ALTER timeseries %s UPSERT ALIAS=%s",
                       changeAliasPlan.getPath(), changeAliasPlan.getAlias()));
+              successCnt++;
               break;
             case CHANGE_TAG_OFFSET:
+              flushBuffer();
               if (tLogFile == null) {
-                logger.warn("No specify tlog.txt file to parse, skip ChangeTagOffsetPlan.");
+                skipCnt++;
               } else {
                 session.executeNonQueryStatement(genAlterTimeSeriesSQL((ChangeTagOffsetPlan) plan));
+                successCnt++;
               }
               break;
             case CREATE_TEMPLATE:
@@ -333,6 +378,7 @@ public class MLogLoader {
                   encodings,
                   compressors,
                   template.isDirectAligned());
+              successCnt++;
               break;
             case APPEND_TEMPLATE:
               AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
@@ -351,43 +397,59 @@ public class MLogLoader {
                     appendTemplatePlan.getEncodings(),
                     appendTemplatePlan.getCompressors());
               }
+              successCnt++;
               break;
             case PRUNE_TEMPLATE:
               PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
               session.deleteNodeInTemplate(
                   pruneTemplatePlan.getName(), pruneTemplatePlan.getPrunedMeasurements().get(0));
+              successCnt++;
               break;
             case SET_TEMPLATE:
+              flushBuffer();
               SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
               session.setSchemaTemplate(
                   setTemplatePlan.getTemplateName(), setTemplatePlan.getPrefixPath());
+              successCnt++;
               break;
             case UNSET_TEMPLATE:
               UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
               session.unsetSchemaTemplate(
                   unsetTemplatePlan.getPrefixPath(), unsetTemplatePlan.getTemplateName());
+              successCnt++;
               break;
             case DROP_TEMPLATE:
               session.dropSchemaTemplate(((DropTemplatePlan) plan).getName());
+              successCnt++;
               break;
             case ACTIVATE_TEMPLATE:
               session.createTimeseriesOfTemplateOnPath(
                   ((ActivateTemplatePlan) plan).getPrefixPath().getFullPath());
+              successCnt++;
               break;
             case DEACTIVATE_TEMPLATE:
               DeactivateTemplatePlan deactivateTemplatePlan = (DeactivateTemplatePlan) plan;
               session.deactivateTemplateOn(
                   deactivateTemplatePlan.getTemplateName(),
                   deactivateTemplatePlan.getPrefixPath().getFullPath());
+              successCnt++;
               break;
             default:
-              logger.warn("Skip load plan {}", plan);
+              // ignored unrecognizable command
           }
         } catch (Exception e) {
+          failedCnt++;
           logger.error("Fail to load plan {} because {}", plan, e.getMessage());
         }
       }
+      flushBuffer();
     } finally {
+      scheduledExecutorService.shutdown();
+      logger.info(
+          "MLog loading complete.{} entries loaded successfully, {} entries failed, and {} entries skipped.",
+          successCnt,
+          failedCnt,
+          skipCnt);
       if (tagManager != null) {
         tagManager.clear();
       }
@@ -395,8 +457,7 @@ public class MLogLoader {
     }
   }
 
-  private static void fillTagsAndOffset(CreateTimeSeriesPlan createTimeSeriesPlan)
-      throws IOException {
+  private void fillTagsAndOffset(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     if (tagManager == null) {
       tagManager = new TagManager();
       File file = new File(tLogFile);
@@ -408,8 +469,7 @@ public class MLogLoader {
     createTimeSeriesPlan.setAttributes(tagAndAttributePair.right);
   }
 
-  private static String genAlterTimeSeriesSQL(ChangeTagOffsetPlan changeTagOffsetPlan)
-      throws IOException {
+  private String genAlterTimeSeriesSQL(ChangeTagOffsetPlan changeTagOffsetPlan) throws IOException {
     if (tagManager == null) {
       tagManager = new TagManager();
       File file = new File(tLogFile);
@@ -441,5 +501,64 @@ public class MLogLoader {
       stringBuilder.append(")");
     }
     return stringBuilder.toString();
+  }
+
+  private void initBuffer() {
+    paths = new ArrayList<>();
+    dataTypes = new ArrayList<>();
+    encodings = new ArrayList<>();
+    compressors = new ArrayList<>();
+    alias = new ArrayList<>();
+    props = new ArrayList<>();
+    tags = new ArrayList<>();
+    attributes = new ArrayList<>();
+    batchNum = 0;
+    batchMem =
+        RamUsageEstimator.sizeOf(paths)
+            + RamUsageEstimator.sizeOf(dataTypes)
+            + RamUsageEstimator.sizeOf(encodings)
+            + RamUsageEstimator.sizeOf(compressors)
+            + RamUsageEstimator.sizeOf(alias)
+            + RamUsageEstimator.sizeOf(props)
+            + RamUsageEstimator.sizeOf(tags)
+            + RamUsageEstimator.sizeOf(attributes);
+  }
+
+  private void addBatchAndCheck(CreateTimeSeriesPlan plan)
+      throws IoTDBConnectionException, StatementExecutionException {
+    paths.add(plan.getPath().getFullPath());
+    dataTypes.add(plan.getDataType());
+    encodings.add(plan.getEncoding());
+    compressors.add(plan.getCompressor());
+    props.add(plan.getProps() == null ? Collections.emptyMap() : plan.getProps());
+    tags.add(plan.getTags() == null ? Collections.emptyMap() : plan.getTags());
+    attributes.add(plan.getAttributes() == null ? Collections.emptyMap() : plan.getAttributes());
+    alias.add(plan.getAlias() == null ? "" : plan.getAlias());
+    batchNum += 1;
+    batchMem +=
+        (RamUsageEstimator.sizeOf(plan.getPath().getFullPath())
+            + RamUsageEstimator.sizeOf(plan.getDataType())
+            + RamUsageEstimator.sizeOf(plan.getEncoding())
+            + RamUsageEstimator.sizeOf(plan.getCompressor())
+            + RamUsageEstimator.sizeOf(
+                plan.getProps() == null ? Collections.emptyMap() : plan.getProps())
+            + RamUsageEstimator.sizeOf(
+                plan.getTags() == null ? Collections.emptyMap() : plan.getTags())
+            + RamUsageEstimator.sizeOf(
+                plan.getAttributes() == null ? Collections.emptyMap() : plan.getAttributes())
+            + RamUsageEstimator.sizeOf(plan.getAlias() == null ? "" : plan.getAlias()));
+    if (batchNum >= BATCH_NUM_THRESHOLD || batchMem >= BATCH_MEM_THRESHOLD) {
+      flushBuffer();
+    }
+  }
+
+  private void flushBuffer() throws IoTDBConnectionException, StatementExecutionException {
+    if (batchNum > 0) {
+      logger.info("Flush buffer and CreateMultiTimeseries.");
+      session.createMultiTimeseries(
+          paths, dataTypes, encodings, compressors, props, tags, attributes, alias);
+      successCnt += batchNum;
+    }
+    initBuffer();
   }
 }

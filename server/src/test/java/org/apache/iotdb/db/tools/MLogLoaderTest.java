@@ -107,6 +107,12 @@ public class MLogLoaderTest {
     createTimeSeriesPlan3.setEncoding(TSEncoding.PLAIN);
     createTimeSeriesPlan3.setCompressor(CompressionType.GZIP);
     IoTDB.metaManager.createTimeseries(createTimeSeriesPlan3);
+    CreateTimeSeriesPlan createTimeSeriesPlan4 = new CreateTimeSeriesPlan();
+    createTimeSeriesPlan4.setPath(new PartialPath("root.sg1.device1.s4"));
+    createTimeSeriesPlan4.setDataType(TSDataType.DOUBLE);
+    createTimeSeriesPlan4.setEncoding(TSEncoding.PLAIN);
+    createTimeSeriesPlan4.setCompressor(CompressionType.GZIP);
+    IoTDB.metaManager.createTimeseries(createTimeSeriesPlan4);
     IoTDB.metaManager.createAlignedTimeSeries(
         new PartialPath("root.laptop.d1.aligned_device"),
         Arrays.asList("s3", "s4", "s5"),

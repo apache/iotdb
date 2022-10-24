@@ -87,6 +87,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -2192,6 +2193,17 @@ public class TSServiceImpl implements TSIService.Iface {
     } catch (Exception e) {
       return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
     }
+  }
+
+  @Override
+  public TSBackupConfigurationResp getBackupConfiguration() {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    TSBackupConfigurationResp syncConf =
+        new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    syncConf.setEnableOperationSync(conf.isEnableOperationSync());
+    syncConf.setSecondaryAddress(conf.getSecondaryAddress());
+    syncConf.setSecondaryPort(conf.getSecondaryPort());
+    return syncConf;
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
