@@ -97,7 +97,8 @@ public abstract class IClientSession {
   }
 
   public String toString() {
-    return String.format("%d-%s:%d", getId(), getClientAddress(), getClientPort());
+    return String.format(
+        "%d-%s:%s:%d", getId(), getUsername(), getClientAddress(), getClientPort());
   }
 
   /**

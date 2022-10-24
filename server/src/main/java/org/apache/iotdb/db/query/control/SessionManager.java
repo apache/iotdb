@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Session Manager is for mananging active sessions. It will be used by both Thrift based services
@@ -43,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * However, Mqtt based service use message-thread model, i.e, each message has a short thread. So,
  * we can not use threadLocal for such services.
  */
-public class SessionManager {
+public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
 
   // When the client abnormally exits, we can still know who to disconnect
@@ -61,8 +63,6 @@ public class SessionManager {
   // The statementId is unique in one IoTDB instance.
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
-  // (sessionId -> Set(statementId))
-  //  private final Map<IClientSession, Set<Long>> sessionToStatementId = new ConcurrentHashMap<>();
   // (statementId -> Set(queryId))
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
@@ -70,6 +70,10 @@ public class SessionManager {
 
   protected SessionManager() {
     // singleton
+    String mbeanName =
+        String.format(
+            "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "RpcSession");
+    JMXService.registerMBean(this, mbeanName);
   }
 
   /**
@@ -253,6 +257,11 @@ public class SessionManager {
 
   public static SessionManager getInstance() {
     return SessionManagerHelper.INSTANCE;
+  }
+
+  @Override
+  public Set<String> getAllRpcClients() {
+    return this.sessions.keySet().stream().map(x -> x.toString()).collect(Collectors.toSet());
   }
 
   private static class SessionManagerHelper {
