@@ -41,8 +41,8 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
@@ -1093,13 +1093,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus createFunction(TCreateFunctionRequest request) {
     try {
-      UDFRegistrationService.getInstance()
-          .register(
-              request.getUdfName(),
-              request.getClassName(),
-              request.getUris(),
-              UDFExecutableManager.getInstance(),
-              true);
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(request.getUdfName(), request.getClassName()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -1110,7 +1105,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropFunction(TDropFunctionRequest request) {
     try {
-      UDFRegistrationService.getInstance().deregister(request.getUdfName());
+      UDFManagementService.getInstance().deregister(request.getUdfName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

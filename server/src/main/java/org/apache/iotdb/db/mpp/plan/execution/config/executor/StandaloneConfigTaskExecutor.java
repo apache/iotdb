@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -205,8 +205,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       String udfName, String className, List<String> uris) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFRegistrationService.getInstance()
-          .register(udfName, className, uris, UDFExecutableManager.getInstance(), true);
+      UDFManagementService.getInstance().register(new UDFInformation(udfName, className));
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
@@ -224,7 +223,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFRegistrationService.getInstance().deregister(udfName);
+      UDFManagementService.getInstance().deregister(udfName);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
