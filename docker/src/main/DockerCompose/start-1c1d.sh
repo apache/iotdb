@@ -18,4 +18,5 @@
 # under the License.
 #
 ./start-confignode.sh &
+sleep 10
 ./start-datanode.sh &
