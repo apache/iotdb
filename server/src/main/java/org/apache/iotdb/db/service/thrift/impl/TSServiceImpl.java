@@ -77,6 +77,7 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -783,7 +784,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
-
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_QUERY, req.getStatement());
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,

@@ -891,6 +891,13 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_query_fetch_size", String.valueOf(conf.getSchemaQueryFetchSize()))));
 
+    conf.setAuditLogStorage(properties.getProperty("audit_log_storage", conf.getAuditLogStorage()));
+
+    conf.setEnableAuditLogWrite(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auditLog_write", String.valueOf(conf.isEnableAuditLogWrite()))));
+
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()

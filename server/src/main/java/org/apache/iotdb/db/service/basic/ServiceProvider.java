@@ -42,6 +42,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -181,6 +182,7 @@ public abstract class ServiceProvider {
     String loginMessage = null;
     try {
       status = authorizer.login(username, password);
+
     } catch (AuthException e) {
       LOGGER.info("meet error while logging in.", e);
       status = false;
@@ -218,6 +220,7 @@ public abstract class ServiceProvider {
     }
 
     SessionTimeoutManager.getInstance().register(sessionId);
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGIN, "user login");
     return openSessionResp.sessionId(sessionId);
   }
 
@@ -231,6 +234,7 @@ public abstract class ServiceProvider {
   public boolean closeSession(long sessionId) {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGOUT, "user logout");
     SESSION_MANAGER.removeCurrSessionId();
 
     return SessionTimeoutManager.getInstance().unregister(sessionId);
