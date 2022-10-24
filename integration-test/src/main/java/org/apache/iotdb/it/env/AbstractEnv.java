@@ -479,4 +479,10 @@ public abstract class AbstractEnv implements BaseEnv {
   public void shutdownDataNode(int index) {
     dataNodeWrapperList.get(index).stop();
   }
+
+  @Override
+  public int getMqttPort() {
+    int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
+    return dataNodeWrapperList.get(randomIndex).getMqttPort();
+  }
 }

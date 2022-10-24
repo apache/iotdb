@@ -356,7 +356,6 @@ public class ClusterAlertingExample implements Trigger {
     }
     return true;
   }
-  }
 }
 ```
 

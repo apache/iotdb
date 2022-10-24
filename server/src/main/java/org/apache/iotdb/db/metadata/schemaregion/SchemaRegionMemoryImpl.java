@@ -51,6 +51,7 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -68,8 +69,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
@@ -120,8 +124,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -171,8 +173,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
-
-  private int templateId = NON_TEMPLATE;
 
   // the log file writer
   private boolean usingMLog = true;
@@ -240,8 +240,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (initialized) {
       return;
     }
-
-    templateId = NON_TEMPLATE;
 
     initDir();
 
@@ -403,8 +401,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void clear() {
     try {
-
-      templateId = NON_TEMPLATE;
 
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
@@ -2069,13 +2065,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     try {
-      if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
-        templateId = plan.getTemplateId();
-      }
-
       getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
-      mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
+      mtree.activateTemplate(plan.getActivatePath(), template);
       writeToMLog(plan);
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
@@ -2084,21 +2076,71 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverActivatingSchemaTemplate(IActivateTemplateInClusterPlan plan) {
-    if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
-      templateId = plan.getTemplateId();
-    }
     mtree.activateTemplateWithoutCheck(
-        plan.getActivatePath(), plan.getTemplateSetLevel(), plan.getTemplateId(), plan.isAligned());
+        plan.getActivatePath(), plan.getTemplateId(), plan.isAligned());
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
-    if (this.templateId != NON_TEMPLATE
-        && templateId != ALL_TEMPLATE
-        && this.templateId != templateId) {
-      return Collections.emptyList();
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    return mtree.getPathsUsingTemplate(pathPattern, templateId);
+  }
+
+  @Override
+  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    int preDeactivateNum = 0;
+    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      for (IEntityMNode entityMNode :
+          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
+        entityMNode.preDeactivateTemplate();
+        preDeactivateNum++;
+        try {
+          writeToMLog(plan);
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
     }
-    return mtree.getPathsUsingTemplate(templateId);
+    return preDeactivateNum;
+  }
+
+  @Override
+  public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      for (IEntityMNode entityMNode :
+          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        if (!entityMNode.isPreDeactivateTemplate()) {
+          continue;
+        }
+        entityMNode.rollbackPreDeactivateTemplate();
+        try {
+          writeToMLog(plan);
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      for (IEntityMNode entityMNode :
+          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        entityMNode.deactivateTemplate();
+        mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
+        try {
+          writeToMLog(plan);
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   // endregion
@@ -2274,6 +2316,40 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         IActivateTemplatePlan activateTemplatePlan, SchemaRegionMemoryImpl context) {
       try {
         setUsingSchemaTemplate(activateTemplatePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, SchemaRegionMemoryImpl context) {
+      try {
+        constructSchemaBlackListWithTemplate(preDeactivateTemplatePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        SchemaRegionMemoryImpl context) {
+      try {
+        rollbackSchemaBlackListWithTemplate(rollbackPreDeactivateTemplatePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, SchemaRegionMemoryImpl context) {
+      try {
+        deactivateTemplateInBlackList(deactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);

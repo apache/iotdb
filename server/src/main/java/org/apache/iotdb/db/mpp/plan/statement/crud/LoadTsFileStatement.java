@@ -103,6 +103,10 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = verifySchema;
   }
 
+  public void setAutoCreateSchema(boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
+  }
+
   public boolean isVerifySchema() {
     return verifySchema;
   }

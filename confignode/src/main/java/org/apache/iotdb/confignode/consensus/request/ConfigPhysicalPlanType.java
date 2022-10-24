@@ -97,5 +97,6 @@ public enum ConfigPhysicalPlanType {
   UpdateTriggersOnTransferNodes,
   UpdateTriggerLocation,
   GetTransferringTriggers,
-  GetTriggerLocation
+  GetTriggerLocation,
+  GetTemplateSetInfo
 }

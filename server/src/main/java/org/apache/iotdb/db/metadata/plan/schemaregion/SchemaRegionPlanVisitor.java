@@ -26,8 +26,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
@@ -86,5 +89,19 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
 
   public R visitUnsetTemplate(IUnsetTemplatePlan unsetTemplatePlan, C context) {
     return visitSchemaRegionPlan(unsetTemplatePlan, context);
+  }
+
+  public R visitPreDeactivateTemplate(
+      IPreDeactivateTemplatePlan preDeactivateTemplatePlan, C context) {
+    return visitSchemaRegionPlan(preDeactivateTemplatePlan, context);
+  }
+
+  public R visitRollbackPreDeactivateTemplate(
+      IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, C context) {
+    return visitSchemaRegionPlan(rollbackPreDeactivateTemplatePlan, context);
+  }
+
+  public R visitDeactivateTemplate(IDeactivateTemplatePlan deactivateTemplatePlan, C context) {
+    return visitSchemaRegionPlan(deactivateTemplatePlan, context);
   }
 }

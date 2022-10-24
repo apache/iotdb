@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -408,5 +409,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitGetTimeSlotList(GetTimeSlotListStatement getTimeSlotListStatement, C context) {
     return visitStatement(getTimeSlotListStatement, context);
+  }
+
+  public R visitDeactivateTemplate(
+      DeactivateTemplateStatement deactivateTemplateStatement, C context) {
+    return visitStatement(deactivateTemplateStatement, context);
   }
 }
