@@ -16,23 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.lsm.annotation;
 
-import org.apache.iotdb.lsm.context.FlushRequestContext;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/** indicates the flush method of each layer of memory nodes */
-public abstract class FlushLevelProcess<I, O>
-    extends BasicLevelProcess<I, O, Object, FlushRequestContext> {
-
-  /**
-   * the flush method of memory node
-   *
-   * @param memNode memory node
-   * @param context flush request context
-   */
-  public abstract void flush(I memNode, FlushRequestContext context);
-
-  public void handle(I memNode, Object request, FlushRequestContext context) {
-    flush(memNode, context);
-  }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface QueryProcessor {
+  // level of the levelProcessor
+  int level() default -1;
 }

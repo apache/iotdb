@@ -16,24 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.lsm.annotation;
 
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/** indicates the deletion method of each layer of memory nodes */
-public abstract class DeleteLevelProcess<I, O, R>
-    extends BasicLevelProcess<I, O, R, DeleteRequestContext> {
-
-  /**
-   * the deletion method of memory node
-   *
-   * @param memNode memory node
-   * @param context deletion request context
-   */
-  public abstract void delete(I memNode, R request, DeleteRequestContext context);
-
-  @Override
-  public void handle(I memNode, R request, DeleteRequestContext context) {
-    delete(memNode, request, context);
-  }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface DeletionProcessor {
+  // level of the levelProcess
+  int level() default -1;
 }

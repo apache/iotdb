@@ -20,15 +20,15 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.lsm.annotation.InsertionProcess;
+import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
+import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
 import java.util.List;
 
 /** insertion for MemChunk */
-@InsertionProcess(level = 3)
-public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object, InsertionRequest> {
+@InsertionProcessor(level = 3)
+public class MemChunkInsertion extends InsertLevelProcessor<MemChunk, Object, InsertionRequest> {
 
   /**
    * MemChunk is the last layer of memory nodes, no children

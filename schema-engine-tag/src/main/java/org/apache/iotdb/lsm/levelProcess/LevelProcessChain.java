@@ -24,9 +24,9 @@ import org.apache.iotdb.lsm.request.IRequest;
 public class LevelProcessChain<T, R extends IRequest, C extends RequestContext> {
 
   // the level process of the first layer of memory nodes
-  ILevelProcess<T, ?, R, C> headLevelProcess;
+  ILevelProcessor<T, ?, R, C> headLevelProcess;
 
-  public <O> ILevelProcess<T, O, R, C> nextLevel(ILevelProcess<T, O, R, C> next) {
+  public <O> ILevelProcessor<T, O, R, C> nextLevel(ILevelProcessor<T, O, R, C> next) {
     this.headLevelProcess = next;
     return next;
   }

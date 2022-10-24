@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.lsm.annotation.QueryProcess;
+import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
-import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
+import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Set;
 
 /** query for MemTable */
-@QueryProcess(level = 1)
-public class MemTableQuery extends QueryLevelProcess<MemTable, MemChunkGroup, QueryRequest> {
+@QueryProcessor(level = 1)
+public class MemTableQuery extends QueryLevelProcessor<MemTable, MemChunkGroup, QueryRequest> {
 
   /**
    * get all MemChunkGroups that need to be processed in the current MemTable

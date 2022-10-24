@@ -23,7 +23,7 @@ import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.context.RequestContext;
-import org.apache.iotdb.lsm.levelProcess.ILevelProcess;
+import org.apache.iotdb.lsm.levelProcess.ILevelProcessor;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.property.Property;
@@ -89,7 +89,7 @@ public class LSMEngineDirector<T> {
     LevelProcessChain<T, R, C> levelProcessChain = new LevelProcessChain<>();
     try {
       if (levelProcessClassNames.size() > 0) {
-        ILevelProcess iLevelProcess =
+        ILevelProcessor iLevelProcess =
             levelProcessChain.nextLevel(generateLevelProcess(levelProcessClassNames.get(0)));
         for (int i = 1; i < levelProcessClassNames.size(); i++) {
           iLevelProcess =
@@ -103,12 +103,12 @@ public class LSMEngineDirector<T> {
   }
 
   private <O, R extends IRequest, C extends RequestContext>
-      ILevelProcess<T, O, R, C> generateLevelProcess(String className)
+      ILevelProcessor<T, O, R, C> generateLevelProcess(String className)
           throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
               InstantiationException, IllegalAccessException {
     Class c = Class.forName(className);
-    ILevelProcess<T, O, R, C> result =
-        (ILevelProcess<T, O, R, C>) c.getDeclaredConstructor().newInstance();
+    ILevelProcessor<T, O, R, C> result =
+        (ILevelProcessor<T, O, R, C>) c.getDeclaredConstructor().newInstance();
     return result;
   }
 }

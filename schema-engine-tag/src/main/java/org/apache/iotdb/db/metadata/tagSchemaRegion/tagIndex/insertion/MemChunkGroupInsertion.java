@@ -21,17 +21,17 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.lsm.annotation.InsertionProcess;
+import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
+import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** insertion for MemChunkGroup */
-@InsertionProcess(level = 2)
+@InsertionProcessor(level = 2)
 public class MemChunkGroupInsertion
-    extends InsertLevelProcess<MemChunkGroup, MemChunk, InsertionRequest> {
+    extends InsertLevelProcessor<MemChunkGroup, MemChunk, InsertionRequest> {
 
   /**
    * get all MemChunks that need to be processed in the current MemChunkGroup

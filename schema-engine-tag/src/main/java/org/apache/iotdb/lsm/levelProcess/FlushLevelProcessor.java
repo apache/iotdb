@@ -18,24 +18,21 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.FlushRequestContext;
 
-/** the processing method corresponding to each layer of memory nodes */
-public interface ILevelProcess<I, O, R, C extends RequestContext> {
-
-  /**
-   * add the LevelProcess of the next layer of memory nodes
-   *
-   * @param next LevelProcess of the next layer
-   * @return LevelProcess of the next layer
-   */
-  <T> ILevelProcess<O, T, R, C> nextLevel(ILevelProcess<O, T, R, C> next);
+/** indicates the flush method of each layer of memory nodes */
+public abstract class FlushLevelProcessor<I, O>
+    extends BasicLevelProcessor<I, O, Object, FlushRequestContext> {
 
   /**
-   * use this method to process memory nodes at each layer according to the access strategy
+   * the flush method of memory node
    *
    * @param memNode memory node
-   * @param context request context
+   * @param context flush request context
    */
-  void process(I memNode, R request, C context);
+  public abstract void flush(I memNode, FlushRequestContext context);
+
+  public void handle(I memNode, Object request, FlushRequestContext context) {
+    flush(memNode, context);
+  }
 }

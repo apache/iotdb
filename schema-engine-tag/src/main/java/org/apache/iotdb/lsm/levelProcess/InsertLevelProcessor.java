@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
 
-/** indicates the query method of each layer of memory nodes */
-public abstract class QueryLevelProcess<I, O, R>
-    extends BasicLevelProcess<I, O, R, QueryRequestContext> {
+/** indicates the insertion method of each layer of memory nodes */
+public abstract class InsertLevelProcessor<I, O, R>
+    extends BasicLevelProcessor<I, O, R, InsertRequestContext> {
 
   /**
-   * the query method of memory node
+   * the insertion method of memory node
    *
    * @param memNode memory node
-   * @param context query request context
+   * @param context insertion request context
    */
-  public abstract void query(I memNode, R request, QueryRequestContext context);
+  public abstract void insert(I memNode, R request, InsertRequestContext context);
 
   @Override
-  public void handle(I memNode, R request, QueryRequestContext context) {
-    query(memNode, request, context);
+  public void handle(I memNode, R request, InsertRequestContext context) {
+    insert(memNode, request, context);
   }
 }

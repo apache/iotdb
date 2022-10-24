@@ -21,16 +21,16 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
-import org.apache.iotdb.lsm.annotation.DeletionProcess;
+import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
-import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcess;
+import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@DeletionProcess(level = 0)
+@DeletionProcessor(level = 0)
 public class MemTableGroupDeletion
-    extends DeleteLevelProcess<MemTableGroup, MemTable, DeletionRequest> {
+    extends DeleteLevelProcessor<MemTableGroup, MemTable, DeletionRequest> {
   @Override
   public List<MemTable> getChildren(
       MemTableGroup memNode, DeletionRequest request, DeleteRequestContext context) {

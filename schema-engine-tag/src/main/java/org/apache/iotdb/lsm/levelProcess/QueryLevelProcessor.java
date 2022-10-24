@@ -16,16 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.annotation;
+package org.apache.iotdb.lsm.levelProcess;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface InsertionProcess {
-  // level of the levelProcess
-  int level() default -1;
+/** indicates the query method of each layer of memory nodes */
+public abstract class QueryLevelProcessor<I, O, R>
+    extends BasicLevelProcessor<I, O, R, QueryRequestContext> {
+
+  /**
+   * the query method of memory node
+   *
+   * @param memNode memory node
+   * @param context query request context
+   */
+  public abstract void query(I memNode, R request, QueryRequestContext context);
+
+  @Override
+  public void handle(I memNode, R request, QueryRequestContext context) {
+    query(memNode, request, context);
+  }
 }

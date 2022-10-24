@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface DeletionProcess {
+public @interface InsertionProcessor {
   // level of the levelProcess
   int level() default -1;
 }

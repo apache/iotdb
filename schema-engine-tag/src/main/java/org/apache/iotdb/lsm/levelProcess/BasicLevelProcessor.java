@@ -23,11 +23,11 @@ import org.apache.iotdb.lsm.context.RequestContext;
 import java.util.List;
 
 /** the processing method corresponding to each layer of memory nodes */
-public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
-    implements ILevelProcess<I, O, R, C> {
+public abstract class BasicLevelProcessor<I, O, R, C extends RequestContext>
+    implements ILevelProcessor<I, O, R, C> {
 
   // the next level process
-  ILevelProcess<O, ?, R, C> next;
+  ILevelProcessor<O, ?, R, C> next;
 
   /**
    * process the current layer memory node
@@ -53,7 +53,7 @@ public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
    * @return the next level process
    */
   @Override
-  public <T> ILevelProcess<O, T, R, C> nextLevel(ILevelProcess<O, T, R, C> next) {
+  public <T> ILevelProcessor<O, T, R, C> nextLevel(ILevelProcessor<O, T, R, C> next) {
     this.next = next;
     return next;
   }
@@ -73,7 +73,7 @@ public abstract class BasicLevelProcess<I, O, R, C extends RequestContext>
     return next != null;
   }
 
-  public ILevelProcess<O, ?, R, C> getNext() {
+  public ILevelProcessor<O, ?, R, C> getNext() {
     return next;
   }
 }

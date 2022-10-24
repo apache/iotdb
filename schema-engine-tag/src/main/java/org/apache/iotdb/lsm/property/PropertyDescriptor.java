@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.lsm.property;
 
-import org.apache.iotdb.lsm.annotation.DeletionProcess;
-import org.apache.iotdb.lsm.annotation.InsertionProcess;
-import org.apache.iotdb.lsm.annotation.QueryProcess;
+import org.apache.iotdb.lsm.annotation.DeletionProcessor;
+import org.apache.iotdb.lsm.annotation.InsertionProcessor;
+import org.apache.iotdb.lsm.annotation.QueryProcessor;
 
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -45,60 +46,46 @@ public class PropertyDescriptor {
     return property;
   }
 
-  private static void setInsertionLevelProcess(Property property, Reflections reflections)
-      throws Exception {
-    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(InsertionProcess.class);
+  private static void setInsertionLevelProcess(Property property, Reflections reflections) {
+    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(InsertionProcessor.class);
     List<String> levelProcessClass = new ArrayList<>();
     for (Class<?> clz : annotated) {
-      InsertionProcess annotationInfo = clz.getAnnotation(InsertionProcess.class);
-      int level = annotationInfo.level();
-      if (level < levelProcessClass.size()) {
-        levelProcessClass.set(level, clz.getName());
-      } else {
-        for (int i = levelProcessClass.size(); i < level; i++) {
-          levelProcessClass.add("");
-        }
-        levelProcessClass.add(clz.getName());
-      }
+      InsertionProcessor annotationInfo = clz.getAnnotation(InsertionProcessor.class);
+      setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
     property.setInsertionLevelProcessClass(levelProcessClass);
   }
 
-  private static void setDeletionLevelProcess(Property property, Reflections reflections)
-      throws Exception {
-    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(DeletionProcess.class);
+  private static void setDeletionLevelProcess(Property property, Reflections reflections) {
+    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(DeletionProcessor.class);
     List<String> levelProcessClass = new ArrayList<>();
     for (Class<?> clz : annotated) {
-      DeletionProcess annotationInfo = clz.getAnnotation(DeletionProcess.class);
-      int level = annotationInfo.level();
-      if (level < levelProcessClass.size()) {
-        levelProcessClass.set(level, clz.getName());
-      } else {
-        for (int i = levelProcessClass.size(); i < level; i++) {
-          levelProcessClass.add("");
-        }
-        levelProcessClass.add(clz.getName());
-      }
+      DeletionProcessor annotationInfo = clz.getAnnotation(DeletionProcessor.class);
+      setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
     property.setDeletionLevelProcessClass(levelProcessClass);
   }
 
-  private static void setQueryLevelProcess(Property property, Reflections reflections)
-      throws Exception {
+  private static <A extends Annotation> void setQueryLevelProcess(
+      Property property, Reflections reflections) {
     List<String> levelProcessClass = new ArrayList<>();
-    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(QueryProcess.class);
+    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(QueryProcessor.class);
     for (Class<?> clz : annotated) {
-      QueryProcess annotationInfo = clz.getAnnotation(QueryProcess.class);
-      int level = annotationInfo.level();
-      if (level < levelProcessClass.size()) {
-        levelProcessClass.set(level, clz.getName());
-      } else {
-        for (int i = levelProcessClass.size(); i < level; i++) {
-          levelProcessClass.add("");
-        }
-        levelProcessClass.add(clz.getName());
-      }
+      QueryProcessor annotationInfo = clz.getAnnotation(QueryProcessor.class);
+      setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
     property.setQueryLevelProcessClass(levelProcessClass);
+  }
+
+  private static <A extends Annotation> void setLevelProcessors(
+      List<String> levelProcessClass, Class<?> clz, int level) {
+    if (level < levelProcessClass.size()) {
+      levelProcessClass.set(level, clz.getName());
+    } else {
+      for (int i = levelProcessClass.size(); i < level; i++) {
+        levelProcessClass.add("");
+      }
+      levelProcessClass.add(clz.getName());
+    }
   }
 }

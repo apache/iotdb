@@ -21,15 +21,15 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
-import org.apache.iotdb.lsm.annotation.QueryProcess;
+import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.QueryRequestContext;
-import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
+import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@QueryProcess(level = 0)
-public class MemTableGroupQuery extends QueryLevelProcess<MemTableGroup, MemTable, QueryRequest> {
+@QueryProcessor(level = 0)
+public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTable, QueryRequest> {
   @Override
   public List<MemTable> getChildren(
       MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {
