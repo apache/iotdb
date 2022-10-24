@@ -478,6 +478,24 @@ public class AbstractCompactionTest {
     }
   }
 
+  protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
+    String fileName =
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + fileVersion
+            + "-0-0.tsfile";
+    String filePath;
+    if (isSeq) {
+      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+    } else {
+      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+    }
+    TsFileResource resource = new TsFileResource(new File(filePath));
+    resource.updatePlanIndexes(fileVersion++);
+    resource.setStatus(TsFileResourceStatus.CLOSED);
+    return resource;
+  }
+
   protected void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
