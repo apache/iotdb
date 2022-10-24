@@ -46,7 +46,7 @@ import java.util.Objects;
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
 
-public class IoTDBNonAlignJDBCResultSet extends OldAbstractIoTDBJDBCResultSet {
+public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";

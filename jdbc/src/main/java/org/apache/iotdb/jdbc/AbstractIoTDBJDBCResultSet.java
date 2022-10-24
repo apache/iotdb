@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.IoTDBJDBCDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -30,7 +30,6 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -56,7 +55,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
-  protected IoTDBRpcDataSet ioTDBRpcDataSet;
+  protected IoTDBJDBCDataSet ioTDBRpcDataSet;
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
   private List<String> sgColumns;
@@ -72,13 +71,12 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       String sql,
       long queryId,
       long sessionId,
-      List<ByteBuffer> queryResult,
       long timeout,
       List<String> sgColumns,
       BitSet aliasColumnMap)
       throws SQLException {
     this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
+        new IoTDBJDBCDataSet(
             sql,
             columnNameList,
             columnTypeList,
@@ -88,7 +86,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             ((IoTDBStatement) statement).getStmtId(),
             client,
             sessionId,
-            queryResult,
+            null,
             statement.getFetchSize(),
             timeout,
             sgColumns,
@@ -108,12 +106,11 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       String sql,
       long queryId,
       long sessionId,
-      List<ByteBuffer> queryResult,
       long timeout,
       boolean isRpcFetchResult)
       throws SQLException {
     this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
+        new IoTDBJDBCDataSet(
             sql,
             columnNameList,
             columnTypeList,
@@ -123,7 +120,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             ((IoTDBStatement) statement).getStmtId(),
             client,
             sessionId,
-            queryResult,
+            null,
             statement.getFetchSize(),
             timeout);
     this.statement = statement;
@@ -542,8 +539,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public int getRow() throws SQLException {
-    return ioTDBRpcDataSet.tsBlockSize;
-    //    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -712,21 +708,15 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if (ioTDBRpcDataSet.hasCachedBlock()) {
-      ioTDBRpcDataSet.constructOneRow();
-      return true;
-    }
-    if (ioTDBRpcDataSet.hasCachedByteBuffer()) {
-      ioTDBRpcDataSet.constructOneTsBlock();
-      ioTDBRpcDataSet.constructOneRow();
+    if (hasCachedResults()) {
+      constructOneRow();
       return true;
     }
     if (ioTDBRpcDataSet.emptyResultSet) {
       return false;
     }
-    if (isRpcFetchResult && fetchResults() && ioTDBRpcDataSet.hasCachedByteBuffer()) {
-      ioTDBRpcDataSet.constructOneRow();
-      ioTDBRpcDataSet.constructOneTsBlock();
+    if (isRpcFetchResult && fetchResults()) {
+      constructOneRow();
       return true;
     }
     return false;
