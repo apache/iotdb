@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
@@ -613,7 +614,8 @@ public class StatementGenerator {
       case SHOW_SET_TEMPLATES:
         return new ShowPathSetTemplateStatement(req.getName());
       case SHOW_USING_TEMPLATES:
-        return new ShowPathsUsingTemplateStatement(req.getName());
+        return new ShowPathsUsingTemplateStatement(
+            new PartialPath(SQLConstant.getSingleRootArray()), req.getName());
       default:
         return null;
     }

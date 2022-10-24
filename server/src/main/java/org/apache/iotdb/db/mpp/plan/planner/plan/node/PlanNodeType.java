@@ -40,9 +40,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -140,7 +143,10 @@ public enum PlanNodeType {
   LOAD_TSFILE((short) 55),
   CONSTRUCT_SCHEMA_BLACK_LIST_NODE((short) 56),
   ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57),
-  GROUP_BY_TAG((short) 58);
+  GROUP_BY_TAG((short) 58),
+  PRE_DEACTIVATE_TEMPLATE_NODE((short) 59),
+  ROLLBACK_PRE_DEACTIVATE_TEMPLATE_NODE((short) 60),
+  DEACTIVATE_TEMPLATE_NODE((short) 61);
 
   public static final int BYTES = Short.BYTES;
 
@@ -307,6 +313,12 @@ public enum PlanNodeType {
         return RollbackSchemaBlackListNode.deserialize(buffer);
       case 58:
         return GroupByTagNode.deserialize(buffer);
+      case 59:
+        return PreDeactivateTemplateNode.deserialize(buffer);
+      case 60:
+        return RollbackPreDeactivateTemplateNode.deserialize(buffer);
+      case 61:
+        return DeactivateTemplateNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
