@@ -220,10 +220,10 @@ public class IoTDBUDFManagementIT {
       statement.execute("drop function udf");
 
       try {
+        // drop UDF that does not exist will not throw exception now.
         statement.execute("drop function udf");
-        fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("does not exist"));
+        fail();
       }
     }
   }
@@ -232,10 +232,10 @@ public class IoTDBUDFManagementIT {
   public void testDropFunction2() { // drop
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // drop UDF that does not exist will not throw exception now.
       statement.execute("drop function udf");
-      fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("does not exist"));
+      fail();
     }
   }
 

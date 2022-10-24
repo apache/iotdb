@@ -46,7 +46,13 @@ public class InternalMNode extends MNode {
   @SuppressWarnings("squid:S3077")
   protected transient volatile IMNodeContainer children = null;
 
-  // schema template
+  /**
+   * This field is mainly used in cluster schema template features. In InternalMNode of ConfigMTree,
+   * this field represents the template set on this node. In EntityMNode of MTree in SchemaRegion,
+   * this field represents the template activated on this node. The value range is [0,
+   * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
+   * NON_TEMPLATE
+   */
   protected int schemaTemplateId = NON_TEMPLATE;
 
   protected Template schemaTemplate = null;
