@@ -756,23 +756,102 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    int preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
+        // Given pathPatterns may match one timeseries multi times, which may results in the
+        // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
+        // purpose is to check whether there's timeseries to be deleted.
+        try {
+          preDeletedNum++;
+          measurementMNode.setPreDeleted(true);
+          mtree.updateMNode(measurementMNode);
+          if (!isRecovering) {
+            logWriter.write(
+                SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+                    measurementMNode.getPartialPath()));
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        } finally {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
+    }
+    return preDeletedNum;
   }
 
   @Override
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
+        try {
+          measurementMNode.setPreDeleted(false);
+          mtree.updateMNode(measurementMNode);
+          if (!isRecovering) {
+            logWriter.write(
+                SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
+                    measurementMNode.getPartialPath()));
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        } finally {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
+    }
   }
 
   @Override
   public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeseries(pathPattern)) {
+        deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
+      }
+    }
+    return deviceBasedPathPatternSet;
   }
 
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          if (!isRecovering) {
+            logWriter.write(
+                SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  private void deleteSingleTimeseriesInBlackList(PartialPath path)
+      throws MetadataException, IOException {
+    Pair<PartialPath, IMeasurementMNode> pair =
+        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+
+    IMeasurementMNode measurementMNode = pair.right;
+    removeFromTagInvertedIndex(measurementMNode);
+
+    IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return;
+    }
+
+    mNodeCache.invalidate(node.getPartialPath());
+
+    schemaStatisticsManager.deleteTimeseries(1);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(1);
+    }
   }
 
   /**

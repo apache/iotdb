@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -45,6 +46,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -227,5 +229,88 @@ public abstract class SchemaRegionBasicTest {
     Assert.assertTrue(res3.get(0) instanceof MeasurementAlreadyExistException);
     Assert.assertTrue(res3.get(1) instanceof AliasAlreadyExistException);
     Assert.assertTrue(res3.get(2) instanceof PathAlreadyExistException);
+  }
+
+  @Test
+  public void testConstructSchemaBlackList() throws Exception {
+    PartialPath storageGroup = new PartialPath("root.sg");
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
+    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    schemaRegion.createTimeseries(
+        new CreateTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf01.wt01.status"),
+            TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+    schemaRegion.createTimeseries(
+        new CreateTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf01.wt02.status"),
+            TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+    schemaRegion.createTimeseries(
+        new CreateTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf01.wt01.temperature"),
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+    schemaRegion.createTimeseries(
+        new CreateTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf02.wt01.temperature"),
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.*"));
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf01.*.status"));
+    patternTree.appendPathPattern(new PartialPath("root.sg.wf02.wt01.temperature"));
+    patternTree.constructTree();
+    Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree) >= 3);
+    Assert.assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt02.status"),
+                new PartialPath("root.sg.wf01.wt01.status"),
+                    new PartialPath("root.sg.wf02.wt01.temperature"))),
+        schemaRegion.fetchSchemaBlackList(patternTree));
+    PathPatternTree rollbackTree = new PathPatternTree();
+    rollbackTree.appendPathPattern(new PartialPath("root.sg.wf02.wt01.temperature"));
+    rollbackTree.constructTree();
+    schemaRegion.rollbackSchemaBlackList(rollbackTree);
+    Assert.assertEquals(
+            new HashSet<>(
+                    Arrays.asList(
+                            new PartialPath("root.sg.wf01.wt01.*"),
+                            new PartialPath("root.sg.wf01.wt02.status"),
+                            new PartialPath("root.sg.wf01.wt01.status"))),
+            schemaRegion.fetchSchemaBlackList(patternTree));
+    schemaRegion.deleteTimeseriesInBlackList(patternTree);
+    List<MeasurementPath> schemas =
+            schemaRegion.fetchSchema(
+                    new PartialPath("root.**"), Collections.EMPTY_MAP, false);
+    Assert.assertEquals( 1,schemas.size());
+    Assert.assertEquals("root.sg.wf02.wt01.temperature",schemas.get(0).getFullPath());
   }
 }
