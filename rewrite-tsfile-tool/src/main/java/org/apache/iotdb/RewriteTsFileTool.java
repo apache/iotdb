@@ -412,11 +412,7 @@ public class RewriteTsFileTool {
                 tablet.timestamps[tablet.rowSize] = timeForAlignedSeries.get(i);
                 TsPrimitiveType[] values = new TsPrimitiveType[valueForAlignedSeries.size()];
                 for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
-                  if (valueForAlignedSeries.get(j).size() < i) {
-                    values[j] = valueForAlignedSeries.get(j).get(i);
-                  } else {
-                    values[j] = null;
-                  }
+                  values[j] = valueForAlignedSeries.get(j).get(i);
                 }
                 tablet.values[tablet.rowSize++] = values;
                 if (tablet.rowSize >= MAX_TABLET_LENGTH) {
