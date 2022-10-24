@@ -77,8 +77,7 @@ public class PropertyDescriptor {
     property.setQueryLevelProcessClass(levelProcessClass);
   }
 
-  private static <A extends Annotation> void setLevelProcessors(
-      List<String> levelProcessClass, Class<?> clz, int level) {
+  private static void setLevelProcessors(List<String> levelProcessClass, Class<?> clz, int level) {
     if (level < levelProcessClass.size()) {
       levelProcessClass.set(level, clz.getName());
     } else {

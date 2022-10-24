@@ -24,10 +24,16 @@ import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 /** Manage wal entry writes and reads */
 public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
+
   private static final int INSERT = 1;
 
   private static final int DELETE = 2;
@@ -53,17 +59,21 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @throws IOException
    */
   @Override
-  public synchronized void write(IRequest request) throws IOException {
+  public synchronized void write(IRequest request) {
     if (isRecover()) return;
-    switch (request.getRequestType()) {
-      case INSERT:
-        process((InsertionRequest) request);
-        break;
-      case DELETE:
-        process((DeletionRequest) request);
-        break;
-      default:
-        break;
+    try {
+      switch (request.getRequestType()) {
+        case INSERT:
+          process((InsertionRequest) request);
+          break;
+        case DELETE:
+          process((DeletionRequest) request);
+          break;
+        default:
+          break;
+      }
+    } catch (IOException e) {
+      logger.error(e.getMessage());
     }
   }
 

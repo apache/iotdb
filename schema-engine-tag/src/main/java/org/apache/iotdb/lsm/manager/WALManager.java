@@ -74,7 +74,7 @@ public abstract class WALManager {
    * @param request request context
    * @throws IOException
    */
-  public abstract void write(IRequest request) throws IOException;
+  public abstract void write(IRequest request);
 
   /**
    * for recover

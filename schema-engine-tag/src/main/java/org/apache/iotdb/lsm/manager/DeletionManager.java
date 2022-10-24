@@ -40,10 +40,10 @@ public class DeletionManager<T, R extends IDeletionIRequest>
    * @throws Exception
    */
   @Override
-  public void preProcess(T root, R deletionRequest, DeleteRequestContext context) throws Exception {
+  public void preProcess(T root, R deletionRequest, DeleteRequestContext context) {
     walManager.write(deletionRequest);
   }
 
   @Override
-  public void postProcess(T root, R request, DeleteRequestContext context) throws Exception {}
+  public void postProcess(T root, R request, DeleteRequestContext context) {}
 }

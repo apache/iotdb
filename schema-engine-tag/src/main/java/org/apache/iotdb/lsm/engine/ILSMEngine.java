@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.lsm.engine;
 
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
-import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.lsm.request.IDeletionIRequest;
 import org.apache.iotdb.lsm.request.IInsertionIRequest;
 import org.apache.iotdb.lsm.request.IQueryIRequest;
@@ -29,24 +27,14 @@ import java.io.IOException;
 
 public interface ILSMEngine {
 
-  <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest) throws Exception;
+  <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest);
 
-  <K, V, R> void insert(
-      IInsertionIRequest<K, V, R> insertionRequest, InsertRequestContext insertRequestContext)
-      throws Exception;
+  <K, R> void query(IQueryIRequest<K, R> queryRequest);
 
-  <K, R> void query(IQueryIRequest<K, R> queryRequest) throws Exception;
+  <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest);
 
-  <K, R> void query(IQueryIRequest<K, R> queryRequest, QueryRequestContext queryRequestContext)
-      throws Exception;
+  void recover();
 
-  <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest) throws Exception;
-
-  <K, V, R> void delete(
-      IDeletionIRequest<K, V, R> deletionRequest, DeleteRequestContext deleteRequestContext)
-      throws Exception;
-
-  void recover() throws Exception;
-
+  @TestOnly
   void clear() throws IOException;
 }

@@ -22,5 +22,5 @@ import org.apache.iotdb.lsm.request.IRequest;
 
 public interface IRecoverable {
 
-  <K, V, R> void recover(IRequest<K, V, R> Request) throws Exception;
+  <K, V, R> void recover(IRequest<K, V, R> Request);
 }

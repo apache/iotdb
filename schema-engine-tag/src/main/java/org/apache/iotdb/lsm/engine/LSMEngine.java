@@ -55,42 +55,22 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
   }
 
   @Override
-  public <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest) throws Exception {
+  public <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest) {
     insertionManager.process(rootMemNode, insertionRequest, new InsertRequestContext());
   }
 
   @Override
-  public <K, V, R> void insert(
-      IInsertionIRequest<K, V, R> insertionRequest, InsertRequestContext insertRequestContext)
-      throws Exception {
-    insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
-  }
-
-  @Override
-  public <K, R> void query(IQueryIRequest<K, R> queryRequest) throws Exception {
+  public <K, R> void query(IQueryIRequest<K, R> queryRequest) {
     queryManager.process(rootMemNode, queryRequest, new QueryRequestContext());
   }
 
   @Override
-  public <K, R> void query(
-      IQueryIRequest<K, R> queryRequest, QueryRequestContext queryRequestContext) throws Exception {
-    queryManager.process(rootMemNode, queryRequest, queryRequestContext);
-  }
-
-  @Override
-  public <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest) throws Exception {
+  public <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest) {
     deletionManager.process(rootMemNode, deletionRequest, new DeleteRequestContext());
   }
 
   @Override
-  public <K, V, R> void delete(
-      IDeletionIRequest<K, V, R> deletionRequest, DeleteRequestContext deleteRequestContext)
-      throws Exception {
-    deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
-  }
-
-  @Override
-  public void recover() throws Exception {
+  public void recover() {
     recoverManager.recover(this);
   }
 
@@ -126,7 +106,7 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
   }
 
   @Override
-  public <K, V, R> void recover(IRequest<K, V, R> request) throws Exception {
+  public <K, V, R> void recover(IRequest<K, V, R> request) {
     switch (request.getRequestType()) {
       case INSERT:
         insert((IInsertionIRequest<K, V, R>) request);

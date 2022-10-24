@@ -36,7 +36,7 @@ public class RecoverManager<T extends IRecoverable> {
    *
    * @param t
    */
-  public void recover(T t) throws Exception {
+  public void recover(T t) {
     while (true) {
       IRequest request = walManager.read();
       if (request == null) {

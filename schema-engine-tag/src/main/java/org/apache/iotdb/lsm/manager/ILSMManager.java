@@ -30,7 +30,7 @@ public interface ILSMManager<T, R, C extends RequestContext> {
    * @param context request context
    * @throws Exception
    */
-  void preProcess(T root, R request, C context) throws Exception;
+  void preProcess(T root, R request, C context);
 
   /**
    * postprocessing of the root memory node
@@ -39,7 +39,7 @@ public interface ILSMManager<T, R, C extends RequestContext> {
    * @param context request context
    * @throws Exception
    */
-  void postProcess(T root, R request, C context) throws Exception;
+  void postProcess(T root, R request, C context);
 
   /**
    * use this method to process root memory node
@@ -47,5 +47,5 @@ public interface ILSMManager<T, R, C extends RequestContext> {
    * @param memNode memory node
    * @param context request context
    */
-  void process(T memNode, R request, C context) throws Exception;
+  void process(T memNode, R request, C context);
 }

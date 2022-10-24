@@ -25,8 +25,8 @@ import org.apache.iotdb.lsm.request.IQueryIRequest;
 public class QueryManager<T, R extends IQueryIRequest>
     extends BasicLSMManager<T, R, QueryRequestContext> {
   @Override
-  public void preProcess(T root, R request, QueryRequestContext context) throws Exception {}
+  public void preProcess(T root, R request, QueryRequestContext context) {}
 
   @Override
-  public void postProcess(T root, R request, QueryRequestContext context) throws Exception {}
+  public void postProcess(T root, R request, QueryRequestContext context) {}
 }

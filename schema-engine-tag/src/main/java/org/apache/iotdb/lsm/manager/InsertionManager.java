@@ -21,8 +21,6 @@ package org.apache.iotdb.lsm.manager;
 import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.request.IInsertionIRequest;
 
-import java.io.IOException;
-
 /** manage insertion to MemTable */
 public class InsertionManager<T, R extends IInsertionIRequest>
     extends BasicLSMManager<T, R, InsertRequestContext> {
@@ -42,11 +40,10 @@ public class InsertionManager<T, R extends IInsertionIRequest>
    * @throws Exception
    */
   @Override
-  public void preProcess(T root, R insertionRequest, InsertRequestContext context)
-      throws IOException {
+  public void preProcess(T root, R insertionRequest, InsertRequestContext context) {
     walManager.write(insertionRequest);
   }
 
   @Override
-  public void postProcess(T root, R request, InsertRequestContext context) throws Exception {}
+  public void postProcess(T root, R request, InsertRequestContext context) {}
 }

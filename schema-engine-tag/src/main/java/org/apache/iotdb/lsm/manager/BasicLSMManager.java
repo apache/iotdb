@@ -43,7 +43,7 @@ public abstract class BasicLSMManager<T, R extends IRequest, C extends RequestCo
    * @throws Exception
    */
   @Override
-  public void process(T root, R request, C context) throws Exception {
+  public void process(T root, R request, C context) {
     preProcess(root, request, context);
     levelProcessChain.process(root, request, context);
     postProcess(root, request, context);
