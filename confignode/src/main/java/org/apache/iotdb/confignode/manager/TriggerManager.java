@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -105,6 +106,7 @@ public class TriggerManager {
             TTriggerState.INACTIVE,
             isStateful,
             dataNodeLocation,
+            FailureStrategy.construct(req.getFailureStrategy()),
             req.getJarMD5());
     return configManager
         .getProcedureManager()

@@ -155,6 +155,7 @@ public class PartitionRegionStateMachine
           "Current node [nodeId: {}, ip:port: {}] becomes Leader",
           newLeaderId,
           currentNodeTEndPoint);
+      configManager.getLoadManager().recoverHeartbeatCache();
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();

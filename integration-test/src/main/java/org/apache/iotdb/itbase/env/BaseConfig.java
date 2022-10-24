@@ -269,6 +269,10 @@ public interface BaseConfig {
     return 400000;
   }
 
+  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+    return 4000;
+  }
+
   default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
     return this;
   }
@@ -283,6 +287,46 @@ public interface BaseConfig {
 
   default int getMaxDegreeOfIndexNode() {
     return 256;
+  }
+
+  default BaseConfig setEnableWatermark(boolean enableWatermark) {
+    return this;
+  }
+
+  default boolean isEnableWatermark() {
+    return false;
+  }
+
+  default String getWatermarkSecretKey() {
+    return "IoTDB*2019@Beijing";
+  }
+
+  default BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    return this;
+  }
+
+  default String getWatermarkBitString() {
+    return "100101110100";
+  }
+
+  default BaseConfig setWatermarkBitString(String watermarkBitString) {
+    return this;
+  }
+
+  default String getWatermarkMethod() {
+    return "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
+  }
+
+  default BaseConfig setWatermarkMethod(String watermarkMethod) {
+    return this;
+  }
+
+  default boolean isEnableMQTTService() {
+    return false;
+  }
+
+  default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
   }
 
   default BaseConfig setSchemaEngineMode(String schemaEngineMode) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -199,7 +200,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -240,6 +241,9 @@ public class IoTDBConstant {
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;

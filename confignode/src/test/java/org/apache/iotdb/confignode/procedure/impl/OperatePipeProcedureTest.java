@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Test;
@@ -45,14 +45,14 @@ public class OperatePipeProcedureTest {
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     Map<String, String> attributes = new HashMap<>();
     attributes.put("syncdelop", "false");
-    TPipeInfo pipeInfo =
-        new TPipeInfo()
+    TCreatePipeReq req =
+        new TCreatePipeReq()
             .setPipeName("PipeName")
             .setPipeSinkName("PipeSinkName")
             .setStartTime(999)
             .setAttributes(attributes);
 
-    CreatePipeProcedure p1 = new CreatePipeProcedure(pipeInfo);
+    CreatePipeProcedure p1 = new CreatePipeProcedure(req);
 
     try {
       p1.serialize(outputStream);
