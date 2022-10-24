@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.external.api.thrift;
 
+import org.apache.thrift.protocol.TProtocol;
+
+import java.net.Socket;
+
 public interface ServerContextFactory {
-  JudgableServerContext newServerContext();
+  JudgableServerContext newServerContext(TProtocol out, Socket socket);
 }

@@ -34,7 +34,6 @@ public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
   private static final Logger logger = LoggerFactory.getLogger(InfluxDBServiceThriftHandler.class);
 
   public InfluxDBServiceThriftHandler(InfluxDBServiceImpl influxDBServiceImpl) {
-    super(logger);
     this.influxDBServiceImpl = influxDBServiceImpl;
   }
 

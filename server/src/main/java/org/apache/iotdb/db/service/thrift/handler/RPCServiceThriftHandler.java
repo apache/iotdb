@@ -35,7 +35,6 @@ public class RPCServiceThriftHandler extends BaseServerContextHandler
   private AtomicLong thriftConnectionNumber = new AtomicLong(0);
 
   public RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
-    super(logger);
     this.serviceImpl = serviceImpl;
     MetricService.getInstance()
         .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));

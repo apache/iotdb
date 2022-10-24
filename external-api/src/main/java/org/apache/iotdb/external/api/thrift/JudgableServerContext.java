@@ -25,9 +25,12 @@ public interface JudgableServerContext extends ServerContext {
   /**
    * this method will be called when a client connects to the IoTDB server.
    *
-   * @return true / false
+   * @return false if we do not allow this connection
    */
-  public boolean authorised();
+  public boolean whenConnecte();
+
+  /** @return false if we do not allow this connection */
+  public boolean whenDisconnect();
 
   @Override
   default <T> T unwrap(Class<T> iface) {
