@@ -199,7 +199,7 @@ public class IoTDBSelectIntoIT {
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into aligned root.sg_agg.d1(count_s1, last_value_s2), root.sg_agg.d2(count_s1, last_value_s2) "
+            + "into aligned root.sg_agg.d1(count_s1, last_value_s2), aligned root.sg_agg.d2(count_s1, last_value_s2) "
             + "from root.sg group by ([1, 13), 3ms);",
         selectIntoHeader,
         intoRetArray);
