@@ -24,9 +24,9 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
 @Category({ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
-  protected int selectIntoInsertTabletPlanRowLimit;
+  protected static int selectIntoInsertTabletPlanRowLimit;
 
   protected static final String[] SQLs =
       new String[] {
@@ -104,18 +104,18 @@ public class IoTDBSelectIntoIT {
         "12,12,12.0,12,null,"
       };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     selectIntoInsertTabletPlanRowLimit =
         ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
     ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(5);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
         .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
   }
@@ -126,64 +126,108 @@ public class IoTDBSelectIntoIT {
   public void testRawDataQuery1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk.new_d.t1,10,",
-          "root.sg.d2.s1,root.sg_bk.new_d.t2,7,",
-          "root.sg.d1.s2,root.sg_bk.new_d.t3,9,",
-          "root.sg.d2.s2,root.sg_bk.new_d.t4,8,",
+          "root.sg.d1.s1,root.sg_bk1.new_d.t1,10,",
+          "root.sg.d2.s1,root.sg_bk1.new_d.t2,7,",
+          "root.sg.d1.s2,root.sg_bk1.new_d.t3,9,",
+          "root.sg.d2.s2,root.sg_bk1.new_d.t4,8,",
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into root.sg_bk1.new_d(t1, t2, t3, t4) from root.sg.*;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk.new_d.t1,root.sg_bk.new_d.t3,root.sg_bk.new_d.t2,root.sg_bk.new_d.t4,";
+        "Time,root.sg_bk1.new_d.t1,root.sg_bk1.new_d.t3,root.sg_bk1.new_d.t2,root.sg_bk1.new_d.t4,";
     resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk.new_d;", expectedQueryHeader, rawDataSet);
+        "select t1, t3, t2, t4 from root.sg_bk1.new_d;", expectedQueryHeader, rawDataSet);
   }
 
   @Test
   public void testRawDataQuery2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk.new_d1.s1,10,",
-          "root.sg.d2.s1,root.sg_bk.new_d2.s1,7,",
-          "root.sg.d1.s2,root.sg_bk.new_d1.s2,9,",
-          "root.sg.d2.s2,root.sg_bk.new_d2.s2,8,"
+          "root.sg.d1.s1,root.sg_bk2.new_d1.s1,10,",
+          "root.sg.d2.s1,root.sg_bk2.new_d2.s1,7,",
+          "root.sg.d1.s2,root.sg_bk2.new_d1.s2,9,",
+          "root.sg.d2.s2,root.sg_bk2.new_d2.s2,8,"
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_${2}(::) from root.sg.*;",
+        "select s1, s2 into root.sg_bk2.new_${2}(::) from root.sg.*;",
         selectIntoHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk.new_d1.s1,root.sg_bk.new_d1.s2,root.sg_bk.new_d2.s1,root.sg_bk.new_d2.s2,";
+        "Time,root.sg_bk2.new_d1.s1,root.sg_bk2.new_d1.s2,root.sg_bk2.new_d2.s1,root.sg_bk2.new_d2.s2,";
     resultSetEqualTest(
-        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_bk;",
+        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_bk2;",
         expectedQueryHeader,
         rawDataSet);
+  }
+
+  @Test
+  public void testSamePathQuery() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1.s1,root.sg_bk3.new_d1.t1,10,",
+          "root.sg.d1.s2,root.sg_bk3.new_d1.t2,9,",
+          "root.sg.d1.s1,root.sg_bk3.new_d2.t1,10,",
+          "root.sg.d1.s2,root.sg_bk3.new_d2.t2,9,"
+        };
+    resultSetEqualTest(
+        "select s1, s2, s1, s2 into root.sg_bk3.new_d1(t1, t2), aligned root.sg_bk3.new_d2(t1, t2) from root.sg.d1;",
+        selectIntoHeader,
+        intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.sg_bk3.new_d1.t1,root.sg_bk3.new_d1.t2,root.sg_bk3.new_d2.t1,root.sg_bk3.new_d2.t2,";
+    String[] queryRetArray =
+        new String[] {
+          "1,1,null,1,null,",
+          "2,2,2.0,2,2.0,",
+          "3,3,3.0,3,3.0,",
+          "4,null,4.0,null,4.0,",
+          "5,5,null,5,null,",
+          "6,6,6.0,6,6.0,",
+          "7,7,7.0,7,7.0,",
+          "8,8,8.0,8,8.0,",
+          "9,null,9.0,null,9.0,",
+          "10,10,null,10,null,",
+          "11,11,11.0,11,11.0,",
+          "12,12,12.0,12,12.0,"
+        };
+    resultSetEqualTest(
+        "select new_d1.t1, new_d1.t2, new_d2.t1, new_d2.t2 from root.sg_bk3;",
+        expectedQueryHeader,
+        queryRetArray);
+  }
+
+  @Test
+  public void testEmptyQuery() {
+    resultSetEqualTest(
+        "select s1, s2 into root.sg_bk4.new_${2}(::) from root.sg1.d1, root.sg1.d2;",
+        selectIntoHeader, new String[] {});
   }
 
   @Test
   public void testAggregationQuery1() {
     String[] intoRetArray =
         new String[] {
-          "count(root.sg.d1.s1),root.sg_agg.d1.count_s1,1,",
-          "last_value(root.sg.d1.s2),root.sg_agg.d1.last_value_s2,1,",
-          "count(root.sg.d2.s1),root.sg_agg.d2.count_s1,1,",
-          "last_value(root.sg.d2.s2),root.sg_agg.d2.last_value_s2,1,"
+          "count(root.sg.d1.s1),root.sg_agg1.d1.count_s1,1,",
+          "last_value(root.sg.d1.s2),root.sg_agg1.d1.last_value_s2,1,",
+          "count(root.sg.d2.s1),root.sg_agg1.d2.count_s1,1,",
+          "last_value(root.sg.d2.s2),root.sg_agg1.d2.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into root.sg_agg.d1(count_s1, last_value_s2), aligned root.sg_agg.d2(count_s1, last_value_s2) "
+            + "into root.sg_agg1.d1(count_s1, last_value_s2), aligned root.sg_agg1.d2(count_s1, last_value_s2) "
             + "from root.sg;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg.d1.count_s1,root.sg_agg.d2.count_s1,root.sg_agg.d1.last_value_s2,root.sg_agg.d2.last_value_s2,";
+        "Time,root.sg_agg1.d1.count_s1,root.sg_agg1.d2.count_s1,root.sg_agg1.d1.last_value_s2,root.sg_agg1.d2.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg.d1, root.sg_agg.d2;",
+        "select count_s1, last_value_s2 from root.sg_agg1.d1, root.sg_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -192,24 +236,24 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQuery2() {
     String[] intoRetArray =
         new String[] {
-          "count(root.sg.d1.s1),root.sg_agg.d1.count_s1,4,",
-          "last_value(root.sg.d1.s2),root.sg_agg.d1.last_value_s2,4,",
-          "count(root.sg.d2.s1),root.sg_agg.d2.count_s1,4,",
-          "last_value(root.sg.d2.s2),root.sg_agg.d2.last_value_s2,4,"
+          "count(root.sg.d1.s1),root.sg_agg2.d1.count_s1,4,",
+          "last_value(root.sg.d1.s2),root.sg_agg2.d1.last_value_s2,4,",
+          "count(root.sg.d2.s1),root.sg_agg2.d2.count_s1,4,",
+          "last_value(root.sg.d2.s2),root.sg_agg2.d2.last_value_s2,4,"
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into aligned root.sg_agg.d1(count_s1, last_value_s2), aligned root.sg_agg.d2(count_s1, last_value_s2) "
+            + "into aligned root.sg_agg2.d1(count_s1, last_value_s2), aligned root.sg_agg2.d2(count_s1, last_value_s2) "
             + "from root.sg group by ([1, 13), 3ms);",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg.d1.count_s1,root.sg_agg.d2.count_s1,root.sg_agg.d1.last_value_s2,root.sg_agg.d2.last_value_s2,";
+        "Time,root.sg_agg2.d1.count_s1,root.sg_agg2.d2.count_s1,root.sg_agg2.d1.last_value_s2,root.sg_agg2.d2.last_value_s2,";
     String[] queryRetArray =
         new String[] {"1,3,2,3.0,2.0,", "4,2,1,6.0,6.0,", "7,2,2,9.0,8.0,", "10,3,2,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg.d1, root.sg_agg.d2;",
+        "select count_s1, last_value_s2 from root.sg_agg2.d1, root.sg_agg2.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -247,22 +291,65 @@ public class IoTDBSelectIntoIT {
         "select k1, k2, k3 from root.sg_expr.d;", expectedQueryHeader, queryRetArray);
   }
 
+  // -------------------------------------- ALIGN BY DEVICE -------------------------------------
+
   @Test
-  public void testSamePathQuery() {
+  public void testRawDataQueryAlignByDevice1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk.new_d1.t1,10,",
-          "root.sg.d1.s2,root.sg_bk.new_d1.t2,9,",
-          "root.sg.d1.s1,root.sg_bk.new_d2.t1,10,",
-          "root.sg.d1.s2,root.sg_bk.new_d2.t2,9,"
+          "root.sg.d1,s1,root.sg_abd_bk1.new_d.t1,10,",
+          "root.sg.d1,s2,root.sg_abd_bk1.new_d.t2,9,",
+          "root.sg.d2,s1,root.sg_abd_bk1.new_d.t3,7,",
+          "root.sg.d2,s2,root.sg_abd_bk1.new_d.t4,8,",
         };
     resultSetEqualTest(
-        "select s1, s2, s1, s2 into root.sg_bk.new_d1(t1, t2), aligned root.sg_bk.new_d2(t1, t2) from root.sg.d1;",
-        selectIntoHeader,
+        "select s1, s2 into root.sg_abd_bk1.new_d(t1, t2), root.sg_abd_bk1.new_d(t3, t4) from root.sg.* align by device;",
+        selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk.new_d1.t1,root.sg_bk.new_d1.t2,root.sg_bk.new_d2.t1,root.sg_bk.new_d2.t2,";
+        "Time,root.sg_abd_bk1.new_d.t1,root.sg_abd_bk1.new_d.t2,root.sg_abd_bk1.new_d.t3,root.sg_abd_bk1.new_d.t4,";
+    resultSetEqualTest(
+        "select t1, t2, t3, t4 from root.sg_abd_bk1.new_d;", expectedQueryHeader, rawDataSet);
+  }
+
+  @Test
+  public void testRawDataQueryAlignByDevice2() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,s1,root.sg_abd_bk2.new_d1.s1,10,",
+          "root.sg.d1,s2,root.sg_abd_bk2.new_d1.s2,9,",
+          "root.sg.d2,s1,root.sg_abd_bk2.new_d2.s1,7,",
+          "root.sg.d2,s2,root.sg_abd_bk2.new_d2.s2,8,"
+        };
+    resultSetEqualTest(
+        "select s1, s2 into root.sg_abd_bk2.new_${2}(::) from root.sg.* align by device;",
+        selectIntoAlignByDeviceHeader, intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.sg_abd_bk2.new_d1.s1,root.sg_abd_bk2.new_d1.s2,root.sg_abd_bk2.new_d2.s1,root.sg_abd_bk2.new_d2.s2,";
+    resultSetEqualTest(
+        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_abd_bk2;",
+        expectedQueryHeader,
+        rawDataSet);
+  }
+
+  @Test
+  public void testSamePathQueryAlignByDevice() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,s1,root.sg_abd_bk3.new_d1.t1,10,",
+          "root.sg.d1,s2,root.sg_abd_bk3.new_d1.t2,9,",
+          "root.sg.d1,s1,root.sg_abd_bk3.new_d1.t3,10,",
+          "root.sg.d1,s2,root.sg_abd_bk3.new_d1.t4,9,"
+        };
+    resultSetEqualTest(
+        "select s1, s2, s1, s2 into root.sg_abd_bk3.new_d1(t1, t2, t3, t4) from root.sg.d1 align by device;",
+        selectIntoAlignByDeviceHeader,
+        intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.sg_abd_bk3.new_d1.t1,root.sg_abd_bk3.new_d1.t2,root.sg_abd_bk3.new_d1.t3,root.sg_abd_bk3.new_d1.t4,";
     String[] queryRetArray =
         new String[] {
           "1,1,null,1,null,",
@@ -279,81 +366,37 @@ public class IoTDBSelectIntoIT {
           "12,12,12.0,12,12.0,"
         };
     resultSetEqualTest(
-        "select new_d1.t1, new_d1.t2, new_d2.t1, new_d2.t2 from root.sg_bk;",
-        expectedQueryHeader,
-        queryRetArray);
+        "select t1, t2, t3, t4 from root.sg_abd_bk3.new_d1;", expectedQueryHeader, queryRetArray);
   }
 
   @Test
-  public void testEmptyQuery() {
+  public void testEmptyQueryAlignByDevice() {
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_${2}(::) from root.sg1.d1, root.sg1.d2;",
-        selectIntoHeader, new String[] {});
-  }
-
-  // -------------------------------------- ALIGN BY DEVICE -------------------------------------
-
-  @Test
-  public void testRawDataQueryAlignByDevice1() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg.d1,s1,root.sg_bk.new_d.t1,10,",
-          "root.sg.d1,s2,root.sg_bk.new_d.t2,9,",
-          "root.sg.d2,s1,root.sg_bk.new_d.t3,7,",
-          "root.sg.d2,s2,root.sg_bk.new_d.t4,8,",
-        };
-    resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2), root.sg_bk.new_d(t3, t4) from root.sg.* align by device;",
-        selectIntoAlignByDeviceHeader,
-        intoRetArray);
-
-    String expectedQueryHeader =
-        "Time,root.sg_bk.new_d.t1,root.sg_bk.new_d.t2,root.sg_bk.new_d.t3,root.sg_bk.new_d.t4,";
-    resultSetEqualTest(
-        "select t1, t2, t3, t4 from root.sg_bk.new_d;", expectedQueryHeader, rawDataSet);
-  }
-
-  @Test
-  public void testRawDataQueryAlignByDevice2() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg.d1,s1,root.sg_bk.new_d1.s1,10,",
-          "root.sg.d1,s2,root.sg_bk.new_d1.s2,9,",
-          "root.sg.d2,s1,root.sg_bk.new_d2.s1,7,",
-          "root.sg.d2,s2,root.sg_bk.new_d2.s2,8,"
-        };
-    resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_${2}(::) from root.sg.* align by device;",
-        selectIntoAlignByDeviceHeader, intoRetArray);
-
-    String expectedQueryHeader =
-        "Time,root.sg_bk.new_d1.s1,root.sg_bk.new_d1.s2,root.sg_bk.new_d2.s1,root.sg_bk.new_d2.s2,";
-    resultSetEqualTest(
-        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_bk;",
-        expectedQueryHeader,
-        rawDataSet);
+        "select s1, s2 into root.sg_abd_bk4.new_${2}(::) from root.sg1.d1, root.sg1.d2 align by device;",
+        selectIntoAlignByDeviceHeader, new String[] {});
   }
 
   @Test
   public void testAggregationQueryAlignByDevice1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,count(s1),root.sg_agg.d1.count_s1,1,",
-          "root.sg.d1,last_value(s2),root.sg_agg.d1.last_value_s2,1,",
-          "root.sg.d2,count(s1),root.sg_agg.d2.count_s1,1,",
-          "root.sg.d2,last_value(s2),root.sg_agg.d2.last_value_s2,1,"
+          "root.sg.d1,count(s1),root.sg_abd_agg1.d1.count_s1,1,",
+          "root.sg.d1,last_value(s2),root.sg_abd_agg1.d1.last_value_s2,1,",
+          "root.sg.d2,count(s1),root.sg_abd_agg1.d2.count_s1,1,",
+          "root.sg.d2,last_value(s2),root.sg_abd_agg1.d2.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into root.sg_agg.${2}(count_s1, last_value_s2) "
+            + "into root.sg_abd_agg1.${2}(count_s1, last_value_s2) "
             + "from root.sg.* align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg.d1.count_s1,root.sg_agg.d2.count_s1,root.sg_agg.d1.last_value_s2,root.sg_agg.d2.last_value_s2,";
+        "Time,root.sg_abd_agg1.d1.count_s1,root.sg_abd_agg1.d2.count_s1,"
+            + "root.sg_abd_agg1.d1.last_value_s2,root.sg_abd_agg1.d2.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg.d1, root.sg_agg.d2;",
+        "select count_s1, last_value_s2 from root.sg_abd_agg1.d1, root.sg_abd_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -362,23 +405,24 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQueryAlignByDevice2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,count(s1),root.sg_agg.d1.count_s1,4,",
-          "root.sg.d1,last_value(s2),root.sg_agg.d1.last_value_s2,4,",
-          "root.sg.d2,count(s1),root.sg_agg.d2.count_s1,4,",
-          "root.sg.d2,last_value(s2),root.sg_agg.d2.last_value_s2,4,"
+          "root.sg.d1,count(s1),root.sg_abd_agg2.d1.count_s1,4,",
+          "root.sg.d1,last_value(s2),root.sg_abd_agg2.d1.last_value_s2,4,",
+          "root.sg.d2,count(s1),root.sg_abd_agg2.d2.count_s1,4,",
+          "root.sg.d2,last_value(s2),root.sg_abd_agg2.d2.last_value_s2,4,"
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into aligned root.sg_agg.${2}(count_s1, last_value_s2) "
+            + "into aligned root.sg_abd_agg2.${2}(count_s1, last_value_s2) "
             + "from root.sg.* group by ([1, 13), 3ms) align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg.d1.count_s1,root.sg_agg.d2.count_s1,root.sg_agg.d1.last_value_s2,root.sg_agg.d2.last_value_s2,";
+        "Time,root.sg_abd_agg2.d1.count_s1,root.sg_abd_agg2.d2.count_s1,"
+            + "root.sg_abd_agg2.d1.last_value_s2,root.sg_abd_agg2.d2.last_value_s2,";
     String[] queryRetArray =
         new String[] {"1,3,2,3.0,2.0,", "4,2,1,6.0,6.0,", "7,2,2,9.0,8.0,", "10,3,2,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg.d1, root.sg_agg.d2;",
+        "select count_s1, last_value_s2 from root.sg_abd_agg2.d1, root.sg_abd_agg2.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -387,22 +431,22 @@ public class IoTDBSelectIntoIT {
   public void testExpressionAlignByDevice() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1 + s2,root.sg_expr.d1.k1,7,",
-          "root.sg.d1,-sin(s1),root.sg_expr.d1.k2,10,",
-          "root.sg.d1,top_k(s2, \"k\"=\"3\"),root.sg_expr.d1.k3,3,",
-          "root.sg.d2,s1 + s2,root.sg_expr.d2.k1,4,",
-          "root.sg.d2,-sin(s1),root.sg_expr.d2.k2,7,",
-          "root.sg.d2,top_k(s2, \"k\"=\"3\"),root.sg_expr.d2.k3,3,",
+          "root.sg.d1,s1 + s2,root.sg_abd_expr.d1.k1,7,",
+          "root.sg.d1,-sin(s1),root.sg_abd_expr.d1.k2,10,",
+          "root.sg.d1,top_k(s2, \"k\"=\"3\"),root.sg_abd_expr.d1.k3,3,",
+          "root.sg.d2,s1 + s2,root.sg_abd_expr.d2.k1,4,",
+          "root.sg.d2,-sin(s1),root.sg_abd_expr.d2.k2,7,",
+          "root.sg.d2,top_k(s2, \"k\"=\"3\"),root.sg_abd_expr.d2.k3,3,",
         };
     resultSetEqualTest(
         "select s1 + s2, -sin(s1), top_k(s2,'k'='3') "
-            + "into root.sg_expr.::(k1, k2, k3) from root.sg.* align by device;",
+            + "into root.sg_abd_expr.::(k1, k2, k3) from root.sg.* align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_expr.d1.k1,root.sg_expr.d2.k1,root.sg_expr.d1.k2,"
-            + "root.sg_expr.d2.k2,root.sg_expr.d1.k3,root.sg_expr.d2.k3,";
+        "Time,root.sg_abd_expr.d1.k1,root.sg_abd_expr.d2.k1,root.sg_abd_expr.d1.k2,"
+            + "root.sg_abd_expr.d2.k2,root.sg_abd_expr.d1.k3,root.sg_abd_expr.d2.k3,";
     String[] queryRetArray =
         new String[] {
           "1,null,2.0,-0.8414709848078965,-0.8414709848078965,null,null,",
@@ -419,66 +463,24 @@ public class IoTDBSelectIntoIT {
           "12,24.0,null,0.5365729180004349,0.5365729180004349,12.0,null,"
         };
     resultSetEqualTest(
-        "select k1, k2, k3 from root.sg_expr.*;", expectedQueryHeader, queryRetArray);
-  }
-
-  @Test
-  public void testSamePathQueryAlignByDevice() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg.d1,s1,root.sg_bk.new_d1.t1,10,",
-          "root.sg.d1,s2,root.sg_bk.new_d1.t2,9,",
-          "root.sg.d1,s1,root.sg_bk.new_d1.t3,10,",
-          "root.sg.d1,s2,root.sg_bk.new_d1.t4,9,"
-        };
-    resultSetEqualTest(
-        "select s1, s2, s1, s2 into root.sg_bk.new_d1(t1, t2, t3, t4) from root.sg.d1 align by device;",
-        selectIntoAlignByDeviceHeader,
-        intoRetArray);
-
-    String expectedQueryHeader =
-        "Time,root.sg_bk.new_d1.t1,root.sg_bk.new_d1.t2,root.sg_bk.new_d1.t3,root.sg_bk.new_d1.t4,";
-    String[] queryRetArray =
-        new String[] {
-          "1,1,null,1,null,",
-          "2,2,2.0,2,2.0,",
-          "3,3,3.0,3,3.0,",
-          "4,null,4.0,null,4.0,",
-          "5,5,null,5,null,",
-          "6,6,6.0,6,6.0,",
-          "7,7,7.0,7,7.0,",
-          "8,8,8.0,8,8.0,",
-          "9,null,9.0,null,9.0,",
-          "10,10,null,10,null,",
-          "11,11,11.0,11,11.0,",
-          "12,12,12.0,12,12.0,"
-        };
-    resultSetEqualTest(
-        "select t1, t2, t3, t4 from root.sg_bk.new_d1;", expectedQueryHeader, queryRetArray);
-  }
-
-  @Test
-  public void testEmptyQueryAlignByDevice() {
-    resultSetEqualTest(
-        "select s1, s2 into root.sg_bk.new_${2}(::) from root.sg1.d1, root.sg1.d2 align by device;",
-        selectIntoAlignByDeviceHeader, new String[] {});
+        "select k1, k2, k3 from root.sg_abd_expr.*;", expectedQueryHeader, queryRetArray);
   }
 
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
   @Test
   public void testDataTypeInconsistent() {
-    executeNonQuery("CREATE TIMESERIES root.sg_bk.new_d.t1 TEXT;");
+    executeNonQuery("CREATE TIMESERIES root.sg_error_bk1.new_d.t1 TEXT;");
     assertTestFail(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into root.sg_error_bk1.new_d(t1, t2, t3, t4) from root.sg.*;",
         "Task was cancelled.");
   }
 
   @Test
   public void testAlignmentInconsistent() {
-    executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_bk.new_d(t1 INT32, t2 INT32);");
+    executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
     assertTestFail(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into root.sg_error_bk2.new_d(t1, t2, t3, t4) from root.sg.*;",
         "Task was cancelled.");
   }
 

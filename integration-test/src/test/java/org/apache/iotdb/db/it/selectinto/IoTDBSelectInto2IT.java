@@ -24,8 +24,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -38,20 +38,20 @@ public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
 
   private static int numOfPointsPerPage;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     selectIntoInsertTabletPlanRowLimit =
         ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
     ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(8);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(5);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
         .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
