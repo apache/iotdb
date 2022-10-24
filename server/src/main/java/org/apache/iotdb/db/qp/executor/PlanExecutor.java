@@ -190,7 +190,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1100,10 +1099,7 @@ public class PlanExecutor implements IPlanExecutor {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }
-      } catch (InstantiationException
-          | InvocationTargetException
-          | NoSuchMethodException
-          | IllegalAccessException e) {
+      } catch (Exception e) {
         throw new QueryProcessException(e.toString());
       }
       rowRecord.addField(Binary.valueOf(functionType), TSDataType.TEXT);

@@ -19,30 +19,36 @@
 
 package org.apache.iotdb.commons.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFClassLoader;
-import org.apache.iotdb.udf.api.UDTF;
-
-import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 
 public class UDFInformation {
 
   private final String functionName;
   private final String className;
-  private boolean isBuiltin;
-
-  private Class<?> functionClass;
+  private final boolean isBuiltin;
+  private final String jarName;
+  private final String jarMD5;
 
   public UDFInformation(String functionName, String className) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
+    isBuiltin = true;
+    jarName = null;
+    jarMD5 = null;
   }
 
   public UDFInformation(
-      String functionName, String className, boolean isBuiltin, Class<?> functionClass) {
-    this.functionName = functionName.toUpperCase();
+      String functionName, String className, boolean isBuiltin, String jarName, String jarMD5) {
+    this.functionName = functionName;
     this.className = className;
     this.isBuiltin = isBuiltin;
-    this.functionClass = functionClass;
+    this.jarName = jarName;
+    this.jarMD5 = jarMD5;
+  }
+
+  public static UDFInformation deserialize(ByteBuffer byteBuffer) {
+    // TODO
+    return null;
   }
 
   public String getFunctionName() {
@@ -57,18 +63,8 @@ public class UDFInformation {
     return isBuiltin;
   }
 
-  public Class<?> getFunctionClass() {
-    return functionClass;
-  }
-
-  public void updateFunctionClass(UDFClassLoader udfClassLoader) throws ClassNotFoundException {
-    functionClass = Class.forName(className, true, udfClassLoader);
-  }
-
-  public boolean isUDTF()
-      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
-    return functionClass.getDeclaredConstructor().newInstance() instanceof UDTF;
+  public boolean isUDTF() {
+    return true;
   }
 
   public boolean isUDAF() {

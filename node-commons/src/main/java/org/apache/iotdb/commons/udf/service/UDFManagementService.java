@@ -168,8 +168,7 @@ public class UDFManagementService {
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
-      udfTable.addUDFInformation(
-          functionName, new UDFInformation(functionName, className, false, functionClass));
+      udfTable.addUDFInformation(functionName, udfInformation);
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -189,7 +188,7 @@ public class UDFManagementService {
       throws ClassNotFoundException {
     for (UDFInformation information : getAllUDFInformation()) {
       if (!information.isBuiltin()) {
-        information.updateFunctionClass(activeClassLoader);
+        Class.forName(information.getClassName(), true, activeClassLoader);
       }
     }
   }
@@ -229,7 +228,11 @@ public class UDFManagementService {
     }
 
     try {
-      return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
+      return (UDF)
+          BuiltinTimeSeriesGeneratingFunction.valueOf(information.getFunctionName())
+              .getFunctionClass()
+              .getDeclaredConstructor()
+              .newInstance();
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -253,11 +256,7 @@ public class UDFManagementService {
       String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
       udfTable.addUDFInformation(
           functionName,
-          new UDFInformation(
-              functionName,
-              builtinTimeSeriesGeneratingFunction.getClassName(),
-              true,
-              builtinTimeSeriesGeneratingFunction.getFunctionClass()));
+          new UDFInformation(functionName, builtinTimeSeriesGeneratingFunction.getClassName()));
     }
   }
 

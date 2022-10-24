@@ -81,7 +81,7 @@ public class UDFManager {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionRequest request =
-        new TCreateFunctionRequest(functionName, className, uris);
+        new TCreateFunctionRequest(null, null); // TODO
 
     AsyncClientHandler<TCreateFunctionRequest, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, request, dataNodeLocationMap);

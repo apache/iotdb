@@ -42,7 +42,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -134,10 +133,7 @@ public class ShowFunctionsTask implements IConfigTask {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }
-      } catch (InstantiationException
-          | InvocationTargetException
-          | NoSuchMethodException
-          | IllegalAccessException e) {
+      } catch (Exception e) {
         throw new RuntimeException(e.toString());
       }
       rowRecord.addField(Binary.valueOf(functionType), TSDataType.TEXT);

@@ -268,7 +268,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       final TSStatus executionStatus =
-          client.createFunction(new TCreateFunctionReq(udfName, className, uris));
+          client.createFunction(
+              new TCreateFunctionReq(udfName, className, null, null, null)); // TODO
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.error(

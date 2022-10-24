@@ -1093,8 +1093,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus createFunction(TCreateFunctionRequest request) {
     try {
-      UDFManagementService.getInstance()
-          .register(new UDFInformation(request.getUdfName(), request.getClassName()));
+      UDFInformation udfInformation =
+          UDFInformation.deserialize(ByteBuffer.wrap(request.getUdfInformation()));
+      UDFManagementService.getInstance().register(udfInformation);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
