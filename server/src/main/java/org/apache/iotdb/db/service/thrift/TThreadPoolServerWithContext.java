@@ -1,5 +1,7 @@
 package org.apache.iotdb.db.service.thrift;
 
+import org.apache.iotdb.external.api.thrift.JudgableServerContext;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocol;
@@ -82,7 +84,10 @@ public class TThreadPoolServerWithContext extends TThreadPoolServer {
 
         if (eventHandler.isPresent()) {
           connectionContext = eventHandler.get().createContext(inputProtocol, outputProtocol);
-          LOGGER.error("测试一下效果。、。。。。");
+          if (connectionContext instanceof JudgableServerContext
+              && !((JudgableServerContext) connectionContext).authorised()) {
+            return;
+          }
         }
 
         while (true) {

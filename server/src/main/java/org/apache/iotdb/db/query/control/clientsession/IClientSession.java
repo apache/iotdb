@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.control.clientsession;
 import org.apache.iotdb.db.conf.IoTDBConstant.ClientVersion;
 
 import java.time.ZoneId;
+import java.util.Set;
 import java.util.TimeZone;
 
 public abstract class IClientSession {
@@ -98,4 +99,12 @@ public abstract class IClientSession {
   public String toString() {
     return String.format("%d-%s:%d", getId(), getClientAddress(), getClientPort());
   }
+
+  /**
+   * statementIds that this client opens.<br>
+   * For JDBC clients, each Statement instance has a statement id.<br>
+   * For an IoTDBSession connection, each connection has a statement id.<br>
+   * mqtt clients have no statement id.
+   */
+  public abstract Set<Long> getStatementIds();
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.query.control.clientsession.ClientSession;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 
@@ -105,6 +106,12 @@ public class SessionTimeoutManager {
                     String.format(
                         "session-%s timed out in %d ms",
                         entry.getKey(), currentTime - entry.getValue()));
+                // close the socket.
+                // currently, we only focus on RPC service.
+                // TODO do we need to consider MQTT ClientSession?
+                if (entry.getKey() instanceof ClientSession) {
+                  ((ClientSession) entry.getKey()).shutdownStream();
+                }
               }
             });
   }

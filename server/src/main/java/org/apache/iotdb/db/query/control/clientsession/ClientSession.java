@@ -18,24 +18,57 @@
  */
 package org.apache.iotdb.db.query.control.clientsession;
 
-import java.net.InetSocketAddress;
+import java.io.IOException;
+import java.net.Socket;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /** Client Session is the only identity for a connection. */
 public class ClientSession extends IClientSession {
 
-  InetSocketAddress clientNet;
+  Socket clientSocket;
 
-  public ClientSession(InetSocketAddress clientNet) {
-    this.clientNet = clientNet;
+  // TODO why we use copyOnWriteArraySet instead of HashSet??
+  Set<Long> statements = new CopyOnWriteArraySet();
+
+  public ClientSession(Socket clientSocket) {
+    this.clientSocket = clientSocket;
   }
 
   @Override
   public String getClientAddress() {
-    return clientNet.getHostName();
+    return clientSocket.getInetAddress().getHostAddress();
   }
 
   @Override
   int getClientPort() {
-    return clientNet.getPort();
+    return clientSocket.getPort();
+  }
+
+  @Override
+  public Set<Long> getStatementIds() {
+    return statements;
+  }
+
+  /**
+   * shutdownStream will close the socket stream directly, which cause a TTransportException with
+   * type = TTransportException.END_OF_FILE. In this case, thrift client thread will be finished
+   * asap.
+   */
+  public void shutdownStream() {
+    if (!clientSocket.isInputShutdown()) {
+      try {
+        clientSocket.shutdownInput();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    if (!clientSocket.isOutputShutdown()) {
+      try {
+        clientSocket.shutdownOutput();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 }

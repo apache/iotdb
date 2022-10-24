@@ -133,10 +133,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     if (!serviceProvider.checkLogin(session)) {
       return getNotLoggedInStatus();
     }
-    if (serviceProvider.checkSessionTimeout(session)) {
-      return RpcUtils.getInfluxDBStatus(
-          TSStatusCode.SESSION_TIMEOUT.getStatusCode(), "Session timeout");
-    }
+    // As the session's lifetime is updated in serviceProvider.checkLogin(session),
+    // it is not possible that the session is timeout.
     return RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

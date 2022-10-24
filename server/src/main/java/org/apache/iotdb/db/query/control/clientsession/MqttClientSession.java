@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.query.control.clientsession;
 
+import java.util.Collections;
+import java.util.Set;
+
 public class MqttClientSession extends IClientSession {
 
   String clientID;
@@ -42,5 +45,10 @@ public class MqttClientSession extends IClientSession {
 
   public String toString() {
     return String.format("%d-%s", getId(), getClientID());
+  }
+
+  @Override
+  public Set<Long> getStatementIds() {
+    return Collections.emptySet();
   }
 }

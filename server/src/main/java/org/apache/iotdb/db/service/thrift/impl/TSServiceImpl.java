@@ -1251,9 +1251,8 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(session)) {
       return getNotLoggedInStatus();
     }
-    if (serviceProvider.checkSessionTimeout(session)) {
-      return getSessionTimeoutStatus();
-    }
+    // As the session's lifetime is updated in serviceProvider.checkLogin(session),
+    // it is not possible that the session is timeout.
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

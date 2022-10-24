@@ -25,11 +25,16 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class InfluxDBServiceThriftHandler implements TServerEventHandler {
+public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
+    implements TServerEventHandler {
   private final InfluxDBServiceImpl influxDBServiceImpl;
+  private static final Logger logger = LoggerFactory.getLogger(InfluxDBServiceThriftHandler.class);
 
   public InfluxDBServiceThriftHandler(InfluxDBServiceImpl influxDBServiceImpl) {
+    super(logger);
     this.influxDBServiceImpl = influxDBServiceImpl;
   }
 
@@ -39,9 +44,9 @@ public class InfluxDBServiceThriftHandler implements TServerEventHandler {
   }
 
   @Override
-  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+  public ServerContext createContext(TProtocol in, TProtocol out) {
     // nothing
-    return null;
+    return super.createContext(in, out);
   }
 
   @Override
@@ -49,6 +54,7 @@ public class InfluxDBServiceThriftHandler implements TServerEventHandler {
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
     // release resources.
     influxDBServiceImpl.handleClientExit();
+    super.deleteContext(serverContext, tProtocol, tProtocol1);
   }
 
   @Override

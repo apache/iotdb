@@ -50,6 +50,11 @@ public class SessionManager {
   /** currSession can be only used in client-thread model services. */
   private final ThreadLocal<IClientSession> currSession = new ThreadLocal<>();
 
+  // sessions does not contain MqttSessions..
+  private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
+  // used for sessions.
+  private final Object placeHolder = new Object();
+
   // we keep this sessionIdGenerator just for keep Compatible with v0.13
   @Deprecated private final AtomicLong sessionIdGenerator = new AtomicLong();
 
@@ -57,7 +62,7 @@ public class SessionManager {
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
   // (sessionId -> Set(statementId))
-  private final Map<IClientSession, Set<Long>> sessionToStatementId = new ConcurrentHashMap<>();
+  //  private final Map<IClientSession, Set<Long>> sessionToStatementId = new ConcurrentHashMap<>();
   // (statementId -> Set(queryId))
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
@@ -95,6 +100,8 @@ public class SessionManager {
    * @return
    */
   public void removeCurrSession() {
+    IClientSession session = currSession.get();
+    sessions.remove(session);
     currSession.remove();
   }
 
@@ -111,6 +118,7 @@ public class SessionManager {
       return false;
     }
     this.currSession.set(session);
+    sessions.put(session, placeHolder);
     return true;
   }
 
@@ -138,7 +146,7 @@ public class SessionManager {
    * @return true if releasing successfully, false otherwise (e.g., the session does not exist)
    */
   public boolean releaseSessionResource(IClientSession session) {
-    Set<Long> statementIdSet = sessionToStatementId.remove(session);
+    Set<Long> statementIdSet = session.getStatementIds();
     if (statementIdSet != null) {
       for (Long statementId : statementIdSet) {
         Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
@@ -163,10 +171,10 @@ public class SessionManager {
     // TODO: make this more efficient with a queryId -> sessionId map
     for (Map.Entry<Long, Set<Long>> statementToQueries : statementIdToQueryId.entrySet()) {
       if (statementToQueries.getValue().contains(queryId)) {
-        for (Map.Entry<IClientSession, Set<Long>> sessionToStatements :
-            sessionToStatementId.entrySet()) {
-          if (sessionToStatements.getValue().contains(statementToQueries.getKey())) {
-            return sessionToStatements.getKey();
+        Long statementId = statementToQueries.getKey();
+        for (IClientSession session : sessions.keySet()) {
+          if (session.getStatementIds().contains(statementId)) {
+            return session;
           }
         }
       }
@@ -176,9 +184,7 @@ public class SessionManager {
 
   public long requestStatementId(IClientSession session) {
     long statementId = statementIdGenerator.incrementAndGet();
-    sessionToStatementId
-        .computeIfAbsent(session, s -> new CopyOnWriteArraySet<>())
-        .add(statementId);
+    session.getStatementIds().add(statementId);
     return statementId;
   }
 
@@ -189,10 +195,7 @@ public class SessionManager {
         releaseQueryResourceNoExceptions(queryId);
       }
     }
-
-    if (sessionToStatementId.containsKey(session)) {
-      sessionToStatementId.get(session).remove(statementId);
-    }
+    session.getStatementIds().remove(statementId);
   }
 
   public long requestQueryId(Long statementId, boolean isDataQuery) {

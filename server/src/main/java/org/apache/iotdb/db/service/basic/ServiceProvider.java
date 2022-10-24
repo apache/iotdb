@@ -106,7 +106,7 @@ public abstract class ServiceProvider {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
 
   /**
-   * Check whether current user has logged in.
+   * Check whether current user has logged in. If login, the session's lifetime will be updated.
    *
    * @return true: If logged in; false: If not logged in
    */
