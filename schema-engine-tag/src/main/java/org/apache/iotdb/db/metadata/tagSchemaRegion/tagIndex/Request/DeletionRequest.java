@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
 import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.request.IDeletionIRequest;
 
 import java.util.List;
 
-public class DeletionRequest
-    extends org.apache.iotdb.lsm.request.DeletionRequest<String, Integer, RequestStatus> {
+public class DeletionRequest implements IDeletionIRequest<String, Integer, RequestStatus> {
 
   List<String> keys;
 

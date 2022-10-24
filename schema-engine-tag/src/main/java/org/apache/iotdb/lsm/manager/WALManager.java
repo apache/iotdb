@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
 import org.apache.iotdb.lsm.wal.WALWriter;
@@ -74,14 +74,14 @@ public abstract class WALManager {
    * @param request request context
    * @throws IOException
    */
-  public abstract void write(Request request) throws IOException;
+  public abstract void write(IRequest request) throws IOException;
 
   /**
    * for recover
    *
    * @return request
    */
-  public abstract Request read();
+  public abstract IRequest read();
 
   public void close() throws IOException {
     walWriter.close();

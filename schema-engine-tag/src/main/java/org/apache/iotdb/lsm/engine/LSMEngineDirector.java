@@ -28,9 +28,9 @@ import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.property.Property;
 import org.apache.iotdb.lsm.property.PropertyDescriptor;
-import org.apache.iotdb.lsm.request.InsertionRequest;
-import org.apache.iotdb.lsm.request.QueryRequest;
-import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.request.IInsertionIRequest;
+import org.apache.iotdb.lsm.request.IQueryIRequest;
+import org.apache.iotdb.lsm.request.IRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,11 +53,11 @@ public class LSMEngineDirector<T> {
 
   public LSMEngine<T> getLSMEngine(Property property, WALManager walManager) {
     try {
-      LevelProcessChain<T, InsertionRequest, InsertRequestContext> insertionLevelProcessChain =
+      LevelProcessChain<T, IInsertionIRequest, InsertRequestContext> insertionLevelProcessChain =
           generateLevelProcessChain(property.getInsertionLevelProcessClass());
       LevelProcessChain<T, DeletionRequest, DeleteRequestContext> deletionLevelProcessChain =
           generateLevelProcessChain(property.getDeletionLevelProcessClass());
-      LevelProcessChain<T, QueryRequest, QueryRequestContext> queryLevelProcessChain =
+      LevelProcessChain<T, IQueryIRequest, QueryRequestContext> queryLevelProcessChain =
           generateLevelProcessChain(property.getQueryLevelProcessClass());
 
       return lsmEngineBuilder
@@ -66,7 +66,7 @@ public class LSMEngineDirector<T> {
           .buildInsertionManager(insertionLevelProcessChain)
           .buildDeletionManager(deletionLevelProcessChain)
           .buildRecoverManager()
-          .builder();
+          .build();
 
     } catch (Exception e) {
       logger.error(e.getMessage());
@@ -84,7 +84,7 @@ public class LSMEngineDirector<T> {
     return null;
   }
 
-  private <R extends Request, C extends RequestContext>
+  private <R extends IRequest, C extends RequestContext>
       LevelProcessChain<T, R, C> generateLevelProcessChain(List<String> levelProcessClassNames) {
     LevelProcessChain<T, R, C> levelProcessChain = new LevelProcessChain<>();
     try {
@@ -102,7 +102,7 @@ public class LSMEngineDirector<T> {
     return levelProcessChain;
   }
 
-  private <O, R extends Request, C extends RequestContext>
+  private <O, R extends IRequest, C extends RequestContext>
       ILevelProcess<T, O, R, C> generateLevelProcess(String className)
           throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
               InstantiationException, IllegalAccessException {

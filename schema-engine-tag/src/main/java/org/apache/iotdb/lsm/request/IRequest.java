@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.lsm.request;
 
-public abstract class DeletionRequest<K, V, R> extends Request<K, V, R> {
+import org.apache.iotdb.lsm.context.RequestContext;
 
-  public DeletionRequest() {
-    requestType = RequestType.DELETE;
-  }
+import java.util.List;
 
-  public abstract V getValue();
+public interface IRequest<K, V, R> {
+
+  K getKey(RequestContext context);
+
+  R getResult();
+
+  void setResult(R result);
+
+  List<K> getKeys();
+
+  RequestType getRequestType();
 }

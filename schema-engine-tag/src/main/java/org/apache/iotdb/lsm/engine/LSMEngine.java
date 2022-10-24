@@ -27,20 +27,20 @@ import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.recover.IRecoverable;
-import org.apache.iotdb.lsm.request.DeletionRequest;
-import org.apache.iotdb.lsm.request.InsertionRequest;
-import org.apache.iotdb.lsm.request.QueryRequest;
-import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.request.IDeletionIRequest;
+import org.apache.iotdb.lsm.request.IInsertionIRequest;
+import org.apache.iotdb.lsm.request.IQueryIRequest;
+import org.apache.iotdb.lsm.request.IRequest;
 
 import java.io.IOException;
 
 public class LSMEngine<T> implements ILSMEngine, IRecoverable {
 
-  private InsertionManager<T, InsertionRequest> insertionManager;
+  private InsertionManager<T, IInsertionIRequest> insertionManager;
 
-  private DeletionManager<T, DeletionRequest> deletionManager;
+  private DeletionManager<T, IDeletionIRequest> deletionManager;
 
-  private QueryManager<T, QueryRequest> queryManager;
+  private QueryManager<T, IQueryIRequest> queryManager;
 
   private WALManager walManager;
 
@@ -50,54 +50,41 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
 
   public LSMEngine() {}
 
-  public LSMEngine(WALManager walManager) throws Exception {
-    this.walManager = walManager;
-    insertionManager = new InsertionManager<>(walManager);
-    deletionManager = new DeletionManager<>(walManager);
-    queryManager = new QueryManager<>();
-    recoverManager = new RecoverManager<>(walManager);
-    recoverManager.recover(this);
-  }
-
-  public T getRootMemNode() {
-    return rootMemNode;
-  }
-
   public void setRootMemNode(T rootMemNode) {
     this.rootMemNode = rootMemNode;
   }
 
   @Override
-  public <K, V, R> void insert(InsertionRequest<K, V, R> insertionRequest) throws Exception {
+  public <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest) throws Exception {
     insertionManager.process(rootMemNode, insertionRequest, new InsertRequestContext());
   }
 
   @Override
   public <K, V, R> void insert(
-      InsertionRequest<K, V, R> insertionRequest, InsertRequestContext insertRequestContext)
+      IInsertionIRequest<K, V, R> insertionRequest, InsertRequestContext insertRequestContext)
       throws Exception {
     insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
   }
 
   @Override
-  public <K, R> void query(QueryRequest<K, R> queryRequest) throws Exception {
+  public <K, R> void query(IQueryIRequest<K, R> queryRequest) throws Exception {
     queryManager.process(rootMemNode, queryRequest, new QueryRequestContext());
   }
 
   @Override
-  public <K, R> void query(QueryRequest<K, R> queryRequest, QueryRequestContext queryRequestContext)
-      throws Exception {
+  public <K, R> void query(
+      IQueryIRequest<K, R> queryRequest, QueryRequestContext queryRequestContext) throws Exception {
     queryManager.process(rootMemNode, queryRequest, queryRequestContext);
   }
 
   @Override
-  public <K, V, R> void delete(DeletionRequest<K, V, R> deletionRequest) throws Exception {
+  public <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest) throws Exception {
     deletionManager.process(rootMemNode, deletionRequest, new DeleteRequestContext());
   }
 
   @Override
   public <K, V, R> void delete(
-      DeletionRequest<K, V, R> deletionRequest, DeleteRequestContext deleteRequestContext)
+      IDeletionIRequest<K, V, R> deletionRequest, DeleteRequestContext deleteRequestContext)
       throws Exception {
     deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
   }
@@ -112,56 +99,40 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
     walManager.close();
   }
 
-  public InsertionManager<T, InsertionRequest> getInsertionManager() {
-    return insertionManager;
-  }
-
-  public <R extends InsertionRequest> void setInsertionManager(
+  protected <R extends IInsertionIRequest> void setInsertionManager(
       InsertionManager<T, R> insertionManager) {
-    this.insertionManager = (InsertionManager<T, InsertionRequest>) insertionManager;
+    this.insertionManager = (InsertionManager<T, IInsertionIRequest>) insertionManager;
   }
 
-  public DeletionManager<T, DeletionRequest> getDeletionManager() {
-    return deletionManager;
-  }
-
-  public <R extends DeletionRequest> void setDeletionManager(
+  protected <R extends IDeletionIRequest> void setDeletionManager(
       DeletionManager<T, R> deletionManager) {
-    this.deletionManager = (DeletionManager<T, DeletionRequest>) deletionManager;
+    this.deletionManager = (DeletionManager<T, IDeletionIRequest>) deletionManager;
   }
 
-  public QueryManager<T, QueryRequest> getQueryManager() {
-    return queryManager;
+  protected <R extends IQueryIRequest> void setQueryManager(QueryManager<T, R> queryManager) {
+    this.queryManager = (QueryManager<T, IQueryIRequest>) queryManager;
   }
 
-  public <R extends QueryRequest> void setQueryManager(QueryManager<T, R> queryManager) {
-    this.queryManager = (QueryManager<T, QueryRequest>) queryManager;
-  }
-
-  public WALManager getWalManager() {
+  protected WALManager getWalManager() {
     return walManager;
   }
 
-  public void setWalManager(WALManager walManager) {
+  protected void setWalManager(WALManager walManager) {
     this.walManager = walManager;
   }
 
-  public RecoverManager<LSMEngine<T>> getRecoverManager() {
-    return recoverManager;
-  }
-
-  public void setRecoverManager(RecoverManager<LSMEngine<T>> recoverManager) {
+  protected void setRecoverManager(RecoverManager<LSMEngine<T>> recoverManager) {
     this.recoverManager = recoverManager;
   }
 
   @Override
-  public <K, V, R> void recover(Request<K, V, R> request) throws Exception {
+  public <K, V, R> void recover(IRequest<K, V, R> request) throws Exception {
     switch (request.getRequestType()) {
       case INSERT:
-        insert((InsertionRequest<K, V, R>) request);
+        insert((IInsertionIRequest<K, V, R>) request);
         break;
       case DELETE:
-        delete((DeletionRequest<K, V, R>) request);
+        delete((IDeletionIRequest<K, V, R>) request);
         break;
       default:
         break;

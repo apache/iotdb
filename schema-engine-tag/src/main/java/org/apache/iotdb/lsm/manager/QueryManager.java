@@ -19,10 +19,10 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.QueryRequestContext;
-import org.apache.iotdb.lsm.request.QueryRequest;
+import org.apache.iotdb.lsm.request.IQueryIRequest;
 
 /** manage query to MemTable */
-public class QueryManager<T, R extends QueryRequest>
+public class QueryManager<T, R extends IQueryIRequest>
     extends BasicLSMManager<T, R, QueryRequestContext> {
   @Override
   public void preProcess(T root, R request, QueryRequestContext context) throws Exception {}

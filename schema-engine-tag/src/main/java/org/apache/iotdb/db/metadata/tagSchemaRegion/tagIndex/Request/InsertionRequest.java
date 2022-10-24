@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
 import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.request.IInsertionIRequest;
 
 import java.util.List;
 
-public class InsertionRequest
-    extends org.apache.iotdb.lsm.request.InsertionRequest<String, Integer, RequestStatus> {
+public class InsertionRequest implements IInsertionIRequest<String, Integer, RequestStatus> {
 
   List<String> keys;
 

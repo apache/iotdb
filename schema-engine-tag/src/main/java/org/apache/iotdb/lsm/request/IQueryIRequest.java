@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.lsm.request;
 
-public abstract class QueryRequest<K, R> extends Request<K, Object, R> {
+public interface IQueryIRequest<K, R> extends IRequest<K, Object, R> {
 
-  public QueryRequest() {
-    requestType = RequestType.QUERY;
+  RequestType requestType = RequestType.QUERY;
+
+  @Override
+  default RequestType getRequestType() {
+    return requestType;
   }
 }

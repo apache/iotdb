@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
-import org.apache.iotdb.lsm.request.Request;
+import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
 
@@ -53,7 +53,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @throws IOException
    */
   @Override
-  public synchronized void write(Request request) throws IOException {
+  public synchronized void write(IRequest request) throws IOException {
     if (isRecover()) return;
     switch (request.getRequestType()) {
       case INSERT:
@@ -73,7 +73,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @return request context
    */
   @Override
-  public synchronized Request read() {
+  public synchronized IRequest read() {
     WALReader walReader = getWalReader();
     if (walReader.hasNext()) {
       WALEntry walEntry = (WALEntry) getWalReader().next();

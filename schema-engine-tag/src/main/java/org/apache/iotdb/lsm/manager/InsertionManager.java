@@ -19,12 +19,12 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.InsertRequestContext;
-import org.apache.iotdb.lsm.request.InsertionRequest;
+import org.apache.iotdb.lsm.request.IInsertionIRequest;
 
 import java.io.IOException;
 
 /** manage insertion to MemTable */
-public class InsertionManager<T, R extends InsertionRequest>
+public class InsertionManager<T, R extends IInsertionIRequest>
     extends BasicLSMManager<T, R, InsertRequestContext> {
 
   // use wal manager object to write wal file on insertion

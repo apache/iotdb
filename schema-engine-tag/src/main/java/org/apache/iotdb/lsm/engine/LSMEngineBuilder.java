@@ -27,9 +27,9 @@ import org.apache.iotdb.lsm.manager.InsertionManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
-import org.apache.iotdb.lsm.request.DeletionRequest;
-import org.apache.iotdb.lsm.request.InsertionRequest;
-import org.apache.iotdb.lsm.request.QueryRequest;
+import org.apache.iotdb.lsm.request.IDeletionIRequest;
+import org.apache.iotdb.lsm.request.IInsertionIRequest;
+import org.apache.iotdb.lsm.request.IQueryIRequest;
 
 public class LSMEngineBuilder<T> {
 
@@ -44,7 +44,7 @@ public class LSMEngineBuilder<T> {
     return this;
   }
 
-  public <R extends InsertionRequest> LSMEngineBuilder<T> buildInsertionManager(
+  public <R extends IInsertionIRequest> LSMEngineBuilder<T> buildInsertionManager(
       LevelProcessChain<T, R, InsertRequestContext> levelProcessChain) {
     InsertionManager<T, R> insertionManager = new InsertionManager<>(lsmEngine.getWalManager());
     insertionManager.setLevelProcessChain(levelProcessChain);
@@ -52,13 +52,13 @@ public class LSMEngineBuilder<T> {
     return this;
   }
 
-  public <R extends InsertionRequest> LSMEngineBuilder<T> buildInsertionManager(
+  public <R extends IInsertionIRequest> LSMEngineBuilder<T> buildInsertionManager(
       InsertionManager<T, R> insertionManager) {
     lsmEngine.setInsertionManager(insertionManager);
     return this;
   }
 
-  public <R extends DeletionRequest> LSMEngineBuilder<T> buildDeletionManager(
+  public <R extends IDeletionIRequest> LSMEngineBuilder<T> buildDeletionManager(
       LevelProcessChain<T, R, DeleteRequestContext> levelProcessChain) {
     DeletionManager<T, R> deletionManager = new DeletionManager<>(lsmEngine.getWalManager());
     deletionManager.setLevelProcessChain(levelProcessChain);
@@ -66,13 +66,13 @@ public class LSMEngineBuilder<T> {
     return this;
   }
 
-  public <R extends DeletionRequest> LSMEngineBuilder<T> buildDeletionManager(
+  public <R extends IDeletionIRequest> LSMEngineBuilder<T> buildDeletionManager(
       DeletionManager<T, R> deletionManager) {
     lsmEngine.setDeletionManager(deletionManager);
     return this;
   }
 
-  public <R extends QueryRequest> LSMEngineBuilder<T> buildQueryManager(
+  public <R extends IQueryIRequest> LSMEngineBuilder<T> buildQueryManager(
       LevelProcessChain<T, R, QueryRequestContext> levelProcessChain) {
     QueryManager<T, R> queryManager = new QueryManager<>();
     queryManager.setLevelProcessChain(levelProcessChain);
@@ -80,7 +80,7 @@ public class LSMEngineBuilder<T> {
     return this;
   }
 
-  public <R extends QueryRequest> LSMEngineBuilder<T> buildQueryManager(
+  public <R extends IQueryIRequest> LSMEngineBuilder<T> buildQueryManager(
       QueryManager<T, R> queryManager) {
     lsmEngine.setQueryManager(queryManager);
     return this;
@@ -102,7 +102,7 @@ public class LSMEngineBuilder<T> {
     return this;
   }
 
-  public LSMEngine<T> builder() {
+  public LSMEngine<T> build() {
     return lsmEngine;
   }
 }

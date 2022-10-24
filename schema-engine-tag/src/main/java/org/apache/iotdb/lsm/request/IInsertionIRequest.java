@@ -18,31 +18,14 @@
  */
 package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+public interface IInsertionIRequest<K, V, R> extends IRequest<K, V, R> {
 
-import java.util.List;
+  RequestType requestType = RequestType.INSERT;
 
-public abstract class Request<K, V, R> {
+  V getValue();
 
-  RequestType requestType;
-
-  public Request() {
-    requestType = RequestType.NONE;
-  }
-
-  public abstract K getKey(RequestContext context);
-
-  public abstract R getResult();
-
-  public abstract void setResult(R result);
-
-  public abstract List<K> getKeys();
-
-  public RequestType getRequestType() {
+  @Override
+  default RequestType getRequestType() {
     return requestType;
-  }
-
-  public void setRequestType(RequestType requestType) {
-    this.requestType = requestType;
   }
 }
