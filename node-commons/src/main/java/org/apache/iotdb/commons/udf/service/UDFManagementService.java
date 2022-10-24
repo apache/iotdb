@@ -152,7 +152,7 @@ public class UDFManagementService {
       String errorMessage =
           String.format(
               "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
-              functionName, className, uris);
+              functionName.toUpperCase(), className, uris);
       LOGGER.warn(errorMessage, outerException);
       throw new UDFManagementException(errorMessage, outerException);
     }
@@ -179,7 +179,7 @@ public class UDFManagementService {
       String errorMessage =
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
-              functionName, className, e);
+              functionName.toUpperCase(), className, e);
       LOGGER.warn(errorMessage, e);
       throw new UDFManagementException(errorMessage);
     }
@@ -200,7 +200,8 @@ public class UDFManagementService {
       UDFInformation information = udfTable.getUDFInformation(functionName);
       if (information != null && information.isBuiltin()) {
         String errorMessage =
-            String.format("Built-in function %s can not be deregistered.", functionName);
+            String.format(
+                "Built-in function %s can not be deregistered.", functionName.toUpperCase());
         LOGGER.warn(errorMessage);
         throw new UDFManagementException(errorMessage);
       }
@@ -217,7 +218,7 @@ public class UDFManagementService {
       String errorMessage =
           String.format(
               "Failed to reflect UDF instance, because UDF %s has not been registered.",
-              functionName);
+              functionName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new RuntimeException(errorMessage);
     }
