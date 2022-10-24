@@ -60,7 +60,7 @@ public class StorageGroupPartitionTable {
   // The name of storage group
   private String storageGroupName;
 
-  // Region
+  // RegionGroup
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
   // SchemaPartition
   private final SchemaPartitionTable schemaPartitionTable;

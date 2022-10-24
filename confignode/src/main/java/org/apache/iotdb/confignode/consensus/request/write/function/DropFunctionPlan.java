@@ -16,56 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+package org.apache.iotdb.confignode.consensus.request.write.function;
+
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class RegisterDataNodePlan extends ConfigPhysicalPlan {
+public class DropFunctionPlan extends ConfigPhysicalPlan {
 
-  private TDataNodeConfiguration info;
+  private String functionName;
 
-  public RegisterDataNodePlan() {
-    super(ConfigPhysicalPlanType.RegisterDataNode);
+  public DropFunctionPlan() {
+    super(ConfigPhysicalPlanType.DropFunction);
   }
 
-  public RegisterDataNodePlan(TDataNodeConfiguration info) {
-    this();
-    this.info = info;
+  public DropFunctionPlan(String functionName) {
+    super(ConfigPhysicalPlanType.DropFunction);
+    this.functionName = functionName;
   }
 
-  public TDataNodeConfiguration getInfo() {
-    return info;
+  public String getFunctionName() {
+    return functionName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);
+    stream.writeInt(getType().ordinal());
+    ReadWriteIOUtils.write(functionName, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    info = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    RegisterDataNodePlan that = (RegisterDataNodePlan) o;
-    return info.equals(that.info);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(info);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    functionName = ReadWriteIOUtils.readString(buffer);
   }
 }

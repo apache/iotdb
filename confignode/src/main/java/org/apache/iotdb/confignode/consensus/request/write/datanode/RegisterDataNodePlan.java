@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.write.datanode;
 
-package org.apache.iotdb.confignode.consensus.request.write;
-
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -27,43 +28,44 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DeleteProcedurePlan extends ConfigPhysicalPlan {
+public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
-  private long procId;
+  private TDataNodeConfiguration dataNodeConfiguration;
 
-  public long getProcId() {
-    return procId;
+  public RegisterDataNodePlan() {
+    super(ConfigPhysicalPlanType.RegisterDataNode);
   }
 
-  public void setProcId(long procId) {
-    this.procId = procId;
+  public RegisterDataNodePlan(TDataNodeConfiguration dataNodeConfiguration) {
+    this();
+    this.dataNodeConfiguration = dataNodeConfiguration;
   }
 
-  public DeleteProcedurePlan() {
-    super(ConfigPhysicalPlanType.DeleteProcedure);
+  public TDataNodeConfiguration getDataNodeConfiguration() {
+    return dataNodeConfiguration;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteProcedure.ordinal());
-    stream.writeLong(procId);
+    stream.writeInt(ConfigPhysicalPlanType.RegisterDataNode.ordinal());
+    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(dataNodeConfiguration, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.procId = buffer.getLong();
+  protected void deserializeImpl(ByteBuffer buffer) {
+    dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteProcedurePlan that = (DeleteProcedurePlan) o;
-    return procId == that.procId;
+    RegisterDataNodePlan that = (RegisterDataNodePlan) o;
+    return dataNodeConfiguration.equals(that.dataNodeConfiguration);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(procId);
+    return Objects.hash(dataNodeConfiguration);
   }
 }
