@@ -18,5 +18,5 @@
 # under the License.
 #
 nohup /iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
-sleep 10
+sleep 5
 /iotdb/sbin/start-datanode.sh
