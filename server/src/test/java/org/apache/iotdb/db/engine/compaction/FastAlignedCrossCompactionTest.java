@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
@@ -5331,7 +5332,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
       throws IllegalPathException, IOException {
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
     for (PartialPath path : seriesPaths) {
-      deleteMap.put(path.getFullPath(), new Pair<>(startValue, endValue));
+      String fullPath =
+          (path instanceof AlignedPath)
+              ? path.getFullPath()
+                  + PATH_SEPARATOR
+                  + ((AlignedPath) path).getMeasurementList().get(0)
+              : path.getFullPath();
+      deleteMap.put(fullPath, new Pair<>(startValue, endValue));
     }
     CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
   }

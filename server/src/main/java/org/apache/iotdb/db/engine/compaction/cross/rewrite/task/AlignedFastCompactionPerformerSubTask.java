@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
@@ -207,7 +206,9 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
 
     // deserialize time chunk
     ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-    Chunk timeChunk = ChunkCache.getInstance().get(chunkMetadata);
+    Chunk timeChunk =
+        readerCacheMap.get(chunkMetadataElement.fileElement.resource).readMemChunk(chunkMetadata);
+
     ChunkReader chunkReader = new ChunkReader(timeChunk);
     ByteBuffer chunkDataBuffer = timeChunk.getData();
     ChunkHeader chunkHeader = timeChunk.getHeader();
@@ -235,7 +236,8 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
         valueChunks.add(null);
         continue;
       }
-      Chunk valueChunk = ChunkCache.getInstance().get(chunkMetadata);
+      Chunk valueChunk =
+          readerCacheMap.get(chunkMetadataElement.fileElement.resource).readMemChunk(chunkMetadata);
       chunkReader = new ChunkReader(valueChunk);
       chunkDataBuffer = valueChunk.getData();
       chunkHeader = valueChunk.getHeader();

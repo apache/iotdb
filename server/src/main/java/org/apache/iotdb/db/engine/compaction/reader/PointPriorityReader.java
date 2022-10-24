@@ -82,6 +82,7 @@ public class PointPriorityReader {
     // remove the current point element
     pointElementsWithSameTimestamp.add(pointQueue.poll());
 
+    TsPrimitiveType[] currentValues = (TsPrimitiveType[]) currentPoint.right;
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
         // the smallest time of all pages is later then the last time, then break the loop
@@ -91,7 +92,6 @@ public class PointPriorityReader {
         PointElement pointElement = pointQueue.poll();
         pointElementsWithSameTimestamp.add(pointElement);
         TsPrimitiveType[] values = (TsPrimitiveType[]) pointElement.timeValuePair.right;
-        TsPrimitiveType[] currentValues = (TsPrimitiveType[]) currentPoint.right;
         for (int i = 0; i < values.length; i++) {
           if (currentValues[i] == null && values[i] != null) {
             // if current page of aligned value is null while other page of this aligned value
