@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -66,8 +66,8 @@ public class SourceHandle implements ISourceHandle {
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
-  private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
-  private final Map<Integer, ByteBuffer> sequenceIdToTsBlock = new HashMap<>();
+  private final Map<Integer, Long> sequenceIdToDataBlockSize = new Hashtable<>();
+  private final Map<Integer, ByteBuffer> sequenceIdToTsBlock = new Hashtable<>();
 
   private final String threadName;
   private long retryIntervalInMs;
