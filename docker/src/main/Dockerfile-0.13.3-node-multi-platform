@@ -17,21 +17,27 @@
 # under the License.
 #
 
-FROM openjdk:11-jre-slim
+FROM --platform=$TARGETPLATFORM eclipse-temurin:11-jre-focal
 RUN apt update \
   # procps is for `free` command
   && apt install wget unzip lsof procps -y \
-  && wget https://archive.apache.org/dist/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-bin.zip \
-  && unzip apache-iotdb-0.10.0-incubating-bin.zip \
-  && rm apache-iotdb-0.10.0-incubating-bin.zip \
-  && mv apache-iotdb-0.10.0-incubating /iotdb \
+  && wget https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-server-bin.zip \
+  # if you are in China, use the following URL
+  #&& wget https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.13.3/apache-iotdb-0.13.3-server-bin.zip \
+  && unzip apache-iotdb-0.13.3-server-bin.zip \
+  && rm apache-iotdb-0.13.3-server-bin.zip \
+  && mv apache-iotdb-0.13.3-server-bin /iotdb \
   && apt remove wget unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
+# rpc port
 EXPOSE 6667
+# JMX port
 EXPOSE 31999
+# sync port
 EXPOSE 5555
+# monitor port
 EXPOSE 8181
 VOLUME /iotdb/data
 VOLUME /iotdb/logs

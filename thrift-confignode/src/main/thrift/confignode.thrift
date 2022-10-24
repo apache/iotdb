@@ -486,7 +486,7 @@ struct TShowPipeInfo {
   6: required string message
 }
 
-struct TPipeInfo {
+struct TCreatePipeReq {
     1: required string pipeName
     2: required string pipeSinkName
     3: required i64 startTime
@@ -524,6 +524,12 @@ struct TShowPipeResp {
 struct TDeleteTimeSeriesReq{
   1: required string queryId
   2: required binary pathPatternTree
+}
+
+struct TDeactivateSchemaTemplateReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional string templateName
 }
 
 service IConfigNodeRPCService {
@@ -869,6 +875,7 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -893,7 +900,7 @@ service IConfigNodeRPCService {
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 
   /** Create Pipe */
-  common.TSStatus createPipe(TPipeInfo req)
+  common.TSStatus createPipe(TCreatePipeReq req)
 
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)

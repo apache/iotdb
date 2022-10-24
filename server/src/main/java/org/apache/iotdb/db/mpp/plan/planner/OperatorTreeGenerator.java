@@ -1824,6 +1824,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 PathsUsingTemplateScanNode.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new PathsUsingTemplateScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getTemplateId());
+        node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
   }
 }
