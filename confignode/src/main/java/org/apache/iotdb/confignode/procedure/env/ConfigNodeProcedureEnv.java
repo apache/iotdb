@@ -465,10 +465,10 @@ public class ConfigNodeProcedureEnv {
         (dataNodeId, regionStatus) ->
             getPartitionManager()
                 .cacheHeartbeatSample(
+                    dataNodeId,
                     regionGroupId,
-                    new RegionHeartbeatSample(
-                        currentTime, currentTime, dataNodeId, false, regionStatus)));
-    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionStatistics();
+                    new RegionHeartbeatSample(currentTime, currentTime, false, regionStatus)));
+    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionGroupStatistics();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

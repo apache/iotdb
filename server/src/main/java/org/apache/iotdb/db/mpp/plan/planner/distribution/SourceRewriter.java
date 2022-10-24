@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -70,6 +72,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
@@ -171,24 +174,73 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       SchemaQueryMergeNode node, DistributionPlanContext context) {
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
-    TreeSet<TRegionReplicaSet> schemaRegions =
-        new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
-    analysis
-        .getSchemaPartitionInfo()
-        .getSchemaPartitionMap()
-        .forEach(
-            (storageGroup, deviceGroup) -> {
-              deviceGroup.forEach(
-                  (deviceGroupId, schemaRegionReplicaSet) ->
-                      schemaRegions.add(schemaRegionReplicaSet));
-            });
-    schemaRegions.forEach(
-        region -> {
-          SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
-          schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-          schemaQueryScanNode.setRegionReplicaSet(region);
-          root.addChild(schemaQueryScanNode);
-        });
+    List<PartialPath> pathPatternList = seed.getPathPatternList();
+    if (pathPatternList.size() == 1) {
+      // the path pattern overlaps with all storageGroup or storageGroup.**
+      TreeSet<TRegionReplicaSet> schemaRegions =
+          new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
+              });
+      schemaRegions.forEach(
+          region -> {
+            SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
+            schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            schemaQueryScanNode.setRegionReplicaSet(region);
+            root.addChild(schemaQueryScanNode);
+          });
+    } else {
+      // the path pattern may only overlap with part of storageGroup or storageGroup.**, need filter
+      PathPatternTree patternTree = new PathPatternTree();
+      for (PartialPath pathPattern : pathPatternList) {
+        patternTree.appendPathPattern(pathPattern);
+      }
+      Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        storageGroupSchemaRegionMap
+                            .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                            .add(schemaRegionReplicaSet));
+              });
+
+      storageGroupSchemaRegionMap.forEach(
+          (storageGroup, schemaRegionSet) -> {
+            // extract the patterns overlap with current storage group
+            Set<PartialPath> filteredPathPatternSet = new HashSet<>();
+            try {
+              PartialPath storageGroupPath = new PartialPath(storageGroup);
+              filteredPathPatternSet.addAll(
+                  patternTree.getOverlappedPathPatterns(storageGroupPath));
+              filteredPathPatternSet.addAll(
+                  patternTree.getOverlappedPathPatterns(
+                      storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+            } catch (IllegalPathException ignored) {
+              // won't reach here
+            }
+            List<PartialPath> filteredPathPatternList = new ArrayList<>(filteredPathPatternSet);
+
+            schemaRegionSet.forEach(
+                region -> {
+                  SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
+                  schemaQueryScanNode.setPlanNodeId(
+                      context.queryContext.getQueryId().genPlanNodeId());
+                  schemaQueryScanNode.setRegionReplicaSet(region);
+                  schemaQueryScanNode.setPathPatternList(filteredPathPatternList);
+                  root.addChild(schemaQueryScanNode);
+                });
+          });
+    }
     return root;
   }
 

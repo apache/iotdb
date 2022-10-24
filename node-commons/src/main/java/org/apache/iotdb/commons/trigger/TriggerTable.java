@@ -88,6 +88,11 @@ public class TriggerTable {
         .collect(Collectors.toList());
   }
 
+  public TDataNodeLocation getTriggerLocation(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.get(triggerName);
+    return triggerInformation == null ? null : triggerInformation.getDataNodeLocation();
+  }
+
   public List<String> getTransferringTriggers() {
     return triggerTable.values().stream()
         .filter(

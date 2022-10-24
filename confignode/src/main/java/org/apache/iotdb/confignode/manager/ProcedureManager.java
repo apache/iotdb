@@ -23,13 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -41,9 +42,10 @@ import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -56,10 +58,11 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -71,6 +74,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class ProcedureManager {
@@ -168,11 +172,67 @@ public class ProcedureManager {
       if (procedureId == -1) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
         procedureId =
             this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus deactivateTemplate(
+      String queryId, Map<PartialPath, List<Template>> templateSetInfo) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      DeactivateTemplateProcedure deactivateTemplateProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null
+            || !type.equals(ProcedureFactory.ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
+          continue;
+        }
+        deactivateTemplateProcedure = (DeactivateTemplateProcedure) procedure;
+        if (queryId.equals(deactivateTemplateProcedure.getQueryId())) {
+          procedureId = deactivateTemplateProcedure.getProcId();
+          break;
+        }
+        for (PartialPath pattern : templateSetInfo.keySet()) {
+          for (PartialPath existingPattern :
+              deactivateTemplateProcedure.getTemplateSetInfo().keySet()) {
+            if (pattern.overlapWith(existingPattern)) {
+              hasOverlappedTask = true;
+              break;
+            }
+          }
+          if (hasOverlappedTask) {
+            break;
+          }
+        }
+        if (hasOverlappedTask) {
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is deactivating some target template from target path.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new DeactivateTemplateProcedure(queryId, templateSetInfo));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -272,7 +332,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus createPipe(TPipeInfo req) {
+  public TSStatus createPipe(TCreatePipeReq req) {
     try {
       long procedureId = executor.submitProcedure(new CreatePipeProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();

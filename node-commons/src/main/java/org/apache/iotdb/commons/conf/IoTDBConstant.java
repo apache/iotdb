@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -199,7 +200,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -227,10 +228,6 @@ public class IoTDBConstant {
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
-
-  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
-
-  public static final String EXT_LIMITER = "limiter";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

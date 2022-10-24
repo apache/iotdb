@@ -267,6 +267,10 @@ public interface BaseConfig {
     return 400000;
   }
 
+  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+    return 4000;
+  }
+
   default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
     return this;
   }

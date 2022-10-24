@@ -69,6 +69,9 @@ public abstract class Traverser {
   protected boolean shouldTraverseTemplate = false;
   protected Map<Integer, Template> templateMap;
 
+  // if true, the pre deleted measurement or pre deactivated template won't be processed
+  protected boolean skipPreDeletedSchema = false;
+
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
@@ -469,15 +472,13 @@ public abstract class Traverser {
         }
       }
     } else {
-      // new cluster
+      // new cluster, the used template is directly recorded as template id in device mnode
       if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-        return templateMap.get(node.getSchemaTemplateId());
-      }
-      while (iterator.hasNext()) {
-        ancestor = iterator.next();
-        if (ancestor.getSchemaTemplateId() != NON_TEMPLATE) {
-          return templateMap.get(ancestor.getSchemaTemplateId());
+        if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {
+          // skip this pre deactivated template, the invoker will skip this
+          return null;
         }
+        return templateMap.get(node.getSchemaTemplateId());
       }
     }
     // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
@@ -496,6 +497,10 @@ public abstract class Traverser {
 
   public void setShouldTraverseTemplate(boolean shouldTraverseTemplate) {
     this.shouldTraverseTemplate = shouldTraverseTemplate;
+  }
+
+  public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
+    this.skipPreDeletedSchema = skipPreDeletedSchema;
   }
 
   /**

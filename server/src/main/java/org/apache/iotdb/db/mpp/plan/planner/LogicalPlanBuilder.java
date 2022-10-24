@@ -1053,8 +1053,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planPathsUsingTemplateSource(int templateId) {
-    this.root = new PathsUsingTemplateScanNode(context.getQueryId().genPlanNodeId(), templateId);
+  public LogicalPlanBuilder planPathsUsingTemplateSource(
+      List<PartialPath> pathPatternList, int templateId) {
+    this.root =
+        new PathsUsingTemplateScanNode(
+            context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
     return this;
   }
 }
