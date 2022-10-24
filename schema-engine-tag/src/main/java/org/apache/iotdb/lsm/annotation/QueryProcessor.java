@@ -23,9 +23,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Indicates that the class using this annotation is a QueryLevelProcessor, and the attribute level
+ * of the annotation indicates which layer of memory node the query method of the
+ * QueryLevelProcessor is.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface QueryProcessor {
-  // level of the levelProcessor
+  // level of the QueryLevelProcessor
   int level() default -1;
 }

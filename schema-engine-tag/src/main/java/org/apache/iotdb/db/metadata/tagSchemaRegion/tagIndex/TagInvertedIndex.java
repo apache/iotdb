@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGr
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.engine.LSMEngine;
-import org.apache.iotdb.lsm.engine.LSMEngineDirector;
+import org.apache.iotdb.lsm.engine.LSMEngineBuilder;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -61,11 +61,14 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               tagSchemaConfig.getWalBufferSize(),
               new WALEntry(),
               false);
-      LSMEngineDirector<MemTableGroup> lsmEngineDirector = new LSMEngineDirector<>();
+      MemTableGroup memTableGroup =
+          new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable());
+      LSMEngineBuilder<MemTableGroup> lsmEngineBuilder = new LSMEngineBuilder<>();
       lsmEngine =
-          lsmEngineDirector.getLSMEngine(
-              "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex", walManager);
-      lsmEngine.setRootMemNode(new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable()));
+          lsmEngineBuilder
+              .buildLSMManagers("org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex", walManager)
+              .buildRootMemNode(memTableGroup)
+              .build();
       lsmEngine.recover();
     } catch (Exception e) {
       logger.error(e.getMessage());

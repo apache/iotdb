@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.lsm.request;
 
-public interface IQueryIRequest<K, R> extends IRequest<K, Object, R> {
+public interface IDeletionRequest<K, V, R> extends IRequest<K, V, R> {
 
-  RequestType requestType = RequestType.QUERY;
+  RequestType requestType = RequestType.DELETE;
+
+  V getValue();
 
   @Override
   default RequestType getRequestType() {

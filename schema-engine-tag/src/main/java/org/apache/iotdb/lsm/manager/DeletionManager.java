@@ -19,10 +19,10 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.DeleteRequestContext;
-import org.apache.iotdb.lsm.request.IDeletionIRequest;
+import org.apache.iotdb.lsm.request.IDeletionRequest;
 
 /** manage deletion to MemTable */
-public class DeletionManager<T, R extends IDeletionIRequest>
+public class DeletionManager<T, R extends IDeletionRequest>
     extends BasicLSMManager<T, R, DeleteRequestContext> {
 
   // use wal manager object to write wal file on deletion

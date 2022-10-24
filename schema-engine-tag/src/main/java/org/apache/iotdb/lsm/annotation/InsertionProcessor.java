@@ -23,9 +23,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Indicates that the class using this annotation is a InsertLevelProcessor, and the attribute level
+ * of the annotation indicates which layer of memory node the insertion method of the
+ * InsertLevelProcessor is.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface InsertionProcessor {
-  // level of the levelProcess
+  // level of the InsertLevelProcessor
   int level() default -1;
 }

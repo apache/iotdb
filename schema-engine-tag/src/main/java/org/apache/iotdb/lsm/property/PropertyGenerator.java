@@ -31,9 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class PropertyDescriptor {
+public class PropertyGenerator {
 
-  public static Property getProperty(String packageName) throws Exception {
+  public static Property GeneratePropertyWithAnnotation(String packageName) {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()

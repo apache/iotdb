@@ -19,19 +19,28 @@
 package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.lsm.request.IDeletionIRequest;
-import org.apache.iotdb.lsm.request.IInsertionIRequest;
-import org.apache.iotdb.lsm.request.IQueryIRequest;
+import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.request.IInsertionRequest;
+import org.apache.iotdb.lsm.request.IQueryRequest;
 
 import java.io.IOException;
 
+/**
+ * This interface defines the appearance of the LSM framework and provides read and write methods
+ */
 public interface ILSMEngine {
 
-  <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest);
+  /**
+   * @param insertionRequest
+   * @param <K>
+   * @param <V>
+   * @param <R>
+   */
+  <K, V, R> void insert(IInsertionRequest<K, V, R> insertionRequest);
 
-  <K, R> void query(IQueryIRequest<K, R> queryRequest);
+  <K, R> void query(IQueryRequest<K, R> queryRequest);
 
-  <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest);
+  <K, V, R> void delete(IDeletionRequest<K, V, R> deletionRequest);
 
   void recover();
 

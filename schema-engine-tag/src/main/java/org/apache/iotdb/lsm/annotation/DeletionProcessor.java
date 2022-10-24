@@ -23,9 +23,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Indicates that the class using this annotation is a DeleteLevelProcessor, and the attribute level
+ * of the annotation indicates which layer of memory node the deletion method of the
+ * DeleteLevelProcessor is.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface DeletionProcessor {
-  // level of the levelProcess
+  // level of the DeleteLevelProcessor
   int level() default -1;
 }

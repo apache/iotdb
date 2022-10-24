@@ -19,7 +19,7 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.RequestContext;
-import org.apache.iotdb.lsm.levelProcess.LevelProcessChain;
+import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.request.IRequest;
 
 /** basic lsm manager */
@@ -27,11 +27,11 @@ public abstract class BasicLSMManager<T, R extends IRequest, C extends RequestCo
     implements ILSMManager<T, R, C> {
 
   // the level process of the first layer of memory nodes
-  LevelProcessChain<T, R, C> levelProcessChain;
+  LevelProcessorChain<T, R, C> levelProcessChain;
 
   public BasicLSMManager() {}
 
-  public BasicLSMManager(LevelProcessChain<T, R, C> levelProcessChain) {
+  public BasicLSMManager(LevelProcessorChain<T, R, C> levelProcessChain) {
     this.levelProcessChain = levelProcessChain;
   }
 
@@ -49,7 +49,7 @@ public abstract class BasicLSMManager<T, R extends IRequest, C extends RequestCo
     postProcess(root, request, context);
   }
 
-  public void setLevelProcessChain(LevelProcessChain<T, R, C> levelProcessChain) {
+  public void setLevelProcessChain(LevelProcessorChain<T, R, C> levelProcessChain) {
     this.levelProcessChain = levelProcessChain;
   }
 }

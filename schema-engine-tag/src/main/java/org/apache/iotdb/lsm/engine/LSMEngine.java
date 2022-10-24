@@ -27,20 +27,20 @@ import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.recover.IRecoverable;
-import org.apache.iotdb.lsm.request.IDeletionIRequest;
-import org.apache.iotdb.lsm.request.IInsertionIRequest;
-import org.apache.iotdb.lsm.request.IQueryIRequest;
+import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.request.IInsertionRequest;
+import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
 
 import java.io.IOException;
 
 public class LSMEngine<T> implements ILSMEngine, IRecoverable {
 
-  private InsertionManager<T, IInsertionIRequest> insertionManager;
+  private InsertionManager<T, IInsertionRequest> insertionManager;
 
-  private DeletionManager<T, IDeletionIRequest> deletionManager;
+  private DeletionManager<T, IDeletionRequest> deletionManager;
 
-  private QueryManager<T, IQueryIRequest> queryManager;
+  private QueryManager<T, IQueryRequest> queryManager;
 
   private WALManager walManager;
 
@@ -55,17 +55,17 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
   }
 
   @Override
-  public <K, V, R> void insert(IInsertionIRequest<K, V, R> insertionRequest) {
+  public <K, V, R> void insert(IInsertionRequest<K, V, R> insertionRequest) {
     insertionManager.process(rootMemNode, insertionRequest, new InsertRequestContext());
   }
 
   @Override
-  public <K, R> void query(IQueryIRequest<K, R> queryRequest) {
+  public <K, R> void query(IQueryRequest<K, R> queryRequest) {
     queryManager.process(rootMemNode, queryRequest, new QueryRequestContext());
   }
 
   @Override
-  public <K, V, R> void delete(IDeletionIRequest<K, V, R> deletionRequest) {
+  public <K, V, R> void delete(IDeletionRequest<K, V, R> deletionRequest) {
     deletionManager.process(rootMemNode, deletionRequest, new DeleteRequestContext());
   }
 
@@ -79,18 +79,18 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
     walManager.close();
   }
 
-  protected <R extends IInsertionIRequest> void setInsertionManager(
+  protected <R extends IInsertionRequest> void setInsertionManager(
       InsertionManager<T, R> insertionManager) {
-    this.insertionManager = (InsertionManager<T, IInsertionIRequest>) insertionManager;
+    this.insertionManager = (InsertionManager<T, IInsertionRequest>) insertionManager;
   }
 
-  protected <R extends IDeletionIRequest> void setDeletionManager(
+  protected <R extends IDeletionRequest> void setDeletionManager(
       DeletionManager<T, R> deletionManager) {
-    this.deletionManager = (DeletionManager<T, IDeletionIRequest>) deletionManager;
+    this.deletionManager = (DeletionManager<T, IDeletionRequest>) deletionManager;
   }
 
-  protected <R extends IQueryIRequest> void setQueryManager(QueryManager<T, R> queryManager) {
-    this.queryManager = (QueryManager<T, IQueryIRequest>) queryManager;
+  protected <R extends IQueryRequest> void setQueryManager(QueryManager<T, R> queryManager) {
+    this.queryManager = (QueryManager<T, IQueryRequest>) queryManager;
   }
 
   protected WALManager getWalManager() {
@@ -109,10 +109,10 @@ public class LSMEngine<T> implements ILSMEngine, IRecoverable {
   public <K, V, R> void recover(IRequest<K, V, R> request) {
     switch (request.getRequestType()) {
       case INSERT:
-        insert((IInsertionIRequest<K, V, R>) request);
+        insert((IInsertionRequest<K, V, R>) request);
         break;
       case DELETE:
-        delete((IDeletionIRequest<K, V, R>) request);
+        delete((IDeletionRequest<K, V, R>) request);
         break;
       default:
         break;

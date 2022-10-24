@@ -16,16 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.levelProcess;
 
-public interface IInsertionIRequest<K, V, R> extends IRequest<K, V, R> {
+import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.request.IRequest;
 
-  RequestType requestType = RequestType.INSERT;
+public class LevelProcessorChain<T, R extends IRequest, C extends RequestContext> {
 
-  V getValue();
+  // the level process of the first layer of memory nodes
+  ILevelProcessor<T, ?, R, C> headLevelProcess;
 
-  @Override
-  default RequestType getRequestType() {
-    return requestType;
+  public <O> ILevelProcessor<T, O, R, C> nextLevel(ILevelProcessor<T, O, R, C> next) {
+    this.headLevelProcess = next;
+    return next;
+  }
+
+  public void process(T memNode, R request, C context) {
+    headLevelProcess.process(memNode, request, context);
   }
 }
