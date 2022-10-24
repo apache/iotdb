@@ -17,6 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-./start-confignode.sh &
+nohup ./start-confignode.sh &
 sleep 10
-./start-datanode.sh &
+nohup ./start-datanode.sh &
