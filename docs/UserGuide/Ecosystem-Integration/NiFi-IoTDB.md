@@ -103,7 +103,7 @@ The structure of property `Schema`:
 1. The JSON of schema must contain `timeType` and `fields`.
 2. There are only two options `LONG` and `STRING` for `timeType`.
 3. The columns `tsName` and `dataType` must be set.
-4. The tsName must start with `root.`.
+4. The property `Prefix` will be added to tsName as the field name when add data to IoTDB.
 5. The supported `dataTypes` are `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
 6. The supported `encoding` are `PLAIN`, `DICTIONARY`, `RLE`, `DIFF`, `TS_2DIFF`, `BITMAP`, `GORILLA_V1`, `REGULAR`, `GORILLA`.
 7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`.

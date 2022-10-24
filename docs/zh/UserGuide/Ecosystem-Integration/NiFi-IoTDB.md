@@ -103,7 +103,7 @@ Apache NiFi 包含以下功能：
 1. 定义 shema 的 JSON 中必须包含 `timeType` and `fields` 这两项。
 2. `timeType` 只支持 `LONG` 和 `STRING` 这两个选项。
 3. `tsName` 和 `dataType` 这两项必须被设置。
-4. `tsName` 必须以 `root.` 开头。 
+4. 当数据插入IoTDB时，Prefix属性会被添加到 tsName以作为插入的字段名。
 5. 支持的 `dataTypes` 有：`INT32`， `INT64`， `FLOAT`， `DOUBLE`， `BOOLEAN`， `TEXT`。
 6. 支持的 `encoding` 有： `PLAIN`， `DICTIONARY`， `RLE`， `DIFF`， `TS_2DIFF`， `BITMAP`， `GORILLA_V1`， `REGULAR`， `GORILLA`。
 7. 支持的 `compressionType` 有： `UNCOMPRESSED`， `SNAPPY`， `GZIP`， `LZO`， `SDT`， `PAA`， `PLA`， `LZ4`。
