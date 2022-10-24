@@ -42,7 +42,6 @@ public enum ServiceType {
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
-  UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
   UDF_EXECUTABLE_MANAGER_SERVICE("UDF Executable Manager Service", ""),
   TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   TRIGGER_REGISTRATION_SERVICE_OLD("Old Standalone Trigger Registration Service", ""),

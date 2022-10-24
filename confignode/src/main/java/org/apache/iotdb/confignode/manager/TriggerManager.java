@@ -29,16 +29,19 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
+import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
@@ -46,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -102,6 +106,7 @@ public class TriggerManager {
             TTriggerState.INACTIVE,
             isStateful,
             dataNodeLocation,
+            FailureStrategy.construct(req.getFailureStrategy()),
             req.getJarMD5());
     return configManager
         .getProcedureManager()
@@ -127,6 +132,15 @@ public class TriggerManager {
               .setMessage(e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
+    return ((TriggerLocationResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetTriggerLocationPlan(triggerName))
+                .getDataset())
+        .convertToThriftResponse();
   }
 
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
@@ -161,7 +175,7 @@ public class TriggerManager {
    * @return result of transferTrigger
    */
   public TSStatus transferTrigger(
-      List<TDataNodeLocation> newUnknownDataList,
+      List<TDataNodeLocation> newUnknownDataNodeList,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     TSStatus transferResult;
     triggerInfo.acquireTriggerTableLock();
@@ -171,7 +185,7 @@ public class TriggerManager {
 
       transferResult =
           consensusManager
-              .write(new UpdateTriggersOnTransferNodesPlan(newUnknownDataList))
+              .write(new UpdateTriggersOnTransferNodesPlan(newUnknownDataNodeList))
               .getStatus();
       if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return transferResult;

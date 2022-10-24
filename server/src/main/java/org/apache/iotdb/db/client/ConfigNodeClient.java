@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
@@ -50,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -73,7 +75,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -957,7 +958,7 @@ public class ConfigNodeClient
   public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetTriggerTableResp resp = client.getTriggerTable();
+        TGetTriggerTableResp resp = client.getStatefulTriggerTable();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
@@ -1066,6 +1067,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deactivateSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1130,7 +1147,7 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus createPipe(TPipeInfo req) throws TException {
+  public TSStatus createPipe(TCreatePipeReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.createPipe(req);

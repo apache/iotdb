@@ -54,6 +54,7 @@ public class TemplateTable {
 
   private final AtomicInteger templateIdGenerator;
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
 
   private final String snapshotFileName = "template_info.bin";
 
@@ -70,6 +71,19 @@ public class TemplateTable {
         throw new MetadataException(String.format("Template %s not exits", name));
       }
       return templateMap.get(name);
+    } finally {
+      templateReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Template getTemplate(int templateId) throws MetadataException {
+    try {
+      templateReadWriteLock.readLock().lock();
+      Template template = templateIdMap.get(templateId);
+      if (template == null) {
+        throw new MetadataException(String.format("Template with id=%s not exits", templateId));
+      }
+      return template;
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
@@ -95,6 +109,7 @@ public class TemplateTable {
       }
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
+      templateIdMap.put(template.getId(), template);
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }
@@ -123,6 +138,7 @@ public class TemplateTable {
     while (size > 0) {
       Template template = deserializeTemplate(byteBuffer);
       templateMap.put(template.getName(), template);
+      templateIdMap.put(template.getId(), template);
       size--;
     }
   }

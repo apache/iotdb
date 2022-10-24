@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -137,7 +137,7 @@ public class SyncPipeUtil {
   }
 
   /** parse TPipeInfo to PipeInfo */
-  public static PipeInfo parseTPipeInfoAsPipeInfo(TPipeInfo pipeInfo, long pipeCreateTime)
+  public static PipeInfo parseTCreatePipeReqAsPipeInfo(TCreatePipeReq pipeInfo, long pipeCreateTime)
       throws PipeException {
     boolean syncDelOp = true;
     for (Map.Entry<String, String> entry : pipeInfo.getAttributes().entrySet()) {

@@ -25,9 +25,10 @@ import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -93,6 +94,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
         break;
+      case DEACTIVATE_TEMPLATE_PROCEDURE:
+        procedure = new DeactivateTemplateProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -128,6 +132,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.STOP_PIPE_PROCEDURE;
     } else if (procedure instanceof DropPipeProcedure) {
       return ProcedureType.DROP_PIPE_PROCEDURE;
+    } else if (procedure instanceof DeactivateTemplateProcedure) {
+      return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     }
     return null;
   }
@@ -145,7 +151,8 @@ public class ProcedureFactory implements IProcedureFactory {
     CREATE_PIPE_PROCEDURE,
     START_PIPE_PROCEDURE,
     STOP_PIPE_PROCEDURE,
-    DROP_PIPE_PROCEDURE
+    DROP_PIPE_PROCEDURE,
+    DEACTIVATE_TEMPLATE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {
