@@ -60,7 +60,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
-  private final DataNodeInternalClient client;
+  private DataNodeInternalClient client;
 
   public AbstractIntoOperator(
       OperatorContext operatorContext,
@@ -71,7 +71,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
-    this.client = new DataNodeInternalClient(operatorContext.getSessionInfo());
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
@@ -110,6 +109,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+
+    if (client == null) {
+      client = new DataNodeInternalClient(operatorContext.getSessionInfo());
+    }
     TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
     if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -163,7 +166,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    client.close();
+    if (client != null) {
+      client.close();
+    }
     child.close();
   }
 

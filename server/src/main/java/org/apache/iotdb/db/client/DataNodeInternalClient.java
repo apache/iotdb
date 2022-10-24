@@ -35,15 +35,14 @@ import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.control.SessionTimeoutManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
@@ -62,7 +61,6 @@ public class DataNodeInternalClient {
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   private final long sessionId;
-  private boolean isNewSession = false;
 
   public DataNodeInternalClient(SessionInfo sessionInfo) {
     if (config.isClusterMode()) {
@@ -72,31 +70,19 @@ public class DataNodeInternalClient {
       PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
     }
-    if (!SESSION_MANAGER.checkLogin(sessionInfo.getSessionId())
-        || !Objects.equals(
-            SESSION_MANAGER.getUsername(sessionInfo.getSessionId()), sessionInfo.getUserName())) {
-      try {
-        this.sessionId =
-            SESSION_MANAGER.requestSessionId(
-                sessionInfo.getUserName(),
-                sessionInfo.getZoneId(),
-                IoTDBConstant.ClientVersion.V_0_13);
-        SessionTimeoutManager.getInstance().register(sessionId);
-        this.isNewSession = true;
 
-        LOGGER.info(
-            "User: {}, opens internal Session-{} in SELECT INTO",
-            sessionInfo.getUserName(),
-            sessionId);
-      } catch (Exception e) {
-        LOGGER.info(
-            "User {} opens internal Session failed in SELECT INTO", sessionInfo.getUserName());
-        throw new IntoProcessException(
-            String.format(
-                "User %s opens internal Session failed in SELECT INTO", sessionInfo.getUserName()));
-      }
-    } else {
-      this.sessionId = sessionInfo.getSessionId();
+    try {
+      sessionId =
+          SESSION_MANAGER.requestSessionId(
+              sessionInfo.getUserName(),
+              sessionInfo.getZoneId(),
+              IoTDBConstant.ClientVersion.V_0_13);
+
+      LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), sessionId);
+    } catch (Exception e) {
+      LOGGER.info("User {} opens internal Session failed.", sessionInfo.getUserName());
+      throw new IntoProcessException(
+          String.format("User %s opens internal Session failed.", sessionInfo.getUserName()));
     }
   }
 
@@ -126,8 +112,18 @@ public class DataNodeInternalClient {
   }
 
   public void close() {
-    if (isNewSession) {
-      SESSION_MANAGER.closeSession(sessionId);
+    SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
+    SESSION_MANAGER.closeSession(sessionId);
+  }
+
+  private void cleanupQueryExecution(Long queryId) {
+    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+    if (queryExecution != null) {
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.info("[CleanUpQuery]]");
+        queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
+      }
     }
   }
 }
