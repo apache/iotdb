@@ -152,7 +152,7 @@ public class ConfigManager implements IManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
-  private ConsensusManager consensusManager;
+  private volatile ConsensusManager consensusManager;
 
   /** Manage cluster node */
   private final NodeManager nodeManager;
