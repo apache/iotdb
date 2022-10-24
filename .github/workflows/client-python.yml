@@ -5,7 +5,7 @@ name: Python Client
 on:
   push:
     branches:
-      - 1c1d_dockertest
+      - master
       - 'rel/*'
       - "new_*"
     paths-ignore:
