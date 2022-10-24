@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.SessionTimeoutException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -1048,6 +1049,27 @@ public class SessionConnection {
         throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
       }
     }
+  }
+
+  protected TSBackupConfigurationResp getBackupConfiguration()
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSBackupConfigurationResp execResp;
+    try {
+      execResp = client.getBackupConfiguration();
+      verifySuccessWrapper(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execResp = client.getBackupConfiguration();
+          verifySuccessWrapper(execResp.getStatus());
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+    return execResp;
   }
 
   public boolean isEnableRedirect() {
