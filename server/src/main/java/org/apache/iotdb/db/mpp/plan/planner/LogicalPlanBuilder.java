@@ -137,6 +137,13 @@ public class LogicalPlanBuilder {
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
           }
+          if (expression instanceof FunctionExpression) {
+            FunctionExpression funcExp = (FunctionExpression) expression;
+            context
+                .getTypeProvider()
+                .setType(
+                    funcExp.getProcessExpressionString(), getPreAnalyzedType.apply(expression));
+          }
         });
   }
 
@@ -665,7 +672,7 @@ public class LogicalPlanBuilder {
         }
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
+          String functionName = ((FunctionExpression) next).getFunctionName().toLowerCase();
           CrossSeriesAggregationDescriptor aggregationDescriptor =
               new CrossSeriesAggregationDescriptor(
                   functionName,

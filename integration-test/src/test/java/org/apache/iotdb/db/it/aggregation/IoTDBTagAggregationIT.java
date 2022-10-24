@@ -102,8 +102,8 @@ public class IoTDBTagAggregationIT {
         "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
-    // |  k1|count(t)|
-    // avg(t)|max_time(t)|min_time(t)|max_value(t)|min_value(t)|extreme(t)|
+    // |  k1|COUNT(t)|
+    // AVG(t)|MAX_TIME(t)|MIN_TIME(t)|MAX_VALUE(t)|MIN_VALUE(t)|EXTREME(t)|
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |k1v2|       4|3.1000000536441803|         10|          1|         5.4|         1.3|
     // 5.4|
@@ -118,13 +118,13 @@ public class IoTDBTagAggregationIT {
         Assert.assertEquals(8, resultSet.getMetaData().getColumnCount());
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v2", resultSet.getString("k1"));
-        Assert.assertEquals(4L, resultSet.getLong("count(t)"));
-        Assert.assertEquals(3.1D, resultSet.getDouble("avg(t)"), DELTA);
-        Assert.assertEquals(10L, resultSet.getLong("max_time(t)"));
-        Assert.assertEquals(1L, resultSet.getLong("min_time(t)"));
-        Assert.assertEquals(5.4F, resultSet.getFloat("max_value(t)"), DELTA);
-        Assert.assertEquals(1.3F, resultSet.getFloat("min_value(t)"), DELTA);
-        Assert.assertEquals(5.4F, resultSet.getFloat("extreme(t)"), DELTA);
+        Assert.assertEquals(4L, resultSet.getLong("COUNT(t)"));
+        Assert.assertEquals(3.1D, resultSet.getDouble("AVG(t)"), DELTA);
+        Assert.assertEquals(10L, resultSet.getLong("MAX_TIME(t)"));
+        Assert.assertEquals(1L, resultSet.getLong("MIN_TIME(t)"));
+        Assert.assertEquals(5.4F, resultSet.getFloat("MAX_VALUE(t)"), DELTA);
+        Assert.assertEquals(1.3F, resultSet.getFloat("MIN_VALUE(t)"), DELTA);
+        Assert.assertEquals(5.4F, resultSet.getFloat("EXTREME(t)"), DELTA);
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals("k1v1", resultSet.getString(1));
         Assert.assertEquals(6L, resultSet.getLong(2));
@@ -154,7 +154,7 @@ public class IoTDBTagAggregationIT {
   @Test
   @Ignore
   public void testAggregateFunctionsWithNestedExpression() {
-    String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.sg.** GROUP BY TAGS(k1)";
+    String query = "SELECT count(t + 1), avg(t + 1) FROM root.sg.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+------------+------------------+
     // |  k1|count(t + 1)|        avg(t + 1)|
@@ -206,7 +206,7 @@ public class IoTDBTagAggregationIT {
   @Ignore // TODO: support having in later commits
   public void testAggregateFunctionsWithHaving() {
     String query =
-        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
+        "SELECT count(t), avg(t), max_time(t), min_time(t), max_value(t), min_value(t), extreme(t) FROM root.sg.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
@@ -249,7 +249,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testMultipleAggregationKeys() {
-    String query = "SELECT COUNT(t) FROM root.sg.** GROUP BY TAGS(k1, k2)";
+    String query = "SELECT count(t) FROM root.sg.** GROUP BY TAGS(k1, k2)";
     // Expected result set:
     // +----+----+--------+
     // |  k1|  k2|count(t)|
@@ -286,7 +286,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeAggregation() {
-    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
+    String query = "SELECT count(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -337,7 +337,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithSlidingWindow() {
-    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
+    String query = "SELECT count(t) from root.sg.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -391,7 +391,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testAlongWithTimeAggregationAndOrdering() {
     String query =
-        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
+        "SELECT count(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -442,7 +442,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeFiltering() {
-    String query = "SELECT COUNT(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS(k1)";
+    String query = "SELECT count(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+
     // |  k1|count(t)|

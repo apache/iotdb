@@ -102,6 +102,16 @@ public class SubPlanTypeExtractor {
       node.getTagValuesToAggregationDescriptors()
           .values()
           .forEach(this::updateTypeProviderByAggregationDescriptor);
+      node.getTagValuesToAggregationDescriptors()
+          .values()
+          .forEach(
+              v ->
+                  v.forEach(
+                      descriptor ->
+                          descriptor
+                              .getOutputColumnNames()
+                              .forEach(
+                                  name -> typeProvider.setType(name, allTypes.getType(name)))));
       return visitPlan(node, context);
     }
 

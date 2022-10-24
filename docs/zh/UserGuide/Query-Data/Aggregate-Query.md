@@ -412,7 +412,7 @@ select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017
 
 ```
 +-----------------------------+-------------------------+
-|                         Time|COUNT(root.ln.*.*.status)|
+|                         Time|count(root.ln.*.*.status)|
 +-----------------------------+-------------------------+
 |2017-11-02T00:00:00.000+08:00|                     1440|
 |2017-11-03T00:00:00.000+08:00|                     1440|
@@ -434,7 +434,7 @@ select count(status) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017
 
 ```
 +-----------------------------+-------------------------+
-|                         Time|COUNT(root.ln.*.*.status)|
+|                         Time|count(root.ln.*.*.status)|
 +-----------------------------+-------------------------+
 |2017-11-01T00:00:00.000+08:00|                      180|
 |2017-11-02T00:00:00.000+08:00|                      180|
@@ -518,7 +518,7 @@ insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 用户想统计该工厂每个地区的设备的温度的平均值，可以使用如下查询语句
 
 ```SQL
-SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS(city);
+SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS(city);
 ```
 
 该查询会将具有同一个 `city` 标签值的时间序列的所有满足查询条件的点做平均值计算，计算结果如下
@@ -579,7 +579,7 @@ It costs 0.027s
 SQL 语句如下
 
 ```SQL
-SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop);
+SELECT avg(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop);
 ```
 
 查询结果如下

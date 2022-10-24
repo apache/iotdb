@@ -416,7 +416,7 @@ Result:
 
 ```
 +-----------------------------+-------------------------+
-|                         Time|COUNT(root.ln.*.*.status)|
+|                         Time|count(root.ln.*.*.status)|
 +-----------------------------+-------------------------+
 |2017-11-02T00:00:00.000+08:00|                     1440|
 |2017-11-03T00:00:00.000+08:00|                     1440|
@@ -440,7 +440,7 @@ Result:
 
 ```
 +-----------------------------+-------------------------+
-|                         Time|COUNT(root.ln.*.*.status)|
+|                         Time|count(root.ln.*.*.status)|
 +-----------------------------+-------------------------+
 |2017-11-01T00:00:00.000+08:00|                      180|
 |2017-11-02T00:00:00.000+08:00|                      180|
@@ -528,7 +528,7 @@ insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 If the user wants to know the average temperature of each workshop, he can query like this
 
 ```SQL
-SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS(city);
+SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS(city);
 ```
 
 The query will calculate the average of the temperatures of those timeseries which have the same tag value of the key `city`.

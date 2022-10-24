@@ -140,7 +140,7 @@ public class AggregationDescriptor {
           outputAggregationNames.add(aggregationFuncName.toLowerCase());
       }
     } else {
-      outputAggregationNames.add(aggregationFuncName.toLowerCase());
+      outputAggregationNames.add(aggregationFuncName);
     }
     return outputAggregationNames;
   }

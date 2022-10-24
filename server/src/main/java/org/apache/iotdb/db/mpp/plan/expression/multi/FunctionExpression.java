@@ -38,6 +38,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
+import org.apache.commons.lang3.Validate;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -106,7 +108,7 @@ public class FunctionExpression extends Expression {
 
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
-
+    Validate.notNull(functionName);
     functionAttributes = ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
 
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
@@ -116,7 +118,7 @@ public class FunctionExpression extends Expression {
     }
 
     isBuiltInAggregationFunctionExpression =
-        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName);
+        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
     isUserDefinedAggregationFunctionExpression =
         expressions.stream()
@@ -305,6 +307,10 @@ public class FunctionExpression extends Expression {
   @Override
   public String getExpressionStringInternal() {
     return functionName + "(" + getParametersString() + ")";
+  }
+
+  public String getProcessExpressionString() {
+    return functionName.toLowerCase() + "(" + getParametersString() + ")";
   }
 
   /**

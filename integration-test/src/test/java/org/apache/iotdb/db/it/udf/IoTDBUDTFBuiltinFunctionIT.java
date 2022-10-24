@@ -123,6 +123,26 @@ public class IoTDBUDTFBuiltinFunctionIT {
     double invoke(double x);
   }
 
+  @Test
+  public void testMixedLetterCaseFunctionName() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery("select SiN(s1) from root.sg.d1")) {
+        assertEquals(2, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          assertTrue(resultSet.next());
+          double expected = Math.sin(i);
+          double actual = Double.parseDouble(resultSet.getString("SiN(root.sg.d1.s1)"));
+          assertEquals(expected, actual, E);
+        }
+        assertFalse(resultSet.next());
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
   private void testMathFunction(String functionName, MathFunctionProxy functionProxy) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

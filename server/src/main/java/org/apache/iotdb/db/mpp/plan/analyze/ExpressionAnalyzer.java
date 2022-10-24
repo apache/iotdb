@@ -1030,10 +1030,8 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         childExpressions.add(removeAliasFromExpression(suffixExpression));
       }
-      // Reconstruct the function name to lower case to finish the calculation afterwards while the
-      // origin name will be only as output name
       return new FunctionExpression(
-          functionExpression.getFunctionName().toLowerCase(),
+          functionExpression.getFunctionName(),
           functionExpression.getFunctionAttributes(),
           childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {

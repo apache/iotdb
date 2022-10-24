@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -320,9 +321,9 @@ public class IoTDBAggregationByLevelIT {
   }
 
   /**
-   * [root.sg.d1.temperature, root.sg.d2.temperature] with level = 1
+   * [root.sg1.d1.temperature, root.sg1.d2.temperature] with level = 1
    *
-   * <p>Result is [root.sg.*.temperature]
+   * <p>Result is [root.sg1.*.temperature]
    */
   @Test
   public void groupByLevelWithAliasTest() throws Exception {
@@ -357,6 +358,25 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery("select count(*) as ct from root.sg1.d1 GROUP BY level=0")) {
         while (resultSet.next()) {
           String ans = resultSet.getString("ct");
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+    }
+  }
+
+  @Test
+  public void groupByLevelWithMixedLetterCase() throws SQLException {
+    String[] retArray = new String[] {"5", "5", "5"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      int cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select cOuNt(temperature) from root.sg1.d1, root.sg1.d2 GROUP BY level=1")) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("cOuNt(root.sg1.*.temperature)");
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

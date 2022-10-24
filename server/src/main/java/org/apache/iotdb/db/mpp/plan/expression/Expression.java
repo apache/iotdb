@@ -190,7 +190,7 @@ public abstract class Expression extends StatementNode {
   }
 
   /**
-   * Sub-classes should override this method to provide valid string representation of this object.
+   * Subclasses should override this method to provide valid string representation of this object.
    * See {@link #getExpressionString()}
    */
   protected abstract String getExpressionStringInternal();
