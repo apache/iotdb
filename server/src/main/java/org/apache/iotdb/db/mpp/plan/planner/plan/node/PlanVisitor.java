@@ -39,8 +39,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -299,6 +302,18 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitActivateTemplate(ActivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPreDeactivateTemplate(PreDeactivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRollbackPreDeactivateTemplate(RollbackPreDeactivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeactivateTemplate(DeactivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 }

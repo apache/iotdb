@@ -54,6 +54,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -666,6 +667,44 @@ public class ConfigMTree {
         };
     setTemplatePaths.traverse();
     return resSet;
+  }
+
+  /** This method returns the templateId set on paths covered by input path pattern. */
+  public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
+      throws MetadataException {
+    Map<Integer, Set<PartialPath>> result = new HashMap<>();
+    CollectorTraverser<List<Integer>> collector =
+        new CollectorTraverser<List<Integer>>(root, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              // node set template
+              result
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                  .add(getCurrentPartialPath(node));
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              // node set template
+              result
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                  .add(getCurrentPartialPath(node));
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+        };
+    collector.traverse();
+    return result;
   }
 
   // endregion

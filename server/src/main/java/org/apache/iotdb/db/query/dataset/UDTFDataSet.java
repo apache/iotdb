@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
@@ -114,7 +114,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
-    UDFRegistrationService.getInstance().acquireRegistrationLock();
+    UDFManagementService.getInstance().acquireLock();
     // This statement must be surrounded by the registration lock.
     UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
     try {
@@ -131,7 +131,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
               .setDataSetResultColumnDataTypes()
               .getResultColumnPointReaders();
     } finally {
-      UDFRegistrationService.getInstance().releaseRegistrationLock();
+      UDFManagementService.getInstance().releaseLock();
     }
   }
 

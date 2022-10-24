@@ -2118,7 +2118,7 @@ public class IoTDBConfig {
     this.watermarkBitString = watermarkBitString;
   }
 
-  String getWatermarkMethod() {
+  public String getWatermarkMethod() {
     return this.watermarkMethod;
   }
 

@@ -19,3 +19,4 @@
 
 *
 !distribution
+!docker/src/main/DockerCompose/start-1c1d.sh
