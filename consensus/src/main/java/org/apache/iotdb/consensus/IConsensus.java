@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -105,6 +106,19 @@ public interface IConsensus {
    * @param newPeers the new member configuration of this group
    */
   ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
+
+  /**
+   * Call this method on any member of originalGroup
+   */
+  default ConsensusGenericResponse addNewNodeToExistedGroup(
+      ConsensusGroupId groupId, Peer newNode, List<Peer> originalGroup) {
+    return ConsensusGenericResponse.newBuilder()
+        .setSuccess(false)
+        .setException(
+            new ConsensusException(
+                "addNewNodeToExistedGroup method is not implemented by " + this + " class"))
+        .build();
+  }
 
   // management API
   ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);
