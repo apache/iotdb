@@ -143,4 +143,6 @@ public interface BaseEnv {
   void startDataNode(int index);
 
   void shutdownDataNode(int index);
+
+  int getMqttPort();
 }

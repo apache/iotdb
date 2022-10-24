@@ -35,6 +35,11 @@
   <allow pkg="org\.slf4j.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
+    <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="io.netty.buffer.ByteBuf" />
+    <allow class="io.netty.buffer.Unpooled" />
+    <allow class="org.fusesource.mqtt.client.QoS" />
+    <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
     <allow pkg="org.apache.iotdb.db.it.utils" />
     <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
@@ -46,6 +51,10 @@
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.protocol\.mqtt.*" regex="true" />
+    <allow pkg="io\.moquette\.interception\.messages.*" regex="true" />
+    <allow pkg="io\.netty\.handler\.codec\.mqtt.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.engine\.trigger\.sink\.mqtt.*" regex="true" />
   </subpackage>
   <subpackage name="confignode.it">
     <allow class="java.nio.ByteBuffer" />
