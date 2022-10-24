@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -66,7 +67,7 @@ public abstract class SchemaRegionBasicTest {
     isClusterMode = config.isClusterMode();
     config.setMppMode(true);
     config.setClusterMode(true);
-    EnvironmentUtils.envSetUp();
+    IoTDB.configManager.init();
   }
 
   @After
