@@ -471,7 +471,7 @@ public class IoTDBSelectIntoIT {
     executeNonQuery("CREATE TIMESERIES root.sg_bk.new_d.t1 TEXT;");
     assertTestFail(
         "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "executeStatement failed. Task was cancelled.");
+        "Task was cancelled.");
   }
 
   @Test
@@ -479,7 +479,7 @@ public class IoTDBSelectIntoIT {
     executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_bk.new_d(t1 INT32, t2 INT32);");
     assertTestFail(
         "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "executeStatement failed. Task was cancelled.");
+        "Task was cancelled.");
   }
 
   @Test
@@ -511,9 +511,7 @@ public class IoTDBSelectIntoIT {
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
         fail("No exception!");
       } catch (SQLException e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage().contains("executeStatement failed. Task was cancelled."));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("Task was cancelled."));
       }
     }
   }
