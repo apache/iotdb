@@ -112,8 +112,8 @@ public interface IConsensus {
    *
    * <p>The underlying implementation should <br>
    * 1. first call createPeer on the new member <br>
-   * 2. then call addPeer for configuration change call this method on any node of the <em>original
-   * group</em>. <br>
+   * 2. then call addPeer for configuration change <br>
+   * Call this method on any node of the <em>original group</em>. <br>
    * NOTICE: Currently only RatisConsensus implements this method.
    *
    * @param groupId the consensus group
