@@ -32,6 +32,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -64,9 +66,11 @@ public class IoTDBAlignedSeriesQueryIT {
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
   protected static int maxTsBlockLineNumber;
+  private static Logger log = LoggerFactory.getLogger(IoTDBAlignedSeriesQueryIT.class);
 
   @BeforeClass
   public static void setUp() throws Exception {
+    long start = System.nanoTime();
     enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
@@ -77,6 +81,8 @@ public class IoTDBAlignedSeriesQueryIT {
     ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
+    long end = System.nanoTime();
+    log.info("[3936test] IoTDBAlignedSeriesQueryIT setUp() " + (double) (end - start) / (1e9));
   }
 
   @AfterClass
@@ -5641,14 +5647,20 @@ public class IoTDBAlignedSeriesQueryIT {
           "31,null,aligned_test31",
           "36,null,aligned_test36"
         };
+    long time1, time2;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
+      time1 = System.nanoTime();
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
                   + "where time > 5 GROUP BY ([1, 41), 10ms, 5ms)")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBAlignedSeriesQueryIT firstLastValueSlidingWindowTest1 executeQuery1 "
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -5660,6 +5672,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBAlignedSeriesQueryIT firstLastValueSlidingWindowTest1 next1 "
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(retArray.length, cnt);
       }
 
@@ -5667,6 +5684,11 @@ public class IoTDBAlignedSeriesQueryIT {
           statement.executeQuery(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
                   + " where time > 5 GROUP BY ([1, 41), 10ms, 5ms) order by time desc")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBAlignedSeriesQueryIT firstLastValueSlidingWindowTest1 executeQuery2 "
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -5678,6 +5700,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBAlignedSeriesQueryIT firstLastValueSlidingWindowTest1 next2 "
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(0, cnt);
       }
     }

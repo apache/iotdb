@@ -28,6 +28,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,10 +47,14 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBTagIT {
+  private Logger log = LoggerFactory.getLogger(IoTDBTagIT.class);
 
   @Before
   public void setUp() throws Exception {
+    Long start = System.nanoTime();
     EnvFactory.getEnv().initBeforeTest();
+    Long end = System.nanoTime();
+    log.info("[3936test] IoTDBTagIT method setUp() cost" + (double) (end - start) / (1e9));
   }
 
   @After
@@ -341,30 +347,53 @@ public class IoTDBTagIT {
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithLimitTest() {
+    Long start = System.nanoTime();
     List<String> ret =
         Arrays.asList(
             "root.turbine.d1.s2,temperature2,root.turbine,FLOAT,RLE,SNAPPY,"
                 + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}",
             "root.turbine.d1.s3,temperature3,root.turbine,FLOAT,RLE,SNAPPY,"
                 + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
+    Long time1, time2;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      time1 = System.nanoTime();
       statement.execute(
           "create timeseries root.turbine.d1.s1(temperature1) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
               + "attributes('attr1'='v1', 'attr2'='v2')");
+      time2 = System.nanoTime();
+      log.info(
+          "[3936test] IoTDBTagIT queryWithLimitTest method create1 cost"
+              + (double) (time2 - time1) / (1e9));
+      time1 = time2;
       statement.execute(
           "create timeseries root.turbine.d1.s2(temperature2) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
               + "attributes('attr1'='v1', 'attr2'='v2')");
+      time2 = System.nanoTime();
+      log.info(
+          "[3936test] IoTDBTagIT queryWithLimitTest method create2 cost"
+              + (double) (time2 - time1) / (1e9));
+      time1 = time2;
       statement.execute(
           "create timeseries root.turbine.d1.s3(temperature3) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
               + "attributes('attr1'='v1', 'attr2'='v2')");
+      time2 = System.nanoTime();
+      log.info(
+          "[3936test] IoTDBTagIT queryWithLimitTest method create3 cost"
+              + (double) (time2 - time1) / (1e9));
+      time1 = time2;
       int count = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
               "show timeseries root.turbine.d1.** where 'tag1'='v1' limit 2 offset 1")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBTagIT queryWithLimitTest method show timeseries cost"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -385,8 +414,18 @@ public class IoTDBTagIT {
           assertTrue(ret.contains(ans));
           count++;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] IoTDBTagIT queryWithLimitTest method next cost"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
       }
       assertEquals(ret.size(), count);
+      time2 = System.nanoTime();
+      log.info(
+          "[3936test] IoTDBTagIT queryWithLimitTest finished cost"
+              + (double) (time1 - start) / (1e9));
+      time1 = time2;
     } catch (Exception e) {
       e.printStackTrace();
       fail();
