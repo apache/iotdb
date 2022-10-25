@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -42,7 +41,7 @@ public class IoTDBMetadataFetchSchemaFileIT extends IoTDBMetadataFetchIT {
   @Before
   public void setUp() throws Exception {
     schemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
-    ConfigFactory.getConfig().setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+    ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
     super.setUp();
   }
 

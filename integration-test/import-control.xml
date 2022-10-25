@@ -35,7 +35,6 @@
   <allow pkg="org\.slf4j.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
-    <allow class="org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode"/>
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />

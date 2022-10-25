@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.itbase.env;
 
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
-
 import java.util.Properties;
 
 public interface BaseConfig {
@@ -334,6 +332,6 @@ public interface BaseConfig {
   }
 
   default String getSchemaEngineMode() {
-    return SchemaEngineMode.Memory.toString();
+    return "Memory";
   }
 }
