@@ -35,8 +35,22 @@ public interface IMTreeStore {
 
   IMNode getRoot();
 
+  /**
+   * Check if parent has child
+   *
+   * @param parent parent node
+   * @param name name or alias
+   * @return true if parent has a child whose name or alias matches the condition
+   */
   boolean hasChild(IMNode parent, String name) throws MetadataException;
 
+  /**
+   * Get child by name or alias
+   *
+   * @param parent parent node
+   * @param name name or alias
+   * @return child node
+   */
   IMNode getChild(IMNode parent, String name) throws MetadataException;
 
   IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException;

@@ -486,6 +486,11 @@ struct TShowPipeInfo {
   6: required string message
 }
 
+struct TGetAllPipeInfoResp{
+  1: required common.TSStatus status
+  2: optional list<binary> allPipeInfo
+}
+
 struct TCreatePipeReq {
     1: required string pipeName
     2: required string pipeSinkName
@@ -913,6 +918,9 @@ service IConfigNodeRPCService {
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo();
 
   // ======================================================
   // TestTools

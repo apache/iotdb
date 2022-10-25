@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
@@ -50,8 +52,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -66,6 +66,14 @@ public class SyncManager {
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
+  }
+
+  public void lockSyncMetadata() {
+    clusterSyncInfo.lockSyncMetadata();
+  }
+
+  public void unlockSyncMetadata() {
+    clusterSyncInfo.unlockSyncMetadata();
   }
 
   // ======================================================
@@ -146,6 +154,22 @@ public class SyncManager {
 
   public PipeInfo getPipeInfo(String pipeName) throws PipeException {
     return clusterSyncInfo.getPipeInfo(pipeName);
+  }
+
+  public TGetAllPipeInfoResp getAllPipeInfo() {
+    try {
+      // Should lock SyncMetadata to block operation PIPE procedure
+      lockSyncMetadata();
+      TGetAllPipeInfoResp resp = new TGetAllPipeInfoResp();
+      resp.setStatus(StatusUtils.OK);
+      resp.setAllPipeInfo(
+          clusterSyncInfo.getAllPipeInfos().stream()
+              .map(PipeInfo::serializeToByteBuffer)
+              .collect(Collectors.toList()));
+      return resp;
+    } finally {
+      unlockSyncMetadata();
+    }
   }
 
   /**

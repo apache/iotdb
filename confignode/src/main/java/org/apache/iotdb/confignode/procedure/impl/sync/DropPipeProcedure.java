@@ -107,7 +107,10 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+
+    env.getConfigManager().getSyncManager().unlockSyncMetadata();
+  }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {

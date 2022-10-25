@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
@@ -68,8 +70,10 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -326,6 +330,67 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         measurementMNodeList.add(measurementMNode);
       }
       return measurementMNodeList;
+    } finally {
+      unPinMNode(device);
+    }
+  }
+
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    IMNode device = null;
+    try {
+      device = getNodeByPath(devicePath);
+    } catch (MetadataException e) {
+      return Collections.emptyMap();
+    }
+    try {
+      if (!device.isEntity()) {
+        return Collections.emptyMap();
+      }
+      Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
+      for (int i = 0; i < measurementList.size(); i++) {
+        IMNode node = null;
+        try {
+          node = store.getChild(device, measurementList.get(i));
+          if (node != null) {
+            if (node.isMeasurement()) {
+              if (node.getAsMeasurementMNode().isPreDeleted()) {
+                failingMeasurementMap.put(
+                    i,
+                    new MeasurementInBlackListException(
+                        devicePath.concatNode(measurementList.get(i))));
+              } else {
+                failingMeasurementMap.put(
+                    i,
+                    new MeasurementAlreadyExistException(
+                        devicePath.getFullPath() + "." + measurementList.get(i),
+                        node.getAsMeasurementMNode().getMeasurementPath()));
+              }
+            } else {
+              failingMeasurementMap.put(
+                  i,
+                  new PathAlreadyExistException(
+                      devicePath.getFullPath() + "." + measurementList.get(i)));
+            }
+          }
+          if (aliasList != null
+              && aliasList.get(i) != null
+              && store.hasChild(device, aliasList.get(i))) {
+            failingMeasurementMap.put(
+                i,
+                new AliasAlreadyExistException(
+                    devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+          }
+        } catch (MetadataException e) {
+          failingMeasurementMap.put(i, e);
+        } finally {
+          if (node != null) {
+            unPinMNode(node);
+          }
+        }
+      }
+      return failingMeasurementMap;
     } finally {
       unPinMNode(device);
     }
@@ -861,6 +926,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Get the count of timeseries matching the given path.
    *
@@ -1023,6 +1095,34 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }
+  }
+
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    List<MeasurementPath> result = new LinkedList<>();
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            if (node.isPreDeleted()) {
+              return;
+            }
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              path.setTagMap(tagGetter.apply(node));
+            }
+            result.add(path);
+          }
+        };
+    collector.setTemplateMap(templateMap);
+    collector.traverse();
+    return result;
   }
 
   @Override
