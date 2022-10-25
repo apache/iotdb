@@ -894,7 +894,7 @@ var config = {
 						]
 					},
 					{
-						title: 'Write Data',
+						title: 'Write Data (Update Data)',
 						sidebarDepth: 1,
 						children: [
 							['Write-Data/Write-Data','Write Data'],
@@ -1828,7 +1828,7 @@ var config = {
 						]
 					},
 					{
-						title: '数据写入',
+						title: '数据写入（更新）',
 						sidebarDepth: 1,
 						children: [
 							['Write-Data/Write-Data','写入数据'],
