@@ -154,7 +154,7 @@ public class EnvironmentUtils {
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean wal
-    MultiFileLogNodeManager.getInstance().stop();
+    MultiFileLogNodeManager.getInstance().close();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
