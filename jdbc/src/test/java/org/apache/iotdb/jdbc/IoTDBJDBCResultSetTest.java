@@ -126,8 +126,6 @@ public class IoTDBJDBCResultSetTest {
 
     statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
-    execResp.queryDataSet = FakedFirstFetchResult();
-
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
     when(connection.isClosed()).thenReturn(false);

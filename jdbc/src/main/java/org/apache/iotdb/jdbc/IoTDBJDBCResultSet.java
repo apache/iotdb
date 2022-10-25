@@ -26,8 +26,6 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -63,12 +61,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
-  private BitSet aliasColumnMap;
+
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
-
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
 
   public IoTDBJDBCResultSet(
       Statement statement,
@@ -106,7 +102,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
             aliasColumnMap);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
-    this.aliasColumnMap = aliasColumnMap;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -288,7 +283,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
     try {
-      return getBoolean(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getBoolean(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -475,14 +470,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
     String operationType = "";
     boolean nonAlign = false;
     try {
-      if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
-        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
-      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
-        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
-        nonAlign = true;
-      }
+      operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+      this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
     } catch (SQLException throwables) {
       throwables.printStackTrace();
     }
@@ -753,28 +742,16 @@ public class IoTDBJDBCResultSet implements ResultSet {
       return false;
     }
     if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
-      logger.info("before IoTDBJDBCDataSet fetchResult");
       constructOneBlock();
       constructOneRow();
-      logger.info(
-          "after IoTDBJDBCDataSet fetchResult"
-              + ioTDBRpcDataSet.queryResultSize
-              + " tsblock size"
-              + ioTDBRpcDataSet.tsBlockSize);
       return true;
     }
     return false;
   }
 
   /** @return true means has results */
-  public boolean fetchResults() throws SQLException {
+  private boolean fetchResults() throws SQLException {
     try {
-      logger.info(
-          "IoTDBJDBCDataSet fetchResult:"
-              + ioTDBRpcDataSet.sql
-              + ioTDBRpcDataSet.sessionId
-              + ioTDBRpcDataSet.queryId);
-      logger.info("IoTDBJDBCDataSet fetchResult: fetchSize:" + ioTDBRpcDataSet.fetchSize);
       return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
@@ -1250,14 +1227,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public boolean wasNull() {
     return ioTDBRpcDataSet.lastReadWasNull;
   }
-
-  protected void checkRecord() throws SQLException {
-    try {
-      ioTDBRpcDataSet.checkRecord();
-    } catch (StatementExecutionException e) {
-      throw new SQLException(e.getMessage());
-    }
-  };
 
   protected String getValueByName(String columnName) throws SQLException {
     try {
