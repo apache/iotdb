@@ -326,4 +326,12 @@ public interface BaseConfig {
   default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
     return this;
   }
+
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
+  }
 }
