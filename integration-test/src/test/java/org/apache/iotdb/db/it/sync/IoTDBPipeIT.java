@@ -123,6 +123,12 @@ public class IoTDBPipeIT {
             };
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
+      try {
+        statement.execute("START PIPE p3;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p3] does not exist"));
+      }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE p1")) {
         String[] expectedRetSet =
             new String[] {String.format("%s,p1,sender,demo,RUNNING,NORMAL,", createTime1)};
@@ -136,6 +142,12 @@ public class IoTDBPipeIT {
               String.format("%s,p2,sender,demo,RUNNING,NORMAL,", createTime2)
             };
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+      }
+      try {
+        statement.execute("STOP PIPE p3;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p3] does not exist"));
       }
       statement.execute("DROP PIPE p1;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {

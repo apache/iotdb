@@ -105,7 +105,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   protected boolean isRollbackSupported(OperatePipeState state) {
     switch (state) {
-      case OPERATE_CHECK:
+      case PRE_OPERATE_PIPE_CONFIGNODE:
       case OPERATE_PIPE_DATANODE:
         return true;
     }
@@ -115,8 +115,36 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
-    // TODO(sync): roll back logic;
+    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
+    switch (state) {
+      case PRE_OPERATE_PIPE_CONFIGNODE:
+        TSStatus status = env.getConfigManager().getSyncManager().dropPipe(pipeInfo.getPipeName());
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new ProcedureException(
+              String.format(
+                  "Failed to create pipe and failed to roll back because %s. Please execute [DROP PIPE %s] manually.",
+                  status.getMessage(), pipeInfo.getPipeName()));
+        }
+        break;
+      case OPERATE_PIPE_DATANODE:
+        status =
+            RpcUtils.squashResponseStatusList(
+                env.getConfigManager()
+                    .getSyncManager()
+                    .operatePipeOnDataNodes(pipeInfo.getPipeName(), SyncOperation.DROP_PIPE));
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          status = env.getConfigManager().getSyncManager().dropPipe(pipeInfo.getPipeName());
+        }
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new ProcedureException(
+              String.format(
+                  "Failed to create pipe and failed to roll back because %s. Please execute [DROP PIPE %s] manually.",
+                  status.getMessage(), pipeInfo.getPipeName()));
+        }
+        break;
+      default:
+        LOGGER.error("Unsupported roll back STATE [{}]", state);
+    }
   }
 
   @Override

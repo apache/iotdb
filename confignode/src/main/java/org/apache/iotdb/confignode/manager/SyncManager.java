@@ -160,8 +160,6 @@ public class SyncManager {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
-    final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
 
@@ -169,7 +167,7 @@ public class SyncManager {
         new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
-    return dataNodeResponseStatus;
+    return clientHandler.getResponseList();
   }
 
   /**
@@ -182,15 +180,14 @@ public class SyncManager {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
-    final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TCreatePipeOnDataNodeReq request =
         new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
 
     AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return dataNodeResponseStatus;
+
+    return clientHandler.getResponseList();
   }
 
   // endregion
