@@ -1,0 +1,33 @@
+---------------------
+Starting IoTDB DataNode
+---------------------
+./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../conf/datanode-env.sh: line 27: ulimit: open files: cannot modify limit: Operation not permitted
+Warning: Failed to set max number of files to be 65535, maybe you need to use 'sudo ulimit -n 65535' to set it when you use iotdb in production environments.
+WARN:
+WARN: the value of net.core.somaxconn (=128) is too small, please set it to a larger value using the following command.
+WARN:     sudo sysctl -w net.core.somaxconn=65535
+WARN: The original net.core.somaxconn value will be set back when the os reboots.
+WARN:
+setting local JMX...
+Maximum memory allocation pool = 40160MB, initial memory allocation pool = 3200MB
+If you want to change this configuration, please check conf/datanode-env.sh.
+2022-09-27 10:01:05,063 [main] INFO  o.a.i.d.c.IoTDBDescriptor:194 - Start to read config file file:./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../conf/iotdb-datanode.properties 
+2022-09-27 10:01:05,081 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1589 - allocateMemoryForRead = 11229619814 
+2022-09-27 10:01:05,081 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1590 - allocateMemoryForWrite = 14972826419 
+2022-09-27 10:01:05,081 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1591 - allocateMemoryForSchema = 3743206604 
+2022-09-27 10:01:05,082 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1704 - allocateMemoryForSchemaRegion = 2994565283 
+2022-09-27 10:01:05,082 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1707 - allocateMemoryForSchemaCache = 374320660 
+2022-09-27 10:01:05,082 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1711 - allocateMemoryForPartitionCache = 0 
+2022-09-27 10:01:05,082 [main] INFO  o.a.i.d.c.IoTDBDescriptor:1714 - allocateMemoryForLastCache = 374320660 
+2022-09-27 10:01:05,085 [main] INFO  o.a.i.t.c.c.TSFileDescriptor:129 - try loading iotdb-datanode.properties from /home/zx/workspace/iotdb/./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../conf/iotdb-datanode.properties 
+2022-09-27 10:01:05,094 [main] INFO  o.a.i.d.c.IoTDBDescriptor:367 - IoTDB enable memory control: true 
+2022-09-27 10:01:05,140 [main] INFO  o.a.i.m.c.MetricConfigDescriptor:54 - Start to read config file ./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../conf/iotdb-metric.yml 
+2022-09-27 10:01:05,189 [main] INFO  o.a.i.d.c.IoTDBStartCheck:132 - Starting IoTDB 0.14.0-SNAPSHOT (Build: 3377c5d) 
+2022-09-27 10:01:05,190 [main] INFO  o.a.i.d.c.IoTDBStartCheck:141 -  ./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../data/system/schema dir has been created. 
+2022-09-27 10:01:05,191 [main] INFO  o.a.i.d.c.IoTDBStartCheck:201 -  /home/zx/workspace/iotdb/./server/target/iotdb-server-0.14.0-SNAPSHOT/sbin/../data/system/schema/system.properties has been created. 
+2022-09-27 10:01:05,193 [main] INFO  o.a.i.d.s.DataNodeServerCommandLine:85 - Running mode -s 
+2022-09-27 10:01:05,195 [main] WARN  o.a.i.c.s.StartupChecks:38 - iotdb.jmx.port missing from datanode-env.sh(Unix or OS X, if you use Windows, check conf/datanode-env.bat) 
+2022-09-27 10:01:05,196 [main] INFO  o.a.i.c.s.StartupChecks:56 - JDK version is 8. 
+2022-09-27 10:01:05,200 [main] INFO  o.a.i.d.c.ConfigNodeInfo:94 - Successfully update ConfigNode: [TEndPoint(ip:127.0.0.1, port:22277)]. 
+2022-09-27 10:01:05,200 [main] INFO  o.a.i.db.service.DataNode:173 - start registering to the cluster. 
+2022-09-27 10:01:05,259 [main] WARN  o.a.i.db.service.DataNode:224 - Cannot register to the cluster, because: Fail to connect to any config node. Please check server it 

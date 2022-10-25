@@ -83,6 +83,10 @@ public class BetweenExpression extends TernaryExpression {
     ReadWriteIOUtils.write(isNotBetween, stream);
   }
 
+  public Expression getExpression() {
+    return this;
+  }
+
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);

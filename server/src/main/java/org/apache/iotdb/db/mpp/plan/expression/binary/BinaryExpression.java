@@ -242,6 +242,10 @@ public abstract class BinaryExpression extends Expression {
     return builder.toString();
   }
 
+  public String getOperator() {
+    return operator();
+  }
+
   protected abstract String operator();
 
   @Override

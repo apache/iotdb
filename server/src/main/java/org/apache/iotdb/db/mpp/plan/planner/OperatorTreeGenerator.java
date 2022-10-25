@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOper
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -182,6 +183,7 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -842,11 +844,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
+    CodegenContext codegenContext =
+        new CodegenContext(
+            inputLocations,
+            inputDataTypes,
+            Arrays.asList(node.getOutputExpressions()),
+            null,
+            expressionTypes);
+
     // Use FilterAndProject Operator when project expressions are all mappable
     if (!hasNonMappableUDF) {
       // init project UDTFContext
       UDTFContext projectContext = new UDTFContext(node.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
+
+      codegenContext.setUdtfContext(projectContext);
 
       List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
       Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
@@ -873,6 +885,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
 
       return new FilterAndProjectOperator(
+          codegenContext,
           operatorContext,
           inputOperator,
           inputDataTypes,
@@ -975,11 +988,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
 
+    CodegenContext codegenContext =
+        new CodegenContext(
+            inputLocations,
+            inputDataTypes,
+            Arrays.asList(node.getOutputExpressions()),
+            node.getPredicate(),
+            expressionTypes);
+
     // init project transformer when project expressions are all mappable
     if (!hasNonMappableUDF) {
       // init project UDTFContext
       UDTFContext projectContext = new UDTFContext(node.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
+
+      codegenContext.setUdtfContext(projectContext);
 
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
           new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
@@ -1001,6 +1024,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Operator filter =
         new FilterAndProjectOperator(
+            codegenContext,
             operatorContext,
             inputOperator,
             filterOutputDataTypes,

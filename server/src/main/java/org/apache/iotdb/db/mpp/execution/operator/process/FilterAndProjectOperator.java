@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluator;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluatorImpl;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
@@ -65,6 +68,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   // false when we only need to do projection
   private final boolean hasFilter;
+  private boolean codegenSuccess;
+
+  private boolean hasCodegenEvaluatedCache;
+
+  private Column[] codegenEvaluatedColumns;
+
+  private CodegenEvaluator codegenEvaluator;
 
   public FilterAndProjectOperator(
       OperatorContext operatorContext,
@@ -87,6 +97,42 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
+    codegenSuccess = false;
+  }
+
+  public FilterAndProjectOperator(
+      CodegenContext codegenContext,
+      OperatorContext operatorContext,
+      Operator inputOperator,
+      List<TSDataType> filterOutputDataTypes,
+      List<LeafColumnTransformer> filterLeafColumnTransformerList,
+      ColumnTransformer filterOutputTransformer,
+      List<ColumnTransformer> commonTransformerList,
+      List<LeafColumnTransformer> projectLeafColumnTransformerList,
+      List<ColumnTransformer> projectOutputTransformerList,
+      boolean hasNonMappableUDF,
+      boolean hasFilter) {
+    this.operatorContext = operatorContext;
+    this.inputOperator = inputOperator;
+    this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
+    this.filterOutputTransformer = filterOutputTransformer;
+    this.commonTransformerList = commonTransformerList;
+    this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
+    this.projectOutputTransformerList = projectOutputTransformerList;
+    this.hasNonMappableUDF = hasNonMappableUDF;
+    this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
+    this.hasFilter = hasFilter;
+    tryCodegen(codegenContext);
+  }
+
+  private void tryCodegen(CodegenContext codegenContext) {
+    codegenEvaluator = new CodegenEvaluatorImpl(codegenContext);
+    try {
+      codegenEvaluator.generateEvaluatorClass();
+      codegenSuccess = true;
+    } catch (Exception e) {
+      codegenSuccess = false;
+    }
   }
 
   @Override
@@ -183,13 +229,31 @@ public class FilterAndProjectOperator implements ProcessOperator {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
+    hasCodegenEvaluatedCache = false;
     List<Column> resultColumns = new ArrayList<>();
-    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.tryEvaluate();
-      resultColumns.add(columnTransformer.getColumn());
+    for (int i = 0; i < projectOutputTransformerList.size(); ++i) {
+      Column outputColumn;
+      outputColumn = tryGetColumnByCodegen(input, i);
+      if (outputColumn == null) {
+        ColumnTransformer columnTransformer = projectOutputTransformerList.get(i);
+        columnTransformer.tryEvaluate();
+        outputColumn = columnTransformer.getColumn();
+      }
+      resultColumns.add(outputColumn);
     }
     return TsBlock.wrapBlocksWithoutCopy(
         positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));
+  }
+
+  private Column tryGetColumnByCodegen(TsBlock input, int i) {
+    if (codegenSuccess) {
+      if (!hasCodegenEvaluatedCache) {
+        codegenEvaluatedColumns = codegenEvaluator.evaluate(input);
+        hasCodegenEvaluatedCache = true;
+      }
+      return codegenEvaluatedColumns[i];
+    }
+    return null;
   }
 
   @Override
