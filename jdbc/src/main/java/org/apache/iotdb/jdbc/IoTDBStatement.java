@@ -485,6 +485,9 @@ public class IoTDBStatement implements Statement {
 
   private void deepCopyQueryResult(TSExecuteStatementResp queryRes) {
     List<ByteBuffer> queryResult = queryRes.getQueryResult();
+    if (queryResult == null) {
+      return;
+    }
     final List<ByteBuffer> queryResultCopy =
         queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
     queryRes.setQueryResult(queryResultCopy);
