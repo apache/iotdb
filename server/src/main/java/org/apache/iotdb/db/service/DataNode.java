@@ -271,6 +271,7 @@ public class DataNode implements DataNodeMBean {
 
   private void prepareResources() throws StartupException {
     prepareTriggerResources();
+    prepareUDFResources();
   }
 
   /** register services and set up DataNode */
@@ -403,9 +404,6 @@ public class DataNode implements DataNodeMBean {
 
   private void registerUdfServices() throws StartupException {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(
-            config.getUdfTemporaryLibDir(), config.getUdfDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
   }
 
@@ -516,6 +514,18 @@ public class DataNode implements DataNodeMBean {
       }
       resourcesInformationHolder.setTriggerInformationList(list);
     }
+  }
+
+  private void initUDFRelatedInstance() throws StartupException {
+    try {
+      UDFExecutableManager.setupAndGetInstance(config.getUdfTemporaryLibDir(), config.getUdfDir());
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private void prepareUDFResources() throws StartupException {
+    initUDFRelatedInstance();
   }
 
   private void initSchemaEngine() {
