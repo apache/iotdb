@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.udf.service;
 
-import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
@@ -33,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class UDFManagementService {
@@ -126,36 +124,6 @@ public class UDFManagementService {
 
     LOGGER.warn(errorMessage);
     throw new UDFManagementException(errorMessage);
-  }
-
-  private void downloadExecutableResources(
-      String functionName,
-      String className,
-      List<String> uris,
-      UDFExecutableManager udfExecutableManager)
-      throws UDFManagementException {
-    if (uris.isEmpty()) {
-      return;
-    }
-
-    try {
-      final ExecutableResource resource = udfExecutableManager.request(uris);
-      try {
-        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
-        udfExecutableManager.moveTempDirToExtLibDir(resource, functionName);
-      } catch (Exception innerException) {
-        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
-        udfExecutableManager.removeFromTemporaryLibRoot(resource);
-        throw innerException;
-      }
-    } catch (Exception outerException) {
-      String errorMessage =
-          String.format(
-              "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
-              functionName.toUpperCase(), className, uris);
-      LOGGER.warn(errorMessage, outerException);
-      throw new UDFManagementException(errorMessage, outerException);
-    }
   }
 
   private void doRegister(UDFInformation udfInformation) throws UDFManagementException {

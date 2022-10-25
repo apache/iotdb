@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,7 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-*
-!distribution
-!docker/src/main/DockerCompose/start-1c1d.sh
+nohup /iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
+sleep 5
+/iotdb/sbin/start-datanode.sh

@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.sink;
+package org.apache.iotdb.db.it.mqtt;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.fusesource.mqtt.client.QoS;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -42,24 +43,28 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings("squid:S2925")
-public class MQTTSinkTest {
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
+public class IoTDBMQTTSinkIT {
+
+  private boolean enableMQTTService;
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(true);
-    EnvironmentUtils.envSetUp();
+    enableMQTTService = ConfigFactory.getConfig().isEnableMQTTService();
+    ConfigFactory.getConfig().setEnableMQTTService(true);
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
+    ConfigFactory.getConfig().setEnableMQTTService(enableMQTTService);
   }
 
   @Test
@@ -68,31 +73,29 @@ public class MQTTSinkTest {
     mqttHandler.open(
         new MQTTConfiguration(
             "127.0.0.1",
-            1883,
+            EnvFactory.getEnv().getMqttPort(),
             "root",
             "root",
             new PartialPath("root.sg1.d1"),
             new String[] {"s1"}));
 
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 5; ++i) {
       mqttHandler.onEvent(new MQTTEvent("test", QoS.EXACTLY_ONCE, false, i, i));
     }
 
     mqttHandler.close();
 
-    await().atMost(1, MINUTES).until(() -> 10000 == checkSingleSensorHandlerResult());
+    TimeUnit.SECONDS.sleep(10);
+
+    assertEquals(5, checkSingleSensorHandlerResult());
   }
 
-  private int checkSingleSensorHandlerResult() throws ClassNotFoundException {
+  private int checkSingleSensorHandlerResult() {
     int count = 0;
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root.**"));
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
 
-      try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
 
         checkHeader(
@@ -122,13 +125,13 @@ public class MQTTSinkTest {
     mqttHandler.open(
         new MQTTConfiguration(
             "127.0.0.1",
-            1883,
+            EnvFactory.getEnv().getMqttPort(),
             "root",
             "root",
             new PartialPath("root.sg1.d1"),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"}));
 
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 5; ++i) {
       mqttHandler.onEvent(
           new MQTTEvent(
               "test",
@@ -145,19 +148,18 @@ public class MQTTSinkTest {
 
     mqttHandler.close();
 
-    await().atMost(1, MINUTES).until(() -> 10000 == checkMultiSensorsHandlerResult());
+    TimeUnit.SECONDS.sleep(10);
+
+    assertEquals(5, checkMultiSensorsHandlerResult());
   }
 
-  private int checkMultiSensorsHandlerResult() throws ClassNotFoundException {
+  private int checkMultiSensorsHandlerResult() {
     int count = 0;
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root.**"));
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
 
         checkHeader(
