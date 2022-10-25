@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
@@ -403,6 +404,9 @@ public interface IManager {
 
   /** deactivate schema template */
   TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req);
+
+  /** unset schema template */
+  TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req);
 
   /*
    * delete timeseries

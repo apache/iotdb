@@ -560,6 +560,43 @@ public class ClusterSchemaManager {
         getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
   }
 
+  public Pair<TSStatus, Template> checkIsTemplateSetOnPath(String templateName, String path) {
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                String.format("Undefined template name: %s", templateName)),
+            null);
+      }
+    } else {
+      return new Pair<>(templateResp.getStatus(), null);
+    }
+
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> templateSetPathList = pathInfoResp.getPathList();
+      if (templateSetPathList == null
+          || templateSetPathList.isEmpty()
+          || !pathInfoResp.getPathList().contains(path)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
+                String.format("No template on %s", path)),
+            null);
+      } else {
+        return new Pair<>(templateResp.getStatus(), templateResp.getTemplateList().get(0));
+      }
+    } else {
+      return new Pair<>(pathInfoResp.getStatus(), null);
+    }
+  }
+
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
   }

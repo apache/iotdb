@@ -255,6 +255,10 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus unsetSchemaTemplate(String queryId, int templateId, String path) {
+    return StatusUtils.OK;
+  }
+
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =

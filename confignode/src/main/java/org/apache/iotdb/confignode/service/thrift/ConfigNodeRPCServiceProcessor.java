@@ -633,7 +633,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
-    return null;
+    return configManager.unsetSchemaTemplate(req);
   }
 
   @Override
