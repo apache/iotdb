@@ -418,7 +418,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         (resp, queryExecution, fetchSize) -> {
           List<ByteBuffer> result =
               QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
-          boolean hasResultSet = !result.isEmpty();
+          boolean hasResultSet = !(result.size() == 0);
 
           resp.setHasResultSet(hasResultSet);
           resp.setIsAlign(true);

@@ -26,6 +26,8 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -53,7 +55,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
-public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
+public class IoTDBJDBCResultSet implements ResultSet {
 
   protected Statement statement;
   protected SQLWarning warningChain = null;
@@ -65,6 +67,8 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
 
   public IoTDBJDBCResultSet(
       Statement statement,
@@ -749,23 +753,34 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       return false;
     }
     if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
+      logger.info("before IoTDBJDBCDataSet fetchResult");
       constructOneBlock();
       constructOneRow();
+      logger.info(
+          "after IoTDBJDBCDataSet fetchResult"
+              + ioTDBRpcDataSet.queryResultSize
+              + " tsblock size"
+              + ioTDBRpcDataSet.tsBlockSize);
       return true;
     }
     return false;
   }
 
   /** @return true means has results */
-  protected boolean fetchResults() throws SQLException {
+  public boolean fetchResults() throws SQLException {
     try {
+      logger.info(
+          "IoTDBJDBCDataSet fetchResult:"
+              + ioTDBRpcDataSet.sql
+              + ioTDBRpcDataSet.sessionId
+              + ioTDBRpcDataSet.queryId);
+      logger.info("IoTDBJDBCDataSet fetchResult: fetchSize:" + ioTDBRpcDataSet.fetchSize);
       return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
     }
   }
 
-  @Override
   boolean hasCachedResults() {
     return hasCachedBlock() || hasCachedByteBuffer();
   }

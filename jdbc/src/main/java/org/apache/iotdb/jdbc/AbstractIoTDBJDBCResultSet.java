@@ -61,8 +61,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   private List<String> sgColumns;
   private BitSet aliasColumnMap;
 
-  public AbstractIoTDBJDBCResultSet() {}
-
   public AbstractIoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
