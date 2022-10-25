@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
@@ -117,7 +117,7 @@ public class TransformOperator implements ProcessOperator {
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    UDFRegistrationService.getInstance().acquireRegistrationLock();
+    UDFManagementService.getInstance().acquireLock();
     try {
       // This statement must be surrounded by the registration lock.
       UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
@@ -136,7 +136,7 @@ public class TransformOperator implements ProcessOperator {
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
     } finally {
-      UDFRegistrationService.getInstance().releaseRegistrationLock();
+      UDFManagementService.getInstance().releaseLock();
     }
   }
 

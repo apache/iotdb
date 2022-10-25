@@ -85,7 +85,7 @@ public class TriggerManagementService {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
-      doRegister(triggerInformation);
+      doRegister(triggerInformation, false);
     } finally {
       releaseLock();
     }
@@ -164,7 +164,8 @@ public class TriggerManagementService {
               new TriggerExecutor(
                   triggerInformation,
                   constructTriggerInstance(
-                      triggerInformation.getClassName(), currentActiveClassLoader));
+                      triggerInformation.getClassName(), currentActiveClassLoader),
+                  true);
           executorMap.put(triggerName, newExecutor);
         }
       }
@@ -272,7 +273,8 @@ public class TriggerManagementService {
    * Only call this method directly for registering new data node, otherwise you need to call
    * register().
    */
-  public void doRegister(TriggerInformation triggerInformation) throws IOException {
+  public void doRegister(TriggerInformation triggerInformation, boolean isRestoring)
+      throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
@@ -287,7 +289,8 @@ public class TriggerManagementService {
         Trigger trigger =
             constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
         // construct and save TriggerExecutor after successfully creating trigger instance
-        TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
+        TriggerExecutor triggerExecutor =
+            new TriggerExecutor(triggerInformation, trigger, isRestoring);
         executorMap.put(triggerName, triggerExecutor);
       }
     } catch (Exception e) {

@@ -350,9 +350,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
       Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
       for (int i = 0; i < measurementList.size(); i++) {
+        IMNode node = null;
         try {
-          if (store.hasChild(device, measurementList.get(i))) {
-            IMNode node = store.getChild(device, measurementList.get(i));
+          node = store.getChild(device, measurementList.get(i));
+          if (node != null) {
             if (node.isMeasurement()) {
               if (node.getAsMeasurementMNode().isPreDeleted()) {
                 failingMeasurementMap.put(
@@ -383,6 +384,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           }
         } catch (MetadataException e) {
           failingMeasurementMap.put(i, e);
+        } finally {
+          if (node != null) {
+            unPinMNode(node);
+          }
         }
       }
       return failingMeasurementMap;

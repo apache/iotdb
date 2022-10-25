@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
@@ -116,8 +116,7 @@ public class ShowFunctionsTask implements IConfigTask {
   }
 
   private void appendUDFs(ListDataSet listDataSet) {
-    for (UDFRegistrationInformation info :
-        UDFRegistrationService.getInstance().getRegistrationInformation()) {
+    for (UDFInformation info : UDFManagementService.getInstance().getAllUDFInformation()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       String functionType = "";
