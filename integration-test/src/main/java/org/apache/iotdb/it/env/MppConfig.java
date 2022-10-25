@@ -311,4 +311,10 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
     return this;
   }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
 }
