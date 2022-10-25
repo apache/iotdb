@@ -298,6 +298,7 @@ public class MultiLeaderConsensus implements IConsensus {
           .build();
     }
     try {
+      // let other peers remove the sync channel with target peer
       impl.notifyPeersToRemoveSyncLogChannel(peer);
     } catch (ConsensusGroupAddPeerException e) {
       return ConsensusGenericResponse.newBuilder()
@@ -305,6 +306,17 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new ConsensusException(e.getMessage()))
           .build();
     }
+
+    try {
+      // let target peer reject new write
+      impl.inactivePeer(peer);
+      // wait its SyncLog to complete
+      impl.waitTargetPeerUntilSyncLogCompleted(peer);
+    } catch (ConsensusGroupAddPeerException e) {
+      // we only log warning here because sometimes the target peer may already be down
+      logger.warn("cannot wait {} to complete SyncLog. error message: {}", peer, e.getMessage());
+    }
+
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 

@@ -45,6 +45,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -409,6 +411,40 @@ public class MultiLeaderServerImpl {
               String.format("error when removing sync log channel to %s", peer), e);
         }
       }
+    }
+  }
+
+  public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer)
+      throws ConsensusGroupAddPeerException {
+    long checkIntervalInMs = 10_000L;
+    try (SyncMultiLeaderServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      while (true) {
+        TWaitSyncLogCompleteRes res =
+            client.waitSyncLogComplete(
+                new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
+        if (res.complete) {
+          return;
+        }
+        logger.info(
+            "{} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
+            targetPeer,
+            res.searchIndex,
+            res.safeIndex);
+        Thread.sleep(checkIntervalInMs);
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format(
+              "error when waiting %s to complete SyncLog. %s", targetPeer, e.getMessage()),
+          e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ConsensusGroupAddPeerException(
+          String.format(
+              "thread interrupted when waiting %s to complete SyncLog. %s",
+              targetPeer, e.getMessage()),
+          e);
     }
   }
 

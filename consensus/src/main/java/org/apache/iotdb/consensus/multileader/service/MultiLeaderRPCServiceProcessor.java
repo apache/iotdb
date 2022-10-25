@@ -45,6 +45,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -227,6 +229,19 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TRemoveSyncLogChannelRes(responseStatus));
+  }
+
+  @Override
+  public void waitSyncLogComplete(
+      TWaitSyncLogCompleteReq req, AsyncMethodCallback<TWaitSyncLogCompleteRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    long searchIndex = impl.getIndex();
+    long safeIndex = impl.getCurrentSafelyDeletedSearchIndex();
+    resultHandler.onComplete(
+        new TWaitSyncLogCompleteRes(searchIndex == safeIndex, searchIndex, safeIndex));
   }
 
   @Override
