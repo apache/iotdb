@@ -40,9 +40,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
-import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -1095,11 +1093,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createFunction(TCreateFunctionInstanceReq req) {
     try {
       UDFInformation udfInformation = UDFInformation.deserialize(req.udfInformation);
-      // save jar file at udf_lib_dir
-      if (req.getJarFile() != null) {
-        UDFExecutableManager.getInstance().writeToLibDir(req.jarFile, udfInformation.getJarName());
-      }
-      UDFManagementService.getInstance().register(udfInformation);
+      UDFManagementService.getInstance().register(udfInformation, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_FUNCTION_INSTANCE_ERROR.getStatusCode())
@@ -1122,14 +1116,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) throws TException {
     TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
     try {
-      // save jar file at trigger_lib_dir
-      if (req.getJarFile() != null) {
-        TriggerExecutableManager.getInstance()
-            .writeToLibDir(req.jarFile, triggerInformation.getJarName());
-      }
       // register trigger information with TriggerRegistrationService
       // config nodes take responsibility for synchronization control
-      TriggerManagementService.getInstance().register(triggerInformation);
+      TriggerManagementService.getInstance().register(triggerInformation, req.jarFile);
     } catch (Exception e) {
       LOGGER.warn(
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",

@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -81,10 +82,12 @@ public class TriggerManagementService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) throws IOException {
+  public void register(TriggerInformation triggerInformation, ByteBuffer jarFile)
+      throws IOException {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
+      saveJarFile(triggerInformation.getJarName(), jarFile);
       doRegister(triggerInformation, false);
     } finally {
       releaseLock();
@@ -227,7 +230,6 @@ public class TriggerManagementService {
   /** check whether local jar is correct according to md5 */
   public boolean isLocalJarConflicted(TriggerInformation triggerInformation)
       throws TriggerManagementException {
-    String jarName = triggerInformation.getJarName();
     String triggerName = triggerInformation.getTriggerName();
     // A jar with the same name exists, we need to check md5
     String existedMd5 = "";
@@ -267,6 +269,12 @@ public class TriggerManagementService {
       }
     }
     return !existedMd5.equals(triggerInformation.getJarFileMD5());
+  }
+
+  private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
+    if (byteBuffer != null) {
+      TriggerExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+    }
   }
 
   /**

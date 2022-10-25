@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.locks.ReentrantLock;
@@ -70,7 +71,19 @@ public class UDFManagementService {
     }
   }
 
-  public void register(UDFInformation udfInformation) throws UDFManagementException {
+  public void register(UDFInformation udfInformation, ByteBuffer jarFile) throws Exception {
+    try {
+      acquireLock();
+      checkIfRegistered(udfInformation);
+      saveJarFile(udfInformation.getJarName(), jarFile);
+      doRegister(udfInformation);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  /** temp code for stand-alone */
+  public void register(UDFInformation udfInformation) throws Exception {
     try {
       acquireLock();
       checkIfRegistered(udfInformation);
@@ -170,6 +183,12 @@ public class UDFManagementService {
     return !existedMd5.equals(udfInformation.getJarMD5());
   }
 
+  private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
+    if (byteBuffer != null) {
+      UDFExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+    }
+  }
+
   private void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
@@ -180,7 +199,7 @@ public class UDFManagementService {
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
-      udfTable.addUDFInformation(functionName, new UDFInformation(functionName, className, false));
+      udfTable.addUDFInformation(functionName, udfInformation);
       udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException
         | InstantiationException
