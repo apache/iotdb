@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
@@ -87,12 +88,17 @@ public class LoadTsFileNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
+    LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
     for (TsFileResource resource : resources) {
       try {
-        LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), resource);
+        LoadSingleTsFileNode singleTsFileNode =
+            new LoadSingleTsFileNode(getPlanNodeId(), resource, statement.isDeleteAfterLoad());
         singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
         if (singleTsFileNode.needDecodeTsFile()) {
           singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        } else {
+          logger.info(
+              String.format("TsFile %s will be loaded to local.", resource.getTsFile().getPath()));
         }
         res.add(singleTsFileNode);
       } catch (Exception e) {

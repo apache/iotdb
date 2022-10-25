@@ -18,17 +18,40 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
 
+  static {
+    Properties prop = new Properties();
+    String finalBuildInfo = "UNKNOWN";
+    try {
+      prop.load(IoTDBConstant.class.getResourceAsStream("/git.properties"));
+      finalBuildInfo = prop.getProperty("git.commit.id.abbrev", "UNKNOWN");
+      String isDirty = prop.getProperty("git.dirty", "false");
+      if (isDirty.equalsIgnoreCase("true")) {
+        finalBuildInfo += "-dev";
+      }
+    } catch (Exception e) {
+      System.err.println("get git.properties error: " + e.getMessage());
+    }
+    BUILD_INFO = finalBuildInfo;
+  }
+
+  public static final String BUILD_INFO;
+
   public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
+  public static final String CONFIG_NODE_ID = "config_node_id";
+  public static final String DATA_NODE_ID = "data_node_id";
   public static final String RPC_ADDRESS = "rpc_address";
   public static final String RPC_PORT = "rpc_port";
   public static final String INTERNAL_ADDRESS = "internal_address";
@@ -46,6 +69,7 @@ public class IoTDBConstant {
       "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
+  public static final String VERSION_WITH_BUILD = VERSION + " (Build: " + BUILD_INFO + ")";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
@@ -85,7 +109,8 @@ public class IoTDBConstant {
   // show info
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -175,7 +200,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -184,6 +209,7 @@ public class IoTDBConstant {
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
+  public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
@@ -203,10 +229,6 @@ public class IoTDBConstant {
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
-  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
-
-  public static final String EXT_LIMITER = "limiter";
-
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
@@ -219,6 +241,9 @@ public class IoTDBConstant {
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;
@@ -259,4 +284,8 @@ public class IoTDBConstant {
     V_0_12,
     V_0_13
   }
+
+  // select into
+  public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  public static final String DOUBLE_COLONS = "::";
 }

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -151,9 +151,9 @@ public class IoTDBDataDirViewer {
               "|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
               resource.getStartTime(device),
-              DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
               resource.getEndTime(device),
-              DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
+              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
   }
 

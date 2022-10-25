@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
@@ -136,6 +137,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -153,8 +155,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
@@ -182,6 +184,7 @@ import org.apache.commons.lang3.Validate;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1075,8 +1078,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
-    List<GroupByLevelDescriptor> aggregationDescriptors = node.getGroupByLevelDescriptors();
-    for (GroupByLevelDescriptor descriptor : aggregationDescriptors) {
+    List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
+        node.getGroupByLevelDescriptors();
+    for (CrossSeriesAggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       TSDataType seriesDataType =
           context
@@ -1108,6 +1112,69 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return new AggregationOperator(
         operatorContext, aggregators, timeRangeIterator, children, maxReturnSize);
+  }
+
+  @Override
+  public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
+    checkArgument(node.getTagKeys().size() >= 1, "GroupByTag tag keys cannot be empty");
+    checkArgument(
+        node.getTagValuesToAggregationDescriptors().size() >= 1,
+        "GroupByTag aggregation descriptors cannot be empty");
+
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+
+    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    Map<String, List<InputLocation>> layout = makeLayout(node);
+    List<List<String>> groups = new ArrayList<>();
+    List<List<Aggregator>> groupedAggregators = new ArrayList<>();
+    int aggregatorCount = 0;
+    for (Map.Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
+        node.getTagValuesToAggregationDescriptors().entrySet()) {
+      groups.add(entry.getKey());
+      List<Aggregator> aggregators = new ArrayList<>();
+      for (CrossSeriesAggregationDescriptor aggregationDescriptor : entry.getValue()) {
+        if (aggregationDescriptor == null) {
+          aggregators.add(null);
+          continue;
+        }
+        List<InputLocation[]> inputLocations = calcInputLocationList(aggregationDescriptor, layout);
+        TSDataType seriesDataType =
+            context
+                .getTypeProvider()
+                .getType(aggregationDescriptor.getInputExpressions().get(0).getExpressionString());
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    aggregationDescriptor.getAggregationType(), seriesDataType, ascending),
+                aggregationDescriptor.getStep(),
+                inputLocations));
+      }
+      groupedAggregators.add(aggregators);
+      aggregatorCount += aggregators.size();
+    }
+    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, false);
+    List<AggregationDescriptor> aggregationDescriptors =
+        node.getTagValuesToAggregationDescriptors().values().stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+    long maxReturnSize =
+        calculateMaxAggregationResultSize(
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TagAggregationOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregatorCount);
+    return new TagAggregationOperator(
+        operatorContext, groups, groupedAggregators, children, maxReturnSize);
   }
 
   @Override
@@ -1441,8 +1508,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getPatternTree(),
         node.getTemplateMap(),
-        ((SchemaDriverContext) (context.getInstanceContext().getDriverContext()))
-            .getSchemaRegion());
+        ((SchemaDriverContext) (context.getInstanceContext().getDriverContext())).getSchemaRegion(),
+        node.isWithTags());
   }
 
   @Override
@@ -1781,6 +1848,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 PathsUsingTemplateScanNode.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new PathsUsingTemplateScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getTemplateId());
+        node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
   }
 }

@@ -116,6 +116,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaPartition;
     } catch (TException | IOException e) {
+      logger.error("Get Schema Partition error", e);
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -169,7 +170,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when query */
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
@@ -196,37 +196,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when write */
-  @Override
-  public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(dataPartitionQueryParams, false);
-      DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
-      if (null == dataPartition) {
-        TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReq(splitDataPartitionQueryParams));
-
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  dataPartitionTableResp.getStatus().getMessage(),
-                  dataPartitionTableResp.getStatus().getCode()));
-        }
-      }
-      return dataPartition;
-    } catch (TException | IOException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getDataPartition():" + e.getMessage());
-    }
-  }
-
-  /** get data partition when query */
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
@@ -254,7 +223,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when write */
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {

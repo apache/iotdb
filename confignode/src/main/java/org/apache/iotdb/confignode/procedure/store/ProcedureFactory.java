@@ -20,13 +20,20 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +76,27 @@ public class ProcedureFactory implements IProcedureFactory {
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure();
         break;
+      case CREATE_TRIGGER_PROCEDURE:
+        procedure = new CreateTriggerProcedure();
+        break;
+      case DROP_TRIGGER_PROCEDURE:
+        procedure = new DropTriggerProcedure();
+        break;
+      case CREATE_PIPE_PROCEDURE:
+        procedure = new CreatePipeProcedure();
+        break;
+      case START_PIPE_PROCEDURE:
+        procedure = new StartPipeProcedure();
+        break;
+      case STOP_PIPE_PROCEDURE:
+        procedure = new StopPipeProcedure();
+        break;
+      case DROP_PIPE_PROCEDURE:
+        procedure = new DropPipeProcedure();
+        break;
+      case DEACTIVATE_TEMPLATE_PROCEDURE:
+        procedure = new DeactivateTemplateProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -92,6 +120,20 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof CreateTriggerProcedure) {
+      return ProcedureType.CREATE_TRIGGER_PROCEDURE;
+    } else if (procedure instanceof DropTriggerProcedure) {
+      return ProcedureType.DROP_TRIGGER_PROCEDURE;
+    } else if (procedure instanceof CreatePipeProcedure) {
+      return ProcedureType.CREATE_PIPE_PROCEDURE;
+    } else if (procedure instanceof StartPipeProcedure) {
+      return ProcedureType.START_PIPE_PROCEDURE;
+    } else if (procedure instanceof StopPipeProcedure) {
+      return ProcedureType.STOP_PIPE_PROCEDURE;
+    } else if (procedure instanceof DropPipeProcedure) {
+      return ProcedureType.DROP_PIPE_PROCEDURE;
+    } else if (procedure instanceof DeactivateTemplateProcedure) {
+      return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     }
     return null;
   }
@@ -103,7 +145,14 @@ public class ProcedureFactory implements IProcedureFactory {
     REMOVE_DATA_NODE_PROCEDURE,
     REGION_MIGRATE_PROCEDURE,
     CREATE_REGION_GROUPS,
-    DELETE_TIMESERIES_PROCEDURE
+    DELETE_TIMESERIES_PROCEDURE,
+    CREATE_TRIGGER_PROCEDURE,
+    DROP_TRIGGER_PROCEDURE,
+    CREATE_PIPE_PROCEDURE,
+    START_PIPE_PROCEDURE,
+    STOP_PIPE_PROCEDURE,
+    DROP_PIPE_PROCEDURE,
+    DEACTIVATE_TEMPLATE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

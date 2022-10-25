@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
@@ -74,6 +74,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
         new MeasurementPath(
             generateFullPathNodes(nextMatchedNode),
             nextMatchedNode.getAsMeasurementNode().getSchema());
+    result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
     result.setUnderAlignedEntity(ancestorStack.peek().getNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
     if (nodes[nodes.length - 1].equals(alias)) {

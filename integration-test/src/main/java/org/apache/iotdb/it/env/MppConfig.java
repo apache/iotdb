@@ -85,6 +85,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
+    engineProperties.setProperty(
+        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
+    return this;
+  }
+
+  @Override
   public BaseConfig setCompressor(String compressor) {
     engineProperties.setProperty("compressor", compressor);
     return this;
@@ -228,9 +235,86 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+  public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     confignodeProperties.setProperty(
-        "time_partition_interval", String.valueOf(timePartitionInterval));
+        "schema_replication_factor", String.valueOf(schemaReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    confignodeProperties.setProperty(
+        "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
+    confignodeProperties.setProperty(
+        "time_partition_interval_for_routing", String.valueOf(timePartitionInterval));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMemControl(boolean enableMemControl) {
+    confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    confignodeProperties.setProperty(
+        "partition_region_ratis_snapshot_trigger_threshold",
+        String.valueOf(ratisSnapshotTriggerThreshold));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    confignodeProperties.setProperty(
+        "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableWatermark(boolean enableWatermark) {
+    engineProperties.setProperty("watermark_module_opened", String.valueOf(enableWatermark));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    engineProperties.setProperty("watermark_secret_key", watermarkSecretKey);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkBitString(String watermarkBitString) {
+    engineProperties.setProperty("watermark_bit_string", watermarkBitString);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkMethod(String watermarkMethod) {
+    engineProperties.setProperty("watermark_method", watermarkMethod);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
     return this;
   }
 }

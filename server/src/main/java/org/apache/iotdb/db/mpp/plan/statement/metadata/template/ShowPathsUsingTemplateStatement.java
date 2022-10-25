@@ -19,18 +19,38 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ShowPathsUsingTemplateStatement extends ShowStatement {
+
+  private PartialPath pathPattern;
 
   private String templateName;
 
-  public ShowPathsUsingTemplateStatement(String templateName) {
+  public ShowPathsUsingTemplateStatement(PartialPath pathPattern, String templateName) {
     super();
     statementType = StatementType.SHOW_PATH_USING_SCHEMA_TEMPLATE;
+    this.pathPattern = pathPattern;
     this.templateName = templateName;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(pathPattern);
+  }
+
+  public PartialPath getPathPattern() {
+    return pathPattern;
+  }
+
+  public void setPathPattern(PartialPath pathPattern) {
+    this.pathPattern = pathPattern;
   }
 
   public String getTemplateName() {

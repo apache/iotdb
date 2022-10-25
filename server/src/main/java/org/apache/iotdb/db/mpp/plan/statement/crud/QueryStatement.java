@@ -30,8 +30,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -94,6 +96,12 @@ public class QueryStatement extends Statement {
   // `GROUP BY LEVEL` clause
   protected GroupByLevelComponent groupByLevelComponent;
 
+  // `GROUP BY TAG` clause
+  protected GroupByTagComponent groupByTagComponent;
+
+  // `INTO` clause
+  protected IntoComponent intoComponent;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -124,6 +132,10 @@ public class QueryStatement extends Statement {
 
   public void setFromComponent(FromComponent fromComponent) {
     this.fromComponent = fromComponent;
+  }
+
+  public boolean hasWhere() {
+    return whereCondition != null;
   }
 
   public WhereCondition getWhereCondition() {
@@ -218,6 +230,14 @@ public class QueryStatement extends Statement {
     this.groupByLevelComponent = groupByLevelComponent;
   }
 
+  public GroupByTagComponent getGroupByTagComponent() {
+    return groupByTagComponent;
+  }
+
+  public void setGroupByTagComponent(GroupByTagComponent groupByTagComponent) {
+    this.groupByTagComponent = groupByTagComponent;
+  }
+
   public boolean isLastQuery() {
     return selectComponent.isHasLast();
   }
@@ -230,8 +250,16 @@ public class QueryStatement extends Statement {
     return groupByLevelComponent != null;
   }
 
+  public boolean isGroupByTag() {
+    return groupByTagComponent != null;
+  }
+
   public boolean isGroupByTime() {
     return groupByTimeComponent != null;
+  }
+
+  public boolean isAlignByTime() {
+    return resultSetFormat == ResultSetFormat.ALIGN_BY_TIME;
   }
 
   public boolean isAlignByDevice() {
@@ -254,6 +282,14 @@ public class QueryStatement extends Statement {
     return orderByComponent != null && orderByComponent.isOrderByDevice();
   }
 
+  public IntoComponent getIntoComponent() {
+    return intoComponent;
+  }
+
+  public void setIntoComponent(IntoComponent intoComponent) {
+    this.intoComponent = intoComponent;
+  }
+
   public Ordering getResultTimeOrder() {
     if (orderByComponent == null || !orderByComponent.isOrderByTime()) {
       return Ordering.ASC;
@@ -268,6 +304,10 @@ public class QueryStatement extends Statement {
     return orderByComponent.getSortItemList();
   }
 
+  public boolean isSelectInto() {
+    return intoComponent != null;
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -275,6 +315,12 @@ public class QueryStatement extends Statement {
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("group by level does not support align by device now.");
+      }
+      if (isGroupByTag() && isAlignByDevice()) {
+        throw new SemanticException("group by tag does not support align by device now.");
+      }
+      if (isGroupByTag() && isGroupByLevel()) {
+        throw new SemanticException("group by level cannot be used togather with group by tag");
       }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
@@ -357,6 +403,24 @@ public class QueryStatement extends Statement {
       if (isOrderByDevice()) {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+      }
+    }
+
+    if (isSelectInto()) {
+      if (getSeriesLimit() > 0) {
+        throw new SemanticException("select into: slimit clauses are not supported.");
+      }
+      if (getSeriesOffset() > 0) {
+        throw new SemanticException("select into: soffset clauses are not supported.");
+      }
+      if (disableAlign()) {
+        throw new SemanticException("select into: disable align clauses are not supported.");
+      }
+      if (isLastQuery()) {
+        throw new SemanticException("select into: last clauses are not supported.");
+      }
+      if (isGroupByTag()) {
+        throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
       }
     }
   }

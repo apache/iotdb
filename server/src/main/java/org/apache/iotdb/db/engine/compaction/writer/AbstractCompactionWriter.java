@@ -72,7 +72,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
 
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+  public abstract void write(
+      TimeColumn timestamps, Column[] columns, String device, int subTaskId, int batchSize)
       throws IOException;
 
   public abstract void endFile() throws IOException;
@@ -140,6 +141,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     measurementPointCountArray[subTaskId] += 1;
   }
 
+  public abstract void updateStartTimeAndEndTime(String device, long time, int subTaskId);
+
   protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
       throws IOException {
     writeRateLimit(chunkWriters[subTaskId].estimateMaxSeriesMemSize());
@@ -177,4 +180,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
+
+  public void checkAndMayFlushChunkMetadata() throws IOException {
+    List<TsFileIOWriter> writers = this.getFileIOWriter();
+    for (TsFileIOWriter writer : writers) {
+      writer.checkMetadataSizeAndMayFlush();
+    }
+  }
 }

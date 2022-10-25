@@ -71,10 +71,14 @@ public interface BaseConfig {
   }
 
   default boolean isEnablePartition() {
-    return true;
+    return false;
   }
 
   default BaseConfig setPartitionInterval(long partitionInterval) {
+    return this;
+  }
+
+  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
     return this;
   }
 
@@ -123,6 +127,14 @@ public interface BaseConfig {
   }
 
   default BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    return this;
+  }
+
+  default boolean isEnableMemControl() {
+    return true;
+  }
+
+  default BaseConfig setEnableMemControl(boolean enableMemControl) {
     return this;
   }
 
@@ -223,11 +235,103 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   }
 
-  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+  default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    return this;
+  }
+
+  default int getSchemaReplicationFactor() {
+    return 1;
+  }
+
+  default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    return this;
+  }
+
+  default int getDataReplicationFactor() {
+    return 1;
+  }
+
+  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
     return this;
   }
 
   default long getTimePartitionInterval() {
     return 86400;
+  }
+
+  default BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    return this;
+  }
+
+  default int getRatisSnapshotTriggerThreshold() {
+    return 400000;
+  }
+
+  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+    return 4000;
+  }
+
+  default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    return this;
+  }
+
+  default int getConcurrentCompactionThread() {
+    return 10;
+  }
+
+  default BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    return this;
+  }
+
+  default int getMaxDegreeOfIndexNode() {
+    return 256;
+  }
+
+  default BaseConfig setEnableWatermark(boolean enableWatermark) {
+    return this;
+  }
+
+  default boolean isEnableWatermark() {
+    return false;
+  }
+
+  default String getWatermarkSecretKey() {
+    return "IoTDB*2019@Beijing";
+  }
+
+  default BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    return this;
+  }
+
+  default String getWatermarkBitString() {
+    return "100101110100";
+  }
+
+  default BaseConfig setWatermarkBitString(String watermarkBitString) {
+    return this;
+  }
+
+  default String getWatermarkMethod() {
+    return "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
+  }
+
+  default BaseConfig setWatermarkMethod(String watermarkMethod) {
+    return this;
+  }
+
+  default boolean isEnableMQTTService() {
+    return false;
+  }
+
+  default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
+  }
+
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
   }
 }

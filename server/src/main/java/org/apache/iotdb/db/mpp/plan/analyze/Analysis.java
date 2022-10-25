@@ -29,8 +29,10 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,6 +70,10 @@ public class Analysis {
 
   private boolean finishQueryAfterAnalyze;
 
+  // potential fail message when finishQueryAfterAnalyze is true. If failMessage is NULL, means no
+  // fail.
+  private String failMessage;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY TIME)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,69 +82,71 @@ public class Analysis {
   private Set<Expression> sourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Set<Expression> aggregationTransformExpressions;
+  private Set<Expression> sourceTransformExpressions;
+
+  private Expression whereExpression;
 
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
-  // expression of output column to be calculated
-  private Set<Expression> transformExpressions;
+  // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
+  // keys' order is the output one.
+  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
 
-  private Expression queryFilter;
+  // tag keys specified in `GROUP BY TAG` clause
+  private List<String> tagKeys;
 
-  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
-  private Map<Expression, Set<Expression>> groupByLevelExpressions;
-
-  // map from raw path to grouped path in `GROUP BY LEVEL` clause
-  private Map<Expression, Expression> rawPathToGroupedPathMap;
-
-  private boolean isRawDataSource;
+  // {tag values -> {grouped expression -> output expressions}}
+  // For different combination of tag keys, the grouped expression may be different. Let's say there
+  // are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
+  // tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
+  // GROUP BY k1", timeseries are grouped by their tags into 2 buckets. Bucket [v1] has
+  // [root.sg.d1.temperature, root.sg.d1.status], while bucket [v2] has [root.sg.d2.temperature].
+  // Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
+  // aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
+  // has [last_value(temperature)].
+  private Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      tagValuesToGroupedTimeseriesOperands;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // used to planTransform after planDeviceView
-  Set<Expression> transformInput;
-  Set<Expression> transformOutput;
-
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Map<String, Set<Expression>> deviceToAggregationTransformExpressions;
+  private Map<String, Set<Expression>> deviceToSourceTransformExpressions;
+
+  // map from device name to query filter under this device
+  private Map<String, Expression> deviceToWhereExpression;
 
   // all aggregations that need to be calculated
   private Map<String, Set<Expression>> deviceToAggregationExpressions;
 
   // expression of output column to be calculated
-  private Map<String, Set<Expression>> deviceToTransformExpressions;
-
-  // map from device name to query filter under this device
-  private Map<String, Expression> deviceToQueryFilter;
+  private Map<String, Set<Expression>> deviceToSelectExpressions;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private Map<String, List<Integer>> deviceViewInputIndexesMap;
 
-  private Map<String, Boolean> deviceToIsRawDataSource;
+  private Set<Expression> deviceViewOutputExpressions;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private List<Pair<Expression, String>> outputExpressions;
-
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  private Expression havingExpression;
-
-  // true if nested expressions and UDFs exist in aggregation function
-  private boolean isHasRawDataInputAggregation;
-
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
+
+  // expression of output column to be calculated
+  private Set<Expression> selectExpressions;
+
+  private Expression havingExpression;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -146,10 +154,20 @@ public class Analysis {
   // parameter of `GROUP BY TIME` clause
   private GroupByTimeParameter groupByTimeParameter;
 
+  private OrderByParameter mergeOrderParameter;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
-  private OrderByParameter mergeOrderParameter;
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // SELECT INTO Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // used in ALIGN BY DEVICE
+  private DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor;
+
+  // used in ALIGN BY TIME
+  private IntoPathDescriptor intoPathDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
@@ -163,6 +181,9 @@ public class Analysis {
 
   // potential template used in timeseries query or fetch
   private Map<Integer, Template> relatedTemplateInfo;
+
+  // generated by combine the input path pattern and template set path
+  private List<PartialPath> specifiedTemplateRelatedPathPatternList;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -236,35 +257,13 @@ public class Analysis {
         || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 
-  public boolean isHasRawDataInputAggregation() {
-    return isHasRawDataInputAggregation;
+  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+    return crossGroupByExpressions;
   }
 
-  public void setHasRawDataInputAggregation(boolean hasRawDataInputAggregation) {
-    isHasRawDataInputAggregation = hasRawDataInputAggregation;
-  }
-
-  public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
-    return groupByLevelExpressions;
-  }
-
-  public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
-    this.groupByLevelExpressions = groupByLevelExpressions;
-  }
-
-  public void setRawPathToGroupedPathMap(Map<Expression, Expression> rawPathToGroupedPathMap) {
-    this.rawPathToGroupedPathMap = rawPathToGroupedPathMap;
-  }
-
-  public Expression getGroupedExpressionByLevel(Expression expression) {
-    if (rawPathToGroupedPathMap.containsKey(expression)) {
-      return rawPathToGroupedPathMap.get(expression);
-    }
-    if (rawPathToGroupedPathMap.containsValue(expression)) {
-      return expression;
-    }
-    throw new IllegalArgumentException(
-        String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
+  public void setCrossGroupByExpressions(
+      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+    this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
   public FillDescriptor getFillDescriptor() {
@@ -283,20 +282,20 @@ public class Analysis {
     this.hasValueFilter = hasValueFilter;
   }
 
-  public Expression getQueryFilter() {
-    return queryFilter;
+  public Expression getWhereExpression() {
+    return whereExpression;
   }
 
-  public void setQueryFilter(Expression queryFilter) {
-    this.queryFilter = queryFilter;
+  public void setWhereExpression(Expression whereExpression) {
+    this.whereExpression = whereExpression;
   }
 
-  public Map<String, Expression> getDeviceToQueryFilter() {
-    return deviceToQueryFilter;
+  public Map<String, Expression> getDeviceToWhereExpression() {
+    return deviceToWhereExpression;
   }
 
-  public void setDeviceToQueryFilter(Map<String, Expression> deviceToQueryFilter) {
-    this.deviceToQueryFilter = deviceToQueryFilter;
+  public void setDeviceToWhereExpression(Map<String, Expression> deviceToWhereExpression) {
+    this.deviceToWhereExpression = deviceToWhereExpression;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -323,13 +322,24 @@ public class Analysis {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
-  public void setDeviceToMeasurementIndexesMap(
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+  public boolean isFailed() {
+    return failMessage != null;
   }
 
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
+  public String getFailMessage() {
+    return failMessage;
+  }
+
+  public void setFailMessage(String failMessage) {
+    this.failMessage = failMessage;
+  }
+
+  public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {
+    this.deviceViewInputIndexesMap = deviceViewInputIndexesMap;
+  }
+
+  public Map<String, List<Integer>> getDeviceViewInputIndexesMap() {
+    return deviceViewInputIndexesMap;
   }
 
   public Set<Expression> getSourceExpressions() {
@@ -340,12 +350,12 @@ public class Analysis {
     this.sourceExpressions = sourceExpressions;
   }
 
-  public Set<Expression> getAggregationTransformExpressions() {
-    return aggregationTransformExpressions;
+  public Set<Expression> getSourceTransformExpressions() {
+    return sourceTransformExpressions;
   }
 
-  public void setAggregationTransformExpressions(Set<Expression> aggregationTransformExpressions) {
-    this.aggregationTransformExpressions = aggregationTransformExpressions;
+  public void setSourceTransformExpressions(Set<Expression> sourceTransformExpressions) {
+    this.sourceTransformExpressions = sourceTransformExpressions;
   }
 
   public Set<Expression> getAggregationExpressions() {
@@ -356,28 +366,12 @@ public class Analysis {
     this.aggregationExpressions = aggregationExpressions;
   }
 
-  public Set<Expression> getTransformExpressions() {
-    return transformExpressions;
+  public Set<Expression> getSelectExpressions() {
+    return selectExpressions;
   }
 
-  public void setTransformExpressions(Set<Expression> transformExpressions) {
-    this.transformExpressions = transformExpressions;
-  }
-
-  public Set<Expression> getTransformInput() {
-    return transformInput;
-  }
-
-  public void setTransformInput(Set<Expression> transformInput) {
-    this.transformInput = transformInput;
-  }
-
-  public Set<Expression> getTransformOutput() {
-    return transformOutput;
-  }
-
-  public void setTransformOutput(Set<Expression> transformOutput) {
-    this.transformOutput = transformOutput;
+  public void setSelectExpressions(Set<Expression> selectExpressions) {
+    this.selectExpressions = selectExpressions;
   }
 
   public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
@@ -388,13 +382,13 @@ public class Analysis {
     this.deviceToSourceExpressions = deviceToSourceExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToAggregationTransformExpressions() {
-    return deviceToAggregationTransformExpressions;
+  public Map<String, Set<Expression>> getDeviceToSourceTransformExpressions() {
+    return deviceToSourceTransformExpressions;
   }
 
-  public void setDeviceToAggregationTransformExpressions(
-      Map<String, Set<Expression>> deviceToAggregationTransformExpressions) {
-    this.deviceToAggregationTransformExpressions = deviceToAggregationTransformExpressions;
+  public void setDeviceToSourceTransformExpressions(
+      Map<String, Set<Expression>> deviceToSourceTransformExpressions) {
+    this.deviceToSourceTransformExpressions = deviceToSourceTransformExpressions;
   }
 
   public Map<String, Set<Expression>> getDeviceToAggregationExpressions() {
@@ -406,29 +400,12 @@ public class Analysis {
     this.deviceToAggregationExpressions = deviceToAggregationExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToTransformExpressions() {
-    return deviceToTransformExpressions;
+  public Map<String, Set<Expression>> getDeviceToSelectExpressions() {
+    return deviceToSelectExpressions;
   }
 
-  public void setDeviceToTransformExpressions(
-      Map<String, Set<Expression>> deviceToTransformExpressions) {
-    this.deviceToTransformExpressions = deviceToTransformExpressions;
-  }
-
-  public boolean isRawDataSource() {
-    return isRawDataSource;
-  }
-
-  public void setRawDataSource(boolean rawDataSource) {
-    isRawDataSource = rawDataSource;
-  }
-
-  public Map<String, Boolean> getDeviceToIsRawDataSource() {
-    return deviceToIsRawDataSource;
-  }
-
-  public void setDeviceToIsRawDataSource(Map<String, Boolean> deviceToIsRawDataSource) {
-    this.deviceToIsRawDataSource = deviceToIsRawDataSource;
+  public void setDeviceToSelectExpressions(Map<String, Set<Expression>> deviceToSelectExpressions) {
+    this.deviceToSelectExpressions = deviceToSelectExpressions;
   }
 
   public Set<TSchemaNode> getMatchedNodes() {
@@ -463,15 +440,60 @@ public class Analysis {
     this.relatedTemplateInfo = relatedTemplateInfo;
   }
 
+  public List<PartialPath> getSpecifiedTemplateRelatedPathPatternList() {
+    return specifiedTemplateRelatedPathPatternList;
+  }
+
+  public void setSpecifiedTemplateRelatedPathPatternList(
+      List<PartialPath> specifiedTemplateRelatedPathPatternList) {
+    this.specifiedTemplateRelatedPathPatternList = specifiedTemplateRelatedPathPatternList;
+  }
+
   public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
     this.expressionTypes.putAll(types);
   }
 
-  public List<Pair<Expression, String>> getOutputExpressions() {
-    return outputExpressions;
+  public Set<Expression> getDeviceViewOutputExpressions() {
+    return deviceViewOutputExpressions;
   }
 
-  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
-    this.outputExpressions = outputExpressions;
+  public void setDeviceViewOutputExpressions(Set<Expression> deviceViewOutputExpressions) {
+    this.deviceViewOutputExpressions = deviceViewOutputExpressions;
+  }
+
+  public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
+    return deviceViewIntoPathDescriptor;
+  }
+
+  public void setDeviceViewIntoPathDescriptor(
+      DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor) {
+    this.deviceViewIntoPathDescriptor = deviceViewIntoPathDescriptor;
+  }
+
+  public IntoPathDescriptor getIntoPathDescriptor() {
+    return intoPathDescriptor;
+  }
+
+  public void setIntoPathDescriptor(IntoPathDescriptor intoPathDescriptor) {
+    this.intoPathDescriptor = intoPathDescriptor;
+  }
+
+  public List<String> getTagKeys() {
+    return tagKeys;
+  }
+
+  public void setTagKeys(List<String> tagKeys) {
+    this.tagKeys = tagKeys;
+  }
+
+  public Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+      getTagValuesToGroupedTimeseriesOperands() {
+    return tagValuesToGroupedTimeseriesOperands;
+  }
+
+  public void setTagValuesToGroupedTimeseriesOperands(
+      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+          tagValuesToGroupedTimeseriesOperands) {
+    this.tagValuesToGroupedTimeseriesOperands = tagValuesToGroupedTimeseriesOperands;
   }
 }

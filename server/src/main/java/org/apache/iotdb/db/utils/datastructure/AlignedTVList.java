@@ -45,6 +45,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
@@ -53,6 +54,9 @@ public abstract class AlignedTVList extends TVList {
 
   // data types of this aligned tvList
   protected List<TSDataType> dataTypes;
+
+  // record total memory size of binary column
+  protected long[] memoryBinaryChunkSize;
 
   // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
@@ -68,10 +72,16 @@ public abstract class AlignedTVList extends TVList {
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
+  // if a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
+  boolean reachMaxChunkSizeFlag;
+
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
     dataTypes = types;
+    memoryBinaryChunkSize = new long[dataTypes.size()];
+    reachMaxChunkSizeFlag = false;
+
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
@@ -79,16 +89,52 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickAlignedTVList(dataTypes);
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickAlignedTVList(dataTypes);
+      case BACKWARD:
+        return new BackAlignedTVList(dataTypes);
+      default:
+        return new TimAlignedTVList(dataTypes);
     }
-    return new TimAlignedTVList(dataTypes);
+  }
+
+  @Override
+  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
+    List<List<Object>> values = new ArrayList<>();
+    List<List<BitMap>> bitMaps = null;
+    for (int i = 0; i < columnIndex.size(); i++) {
+      // columnIndex == -1 means querying a non-exist column, add null column here
+      if (columnIndex.get(i) == -1) {
+        values.add(null);
+      } else {
+        values.add(this.values.get(columnIndex.get(i)));
+        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
+          if (bitMaps == null) {
+            bitMaps = new ArrayList<>(columnIndex.size());
+            for (int j = 0; j < columnIndex.size(); j++) {
+              bitMaps.add(null);
+            }
+          }
+          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
+        }
+      }
+    }
+    AlignedTVList alignedTvList = AlignedTVList.newAlignedList(dataTypeList);
+    alignedTvList.timestamps = this.timestamps;
+    alignedTvList.indices = this.indices;
+    alignedTvList.values = values;
+    alignedTvList.bitMaps = bitMaps;
+    alignedTvList.rowCount = this.rowCount;
+    return alignedTvList;
   }
 
   @Override
   public AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
+    System.arraycopy(
+        memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
     for (int[] indicesArray : indices) {
       cloneList.indices.add(cloneIndex(indicesArray));
     }
@@ -136,6 +182,13 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
+          memoryBinaryChunkSize[i] +=
+              columnValue != null
+                  ? getBinarySize((Binary) columnValue)
+                  : getBinarySize(Binary.EMPTY_VALUE);
+          if (memoryBinaryChunkSize[i] >= targetChunkSize) {
+            reachMaxChunkSizeFlag = true;
+          }
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
@@ -312,6 +365,11 @@ public abstract class AlignedTVList extends TVList {
     this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
+
+    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
+    memoryBinaryChunkSize = new long[dataTypes.size()];
+    System.arraycopy(
+        tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
   }
 
   /**
@@ -457,6 +515,10 @@ public abstract class AlignedTVList extends TVList {
         int originRowIndex = getValueIndex(i);
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
+        if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
+          memoryBinaryChunkSize[columnIndex] -=
+              getBinarySize(((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
+        }
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;
       } else {
@@ -468,6 +530,17 @@ public abstract class AlignedTVList extends TVList {
 
   public void deleteColumn(int columnIndex) {
     dataTypes.remove(columnIndex);
+
+    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
+    memoryBinaryChunkSize = new long[dataTypes.size()];
+    int copyIndex = 0;
+    for (int i = 0; i < tmpValueChunkRawSize.length; i++) {
+      if (i == columnIndex) {
+        continue;
+      }
+      memoryBinaryChunkSize[copyIndex++] = tmpValueChunkRawSize[i];
+    }
+
     for (Object array : values.get(columnIndex)) {
       PrimitiveArrayManager.release(array);
     }
@@ -548,6 +621,7 @@ public abstract class AlignedTVList extends TVList {
           columnBitMaps.clear();
         }
       }
+      memoryBinaryChunkSize[i] = 0;
     }
   }
 
@@ -616,6 +690,11 @@ public abstract class AlignedTVList extends TVList {
     for (List<Object> valueList : values) {
       PrimitiveArrayManager.release(valueList.remove(valueList.size() - 1));
     }
+  }
+
+  @Override
+  public boolean reachMaxChunkSizeThreshold() {
+    return reachMaxChunkSizeFlag;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -688,6 +767,15 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
           System.arraycopy(value[columnIndexArray[i]], idx, arrayT, elementIndex, remaining);
+
+          // update raw size of Text chunk
+          for (int i1 = 0; i1 < remaining; i1++) {
+            memoryBinaryChunkSize[i] +=
+                arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
+          }
+          if (memoryBinaryChunkSize[i] > targetChunkSize) {
+            reachMaxChunkSizeFlag = true;
+          }
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));

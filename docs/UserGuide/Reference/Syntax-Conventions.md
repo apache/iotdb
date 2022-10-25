@@ -713,7 +713,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-## Learn More
+## Detailed Definitions of Lexical and Grammar
 
 Please read the lexical and grammar description files in our code repository:
 

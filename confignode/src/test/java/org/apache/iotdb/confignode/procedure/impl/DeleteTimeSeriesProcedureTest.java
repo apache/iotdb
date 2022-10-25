@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.junit.Assert;

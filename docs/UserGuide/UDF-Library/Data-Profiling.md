@@ -1162,11 +1162,13 @@ Output series:
 
 This function is used to sample the input series,
 that is, select a specified number of data points from the input series and output them.
-Currently, two sampling methods are supported:
+Currently, three sampling methods are supported:
 **Reservoir sampling** randomly selects data points.
 All of the points have the same probability of being sampled.
 **Isometric sampling** selects data points at equal index intervals.
-
+**Triangle sampling** assigns data points to the buckets based on the number of sampling. 
+Then it calculates the area of the triangle based on these points inside the bucket and selects the point with the largest area of the triangle. 
+For more detail, please read [paper](http://skemman.is/stream/get/1946/15343/37285/3/SS_MSthesis.pdf)
 
 **Name:** SAMPLE
 
@@ -1174,7 +1176,7 @@ All of the points have the same probability of being sampled.
 
 **Parameters:**
 
-+ `method`: The method of sampling, which is 'reservoir' or 'isometric'. By default, reservoir sampling is used.
++ `method`: The method of sampling, which is 'reservoir', 'isometric' or 'triangle'. By default, reservoir sampling is used.
 + `k`: The number of sampling, which is a positive integer. By default, it's 1.
 
 **Output Series:** Output a single series. The type is the same as the input. The length of the output series is `k`. Each data point in the output series comes from the input series.

@@ -22,12 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -107,7 +108,7 @@ public class TsFileProcessor {
   private final boolean enableMemControl = config.isEnableMemControl();
 
   /** storage group info for mem control */
-  private StorageGroupInfo storageGroupInfo;
+  private DataRegionInfo dataRegionInfo;
   /** tsfile processor info for mem control */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -170,14 +171,14 @@ public class TsFileProcessor {
   TsFileProcessor(
       String storageGroupName,
       File tsfile,
-      StorageGroupInfo storageGroupInfo,
+      DataRegionInfo dataRegionInfo,
       CloseFileListener closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback,
       boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
-    this.storageGroupInfo = storageGroupInfo;
+    this.dataRegionInfo = dataRegionInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -191,7 +192,7 @@ public class TsFileProcessor {
   @SuppressWarnings("java:S107") // ignore number of arguments
   public TsFileProcessor(
       String storageGroupName,
-      StorageGroupInfo storageGroupInfo,
+      DataRegionInfo dataRegionInfo,
       TsFileResource tsFileResource,
       CloseFileListener closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback,
@@ -199,7 +200,7 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.storageGroupInfo = storageGroupInfo;
+    this.dataRegionInfo = dataRegionInfo;
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -782,17 +783,17 @@ public class TsFileProcessor {
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
       throws WriteProcessException {
     memTableIncrement += textDataIncrement;
-    storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
+    dataRegionInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
-    if (storageGroupInfo.needToReportToSystem()) {
+    if (dataRegionInfo.needToReportToSystem()) {
       try {
-        if (!SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, this)) {
+        if (!SystemInfo.getInstance().reportStorageGroupStatus(dataRegionInfo, this)) {
           StorageEngine.blockInsertionIfReject(this);
         }
       } catch (WriteProcessRejectException e) {
-        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+        dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
         throw e;
       }
     }
@@ -806,9 +807,9 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = memIncrements[2];
 
     memTableIncrement += textDataIncrement;
-    storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+    dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
-    SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+    SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
   }
@@ -838,7 +839,7 @@ public class TsFileProcessor {
       }
       for (ISyncManager syncManager :
           SyncService.getInstance()
-              .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
+              .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
         syncManager.syncRealTimeDeletion(deletion);
       }
     } finally {
@@ -992,14 +993,14 @@ public class TsFileProcessor {
               : workMemTable;
 
       try {
+        for (ISyncManager syncManager :
+            SyncService.getInstance()
+                .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
+          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
+        }
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
-        for (ISyncManager syncManager :
-            SyncService.getInstance()
-                .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
-          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-        }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
       } catch (Exception e) {
@@ -1167,7 +1168,7 @@ public class TsFileProcessor {
       MemTableManager.getInstance().decreaseMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
-        storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+        dataRegionInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[mem control] {}: {} flush finished, try to reset system memcost, "
@@ -1177,7 +1178,7 @@ public class TsFileProcessor {
               flushingMemTables.size());
         }
         // report to System
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
         SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
       }
       if (logger.isDebugEnabled()) {
@@ -1235,7 +1236,7 @@ public class TsFileProcessor {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",
               storageGroupName,
-              tsFileResource.getTsFile().getName());
+              tsFileResource.getTsFile().getAbsolutePath());
           synchronized (flushingMemTables) {
             flushingMemTables.notifyAll();
           }
@@ -1243,21 +1244,21 @@ public class TsFileProcessor {
           logger.error(
               "{}: {} meet error when flushing a memtable, change system mode to error",
               storageGroupName,
-              tsFileResource.getTsFile().getName(),
+              tsFileResource.getTsFile().getAbsolutePath(),
               e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e);
             writer.reset();
           } catch (IOException e1) {
             logger.error(
                 "{}: {} Truncate corrupted data meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           // release resource
@@ -1279,16 +1280,12 @@ public class TsFileProcessor {
             logger.error(
                 "{}: {} Release resource meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           return;
         }
       }
-    }
-
-    for (FlushListener flushListener : flushListeners) {
-      flushListener.onMemTableFlushed(memTableToFlush);
     }
 
     try {
@@ -1311,7 +1308,7 @@ public class TsFileProcessor {
     } catch (IOException e) {
       logger.error(
           "Meet error when writing into ModificationFile file of {} ",
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1321,19 +1318,24 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} try get lock to release a memtable (signal={})",
           storageGroupName,
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           memTableToFlush.isSignalMemTable());
     }
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
 
+    // call flushed listener after memtable is released safely
+    for (FlushListener flushListener : flushListeners) {
+      flushListener.onMemTableFlushed(memTableToFlush);
+    }
+
     // retry to avoid unnecessary read-only mode
     int retryCnt = 0;
     while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
-        updateCompressionRatio(memTableToFlush);
+        updateCompressionRatio();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: {} flushingMemtables is empty and will close the file",
@@ -1392,25 +1394,15 @@ public class TsFileProcessor {
     }
   }
 
-  private void updateCompressionRatio(IMemTable memTableToFlush) {
+  private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
-      if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
-        logger.error(
-            "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
-            storageGroupName,
-            writer.getFile().getAbsolutePath(),
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          compressionRatio,
+          totalMemTableSize,
+          writer.getPos());
       CompressionRatio.getInstance().updateRatio(compressionRatio);
     } catch (IOException e) {
       logger.error(
@@ -1429,7 +1421,7 @@ public class TsFileProcessor {
     tsFileResource.serialize();
     for (ISyncManager syncManager :
         SyncService.getInstance()
-            .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
+            .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
       syncManager.syncRealTimeResource(tsFileResource.getTsFile());
     }
     logger.info("Ended file {}", tsFileResource);
@@ -1442,7 +1434,7 @@ public class TsFileProcessor {
 
     if (enableMemControl) {
       tsFileProcessorInfo.clear();
-      storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
+      dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
     }
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
@@ -1454,6 +1446,7 @@ public class TsFileProcessor {
           writer.getFile().length(),
           closeEndTime - closeStartTime);
     }
+    TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), sequence);
 
     writer = null;
   }
@@ -1635,7 +1628,7 @@ public class TsFileProcessor {
   }
 
   public void submitAFlushTask() {
-    this.storageGroupInfo.getDataRegion().submitAFlushTaskWhenShouldFlush(this);
+    this.dataRegionInfo.getDataRegion().submitAFlushTaskWhenShouldFlush(this);
   }
 
   public boolean alreadyMarkedClosing() {

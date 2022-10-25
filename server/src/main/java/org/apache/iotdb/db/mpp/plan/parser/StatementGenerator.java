@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
@@ -89,6 +91,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -339,7 +342,9 @@ public class StatementGenerator {
       statement.setDevicePath(insertStatement.getDevicePath());
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
-      statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
+      TSDataType[] dataTypes = new TSDataType[statement.getMeasurements().length];
+      Arrays.fill(dataTypes, TSDataType.TEXT);
+      statement.setDataTypes(dataTypes);
       statement.setTime(req.timestamps.get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
@@ -432,7 +437,7 @@ public class StatementGenerator {
     return statement;
   }
 
-  public static Statement createStatement(List<String> storageGroups) {
+  public static Statement createStatement(List<String> storageGroups) throws IllegalPathException {
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
     statement.setPrefixPath(storageGroups);
     return statement;
@@ -609,7 +614,8 @@ public class StatementGenerator {
       case SHOW_SET_TEMPLATES:
         return new ShowPathSetTemplateStatement(req.getName());
       case SHOW_USING_TEMPLATES:
-        return new ShowPathsUsingTemplateStatement(req.getName());
+        return new ShowPathsUsingTemplateStatement(
+            new PartialPath(SQLConstant.getSingleRootArray()), req.getName());
       default:
         return null;
     }
@@ -619,5 +625,14 @@ public class StatementGenerator {
       throws IllegalPathException {
     return new SetSchemaTemplateStatement(
         req.getTemplateName(), new PartialPath(req.getPrefixPath()));
+  }
+
+  public static DeleteTimeSeriesStatement createDeleteTimeSeriesStatement(
+      List<String> pathPatternStringList) throws IllegalPathException {
+    List<PartialPath> pathPatternList = new ArrayList<>();
+    for (String pathPatternString : pathPatternStringList) {
+      pathPatternList.add(new PartialPath(pathPatternString));
+    }
+    return new DeleteTimeSeriesStatement(pathPatternList);
   }
 }

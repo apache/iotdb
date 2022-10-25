@@ -20,8 +20,9 @@ package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -744,7 +745,10 @@ public class OperatorMemoryTest {
 
       PathsUsingTemplateScanOperator operator =
           new PathsUsingTemplateScanOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), 0);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              Collections.singletonList(new PartialPath(new String[] {"root", "**"})),
+              0);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
@@ -932,7 +936,12 @@ public class OperatorMemoryTest {
 
       SchemaFetchScanOperator operator =
           new SchemaFetchScanOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, null, null);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              null,
+              null,
+              null,
+              false);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());

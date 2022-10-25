@@ -133,10 +133,10 @@
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
-        <logback.version>1.2.10</logback.version>
+        <logback.version>1.2.11</logback.version>
         <joda.version>2.9.9</joda.version>
         <spark.version>2.4.5</spark.version>
-        <flink.version>1.14.0</flink.version>
+        <flink.version>1.14.6</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
@@ -159,7 +159,7 @@
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.7</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
-        <netty.version>4.1.53.Final</netty.version>
+        <netty.version>4.1.82.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>

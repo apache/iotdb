@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -54,10 +53,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-
-import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
 
 public class NewIoTDB implements NewIoTDBMBean {
 
@@ -83,8 +79,8 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
     config.setMppMode(true);
-
-    loadExternLib(config);
+    // In standalone mode, Consensus memory should be reclaimed
+    IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
     daemon.active();
   }
@@ -130,7 +126,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
@@ -142,12 +137,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(
         UDFClassLoaderManager.setupAndGetInstance(
             IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
-    registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + "udf"
-                + File.separator));
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -178,6 +167,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");

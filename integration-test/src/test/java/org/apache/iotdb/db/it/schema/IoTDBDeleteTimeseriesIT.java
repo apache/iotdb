@@ -331,6 +331,29 @@ public class IoTDBDeleteTimeseriesIT {
       }
       Assert.assertEquals(retArray1.length, cnt);
     }
+
+    statement.execute("delete timeseries root.sg1.d1.s2, root.sg2.**");
+    try (ResultSet resultSet = statement.executeQuery("select s2 from root.sg1.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg2.*.s2")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    retArray1 = new String[] {"0,4,4"};
+    cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.*.*")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 3; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s2")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
   }
 
   @Test
@@ -401,6 +424,36 @@ public class IoTDBDeleteTimeseriesIT {
       statement.execute("delete timeseries root.*.d1.s3");
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
+    }
+  }
+
+  @Test
+  public void dropTimeseriesTest() throws Exception {
+    String[] retArray = new String[] {"1,1,", "2,1.1,"};
+    int cnt = 0;
+
+    statement.execute(
+        "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute(
+        "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        Assert.assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+    }
+    statement.execute("DROP timeseries root.turbine1.d1.s1");
+    statement.execute("FLUSH");
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine1.d1")) {
+      Assert.assertFalse(resultSet.next());
     }
   }
 }

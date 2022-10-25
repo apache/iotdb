@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -168,6 +168,7 @@ public class AlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     serializeTsFileData(stream, tsFile);
@@ -270,7 +271,8 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 0; i < decodeTime.length; i++) {
       if (decodeTime[i] < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(decodeTime[i]))) {
+      } else if (!timePartitionSlot.equals(
+          TimePartitionUtils.getTimePartitionForRouting(decodeTime[i]))) {
         break;
       }
       time[satisfiedLength++] = decodeTime[i];
@@ -303,7 +305,8 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 0; i < valueBatch.length; i++) {
       if (time[i] < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time[i]))) {
+      } else if (!timePartitionSlot.equals(
+          TimePartitionUtils.getTimePartitionForRouting(time[i]))) {
         break;
       }
       if (valueBatch[i] == null) {
@@ -401,7 +404,7 @@ public class AlignedChunkData implements ChunkData {
           if (isTimeChunk) {
             long time = ReadWriteIOUtils.readLong(stream);
             timePageBatch[i] = time;
-            chunkWriter.write(time);
+            chunkWriter.writeTime(time);
           } else {
             boolean isNull = ReadWriteIOUtils.readBool(stream);
             switch (chunkHeader.getDataType()) {
@@ -439,6 +442,12 @@ public class AlignedChunkData implements ChunkData {
           timeBatch.add(timePageBatch);
         }
         decodePageIndex += 1;
+
+        if (isTimeChunk) {
+          chunkWriter.sealCurrentTimePage();
+        } else {
+          chunkWriter.sealCurrentValuePage(valueChunkIndex);
+        }
       } else {
         PageHeader pageHeader = PageHeader.deserializeFrom(stream, chunkHeader.getDataType(), true);
         if (isTimeChunk) {
@@ -469,7 +478,7 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 1; i < chunkHeaderListSize; i++) {
       chunkData.addValueChunk(-1, chunkHeaderList[i], null);
     }
-    chunkData.setTimePartitionSlot(StorageEngineV2.getTimePartitionSlot(timePartition));
+    chunkData.setTimePartitionSlot(TimePartitionUtils.getTimePartitionForRouting(timePartition));
     chunkData.deserializeTsFileData(stream);
     return chunkData;
   }

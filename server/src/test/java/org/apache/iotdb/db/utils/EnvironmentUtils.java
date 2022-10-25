@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,14 +50,14 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -108,8 +108,8 @@ public class EnvironmentUtils {
 
     // deregister all user defined classes
     try {
-      if (UDFRegistrationService.getInstance() != null) {
-        UDFRegistrationService.getInstance().deregisterAll();
+      if (UDFManagementService.getInstance() != null) {
+        UDFManagementService.getInstance().deregisterAll();
       }
       if (TriggerRegistrationService.getInstance() != null) {
         TriggerRegistrationService.getInstance().deregisterAll();
@@ -117,7 +117,7 @@ public class EnvironmentUtils {
       if (ContinuousQueryService.getInstance() != null) {
         ContinuousQueryService.getInstance().deregisterAll();
       }
-    } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
+    } catch (UDFManagementException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }
 
@@ -193,7 +193,7 @@ public class EnvironmentUtils {
     LastQueryExecutor.clear();
 
     // clear SyncLogger
-    SyncLogWriter.getInstance().close();
+    LocalSyncInfoFetcher.getInstance().close();
 
     // delete all directory
     cleanAllDir();

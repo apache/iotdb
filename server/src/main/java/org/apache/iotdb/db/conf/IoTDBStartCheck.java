@@ -74,7 +74,7 @@ public class IoTDBStartCheck {
   private static String timestampPrecision = config.getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = config.getPartitionInterval();
+  private static long partitionInterval = config.getTimePartitionIntervalForStorage();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
@@ -129,7 +129,7 @@ public class IoTDBStartCheck {
   }
 
   private IoTDBStartCheck() {
-    logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
+    logger.info("Starting IoTDB " + IoTDBConstant.VERSION_WITH_BUILD);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);

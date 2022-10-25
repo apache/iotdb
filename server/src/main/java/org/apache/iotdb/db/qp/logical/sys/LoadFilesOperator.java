@@ -38,15 +38,21 @@ public class LoadFilesOperator extends Operator {
   private boolean autoCreateSchema;
   private int sgLevel;
   private boolean verifyMetadata;
+  private boolean deleteAfterLoad;
 
   public LoadFilesOperator(
-      File file, boolean autoCreateSchema, int sgLevel, boolean verifyMetadata) {
+      File file,
+      boolean autoCreateSchema,
+      int sgLevel,
+      boolean verifyMetadata,
+      boolean deleteAfterLoad) {
     super(SQLConstant.TOK_LOAD_FILES);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
     this.verifyMetadata = verifyMetadata;
     this.operatorType = OperatorType.LOAD_FILES;
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
   public File getFile() {
@@ -65,6 +71,10 @@ public class LoadFilesOperator extends Operator {
     this.autoCreateSchema = autoCreateSchema;
   }
 
+  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+    this.deleteAfterLoad = deleteAfterLoad;
+  }
+
   public void setSgLevel(int sgLevel) {
     this.sgLevel = sgLevel;
   }
@@ -77,6 +87,6 @@ public class LoadFilesOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return new OperateFilePlan(
-        file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, verifyMetadata);
+        file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, verifyMetadata, deleteAfterLoad);
   }
 }

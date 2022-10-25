@@ -24,12 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LazyGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
 import java.util.ArrayList;
@@ -54,7 +54,7 @@ public class RouteBalancer {
     this.lazyGreedyRouter = new LazyGreedyRouter();
   }
 
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
       List<TRegionReplicaSet> regionReplicaSets) {
     List<TRegionReplicaSet> schemaRegionGroups = new ArrayList<>();
     List<TRegionReplicaSet> dataRegionGroups = new ArrayList<>();
@@ -73,10 +73,10 @@ public class RouteBalancer {
 
     // Generate SchemaRegionRouteMap
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        genRouter(TConsensusGroupType.SchemaRegion).genLatestRegionRouteMap(schemaRegionGroups);
+        genRouter(TConsensusGroupType.SchemaRegion).getLatestRegionRouteMap(schemaRegionGroups);
     // Generate DataRegionRouteMap
     result.putAll(
-        genRouter(TConsensusGroupType.DataRegion).genLatestRegionRouteMap(dataRegionGroups));
+        genRouter(TConsensusGroupType.DataRegion).getLatestRegionRouteMap(dataRegionGroups));
     return result;
   }
 

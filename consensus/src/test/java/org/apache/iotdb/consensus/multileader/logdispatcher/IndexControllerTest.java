@@ -49,7 +49,7 @@ public class IndexControllerTest {
   @Test
   public void testIncrementIntervalAfterRestart() {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -58,7 +58,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -66,7 +66,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP + 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
@@ -74,7 +74,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP * 2 - 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 

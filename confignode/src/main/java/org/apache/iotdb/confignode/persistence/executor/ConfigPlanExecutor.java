@@ -29,25 +29,34 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -56,16 +65,30 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -101,19 +124,26 @@ public class ConfigPlanExecutor {
 
   private final UDFInfo udfInfo;
 
+  private final TriggerInfo triggerInfo;
+  private final ClusterSyncInfo syncInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
       PartitionInfo partitionInfo,
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
-      UDFInfo udfInfo) {
+      UDFInfo udfInfo,
+      TriggerInfo triggerInfo,
+      ClusterSyncInfo syncInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
+    this.triggerInfo = triggerInfo;
+    this.syncInfo = syncInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -153,6 +183,26 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);
       case GetAllTemplateSetInfo:
         return clusterSchemaInfo.getAllTemplateSetInfo();
+      case GetTemplateSetInfo:
+        return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
+      case GetPipeSink:
+        return syncInfo.getPipeSink((GetPipeSinkPlan) req);
+      case ShowPipe:
+        return syncInfo.showPipe((ShowPipePlan) req);
+      case GetTriggerTable:
+        return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
+      case GetTriggerLocation:
+        return triggerInfo.getTriggerLocation((GetTriggerLocationPlan) req);
+      case GetTriggerJar:
+        return triggerInfo.getTriggerJar((GetTriggerJarPlan) req);
+      case GetTransferringTriggers:
+        return triggerInfo.getTransferringTriggers((GetTransferringTriggersPlan) req);
+      case GetRegionId:
+        return partitionInfo.getRegionId((GetRegionIdPlan) req);
+      case GetTimeSlotList:
+        return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
+      case GetSeriesSlotList:
+        return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -224,12 +274,39 @@ public class ConfigPlanExecutor {
         return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
+      case AddTriggerInTable:
+        return triggerInfo.addTriggerInTable((AddTriggerInTablePlan) physicalPlan);
+      case DeleteTriggerInTable:
+        return triggerInfo.deleteTriggerInTable((DeleteTriggerInTablePlan) physicalPlan);
+      case UpdateTriggerStateInTable:
+        return triggerInfo.updateTriggerStateInTable((UpdateTriggerStateInTablePlan) physicalPlan);
+      case UpdateTriggersOnTransferNodes:
+        return triggerInfo.updateTriggersOnTransferNodes(
+            (UpdateTriggersOnTransferNodesPlan) physicalPlan);
+      case UpdateTriggerLocation:
+        return triggerInfo.updateTriggerLocation((UpdateTriggerLocationPlan) physicalPlan);
       case CreateSchemaTemplate:
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
       case UpdateRegionLocation:
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
+      case CreatePipeSink:
+        return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
+      case DropPipeSink:
+        return syncInfo.dropPipeSink((DropPipeSinkPlan) physicalPlan);
+      case PreCreatePipe:
+        return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
+      case SetPipeStatus:
+        return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
+      case DropPipe:
+        return syncInfo.dropPipe((DropPipePlan) physicalPlan);
+      case UpdateLoadStatistics:
+        LOGGER.info(
+            "[UpdateLoadStatistics] Update cluster load statistics, timestamp: {}",
+            System.currentTimeMillis());
+        nodeInfo.updateNodeStatistics((UpdateLoadStatisticsPlan) physicalPlan);
+        return partitionInfo.updateRegionGroupStatistics((UpdateLoadStatisticsPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

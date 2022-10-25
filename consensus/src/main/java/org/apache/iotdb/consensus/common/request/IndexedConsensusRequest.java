@@ -33,6 +33,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long syncIndex;
   private List<IConsensusRequest> requests;
   private List<ByteBuffer> serializedRequests;
+  private long serializedSize = 0;
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
@@ -43,6 +44,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   public IndexedConsensusRequest(List<ByteBuffer> serializedRequests, long searchIndex) {
     this.searchIndex = searchIndex;
     this.serializedRequests = serializedRequests;
+    for (ByteBuffer byteBuffer : serializedRequests) {
+      serializedSize += byteBuffer.capacity();
+    }
     this.syncIndex = -1L;
   }
 
@@ -70,6 +74,10 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     List<ByteBuffer> result = new LinkedList<>();
     this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
     return result;
+  }
+
+  public long getSerializedSize() {
+    return serializedSize;
   }
 
   public long getSearchIndex() {

@@ -21,7 +21,8 @@ package org.apache.iotdb.db.qp.physical;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -506,14 +507,16 @@ public class PhysicalPlanTest {
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
                   "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
+      UDFManagementService.getInstance()
+          .register(
+              new UDFInformation(
+                  createFunctionPlan.getUdfName(), createFunctionPlan.getClassName()));
 
       String sqlStr =
           "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+      UDFManagementService.getInstance().deregister(createFunctionPlan.getUdfName());
 
       if (!(plan instanceof UDTFPlan)) {
         fail();
@@ -548,14 +551,16 @@ public class PhysicalPlanTest {
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
                   "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
+      UDFManagementService.getInstance()
+          .register(
+              new UDFInformation(
+                  createFunctionPlan.getUdfName(), createFunctionPlan.getClassName()));
 
       String sqlStr =
           "select udf(d2.s1, d1.s1, 'addend'='100'), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+      UDFManagementService.getInstance().deregister(createFunctionPlan.getUdfName());
       if (!(plan instanceof UDTFPlan)) {
         fail();
       }
@@ -593,13 +598,15 @@ public class PhysicalPlanTest {
           (CreateFunctionPlan)
               processor.parseSQLToPhysicalPlan(
                   "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(), true);
+      UDFManagementService.getInstance()
+          .register(
+              new UDFInformation(
+                  createFunctionPlan.getUdfName(), createFunctionPlan.getClassName()));
 
       String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.**";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+      UDFManagementService.getInstance().deregister(createFunctionPlan.getUdfName());
       if (!(plan instanceof UDTFPlan)) {
         fail();
       }
@@ -963,7 +970,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load '%s' autoregister=true", filePath);
+    metadata = String.format("load '%s'", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -973,17 +980,17 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load '%s' autoregister=false", filePath);
+    metadata = String.format("load '%s'", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, verify=true, "
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, verify=true, "
                 + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load '%s' autoregister=true,sglevel=3", filePath);
+    metadata = String.format("load '%s' sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -993,7 +1000,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=false", filePath);
+    metadata = String.format("load '%s' sglevel=3 verify=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1003,7 +1010,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load '%s' autoregister=true,sglevel=3,verify=true", filePath);
+    metadata = String.format("load '%s' sglevel=3 verify=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(

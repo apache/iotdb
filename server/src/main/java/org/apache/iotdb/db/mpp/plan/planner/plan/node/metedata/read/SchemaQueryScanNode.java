@@ -75,6 +75,16 @@ public abstract class SchemaQueryScanNode extends SourceNode {
   @Override
   public void close() throws Exception {}
 
+  public List<PartialPath> getPathPatternList() {
+    return Collections.singletonList(path);
+  }
+
+  public void setPathPatternList(List<PartialPath> pathPatternList) {
+    if (pathPatternList.size() == 1) {
+      this.path = pathPatternList.get(0);
+    }
+  }
+
   public boolean isPrefixPath() {
     return isPrefixPath;
   }

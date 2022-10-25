@@ -31,6 +31,7 @@ public enum NodeStatus {
 
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
+  public static final String DISK_FULL = "DiskFull";
 
   private final String status;
 
@@ -53,6 +54,6 @@ public enum NodeStatus {
 
   public static boolean isNormalStatus(NodeStatus status) {
     // Currently, the only normal status is Running
-    return status.equals(NodeStatus.Running);
+    return status != null && status.equals(NodeStatus.Running);
   }
 }

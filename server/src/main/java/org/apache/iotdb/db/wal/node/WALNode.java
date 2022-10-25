@@ -422,45 +422,53 @@ public class WALNode implements IWALNode {
       }
     }
 
+    /**
+     * synchronize memTable to make sure snapshot is made before memTable flush operation, {@link
+     * org.apache.iotdb.db.engine.storagegroup.TsFileProcessor#flushOneMemTable}
+     */
     private void snapshotMemTable(DataRegion dataRegion, File tsFile, MemTableInfo memTableInfo) {
       IMemTable memTable = memTableInfo.getMemTable();
-      if (memTable.getFlushStatus() != FlushStatus.WORKING) {
-        return;
-      }
-
-      // update snapshot count
-      memTableSnapshotCount.compute(memTable.getMemTableId(), (k, v) -> v == null ? 1 : v + 1);
-      // roll wal log writer to make sure first version id will be updated
-      WALEntry rollWALFileSignal =
-          new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
-      WALFlushListener fileRolledListener = log(rollWALFileSignal);
-      if (fileRolledListener.waitForResult() == WALFlushListener.Status.FAILURE) {
-        logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
-        return;
-      }
-
-      // update first version id first to make sure snapshot is in the files ≥ current log
-      // version
-      memTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
 
       // get dataRegion write lock to make sure no more writes to the memTable
       dataRegion.writeLock(
           "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
       try {
-        // log snapshot in a new .wal file
-        WALEntry walEntry = new WALInfoEntry(memTable.getMemTableId(), memTable, true);
-        WALFlushListener flushListener = log(walEntry);
+        // make sure snapshot is made before memTable flush operation
+        synchronized (memTable) {
+          if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+            return;
+          }
 
-        // wait until getting the result
-        // it's low-risk to block writes awhile because this memTable accumulates slowly
-        if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
-          logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+          // update snapshot count
+          memTableSnapshotCount.compute(memTable.getMemTableId(), (k, v) -> v == null ? 1 : v + 1);
+          // roll wal log writer to make sure first version id will be updated
+          WALEntry rollWALFileSignal =
+              new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
+          WALFlushListener fileRolledListener = log(rollWALFileSignal);
+          if (fileRolledListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+            logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
+            return;
+          }
+
+          // update first version id first to make sure snapshot is in the files ≥ current log
+          // version
+          memTableInfo.setFirstFileVersionId(buffer.getCurrentWALFileVersion());
+
+          // log snapshot in a new .wal file
+          WALEntry walEntry = new WALInfoEntry(memTable.getMemTableId(), memTable, true);
+          WALFlushListener flushListener = log(walEntry);
+
+          // wait until getting the result
+          // it's low-risk to block writes awhile because this memTable accumulates slowly
+          if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+            logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+          }
+          logger.info(
+              "WAL node-{} snapshots memTable-{} to wal files, memTable size is {}.",
+              identifier,
+              memTable.getMemTableId(),
+              memTable.getTVListsRamCost());
         }
-        logger.info(
-            "WAL node-{} snapshots memTable-{} to wal files, memTable size is {}.",
-            identifier,
-            memTable.getMemTableId(),
-            memTable.getTVListsRamCost());
       } finally {
         dataRegion.writeUnlock();
       }
@@ -683,15 +691,21 @@ public class WALNode implements IWALNode {
 
     @Override
     public void waitForNextReady() throws InterruptedException {
+      boolean walFileRolled = false;
       while (!hasNext()) {
-        boolean timeout =
-            !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
-        if (timeout) {
-          logger.info(
-              "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
-              buffer.getCurrentSearchIndex(),
-              nextSearchIndex);
-          rollWALFile();
+        if (!walFileRolled) {
+          boolean timeout =
+              !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+          if (timeout) {
+            logger.info(
+                "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
+                buffer.getCurrentSearchIndex(),
+                nextSearchIndex);
+            rollWALFile();
+            walFileRolled = true;
+          }
+        } else {
+          buffer.waitForFlush();
         }
       }
     }
@@ -735,6 +749,11 @@ public class WALNode implements IWALNode {
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
           "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
+      // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose
+      // searchIndex is larger than target searchIndex
+      if (fileIndex == -1) {
+        fileIndex = 0;
+      }
       if (filesToSearch != null
           && (fileIndex >= 0 && fileIndex < filesToSearch.length - 1)) { // possible to find next
         this.filesToSearch = filesToSearch;

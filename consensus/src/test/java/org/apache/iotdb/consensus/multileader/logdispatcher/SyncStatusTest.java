@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -56,14 +57,16 @@ public class SyncStatusTest {
   @Test
   public void sequenceTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -82,7 +85,7 @@ public class SyncStatusTest {
   @Test
   public void reverseTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -90,7 +93,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -115,7 +120,7 @@ public class SyncStatusTest {
   @Test
   public void mixedTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -123,7 +128,9 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -160,14 +167,16 @@ public class SyncStatusTest {
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
+      TLogBatch logBatch = new TLogBatch();
+      logBatch.setSearchIndex(i);
+      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -184,11 +193,9 @@ public class SyncStatusTest {
     CompletableFuture<Boolean> future =
         CompletableFuture.supplyAsync(
             () -> {
-              PendingBatch batch =
-                  new PendingBatch(
-                      config.getReplication().getMaxPendingBatch(),
-                      config.getReplication().getMaxPendingBatch(),
-                      Collections.emptyList());
+              TLogBatch logBatch = new TLogBatch();
+              logBatch.setSearchIndex(config.getReplication().getMaxPendingBatch());
+              PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
               batchList.add(batch);
               try {
                 status.addNextBatch(batch);

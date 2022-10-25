@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -119,12 +120,12 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * Get value list related to PathPattern that overlapped with fullPath.
    *
    * @param fullPath full path without wildcard
-   * @return value list
+   * @return de-duplicated value list
    */
   public List<V> getOverlapped(PartialPath fullPath) {
-    List<V> res = new ArrayList<>();
+    Set<V> res = new HashSet<>();
     searchOverlapped(root, fullPath.getNodes(), 0, res);
-    return res;
+    return new ArrayList<>(res);
   }
 
   /**
@@ -133,19 +134,74 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param node current PathPatternNode
    * @param pathNodes pathNodes of key
    * @param pos current index of pathNodes
-   * @param resultList result list
+   * @param resultSet result set
    */
-  public void searchOverlapped(
-      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, List<V> resultList) {
+  private void searchOverlapped(
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, Set<V> resultSet) {
     if (pos == pathNodes.length - 1) {
-      resultList.addAll(node.getValues());
+      resultSet.addAll(node.getValues());
       return;
     }
     if (node.isMultiLevelWildcard()) {
-      searchOverlapped(node, pathNodes, pos + 1, resultList);
+      searchOverlapped(node, pathNodes, pos + 1, resultSet);
     }
     for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
-      searchOverlapped(child, pathNodes, pos + 1, resultList);
+      searchOverlapped(child, pathNodes, pos + 1, resultSet);
+    }
+  }
+
+  /**
+   * Get a list of value lists related to PathPattern that overlapped with measurements under the
+   * same device.
+   *
+   * @param devicePath device path without wildcard
+   * @param measurements list of measurements
+   * @return de-duplicated value list
+   */
+  public List<List<V>> getOverlapped(PartialPath devicePath, List<String> measurements) {
+    List<Set<V>> resultSet = new ArrayList<>();
+    for (int i = 0; i < measurements.size(); i++) {
+      resultSet.add(new HashSet<>());
+    }
+    searchOverlapped(root, devicePath.getNodes(), 0, measurements, resultSet);
+    List<List<V>> res = new ArrayList<>();
+    for (Set<V> set : resultSet) {
+      res.add(new ArrayList<>(set));
+    }
+    return res;
+  }
+
+  /**
+   * Recursive method for search overlapped pattern.
+   *
+   * @param node current PathPatternNode
+   * @param deviceNodes pathNodes of device
+   * @param pos current index of deviceNodes
+   * @param measurements list of measurements under device
+   * @param resultSet result set
+   */
+  private void searchOverlapped(
+      PathPatternNode<V, VSerializer> node,
+      String[] deviceNodes,
+      int pos,
+      List<String> measurements,
+      List<Set<V>> resultSet) {
+    if (pos == deviceNodes.length - 1) {
+      for (int i = 0; i < measurements.size(); i++) {
+        for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(measurements.get(i))) {
+          resultSet.get(i).addAll(child.getValues());
+        }
+        if (node.isMultiLevelWildcard()) {
+          resultSet.get(i).addAll(node.getValues());
+        }
+      }
+      return;
+    }
+    if (node.isMultiLevelWildcard()) {
+      searchOverlapped(node, deviceNodes, pos + 1, measurements, resultSet);
+    }
+    for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(deviceNodes[pos + 1])) {
+      searchOverlapped(child, deviceNodes, pos + 1, measurements, resultSet);
     }
   }
 }

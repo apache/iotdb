@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -54,7 +57,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
@@ -69,6 +72,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
@@ -170,24 +174,73 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       SchemaQueryMergeNode node, DistributionPlanContext context) {
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
-    TreeSet<TRegionReplicaSet> schemaRegions =
-        new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
-    analysis
-        .getSchemaPartitionInfo()
-        .getSchemaPartitionMap()
-        .forEach(
-            (storageGroup, deviceGroup) -> {
-              deviceGroup.forEach(
-                  (deviceGroupId, schemaRegionReplicaSet) ->
-                      schemaRegions.add(schemaRegionReplicaSet));
-            });
-    schemaRegions.forEach(
-        region -> {
-          SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
-          schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-          schemaQueryScanNode.setRegionReplicaSet(region);
-          root.addChild(schemaQueryScanNode);
-        });
+    List<PartialPath> pathPatternList = seed.getPathPatternList();
+    if (pathPatternList.size() == 1) {
+      // the path pattern overlaps with all storageGroup or storageGroup.**
+      TreeSet<TRegionReplicaSet> schemaRegions =
+          new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
+              });
+      schemaRegions.forEach(
+          region -> {
+            SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
+            schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            schemaQueryScanNode.setRegionReplicaSet(region);
+            root.addChild(schemaQueryScanNode);
+          });
+    } else {
+      // the path pattern may only overlap with part of storageGroup or storageGroup.**, need filter
+      PathPatternTree patternTree = new PathPatternTree();
+      for (PartialPath pathPattern : pathPatternList) {
+        patternTree.appendPathPattern(pathPattern);
+      }
+      Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        storageGroupSchemaRegionMap
+                            .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                            .add(schemaRegionReplicaSet));
+              });
+
+      storageGroupSchemaRegionMap.forEach(
+          (storageGroup, schemaRegionSet) -> {
+            // extract the patterns overlap with current storage group
+            Set<PartialPath> filteredPathPatternSet = new HashSet<>();
+            try {
+              PartialPath storageGroupPath = new PartialPath(storageGroup);
+              filteredPathPatternSet.addAll(
+                  patternTree.getOverlappedPathPatterns(storageGroupPath));
+              filteredPathPatternSet.addAll(
+                  patternTree.getOverlappedPathPatterns(
+                      storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+            } catch (IllegalPathException ignored) {
+              // won't reach here
+            }
+            List<PartialPath> filteredPathPatternList = new ArrayList<>(filteredPathPatternSet);
+
+            schemaRegionSet.forEach(
+                region -> {
+                  SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
+                  schemaQueryScanNode.setPlanNodeId(
+                      context.queryContext.getQueryId().genPlanNodeId());
+                  schemaQueryScanNode.setRegionReplicaSet(region);
+                  schemaQueryScanNode.setPathPatternList(filteredPathPatternList);
+                  root.addChild(schemaQueryScanNode);
+                });
+          });
+    }
     return root;
   }
 
@@ -594,6 +647,23 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return newRoot;
   }
 
+  @Override
+  public PlanNode visitGroupByTag(GroupByTagNode root, DistributionPlanContext context) {
+    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+    Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+    boolean containsSlidingWindow =
+        root.getChildren().size() == 1
+            && root.getChildren().get(0) instanceof SlidingWindowAggregationNode;
+
+    // TODO: use 2 phase aggregation to optimize the query
+    return containsSlidingWindow
+        ? groupSourcesForGroupByTagWithSlidingWindow(
+            root, (SlidingWindowAggregationNode) root.getChildren().get(0), sourceGroup, context)
+        : groupSourcesForGroupByTag(root, sourceGroup, context);
+  }
+
   // If the Aggregation Query contains value filter, we need to use the naive query plan
   // for it. That is, do the raw data query and then do the aggregation operation.
   // Currently, the method to judge whether the query should use naive query plan is whether
@@ -709,8 +779,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       GroupByLevelNode handle = (GroupByLevelNode) node;
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
-      List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
-      for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
+      List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
+      for (CrossSeriesAggregationDescriptor originalDescriptor :
+          handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
         for (String childColumn : childrenOutputColumns) {
           // If this condition matched, the childColumn should come from GroupByLevelNode
@@ -727,7 +798,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         if (descriptorExpressions.size() == 0) {
           continue;
         }
-        GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
+        CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
@@ -736,6 +807,70 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
+  }
+
+  private GroupByTagNode groupSourcesForGroupByTagWithSlidingWindow(
+      GroupByTagNode root,
+      SlidingWindowAggregationNode slidingWindowNode,
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
+      DistributionPlanContext context) {
+    GroupByTagNode newRoot = (GroupByTagNode) root.clone();
+    sourceGroup.forEach(
+        (dataRegion, sourceNodes) -> {
+          SlidingWindowAggregationNode parentOfGroup =
+              (SlidingWindowAggregationNode) slidingWindowNode.clone();
+          parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          List<AggregationDescriptor> childDescriptors = new ArrayList<>();
+          sourceNodes.forEach(
+              n ->
+                  n.getAggregationDescriptorList()
+                      .forEach(
+                          v -> {
+                            childDescriptors.add(
+                                new AggregationDescriptor(
+                                    v.getAggregationFuncName(),
+                                    AggregationStep.INTERMEDIATE,
+                                    v.getInputExpressions()));
+                          }));
+          parentOfGroup.setAggregationDescriptorList(childDescriptors);
+          if (sourceNodes.size() == 1) {
+            parentOfGroup.addChild(sourceNodes.get(0));
+          } else {
+            PlanNode timeJoinNode =
+                new TimeJoinNode(
+                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
+            sourceNodes.forEach(timeJoinNode::addChild);
+            parentOfGroup.addChild(timeJoinNode);
+          }
+          newRoot.addChild(parentOfGroup);
+        });
+    return newRoot;
+  }
+
+  private GroupByTagNode groupSourcesForGroupByTag(
+      GroupByTagNode root,
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
+      DistributionPlanContext context) {
+    GroupByTagNode newRoot = (GroupByTagNode) root.clone();
+    final boolean[] addParent = {false};
+    sourceGroup.forEach(
+        (dataRegion, sourceNodes) -> {
+          if (sourceNodes.size() == 1) {
+            newRoot.addChild(sourceNodes.get(0));
+          } else {
+            if (!addParent[0]) {
+              sourceNodes.forEach(newRoot::addChild);
+              addParent[0] = true;
+            } else {
+              PlanNode timeJoinNode =
+                  new TimeJoinNode(
+                      context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
+              sourceNodes.forEach(timeJoinNode::addChild);
+              newRoot.addChild(timeJoinNode);
+            }
+          }
+        });
+    return newRoot;
   }
 
   // TODO: (xingtanzjr) need to confirm the logic when processing UDF

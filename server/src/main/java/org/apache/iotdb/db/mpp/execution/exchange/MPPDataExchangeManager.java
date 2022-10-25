@@ -99,7 +99,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           try {
             ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
             resp.addToTsBlocks(serializedTsBlock);
-          } catch (IOException e) {
+          } catch (IllegalStateException | IOException e) {
             throw new TException(e);
           }
         }

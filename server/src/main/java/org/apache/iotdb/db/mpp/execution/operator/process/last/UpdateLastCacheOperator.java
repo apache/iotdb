@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;

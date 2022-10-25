@@ -576,6 +576,19 @@ public class DProfileTests {
   }
 
   @Test
+  public void testsample3() {
+    String sqlStr = "select sample(d1.s2, 'method'='triangle','k'='5') from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void testSegment1() {
     String sqlStr = "select segment(d2.s2,'error'='10') from root.vehicle";
     try (Connection connection =
