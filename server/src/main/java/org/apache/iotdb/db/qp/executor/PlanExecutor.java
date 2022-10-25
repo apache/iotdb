@@ -514,7 +514,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateDropFunction(DropFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance().deregister(plan.getUdfName());
+    UDFManagementService.getInstance().deregister(plan.getUdfName(), false);
     return true;
   }
 

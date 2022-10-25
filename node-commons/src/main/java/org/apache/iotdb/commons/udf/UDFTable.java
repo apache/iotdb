@@ -55,6 +55,10 @@ public class UDFTable {
     return functionToClassMap.get(functionName.toUpperCase());
   }
 
+  public void removeFunctionClass(String functionName) {
+    functionToClassMap.remove(functionName.toUpperCase());
+  }
+
   public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
       throws ClassNotFoundException {
     Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);

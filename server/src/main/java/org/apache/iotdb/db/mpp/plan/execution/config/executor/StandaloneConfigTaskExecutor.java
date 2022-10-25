@@ -224,7 +224,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFManagementService.getInstance().deregister(udfName);
+      UDFManagementService.getInstance().deregister(udfName, false);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =

@@ -371,7 +371,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus = client.dropFunction(new TDropFunctionReq(udfName));
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error("[{}] Failed to drop function {} in config node.", executionStatus, udfName);
+        LOGGER.error("[{}] Failed to drop function {}.", executionStatus, udfName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

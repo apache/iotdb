@@ -225,19 +225,27 @@ public class UDFManagementService {
     }
   }
 
-  public void deregister(String functionName) throws UDFManagementException {
+  public void deregister(String functionName, boolean needToDeleteJar) throws Exception {
     try {
       acquireLock();
       UDFInformation information = udfTable.getUDFInformation(functionName);
-      if (information != null && information.isBuiltin()) {
+      if (information == null) {
+        return;
+      }
+      if (information.isBuiltin()) {
         String errorMessage =
             String.format(
                 "Built-in function %s can not be deregistered.", functionName.toUpperCase());
         LOGGER.warn(errorMessage);
         throw new UDFManagementException(errorMessage);
       }
-
       udfTable.removeUDFInformation(functionName);
+      udfTable.removeFunctionClass(functionName);
+      if (needToDeleteJar) {
+        UDFExecutableManager.getInstance().removeFileUnderLibRoot(information.getJarName());
+        UDFExecutableManager.getInstance()
+            .removeFileUnderTemporaryRoot(functionName.toUpperCase() + ".txt");
+      }
     } finally {
       releaseLock();
     }
@@ -307,7 +315,11 @@ public class UDFManagementService {
   public void deregisterAll() throws UDFManagementException {
     for (UDFInformation information : getAllUDFInformation()) {
       if (!information.isBuiltin()) {
-        deregister(information.getFunctionName());
+        try {
+          deregister(information.getFunctionName(), false);
+        } catch (Exception e) {
+          throw new UDFManagementException(e.getMessage());
+        }
       }
     }
   }
