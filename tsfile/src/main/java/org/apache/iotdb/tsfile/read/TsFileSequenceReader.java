@@ -682,6 +682,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void getDevicesOfLeafNode(
       MetadataIndexNode deviceLeafNode,
       Queue<Pair<String, Pair<Long, Long>>> measurementNodeOffsetQueue) {
+    if (!deviceLeafNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+      throw new RuntimeException("the first param should be device leaf node.");
+    }
     List<MetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
     for (int i = 0; i < childrenEntries.size(); i++) {
       MetadataIndexEntry deviceEntry = childrenEntries.get(i);
@@ -703,9 +706,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void getAllDeviceLeafNodeOffset(
       MetadataIndexNode deviceInternalNode, List<Pair<Long, Long>> leafDeviceNodeOffsets)
       throws IOException {
+    if (!deviceInternalNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
+      throw new RuntimeException("the first param should be device internal node.");
+    }
     try {
       int metadataIndexListSize = deviceInternalNode.getChildren().size();
-      int isCurrentLayerLeafNode = -1;
+      boolean isCurrentLayerLeafNode = false;
       for (int i = 0; i < metadataIndexListSize; i++) {
         MetadataIndexEntry entry = deviceInternalNode.getChildren().get(i);
         long startOffset = entry.getOffset();
@@ -713,13 +719,15 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (i != metadataIndexListSize - 1) {
           endOffset = deviceInternalNode.getChildren().get(i + 1).getOffset();
         }
-        if (isCurrentLayerLeafNode == -1) {
+        if (i == 0) {
+          // check is current layer device leaf node or device internal node. Just need to check the
+          // first entry, because the rest are the same
           MetadataIndexNodeType nodeType =
               MetadataIndexNodeType.deserialize(
                   ReadWriteIOUtils.readByte(readData(endOffset - 1, endOffset)));
-          isCurrentLayerLeafNode = nodeType.equals(MetadataIndexNodeType.LEAF_DEVICE) ? 1 : 0;
+          isCurrentLayerLeafNode = nodeType.equals(MetadataIndexNodeType.LEAF_DEVICE);
         }
-        if (isCurrentLayerLeafNode == 1) {
+        if (isCurrentLayerLeafNode) {
           // is device leaf node
           leafDeviceNodeOffsets.add(new Pair<>(startOffset, endOffset));
           continue;
