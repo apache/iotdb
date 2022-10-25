@@ -84,7 +84,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
 
       // recover the lsm engine
       lsmEngine.recover();
-    } catch (Exception e) {
+    } catch (IOException e) {
+      logger.info("TagInvertedIndex initialization failed");
       logger.error(e.getMessage());
     }
   }
@@ -97,14 +98,10 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    */
   @Override
   public synchronized void addTags(Map<String, String> tags, int id) {
-    try {
-      for (Map.Entry<String, String> tag : tags.entrySet()) {
-        InsertionRequest insertionRequest =
-            new InsertionRequest(generateKeys(tag.getKey(), tag.getValue()), id);
-        lsmEngine.insert(insertionRequest);
-      }
-    } catch (Exception e) {
-      logger.error(e.getMessage());
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      InsertionRequest insertionRequest =
+          new InsertionRequest(generateKeys(tag.getKey(), tag.getValue()), id);
+      lsmEngine.insert(insertionRequest);
     }
   }
 
@@ -116,14 +113,10 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    */
   @Override
   public synchronized void removeTags(Map<String, String> tags, int id) {
-    try {
-      for (Map.Entry<String, String> tag : tags.entrySet()) {
-        DeletionRequest deletionRequest =
-            new DeletionRequest(generateKeys(tag.getKey(), tag.getValue()), id);
-        lsmEngine.delete(deletionRequest);
-      }
-    } catch (Exception e) {
-      logger.error(e.getMessage());
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      DeletionRequest deletionRequest =
+          new DeletionRequest(generateKeys(tag.getKey(), tag.getValue()), id);
+      lsmEngine.delete(deletionRequest);
     }
   }
 
@@ -131,24 +124,20 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    * get all matching device ids
    *
    * @param tags tags like: <tagKey,tagValue>
-   * @return
+   * @return ids
    */
   @Override
   public synchronized List<Integer> getMatchedIDs(Map<String, String> tags) {
     RoaringBitmap roaringBitmap = new RoaringBitmap();
     int i = 0;
-    try {
-      for (Map.Entry<String, String> tag : tags.entrySet()) {
-        RoaringBitmap rb = getMatchedIDs(tag.getKey(), tag.getValue());
-        if (rb == null) continue;
-        else {
-          if (i == 0) roaringBitmap = rb;
-          else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
-          i++;
-        }
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      RoaringBitmap rb = getMatchedIDs(tag.getKey(), tag.getValue());
+      if (rb == null) continue;
+      else {
+        if (i == 0) roaringBitmap = rb;
+        else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
+        i++;
       }
-    } catch (Exception e) {
-      logger.error(e.getMessage());
     }
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
   }
