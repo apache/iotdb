@@ -118,7 +118,7 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL (USING uri (COMMA uri)*)?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL jarLocation
     ;
 
 uri

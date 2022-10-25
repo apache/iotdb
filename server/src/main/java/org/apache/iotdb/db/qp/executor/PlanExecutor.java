@@ -1088,15 +1088,15 @@ public class PlanExecutor implements IPlanExecutor {
       String functionType = "";
       try {
         if (info.isBuiltin()) {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDAF;
           }
         } else {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }

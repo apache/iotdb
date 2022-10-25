@@ -211,7 +211,7 @@ public class TriggerManagementService {
     String jarName = triggerInformation.getJarName();
     if (triggerTable.containsTrigger(triggerName)
         && TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
-      if (!isLocalJarCorrect(triggerInformation)) {
+      if (isLocalJarConflicted(triggerInformation)) {
         // same jar name with different md5
         String errorMessage =
             String.format(
@@ -225,7 +225,7 @@ public class TriggerManagementService {
   }
 
   /** check whether local jar is correct according to md5 */
-  public boolean isLocalJarCorrect(TriggerInformation triggerInformation)
+  public boolean isLocalJarConflicted(TriggerInformation triggerInformation)
       throws TriggerManagementException {
     String jarName = triggerInformation.getJarName();
     String triggerName = triggerInformation.getTriggerName();
@@ -266,7 +266,7 @@ public class TriggerManagementService {
         throw new TriggerManagementException(errorMessage);
       }
     }
-    return existedMd5.equals(triggerInformation.getJarFileMD5());
+    return !existedMd5.equals(triggerInformation.getJarFileMD5());
   }
 
   /**

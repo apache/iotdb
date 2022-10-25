@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -105,7 +106,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -114,7 +115,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
@@ -1091,21 +1092,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createFunction(TCreateFunctionRequest request) {
+  public TSStatus createFunction(TCreateFunctionInstanceReq req) {
     try {
-      UDFManagementService.getInstance()
-          .register(new UDFInformation(request.getUdfName(), request.getClassName()));
+      UDFInformation udfInformation = UDFInformation.deserialize(req.udfInformation);
+      // save jar file at udf_lib_dir
+      if (req.getJarFile() != null) {
+        UDFExecutableManager.getInstance().writeToLibDir(req.jarFile, udfInformation.getJarName());
+      }
+      UDFManagementService.getInstance().register(udfInformation);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_FUNCTION_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
 
   @Override
-  public TSStatus dropFunction(TDropFunctionRequest request) {
+  public TSStatus dropFunction(TDropFunctionInstanceReq req) {
     try {
-      UDFManagementService.getInstance().deregister(request.getUdfName());
+      UDFManagementService.getInstance().deregister(req.getUdfName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
