@@ -49,7 +49,7 @@ public class UDFInfo implements SnapshotProcessor {
   private final UDFExecutableManager udfExecutableManager;
   private final UDFManagementService udfRegistrationService;
 
-  public UDFInfo() {
+  public UDFInfo() throws IOException {
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
@@ -124,11 +124,12 @@ public class UDFInfo implements SnapshotProcessor {
 
   @Override
   public synchronized boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return udfExecutableManager.processTakeSnapshot(snapshotDir);
+    // todo: implementation
+    return true;
   }
 
   @Override
   public synchronized void processLoadSnapshot(File snapshotDir) throws IOException {
-    udfExecutableManager.processLoadSnapshot(snapshotDir);
+    // todo: implementation
   }
 }
