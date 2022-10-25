@@ -33,8 +33,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
@@ -48,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -332,6 +336,45 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       buffer.getLong();
 
       return unsetTemplatePlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, ByteBuffer buffer) {
+      preDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return preDeactivateTemplatePlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, ByteBuffer buffer) {
+      rollbackPreDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return rollbackPreDeactivateTemplatePlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, ByteBuffer buffer) {
+      deactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return deactivateTemplatePlan;
+    }
+
+    private Map<PartialPath, List<Integer>> deserializeTemplateSetInfo(ByteBuffer buffer) {
+      int size = buffer.getInt();
+      Map<PartialPath, List<Integer>> result = new HashMap<>(size);
+      PartialPath pattern;
+      int templateNum;
+      List<Integer> templateIdList;
+      for (int i = 0; i < size; i++) {
+        pattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+        templateNum = buffer.getInt();
+        templateIdList = new ArrayList<>(templateNum);
+        for (int j = 0; j < templateNum; j++) {
+          templateIdList.add(buffer.getInt());
+        }
+        result.put(pattern, templateIdList);
+      }
+      return result;
     }
   }
 }

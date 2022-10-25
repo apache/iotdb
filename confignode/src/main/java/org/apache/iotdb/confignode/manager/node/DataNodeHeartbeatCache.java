@@ -19,35 +19,23 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 /** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
-  /** For guiding queries, the higher the score the higher the load */
-  private volatile long loadScore;
-
+  /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
   public DataNodeHeartbeatCache() {
-    this.loadScore = 0;
+    super();
+  }
+
+  /** Constructor that only used when ConfigNode-leader switched */
+  public DataNodeHeartbeatCache(NodeStatistics nodeStatistics) {
+    this.statistics = nodeStatistics;
   }
 
   @Override
-  public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
-    synchronized (slidingWindow) {
-      // Only sequential HeartbeatSamples are accepted.
-      // And un-sequential HeartbeatSamples will be discarded.
-      if (slidingWindow.size() == 0
-          || slidingWindow.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
-        slidingWindow.add(newHeartbeatSample);
-      }
-
-      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
-        slidingWindow.removeFirst();
-      }
-    }
-  }
-
-  @Override
-  public boolean updateNodeStatus() {
+  public NodeStatistics updateNodeStatistics() {
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
@@ -56,25 +44,21 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
     long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
 
-    /* Update loadScore */
-    loadScore = -lastSendTime;
-
     /* Update Node status */
-    String originStatus = status.getStatus();
+    NodeStatus status = null;
+    String statusReason = null;
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {
       status = lastSample.getStatus();
+      statusReason = lastSample.getStatusReason();
     }
 
-    return NodeStatus.isNormalStatus(status)
-        != NodeStatus.isNormalStatus(NodeStatus.parse(originStatus));
-  }
+    /* Update loadScore */
+    long loadScore = NodeStatus.isNormalStatus(status) ? -lastSendTime : Long.MAX_VALUE;
 
-  @Override
-  public long getLoadScore() {
-    // The DataNode whose status is abnormal will get the highest loadScore
-    return NodeStatus.isNormalStatus(status) ? loadScore : Long.MAX_VALUE;
+    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
+    return newStatistics.equals(statistics) ? null : (statistics = newStatistics);
   }
 }

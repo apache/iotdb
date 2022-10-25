@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -41,8 +42,8 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -77,17 +79,29 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
@@ -109,13 +123,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
@@ -141,6 +157,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -156,6 +173,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
@@ -172,10 +191,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
 
@@ -486,8 +508,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
-      throws TException {
+  public TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<PartialPath> pathList = patternTree.getAllPathPatterns();
@@ -548,6 +569,152 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
+      throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    int preDeactivateTemplateNum = 0;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new PreDeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        preDeactivateTemplateNum += Integer.parseInt(status.getMessage());
+      } else {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateTemplateNum));
+  }
+
+  private Map<PartialPath, List<Integer>> transformTemplateSetInfo(
+      Map<String, List<Integer>> rawTemplateSetInfo) {
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    rawTemplateSetInfo.forEach(
+        (k, v) -> {
+          try {
+            result.put(new PartialPath(k), v);
+          } catch (IllegalPathException ignored) {
+            // won't reach here
+          }
+        });
+    return result;
+  }
+
+  private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
+      Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
+
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    templateSetInfo.forEach(
+        (k, v) -> {
+          if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
+            result.put(k, v);
+          }
+        });
+    return result;
+  }
+
+  private PartialPath getStorageGroupPath(TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPath = null;
+    try {
+      storageGroupPath =
+          new PartialPath(
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getStorageGroupFullPath());
+    } catch (IllegalPathException ignored) {
+      // won't reach here
+    }
+    return storageGroupPath;
+  }
+
+  @Override
+  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
+      throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new RollbackPreDeactivateTemplateNode(
+                      new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
+  public TSStatus deactivateTemplate(TDeactivateTemplateReq req) throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
   public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) throws TException {
     try {
       PipeInfo pipeInfo = PipeInfo.deserializePipeInfo(req.pipeInfo);
@@ -584,84 +751,79 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus executeCQ(TExecuteCQ req) throws TException {
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    long sessionId =
+        SESSION_MANAGER.requestSessionId(req.cqId, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
 
-    //    long sessionId =
-    //        SESSION_MANAGER.requestSessionId(req.cqId, req.zoneId,
-    // IoTDBConstant.ClientVersion.V_0_13);
-    //
-    //    try {
-    //      QueryStatement s =
-    //          (QueryStatement)
-    //              StatementGenerator.createStatement(
-    //                  req.queryBody, SESSION_MANAGER.getZoneId(sessionId));
-    //      if (s == null) {
-    //        return RpcUtils.getStatus(
-    //            TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
-    //      }
-    //
-    //      // 1. add time filter in where
-    //      Expression timeFilter =
-    //          new BetweenExpression(
-    //              new TimestampOperand(),
-    //              new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime)),
-    //              new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime)));
-    //      if (s.getWhereCondition() != null) {
-    //        s.getWhereCondition()
-    //            .setPredicate(new LogicAndExpression(timeFilter,
-    // s.getWhereCondition().getPredicate()));
-    //      } else {
-    //        s.setWhereCondition(new WhereCondition(timeFilter));
-    //      }
-    //
-    //      // 2. add time rage in group by time
-    //      if (s.getGroupByTimeComponent() != null) {
-    //        s.getGroupByTimeComponent().setStartTime(req.startTime);
-    //        s.getGroupByTimeComponent().setEndTime(req.endTime);
-    //      }
-    //
-    //      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-    //
-    //      long queryId =
-    //          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(sessionId), true);
-    //      // create and cache dataset
-    //      ExecutionResult result =
-    //          COORDINATOR.execute(
-    //              s,
-    //              queryId,
-    //              SESSION_MANAGER.getSessionInfo(sessionId),
-    //              req.queryBody,
-    //              PARTITION_FETCHER,
-    //              SCHEMA_FETCHER,
-    //              req.getTimeout());
-    //
-    //      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-    //          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-    //        return result.status;
-    //      }
-    //
-    //      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    //
-    //      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-    //        if (queryExecution != null) {
-    //          // consume up all the result
-    //          while (true) {
-    //            Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
-    //            if (!optionalTsBlock.isPresent()) {
-    //              break;
-    //            }
-    //          }
-    //        }
-    //        return result.status;
-    //      }
-    //    } catch (Exception e) {
-    //      // TODO call the coordinator to release query resource
-    //      return onQueryException(e, "\"" + req.queryBody + "\". " +
-    // OperationType.EXECUTE_STATEMENT);
-    //    } finally {
-    //      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
-    //      SESSION_MANAGER.closeSession(sessionId);
-    //    }
+    try {
+      QueryStatement s =
+          (QueryStatement)
+              StatementGenerator.createStatement(
+                  req.queryBody, SESSION_MANAGER.getZoneId(sessionId));
+      if (s == null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+      }
+
+      // 1. add time filter in where
+      Expression timeFilter =
+          new BetweenExpression(
+              new TimestampOperand(),
+              new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime)),
+              new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime)));
+      if (s.getWhereCondition() != null) {
+        s.getWhereCondition()
+            .setPredicate(new LogicAndExpression(timeFilter, s.getWhereCondition().getPredicate()));
+      } else {
+        s.setWhereCondition(new WhereCondition(timeFilter));
+      }
+
+      // 2. add time rage in group by time
+      if (s.getGroupByTimeComponent() != null) {
+        s.getGroupByTimeComponent().setStartTime(req.startTime);
+        s.getGroupByTimeComponent().setEndTime(req.endTime);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(sessionId), true);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              req.queryBody,
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        return result.status;
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        if (queryExecution != null) {
+          // consume up all the result
+          while (true) {
+            Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+            if (!optionalTsBlock.isPresent()) {
+              break;
+            }
+          }
+        }
+        return result.status;
+      }
+    } catch (Exception e) {
+      // TODO call the coordinator to release query resource
+      return onQueryException(e, "\"" + req.queryBody + "\". " + OperationType.EXECUTE_STATEMENT);
+    } finally {
+      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(sessionId);
+    }
   }
 
   private void cleanupQueryExecution(Long queryId) {
@@ -1064,13 +1226,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus createFunction(TCreateFunctionRequest request) {
     try {
-      UDFRegistrationService.getInstance()
-          .register(
-              request.getUdfName(),
-              request.getClassName(),
-              request.getUris(),
-              UDFExecutableManager.getInstance(),
-              true);
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(request.getUdfName(), request.getClassName()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -1081,7 +1238,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropFunction(TDropFunctionRequest request) {
     try {
-      UDFRegistrationService.getInstance().deregister(request.getUdfName());
+      UDFManagementService.getInstance().deregister(request.getUdfName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

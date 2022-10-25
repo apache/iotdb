@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,7 +80,7 @@ public class UDTFExecutor {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
 
-    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
+    udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
         new UDFParameters(

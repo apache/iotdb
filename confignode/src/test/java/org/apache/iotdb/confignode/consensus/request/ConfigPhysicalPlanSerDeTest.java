@@ -30,6 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -60,9 +62,6 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaT
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
@@ -70,11 +69,16 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -95,11 +99,15 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
-import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -107,6 +115,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -985,6 +994,7 @@ public class ConfigPhysicalPlanSerDeTest {
             TTriggerState.INACTIVE,
             false,
             null,
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     AddTriggerInTablePlan addTriggerInTablePlan0 =
         new AddTriggerInTablePlan(triggerInformation, new Binary(new byte[] {1, 2, 3}));
@@ -1129,6 +1139,59 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
+  }
+
+  @Test
+  public void UpdateLoadStatisticsPlanTest() throws IOException {
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan0 = new UpdateLoadStatisticsPlan();
+
+    for (int i = 0; i < 3; i++) {
+      updateLoadStatisticsPlan0.putNodeStatistics(
+          i, new NodeStatistics(i, NodeStatus.Running, null));
+    }
+
+    for (int i = 0; i < 10; i++) {
+      Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
+      for (int j = 0; j < 3; j++) {
+        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
+      }
+      updateLoadStatisticsPlan0.putRegionGroupStatistics(
+          new TConsensusGroupId(DataRegion, i),
+          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
+    }
+
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan1 =
+        (UpdateLoadStatisticsPlan)
+            ConfigPhysicalPlan.Factory.create(updateLoadStatisticsPlan0.serializeToByteBuffer());
+    Assert.assertEquals(updateLoadStatisticsPlan0, updateLoadStatisticsPlan1);
+  }
+
+  @Test
+  public void RemoveDataNodePlanTest() throws IOException {
+    List<TDataNodeLocation> locations = new ArrayList<>();
+    TDataNodeLocation location1 = new TDataNodeLocation();
+    location1.setDataNodeId(1);
+    location1.setInternalEndPoint(new TEndPoint("192.168.12.1", 6661));
+    location1.setClientRpcEndPoint(new TEndPoint("192.168.12.1", 6662));
+    location1.setDataRegionConsensusEndPoint(new TEndPoint("192.168.12.1", 6663));
+    location1.setSchemaRegionConsensusEndPoint(new TEndPoint("192.168.12.1", 6664));
+    location1.setMPPDataExchangeEndPoint(new TEndPoint("192.168.12.1", 6665));
+    locations.add(location1);
+
+    TDataNodeLocation location2 = new TDataNodeLocation();
+    location2.setDataNodeId(2);
+    location2.setInternalEndPoint(new TEndPoint("192.168.12.2", 6661));
+    location2.setClientRpcEndPoint(new TEndPoint("192.168.12.2", 6662));
+    location2.setDataRegionConsensusEndPoint(new TEndPoint("192.168.12.2", 6663));
+    location2.setSchemaRegionConsensusEndPoint(new TEndPoint("192.168.12.2", 6664));
+    location2.setMPPDataExchangeEndPoint(new TEndPoint("192.168.12.2", 6665));
+    locations.add(location2);
+
+    RemoveDataNodePlan removeDataNodePlan0 = new RemoveDataNodePlan(new ArrayList<>(locations));
+    RemoveDataNodePlan removeDataNodePlan1 =
+        (RemoveDataNodePlan)
+            ConfigPhysicalPlan.Factory.create(removeDataNodePlan0.serializeToByteBuffer());
+    Assert.assertEquals(removeDataNodePlan0, removeDataNodePlan1);
   }
 
   @Test

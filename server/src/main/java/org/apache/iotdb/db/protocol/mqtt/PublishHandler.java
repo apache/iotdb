@@ -53,10 +53,6 @@ public class PublishHandler extends AbstractInterceptHandler {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
   }
 
-  protected PublishHandler(PayloadFormatter payloadFormat) {
-    this.payloadFormat = payloadFormat;
-  }
-
   @Override
   public String getID() {
     return "iotdb-mqtt-broker-listener";
