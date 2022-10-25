@@ -200,7 +200,7 @@ public class ConfigNodeDescriptor {
       conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()));
 
       conf.setTemporaryLibDir(
-          properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
+          properties.getProperty("udf_temporary_lib_dir", conf.getTemporaryLibDir()));
 
       conf.setTriggerLibDir(properties.getProperty("trigger_lib_dir", conf.getTriggerLibDir()));
 
@@ -392,7 +392,7 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_rpc_leader_election_timeout_min_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs()))));
 
-    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_rpc_leader_election_timeout_max_ms",
@@ -473,6 +473,36 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_max_sleep_time_ms",
                 String.valueOf(conf.getSchemaRegionRatisMaxSleepTimeMs()))));
+
+    conf.setPartitionRegionRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_ratis_preserve_logs_num_when_purge",
+                String.valueOf(conf.getPartitionRegionRatisPreserveLogsWhenPurge()))));
+
+    conf.setSchemaRegionRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_preserve_logs_num_when_purge",
+                String.valueOf(conf.getSchemaRegionRatisPreserveLogsWhenPurge()))));
+
+    conf.setDataRegionRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_preserve_logs_num_when_purge",
+                String.valueOf(conf.getDataRegionRatisPreserveLogsWhenPurge()))));
+
+    conf.setRatisFirstElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_first_election_timeout_min_ms",
+                String.valueOf(conf.getRatisFirstElectionTimeoutMinMs()))));
+
+    conf.setRatisFirstElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_first_election_timeout_max_ms",
+                String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))));
   }
 
   /**

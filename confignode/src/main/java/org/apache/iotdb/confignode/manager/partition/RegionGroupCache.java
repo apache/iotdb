@@ -19,12 +19,18 @@
 package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,91 +38,115 @@ public class RegionGroupCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      CONF.getDataRegionConsensusProtocolClass();
+
   private final TConsensusGroupId consensusGroupId;
 
   // Map<DataNodeId(where a RegionReplica resides), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
 
-  // The DataNode where the leader resides
-  private volatile int leaderDataNodeId;
+  private volatile RegionGroupStatistics statistics;
 
+  /** Constructor for create RegionGroupCache with default RegionGroupStatistics */
   public RegionGroupCache(TConsensusGroupId consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
     this.regionCacheMap = new ConcurrentHashMap<>();
-    this.leaderDataNodeId = -1;
+
+    this.statistics = RegionGroupStatistics.generateDefaultRegionGroupStatistics();
   }
 
-  public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
+  public RegionGroupCache(
+      TConsensusGroupId consensusGroupId, RegionGroupStatistics regionGroupStatistics) {
+    this.consensusGroupId = consensusGroupId;
+    this.regionCacheMap = new ConcurrentHashMap<>();
+
+    this.statistics = regionGroupStatistics;
+  }
+
+  public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
     regionCacheMap
-        .computeIfAbsent(newHeartbeatSample.getBelongedDataNodeId(), empty -> new RegionCache())
+        .computeIfAbsent(dataNodeId, empty -> new RegionCache())
         .cacheHeartbeatSample(newHeartbeatSample);
   }
 
   /**
    * Update RegionReplicas' statistics, including:
    *
-   * <p>1. RegionStatus
+   * <p>1. RegionGroupStatus
    *
-   * <p>2. Leadership
+   * <p>2. RegionStatus
    *
-   * @return True if the leader changed, false otherwise
+   * <p>2. LeaderDataNodeId
+   *
+   * @return RegionGroupStatistics if some fields of statistics changed, null otherwise
    */
-  public boolean updateRegionStatistics() {
+  public RegionGroupStatistics updateRegionGroupStatistics() {
     long updateVersion = Long.MIN_VALUE;
-    int originLeaderDataNodeId = leaderDataNodeId;
-
+    int leaderDataNodeId = -1;
+    Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
-      cacheEntry.getValue().updateStatistics();
-      Pair<Long, Boolean> isLeader = cacheEntry.getValue().isLeader();
-      if (isLeader.getLeft() > updateVersion && isLeader.getRight()) {
-        updateVersion = isLeader.getLeft();
+      // Update RegionStatistics
+      RegionStatistics regionStatistics = cacheEntry.getValue().getRegionStatistics();
+      regionStatisticsMap.put(cacheEntry.getKey(), regionStatistics);
+
+      // Update leaderDataNodeId
+      if (regionStatistics.getVersionTimestamp() > updateVersion && regionStatistics.isLeader()) {
+        updateVersion = regionStatistics.getVersionTimestamp();
         leaderDataNodeId = cacheEntry.getKey();
       }
     }
 
-    return originLeaderDataNodeId != leaderDataNodeId;
+    // Keep leaderDataNodeId as the default value when
+    // using the MultiLeader consensus protocol
+    if (ConsensusFactory.MultiLeaderConsensus.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
+        && TConsensusGroupType.DataRegion.equals(consensusGroupId.getType())) {
+      leaderDataNodeId = -1;
+    }
+
+    // Update RegionGroupStatus
+    RegionGroupStatus status = updateRegionGroupStatus(regionStatisticsMap);
+
+    RegionGroupStatistics newRegionGroupStatistics =
+        new RegionGroupStatistics(leaderDataNodeId, status, regionStatisticsMap);
+    return newRegionGroupStatistics.equals(statistics)
+        ? null
+        : (statistics = newRegionGroupStatistics);
+  }
+
+  private RegionGroupStatus updateRegionGroupStatus(
+      Map<Integer, RegionStatistics> regionStatisticsMap) {
+    int unknownCount = 0;
+    for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
+      if (RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus())
+          || RegionStatus.Removing.equals(regionStatistics.getRegionStatus())) {
+        // The RegionGroup is considered as Disabled when
+        // at least one Region is in the ReadOnly or Removing status
+        return RegionGroupStatus.Disabled;
+      }
+      unknownCount += RegionStatus.Unknown.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
+    }
+
+    if (unknownCount == 0) {
+      // The RegionGroup is considered as Running only if
+      // all Regions are in the Running status
+      return RegionGroupStatus.Running;
+    } else {
+      return unknownCount <= ((regionCacheMap.size() - 1) / 2)
+          // The RegionGroup is considered as Available when the number of Unknown Regions is less
+          // than half
+          ? RegionGroupStatus.Available
+          // Disabled otherwise
+          : RegionGroupStatus.Disabled;
+    }
   }
 
   public void removeCacheIfExists(int dataNodeId) {
     regionCacheMap.remove(dataNodeId);
   }
 
-  public int getLeaderDataNodeId() {
-    return leaderDataNodeId;
-  }
-
-  /**
-   * Get the specified Region's status
-   *
-   * @param dataNodeId Where the Region resides
-   * @return Region's latest status if received heartbeat recently, Unknown otherwise
-   */
-  public RegionStatus getRegionStatus(int dataNodeId) {
-    return regionCacheMap.containsKey(dataNodeId)
-        ? regionCacheMap.get(dataNodeId).getStatus()
-        : RegionStatus.Unknown;
-  }
-
-  public RegionGroupStatus getRegionGroupStatus() {
-    int unknownCount = 0;
-    for (RegionCache regionCache : regionCacheMap.values()) {
-      if (RegionStatus.ReadOnly.equals(regionCache.getStatus())
-          || RegionStatus.Removing.equals(regionCache.getStatus())) {
-        return RegionGroupStatus.Disabled;
-      }
-      unknownCount += RegionStatus.Unknown.equals(regionCache.getStatus()) ? 1 : 0;
-    }
-
-    if (unknownCount == 0) {
-      return RegionGroupStatus.Running;
-    } else {
-      return unknownCount <= ((regionCacheMap.size() - 1) / 2)
-          ? RegionGroupStatus.Available
-          : RegionGroupStatus.Disabled;
-    }
-  }
-
-  public TConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
+  public RegionGroupStatistics getStatistics() {
+    return statistics;
   }
 }

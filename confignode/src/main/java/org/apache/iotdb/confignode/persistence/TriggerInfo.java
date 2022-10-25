@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -28,12 +29,21 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
+import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -91,13 +101,7 @@ public class TriggerInfo implements SnapshotProcessor {
     triggerTableLock.unlock();
   }
 
-  /**
-   * Validate whether the trigger can be created
-   *
-   * @param triggerName
-   * @param jarName
-   * @param jarMD5
-   */
+  /** Validate whether the trigger can be created */
   public void validate(String triggerName, String jarName, String jarMD5) {
     if (triggerTable.containsTrigger(triggerName)) {
       throw new TriggerManagementException(
@@ -114,11 +118,7 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
-  /**
-   * Validate whether the trigger can be dropped
-   *
-   * @param triggerName
-   */
+  /** Validate whether the trigger can be dropped */
   public void validate(String triggerName) {
     if (triggerTable.containsTrigger(triggerName)) {
       return;
@@ -168,10 +168,29 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TriggerTableResp getTriggerTable() {
-    return new TriggerTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        triggerTable.getAllTriggerInformation());
+  public TriggerTableResp getTriggerTable(GetTriggerTablePlan req) {
+    if (req.isOnlyStateful()) {
+      return new TriggerTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          triggerTable.getAllStatefulTriggerInformation());
+    } else {
+      return new TriggerTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          triggerTable.getAllTriggerInformation());
+    }
+  }
+
+  public DataSet getTriggerLocation(GetTriggerLocationPlan req) {
+    TDataNodeLocation dataNodeLocation = triggerTable.getTriggerLocation(req.getTriggerName());
+    if (dataNodeLocation != null) {
+      return new TriggerLocationResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), dataNodeLocation);
+    } else {
+      return new TriggerLocationResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(String.format("Fail to get Location trigger[%s]", req.getTriggerName())),
+          null);
+    }
   }
 
   public TriggerJarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
@@ -190,6 +209,22 @@ public class TriggerInfo implements SnapshotProcessor {
           Collections.emptyList());
     }
     return new TriggerJarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
+  }
+
+  public TransferringTriggersResp getTransferringTriggers(GetTransferringTriggersPlan req) {
+    return new TransferringTriggersResp(triggerTable.getTransferringTriggers());
+  }
+
+  public TSStatus updateTriggersOnTransferNodes(UpdateTriggersOnTransferNodesPlan physicalPlan) {
+    triggerTable.updateTriggersOnTransferNodes(physicalPlan.getDataNodeLocations());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus updateTriggerLocation(UpdateTriggerLocationPlan physicalPlan) {
+    triggerTable.updateTriggerLocation(
+        physicalPlan.getTriggerName(), physicalPlan.getDataNodeLocation());
+    triggerTable.setTriggerState(physicalPlan.getTriggerName(), TTriggerState.ACTIVE);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /** only used in Test */

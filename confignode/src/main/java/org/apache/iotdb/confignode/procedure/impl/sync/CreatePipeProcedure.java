@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -27,7 +28,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,13 +50,13 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     super();
   }
 
-  public CreatePipeProcedure(TPipeInfo pipeInfo) throws PipeException {
+  public CreatePipeProcedure(TCreatePipeReq req) throws PipeException {
     super();
-    this.pipeInfo = SyncPipeUtil.parseTPipeInfoAsPipeInfo(pipeInfo, System.currentTimeMillis());
+    this.pipeInfo = SyncPipeUtil.parseTCreatePipeReqAsPipeInfo(req, System.currentTimeMillis());
   }
 
   @Override
-  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
+  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException, PipeSinkException {
     LOGGER.info("Start to create PIPE [{}]", pipeInfo.getPipeName());
     env.getConfigManager().getSyncManager().checkAddPipe(pipeInfo);
     return false;
@@ -115,6 +116,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
     LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
+    env.getConfigManager().getSyncManager().unlockSyncMetadata();
     // TODO(sync): roll back logic;
   }
 

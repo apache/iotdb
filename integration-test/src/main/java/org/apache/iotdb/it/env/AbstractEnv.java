@@ -394,7 +394,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
+      throws IOException, InterruptedException {
     IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
@@ -410,18 +411,54 @@ public abstract class AbstractEnv implements BaseEnv {
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             logger.info(
                 "Successfully get connection to the leader ConfigNode: {}",
-                configNodeWrapper.getIp());
+                configNodeWrapper.getIpAndPortString());
             return client;
           }
-        } catch (TException e) {
+        } catch (Exception e) {
+          logger.error(
+              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
+              configNodeWrapper.getIpAndPortString(),
+              e);
+        }
+
+        // Sleep 1s before next retry
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    throw new IOException("Failed to get connection to ConfigNode-Leader");
+  }
+
+  @Override
+  public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    for (int retry = 0; retry < 30; retry++) {
+      for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
+        ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(
+                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
+          TShowClusterResp resp = client.showCluster();
+          // Only the ConfigNodeClient who connects to the ConfigNode-leader
+          // will respond the SUCCESS_STATUS
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return configNodeId;
+          }
+        } catch (TException | IOException e) {
           logger.error(
               "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
               configNodeWrapper.getIp(),
               e);
         }
+
+        // Sleep 1s before next retry
+        TimeUnit.SECONDS.sleep(1);
       }
     }
-    throw new IOException("Failed to get config node connection");
+
+    throw new IOException("Failed to get the index of ConfigNode-Leader");
   }
 
   @Override
@@ -441,5 +478,11 @@ public abstract class AbstractEnv implements BaseEnv {
 
   public void shutdownDataNode(int index) {
     dataNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public int getMqttPort() {
+    int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
+    return dataNodeWrapperList.get(randomIndex).getMqttPort();
   }
 }

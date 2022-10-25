@@ -187,6 +187,22 @@ struct TDropTriggerInstanceReq {
   2: required bool needToDeleteJarFile
 }
 
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
+}
+
+struct TFireTriggerReq {
+  1: required string triggerName
+  2: required binary tablet
+  3: required byte triggerEvent
+}
+
+struct TFireTriggerResp {
+  1: required bool foundExecutor
+  2: required i32 fireResult
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -270,7 +286,7 @@ struct TFetchSchemaBlackListResp{
   2: required binary pathPatternTree
 }
 
-struct TDeleteDataForDeleteTimeSeriesReq{
+struct TDeleteDataForDeleteSchemaReq{
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
 }
@@ -278,6 +294,21 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TConstructSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TRollbackSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TDeactivateTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
 }
 
 struct TCreatePipeOnDataNodeReq{
@@ -461,6 +492,20 @@ service IDataNodeRPCService {
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
+
+  /**
+    * Fire a stateful trigger on current data node.
+    *
+    * @param trigger name, tablet and event
+    **/
+  TFireTriggerResp fireTrigger(TFireTriggerReq req)
+
+  /**
    * Config node will invalidate permission Info cache.
    *
    * @param string:username, list<string>:roleList
@@ -523,12 +568,28 @@ service IDataNodeRPCService {
   /**
    * Config node inform this dataNode to execute a distribution data deleion mpp task
    */
-  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+  common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
 
- /**
-  * Delete matched timeseries and remove according schema black list in target schemRegion
-  */
+  /**
+   * Delete matched timeseries and remove according schema black list in target schemRegion
+   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
+   */
+  common.TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries represent by template
+   */
+  common.TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Deactivate template on device matched by input path pattern
+   * and remove according template schema black list in target schemRegion
+   */
+  common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
 
  /**
   * Create PIPE on DataNode

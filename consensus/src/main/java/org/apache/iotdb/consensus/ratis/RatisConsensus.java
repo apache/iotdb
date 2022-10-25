@@ -123,8 +123,6 @@ class RatisConsensus implements IConsensus {
         Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
 
-    System.setProperty(
-        "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(
         properties, Collections.singletonList(new File(config.getStorageDir())));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
@@ -447,6 +445,11 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  @Override
   public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
     RaftGroup raftGroup = buildRaftGroup(groupId, newPeers);
 
@@ -616,10 +619,7 @@ class RatisConsensus implements IConsensus {
     List<ConsensusGroupId> ids = new ArrayList<>();
     server
         .getGroupIds()
-        .forEach(
-            groupId -> {
-              ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
-            });
+        .forEach(groupId -> ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId)));
     return ids;
   }
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -69,11 +70,9 @@ import java.util.Map;
 public class IoTDBConfigNodeSnapshotIT {
 
   protected static String originalConfigNodeConsensusProtocolClass;
-  private static final String testConfigNodeConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   protected static int originalRatisSnapshotTriggerThreshold;
-  private static final int testRatisSnapshotTriggerThreshold = 100;
+  private static final int testRatisSnapshotTriggerThreshold = 10;
 
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
@@ -82,15 +81,14 @@ public class IoTDBConfigNodeSnapshotIT {
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(testConfigNodeConsensusProtocolClass);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
 
     originalRatisSnapshotTriggerThreshold =
         ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
     ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
 
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
@@ -104,7 +102,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
   }
 
   private ByteBuffer generatePatternTreeBuffer(String path)
@@ -119,10 +117,11 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   @Test
-  public void testPartitionInfoSnapshot() throws IOException, IllegalPathException, TException {
+  public void testPartitionInfoSnapshot()
+      throws IOException, IllegalPathException, TException, InterruptedException {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
-    final int seriesPartitionSlotsNum = 100;
+    final int seriesPartitionSlotsNum = 10;
     final int timePartitionSlotsNum = 10;
 
     try (SyncConfigNodeIServiceClient client =

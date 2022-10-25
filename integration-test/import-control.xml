@@ -24,6 +24,7 @@
   <allow class="java.security.SecureRandom" />
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="java.io" />
+  <allow pkg="java.nio"/>
   <allow pkg="java.util" />
   <allow pkg="java.math" />
   <allow pkg="java.sql" />
@@ -34,8 +35,10 @@
   <allow pkg="org\.slf4j.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
+    <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="org.fusesource.mqtt.client.QoS" />
+    <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
-    <allow class="java.nio.file.Files"/>
     <allow pkg="org.apache.iotdb.db.it.utils" />
     <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
@@ -46,6 +49,7 @@
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.engine\.trigger\.sink\.mqtt.*" regex="true" />
   </subpackage>
   <subpackage name="confignode.it">
     <allow class="java.nio.ByteBuffer" />
@@ -57,6 +61,7 @@
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
+    <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
     <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true" />
