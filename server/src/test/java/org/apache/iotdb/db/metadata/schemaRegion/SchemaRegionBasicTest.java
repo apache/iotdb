@@ -293,24 +293,23 @@ public abstract class SchemaRegionBasicTest {
                 new PartialPath("root.sg.wf01.wt01.*"),
                 new PartialPath("root.sg.wf01.wt02.status"),
                 new PartialPath("root.sg.wf01.wt01.status"),
-                    new PartialPath("root.sg.wf02.wt01.temperature"))),
+                new PartialPath("root.sg.wf02.wt01.temperature"))),
         schemaRegion.fetchSchemaBlackList(patternTree));
     PathPatternTree rollbackTree = new PathPatternTree();
     rollbackTree.appendPathPattern(new PartialPath("root.sg.wf02.wt01.temperature"));
     rollbackTree.constructTree();
     schemaRegion.rollbackSchemaBlackList(rollbackTree);
     Assert.assertEquals(
-            new HashSet<>(
-                    Arrays.asList(
-                            new PartialPath("root.sg.wf01.wt01.*"),
-                            new PartialPath("root.sg.wf01.wt02.status"),
-                            new PartialPath("root.sg.wf01.wt01.status"))),
-            schemaRegion.fetchSchemaBlackList(patternTree));
+        new HashSet<>(
+            Arrays.asList(
+                new PartialPath("root.sg.wf01.wt01.*"),
+                new PartialPath("root.sg.wf01.wt02.status"),
+                new PartialPath("root.sg.wf01.wt01.status"))),
+        schemaRegion.fetchSchemaBlackList(patternTree));
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     List<MeasurementPath> schemas =
-            schemaRegion.fetchSchema(
-                    new PartialPath("root.**"), Collections.EMPTY_MAP, false);
-    Assert.assertEquals( 1,schemas.size());
-    Assert.assertEquals("root.sg.wf02.wt01.temperature",schemas.get(0).getFullPath());
+        schemaRegion.fetchSchema(new PartialPath("root.**"), Collections.EMPTY_MAP, false);
+    Assert.assertEquals(1, schemas.size());
+    Assert.assertEquals("root.sg.wf02.wt01.temperature", schemas.get(0).getFullPath());
   }
 }
