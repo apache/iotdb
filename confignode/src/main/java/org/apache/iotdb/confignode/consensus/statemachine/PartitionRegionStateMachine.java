@@ -128,8 +128,10 @@ public class PartitionRegionStateMachine
           try {
             logWriter.close();
           } catch (IOException e) {
-            LOGGER.warn("Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
-                    logFile.getAbsolutePath(), retry);
+            LOGGER.warn(
+                "Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
+                logFile.getAbsolutePath(),
+                retry);
             try {
               // Sleep 1s and retry
               TimeUnit.SECONDS.sleep(1);
@@ -150,7 +152,8 @@ public class PartitionRegionStateMachine
         buffer.position(buffer.limit());
         logWriter.write(buffer);
       } catch (IOException e) {
-        LOGGER.error("can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+        LOGGER.error(
+            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
       }
     }
     return result;
@@ -272,9 +275,9 @@ public class PartitionRegionStateMachine
           logReader = new SingleFileLogReader(logFile);
         } catch (FileNotFoundException e) {
           LOGGER.error(
-                  "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
-                  logFile.getAbsolutePath(),
-                  e);
+              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              logFile.getAbsolutePath(),
+              e);
           continue;
         }
         while (logReader.hasNext()) {

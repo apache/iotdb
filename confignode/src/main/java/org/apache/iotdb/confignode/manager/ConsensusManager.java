@@ -78,11 +78,30 @@ public class ConsensusManager {
   private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(CONF.getPartitionRegionId());
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+
+    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)) {
+      consensusImpl =
+          ConsensusFactory.getConsensusImpl(
+                  ConsensusFactory.StandAloneConsensus,
+                  ConsensusConfig.newBuilder()
+                      .setThisNode(
+                          new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                      .setStorageDir("target" + java.io.File.separator + "standalone")
+                      .build(),
+                  gid -> stateMachine)
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              ConsensusFactory.StandAloneConsensus)));
+    } else {
+
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   CONF.getConfigNodeConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(CONF.getConfigNodeId())
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                       .setRatisConfig(
@@ -124,6 +143,29 @@ public class ConsensusManager {
                                               CONF
                                                   .getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
+                                      .setRequestTimeout(
+                                          TimeDuration.valueOf(
+                                              CONF.getPartitionRegionRatisRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              CONF.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              CONF.getRatisFirstElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .build())
+                              .setRatisConsensus(
+                                  RatisConfig.RatisConsensus.newBuilder()
+                                      .setClientRequestTimeoutMillis(
+                                          CONF.getPartitionRegionRatisRequestTimeoutMs())
+                                      .setClientMaxRetryAttempt(
+                                          CONF.getPartitionRegionRatisMaxRetryAttempts())
+                                      .setClientRetryInitialSleepTimeMs(
+                                          CONF.getPartitionRegionRatisInitialSleepTimeMs())
+                                      .setClientRetryMaxSleepTimeMs(
+                                          CONF.getPartitionRegionRatisMaxSleepTimeMs())
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
@@ -135,24 +177,8 @@ public class ConsensusManager {
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               CONF.getConfigNodeConsensusProtocolClass())));
-    } else if (CONF.getConfigNodeConsensusProtocolClass()
-        .equals(ConsensusFactory.StandAloneConsensus)) {
-      consensusImpl =
-          ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.StandAloneConsensus,
-                  ConsensusConfig.newBuilder()
-                      .setThisNode(
-                          new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
-                      .setStorageDir("target" + java.io.File.separator + "standalone")
-                      .build(),
-                  gid -> stateMachine)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          String.format(
-                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.StandAloneConsensus)));
     }
+
     consensusImpl.start();
 
     if (SystemPropertiesUtils.isRestarted()) {
