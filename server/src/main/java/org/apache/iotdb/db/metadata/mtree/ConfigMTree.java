@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -705,6 +706,34 @@ public class ConfigMTree {
         };
     collector.traverse();
     return result;
+  }
+
+  public void preUnsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).preUnsetSchemaTemplate();
+  }
+
+  public void rollbackUnsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).rollbackUnsetSchemaTemplate();
+  }
+
+  public void unsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).unsetSchemaTemplate();
+  }
+
+  private IMNode getNodeSetTemplate(int templateId, PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    for (int i = 1; i < nodeNames.length; i++) {
+      cur = cur.getChild(nodeNames[i]);
+      if (cur == null) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+    }
+    if (cur.getSchemaTemplateId() != templateId) {
+      throw new MetadataException(
+          String.format("Template %s is not set on path %s", templateId, path));
+    }
+    return cur;
   }
 
   // endregion

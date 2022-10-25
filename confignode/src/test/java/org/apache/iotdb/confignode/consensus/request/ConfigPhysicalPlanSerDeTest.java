@@ -88,7 +88,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
@@ -1179,5 +1182,35 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getTransferringTriggerPlan0.serializeToByteBuffer())
             instanceof GetTransferringTriggersPlan);
+  }
+
+  @Test
+  public void PreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    PreUnsetSchemaTemplatePlan plan = new PreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    PreUnsetSchemaTemplatePlan deserializedPlan =
+        (PreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void RollbackPreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    RollbackPreUnsetSchemaTemplatePlan plan =
+        new RollbackPreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    RollbackPreUnsetSchemaTemplatePlan deserializedPlan =
+        (RollbackPreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void UnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    UnsetSchemaTemplatePlan deserializedPlan =
+        (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
   }
 }

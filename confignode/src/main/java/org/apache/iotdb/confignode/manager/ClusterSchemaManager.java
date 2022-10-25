@@ -48,7 +48,10 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -595,6 +598,22 @@ public class ClusterSchemaManager {
     } else {
       return new Pair<>(pathInfoResp.getStatus(), null);
     }
+  }
+
+  public TSStatus preUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new PreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus rollbackPreUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
+    return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
   }
 
   private NodeManager getNodeManager() {

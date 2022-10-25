@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -40,7 +41,10 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
@@ -740,6 +744,36 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return resp;
+  }
+
+  public TSStatus preUnsetSchemaTemplate(PreUnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.preUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus rollbackUnsetSchemaTemplate(RollbackPreUnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.rollbackUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.unsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
   }
 
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(
