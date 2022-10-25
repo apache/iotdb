@@ -51,6 +51,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
 import org.slf4j.Logger;
@@ -284,6 +285,11 @@ public class AsyncDataNodeClientPool {
           client.deactivateTemplate(
               (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
               (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+        case UPDATE_TEMPLATE:
+          client.updateTemplate(
+              (TUpdateTemplateReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
         default:
           LOGGER.error(

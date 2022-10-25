@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -32,7 +37,9 @@ import org.apache.iotdb.confignode.procedure.state.schema.UnsetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class UnsetTemplateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, UnsetTemplateState> {
@@ -121,7 +129,38 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private void invalidateCache(ConfigNodeProcedureEnv env) {}
+  private void invalidateCache(ConfigNodeProcedureEnv env) {
+    try {
+      executeInvalidateCache(env);
+      setNextState(UnsetTemplateState.CHECK_DATANODE_TEMPLATE_ACTIVATION);
+    } catch (ProcedureException e) {
+      setFailure(e);
+    }
+  }
+
+  private void executeInvalidateCache(ConfigNodeProcedureEnv env) throws ProcedureException {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
+    invalidateTemplateSetInfoReq.setType(
+        TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
+    invalidateTemplateSetInfoReq.setTemplateInfo(getInvalidateTemplateSetInfo());
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (TSStatus status : statusMap.values()) {
+      // all dataNodes must clear the related template cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "Failed to invalidate template cache of template {} set on {}",
+            template.getName(),
+            path);
+        throw new ProcedureException(new MetadataException("Invalidate template cache failed"));
+      }
+    }
+  }
 
   private int checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
     return 0;
@@ -141,7 +180,62 @@ public class UnsetTemplateProcedure
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, UnsetTemplateState unsetTemplateState)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+    ProcedureException rollbackException = null;
+    try {
+      executeRollbackInvalidateCache(env);
+      TSStatus status =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .rollbackPreUnsetSchemaTemplate(template.getId(), path);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      } else {
+        LOGGER.error(
+            "Failed to rollback pre unset template operation of template {} set on {}",
+            template.getName(),
+            path);
+        rollbackException =
+            new ProcedureException(
+                new MetadataException(
+                    "Rollback template pre unset failed because of" + status.getMessage()));
+      }
+    } catch (ProcedureException e) {
+      rollbackException = e;
+    }
+    try {
+      executeInvalidateCache(env);
+      setFailure(rollbackException);
+    } catch (ProcedureException exception) {
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  "Rollback unset template failed and the cluster template info management is strictly broken. Please try unset again.")));
+    }
+  }
+
+  private void executeRollbackInvalidateCache(ConfigNodeProcedureEnv env)
+      throws ProcedureException {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    TUpdateTemplateReq rollbackTemplateSetInfoReq = new TUpdateTemplateReq();
+    rollbackTemplateSetInfoReq.setType(
+        TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
+    rollbackTemplateSetInfoReq.setTemplateInfo(getAddTemplateSetInfo());
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, rollbackTemplateSetInfoReq, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (TSStatus status : statusMap.values()) {
+      // all dataNodes must clear the related template cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "Failed to rollback template cache of template {} set on {}", template.getName(), path);
+        throw new ProcedureException(new MetadataException("Rollback template cache failed"));
+      }
+    }
+  }
 
   @Override
   protected boolean isRollbackSupported(UnsetTemplateState unsetTemplateState) {

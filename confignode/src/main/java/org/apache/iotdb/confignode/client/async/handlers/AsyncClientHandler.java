@@ -194,6 +194,7 @@ public class AsyncClientHandler<Q, R> {
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case PRE_CREATE_PIPE:
       case OPERATE_PIPE:
+      case UPDATE_TEMPLATE:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,
