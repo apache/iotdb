@@ -82,8 +82,6 @@ public class IoTDBConfigNodeIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String ratisConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
   private final int retryNum = 30;
 
   @Before

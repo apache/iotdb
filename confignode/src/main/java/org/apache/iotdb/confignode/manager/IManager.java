@@ -172,9 +172,9 @@ public interface IManager {
    * Update DataNode
    *
    * @param updateDataNodePlan UpdateDataNodePlan
-   * @return DataNodeToStatusResp
+   * @return DataNodeConfigurationDataSet
    */
-  TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan);
+  DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
    * DataNode report region migrate result to ConfigNode when remove DataNode

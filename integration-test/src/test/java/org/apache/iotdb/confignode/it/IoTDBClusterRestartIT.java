@@ -46,6 +46,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -62,21 +64,20 @@ import static org.junit.Assert.fail;
 @Category({ClusterIT.class})
 public class IoTDBClusterRestartIT {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClusterRestartIT.class);
+
+  private static final String ratisConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private static final int testConfigNodeNum = 3;
+  private static final int testDataNodeNum = 3;
+  private static final int testReplicationFactor = 3;
+  private static final long testTimePartitionInterval = 604800000;
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String ratisConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
-  private static final int testConfigNodeNum = 3;
-  private static final int testDataNodeNum = 3;
-
   protected static int originSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
-  private static final int testReplicationFactor = 3;
-
   protected static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 604800000;
 
   @Before
   public void setUp() throws Exception {
@@ -141,18 +142,10 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartAfterUpdateDataNodeTest() throws InterruptedException {
     TShowClusterResp clusterNodes;
-    final String sg = "root.sg";
     final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
 
     final String d00 = sg0 + ".d0.s";
     final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
-
-    final String allPaths = "root.**";
-    final String allSg0 = "root.sg0.**";
-    final String allSg1 = "root.sg1.**";
     // Shutdown all data nodes
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().shutdownDataNode(i);
@@ -207,11 +200,9 @@ public class IoTDBClusterRestartIT {
       // Set StorageGroups
       status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Test getSchemaPartition, the result should be empty
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
+      buffer = generatePatternTreeBuffer(new String[] {d00, d01});
       schemaPartitionReq = new TSchemaPartitionReq(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
@@ -220,53 +211,19 @@ public class IoTDBClusterRestartIT {
       Assert.assertEquals(0, schemaPartitionTableResp.getSchemaPartitionTableSize());
 
       // Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartitions and return
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      buffer = generatePatternTreeBuffer(new String[] {d00, d01});
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
+      Assert.assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
-      }
-
-      // Test getSchemaPartition, when a device path doesn't match any StorageGroup and including
-      // "**", ConfigNode will return all the SchemaPartitions
-      buffer = generatePatternTreeBuffer(new String[] {allPaths});
-      schemaPartitionReq.setPathPatternTree(buffer);
-      schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
-      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
-      }
-
-      // Test getSchemaPartition, when a device path matches with a StorageGroup and end with "*",
-      // ConfigNode will return all the SchemaPartitions in this StorageGroup
-      buffer = generatePatternTreeBuffer(new String[] {allSg0, d11});
-      schemaPartitionReq.setPathPatternTree(buffer);
-      schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
-      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      // Check "root.sg0"
       Assert.assertTrue(schemaPartitionTable.containsKey(sg0));
       Assert.assertEquals(2, schemaPartitionTable.get(sg0).size());
-      // Check "root.sg1"
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg1));
-      Assert.assertEquals(1, schemaPartitionTable.get(sg1).size());
     } catch (Exception e) {
-      e.printStackTrace();
-      fail();
+      LOGGER.error(e.getMessage());
+      fail(e.getMessage());
     }
   }
 

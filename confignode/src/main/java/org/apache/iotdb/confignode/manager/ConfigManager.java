@@ -258,12 +258,25 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     TSStatus status = confirmLeader();
+    DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.updateDataNode(updateDataNodePlan);
+      triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      try {
+        dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
+        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+        dataSet.setTriggerInformation(
+            triggerManager.getTriggerTable(false).getAllTriggerInformation());
+      } finally {
+        triggerManager.getTriggerInfo().releaseTriggerTableLock();
+      }
+    } else {
+      dataSet = new DataNodeRegisterResp();
+      dataSet.setStatus(status);
+      dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
     }
-    return status;
+    return dataSet;
   }
 
   @Override

@@ -120,6 +120,9 @@ public class IoTDBStartCheck {
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
+  private static final String INTERNAL_ADDRESS = "internal_address";
+  private static String internalAddress = config.getInternalAddress();
+
   private static final String INTERNAL_PORT = "internal_port";
   private static String internalPort = String.valueOf(config.getInternalPort());
 
@@ -131,6 +134,14 @@ public class IoTDBStartCheck {
 
   private static final String MPP_DATA_EXCHANGE_PORT = "mpp_data_exchange_port";
   private static String mppDataExchangePort = String.valueOf(config.getMppDataExchangePort());
+
+  private static final String SCHEMA_REGION_CONSENSUS_PORT = "schema_region_consensus_port";
+  private static String schemaRegionConsensusPort =
+      String.valueOf(config.getSchemaRegionConsensusPort());
+
+  private static final String DATA_REGION_CONSENSUS_PORT = "data_region_consensus_port";
+  private static String dataRegionConsensusPort =
+      String.valueOf(config.getDataRegionConsensusPort());
 
   public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -529,6 +540,7 @@ public class IoTDBStartCheck {
     reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(INTERNAL_ADDRESS, dataNodeLocation.getInternalEndPoint().getIp());
       properties.setProperty(
           INTERNAL_PORT, String.valueOf(dataNodeLocation.getInternalEndPoint().getPort()));
       properties.setProperty(
@@ -538,6 +550,12 @@ public class IoTDBStartCheck {
       properties.setProperty(
           MPP_DATA_EXCHANGE_PORT,
           String.valueOf(dataNodeLocation.getMPPDataExchangeEndPoint().getPort()));
+      properties.setProperty(
+          SCHEMA_REGION_CONSENSUS_PORT,
+          String.valueOf(dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort()));
+      properties.setProperty(
+          DATA_REGION_CONSENSUS_PORT,
+          String.valueOf(dataNodeLocation.getDataRegionConsensusEndPoint().getPort()));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -560,6 +578,7 @@ public class IoTDBStartCheck {
   }
 
   public boolean isUpdate() {
+    // check the modifiable parts of configuration
     if (!(properties.getProperty(INTERNAL_PORT).equals(internalPort))) {
       return true;
     }
@@ -573,5 +592,19 @@ public class IoTDBStartCheck {
       return true;
     }
     return false;
+  }
+
+  public boolean checkNonModifiableConfiguration() {
+    // check the non-modifiable parts of configuration
+    if (!(properties.getProperty(INTERNAL_ADDRESS).equals(internalAddress))) {
+      return false;
+    }
+    if (!(properties.getProperty(SCHEMA_REGION_CONSENSUS_PORT).equals(schemaRegionConsensusPort))) {
+      return false;
+    }
+    if (!(properties.getProperty(DATA_REGION_CONSENSUS_PORT).equals(dataRegionConsensusPort))) {
+      return false;
+    }
+    return true;
   }
 }

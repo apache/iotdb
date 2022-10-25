@@ -295,16 +295,18 @@ public class NodeManager {
   }
 
   /**
-   * Update DataNode
+   * Update the specified DataNode‘s location
    *
    * @param updateDataNodePlan UpdateDataNodePlan
    * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
    *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
    *     failed.
    */
-  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
 
+    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
+    TSStatus status;
     // check if node is already exist
     boolean found = false;
     List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
@@ -317,10 +319,23 @@ public class NodeManager {
     }
     if (found) {
       getConsensusManager().write(updateDataNodePlan);
-      return nodeInfo.updateDataNode(updateDataNodePlan);
+      status =
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .setMessage("updateDataNode(nodeId=%d) success.");
     } else {
-      return new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
+      status =
+          new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  String.format(
+                      "The specified DataNode(nodeId=%d) doesn't exist",
+                      updateDataNodePlan.getDataNodeLocation().getDataNodeId()));
     }
+    dataSet.setStatus(status);
+    dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
+    dataSet.setConfigNodeList(getRegisteredConfigNodes());
+    setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
+    return dataSet;
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {

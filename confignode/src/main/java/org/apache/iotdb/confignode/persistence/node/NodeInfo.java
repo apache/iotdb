@@ -193,7 +193,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Persist data node info
+   * Update the specified DataNode‘s location
    *
    * @param updateDataNodePlan UpdateDataNodePlan
    * @return SUCCESS_STATUS if update DataNode info successfully, otherwise return

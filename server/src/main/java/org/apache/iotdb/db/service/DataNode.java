@@ -42,7 +42,6 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -153,13 +152,8 @@ public class DataNode implements DataNodeMBean {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
 
-      // update DataNode if properties are changed
-      if (IoTDBStartCheck.getInstance().isUpdate()) {
-        updateDataNodeLocation();
-      } else {
-        // register current DataNode to ConfigNode
-        registerInConfigNode();
-      }
+      // register current DataNode to ConfigNode
+      registerInConfigNode();
       // active DataNode
       active();
       // setup rpc service
@@ -191,58 +185,33 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
   }
 
-  private void updateDataNodeLocation() throws StartupException {
-    int retry = DEFAULT_JOIN_RETRY;
-    TDataNodeLocation newDataNodeLocation = generateDataNodeLocation();
-    while (retry > 0) {
-      logger.info("Start updating datanode in the cluster.");
-      TDataNodeUpdateReq req = new TDataNodeUpdateReq();
-      req.setDataNodeLocation(newDataNodeLocation);
-
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        TDataNodeUpdateResp resp = configNodeClient.updateDataNode(req);
-        logger.info("Update result {}", resp.toString());
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBException(resp.getStatus().toString(), resp.getStatus().getCode());
-        }
-
-        IoTDBStartCheck.getInstance().serializeNewDataNode(newDataNodeLocation);
-
-        logger.info("Update datanode in the cluster successfully.");
-        return;
-      } catch (TException | IoTDBException e) {
-        // read config nodes from system.properties
-        logger.warn("Cannot update datanode, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
-      } catch (IOException e) {
-        logger.error("Cannot serialize new datanode location, because: {}", e.getMessage());
-      }
-      try {
-        // wait 5s to start the next try
-        Thread.sleep(config.getJoinClusterTimeOutMs());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to register to the cluster", e);
-        break;
-      }
-
-      // start the next try
-      retry--;
-    }
-
-    // all tries failed
-    logger.error("Cannot update datanode after {} retries", DEFAULT_JOIN_RETRY);
-    throw new StartupException("Cannot update datanode.");
-  }
-
   /** register DataNode with ConfigNode */
   private void registerInConfigNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
-      logger.info("Start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+
+        // Check if need to start the update process
+        if (IoTDBStartCheck.getInstance().isUpdate()) {
+          logger.info("Start updating datanode in the cluster.");
+          TDataNodeLocation newDataNodeLocation = generateDataNodeLocation();
+          TDataNodeUpdateReq req = new TDataNodeUpdateReq();
+          req.setDataNodeLocation(newDataNodeLocation);
+          TDataNodeRegisterResp resp = configNodeClient.updateDataNode(req);
+          logger.info("Update result {}", resp.toString());
+          if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new IoTDBException(resp.getStatus().toString(), resp.getStatus().getCode());
+          }
+
+          IoTDBStartCheck.getInstance().serializeNewDataNode(newDataNodeLocation);
+
+          logger.info("Update datanode in the cluster successfully.");
+          return;
+        }
+
+        logger.info("Start registering to the cluster.");
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
@@ -301,7 +270,7 @@ public class DataNode implements DataNodeMBean {
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
-      } catch (TException e) {
+      } catch (TException | IoTDBException e) {
         // read config nodes from system.properties
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
         ConfigNodeInfo.getInstance().loadConfigNodeList();

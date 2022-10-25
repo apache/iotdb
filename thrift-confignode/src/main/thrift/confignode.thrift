@@ -92,9 +92,6 @@ struct TDataNodeUpdateReq{
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
-struct TDataNodeUpdateResp{
-  1: required common.TSStatus status
-}
 
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
@@ -559,7 +556,14 @@ service IConfigNodeRPCService {
    */
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
-  TDataNodeUpdateResp updateDataNode(TDataNodeUpdateReq req)
+  /**
+   * Update the specified DataNode‘s location in the cluster when restart
+   *
+   * @return SUCCESS_STATUS if the DataNode updated successfully
+   *         DATANODE_NOT_EXIST if one of the DataNodes in the TDataNodeUpdateReq doesn't exist in the cluster
+   *         UPDATE_DATANODE_FAILED if failed to update the DataNode
+   */
+  TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req)
 
   /**
    * Get one or more DataNodes' configuration

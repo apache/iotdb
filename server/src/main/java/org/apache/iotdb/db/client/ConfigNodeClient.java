@@ -49,7 +49,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
@@ -319,10 +318,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TDataNodeUpdateResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeUpdateResp resp = client.updateDataNode(req);
+        TDataNodeRegisterResp resp = client.updateDataNode(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
