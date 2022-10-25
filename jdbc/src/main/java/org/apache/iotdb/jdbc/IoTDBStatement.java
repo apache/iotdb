@@ -473,22 +473,21 @@ public class IoTDBStatement implements Statement {
   private void deepCopyResp(TSExecuteStatementResp queryRes) {
     final TSQueryDataSet tsQueryDataSet = queryRes.getQueryDataSet();
     final TSQueryNonAlignDataSet nonAlignDataSet = queryRes.getNonAlignQueryDataSet();
-    final List<ByteBuffer> queryResult = queryRes.getQueryResult();
 
     if (Objects.nonNull(tsQueryDataSet)) {
       deepCopyTsQueryDataSet(tsQueryDataSet);
     } else if (Objects.nonNull(nonAlignDataSet)) {
       deepCopyNonAlignQueryDataSet(nonAlignDataSet);
     } else {
-      deepCopyQueryResult(queryResult);
+      deepCopyQueryResult(queryRes);
     }
   }
 
-  private void deepCopyQueryResult(List<ByteBuffer> queryResult) {
-    if (Objects.isNull(queryResult)) {
-      return;
-    }
-    queryResult = queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
+  private void deepCopyQueryResult(TSExecuteStatementResp queryRes) {
+    List<ByteBuffer> queryResult = queryRes.getQueryResult();
+    final List<ByteBuffer> queryResultCopy =
+        queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
+    queryRes.setQueryResult(queryResultCopy);
   }
 
   private void deepCopyNonAlignQueryDataSet(TSQueryNonAlignDataSet nonAlignDataSet) {
