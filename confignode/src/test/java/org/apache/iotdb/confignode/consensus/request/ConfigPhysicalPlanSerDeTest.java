@@ -109,6 +109,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -987,6 +988,7 @@ public class ConfigPhysicalPlanSerDeTest {
             TTriggerState.INACTIVE,
             false,
             null,
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     AddTriggerInTablePlan addTriggerInTablePlan0 =
         new AddTriggerInTablePlan(triggerInformation, new Binary(new byte[] {1, 2, 3}));

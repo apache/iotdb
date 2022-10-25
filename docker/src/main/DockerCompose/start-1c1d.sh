@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,26 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-FROM openjdk:11-jre-slim
-RUN apt update \
-  # procps is for `free` command
-  && apt install wget unzip lsof procps -y \
-  && wget https://downloads.apache.org/iotdb/0.11.2/apache-iotdb-0.11.2-bin.zip \
-  # if you are in China, use the following URL
-  #&& wget https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.11.2/apache-iotdb-0.11.2-bin.zip \
-  && unzip apache-iotdb-0.11.2-bin.zip \
-  && rm apache-iotdb-0.11.2-bin.zip \
-  && mv apache-iotdb-0.11.2 /iotdb \
-  && apt remove wget unzip -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y
-EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8181
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
-ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+nohup /iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
+sleep 5
+/iotdb/sbin/start-datanode.sh
