@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** InfluxDBMetaManager for IoTDB When schema region is memory or schema file */
 public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
   protected final Planner planner;
@@ -117,6 +118,12 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * set storage group
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   @Override
   public void setStorageGroup(String database, long sessionID) {
     try {
@@ -133,6 +140,12 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   @Override
   public void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID) {
     List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
@@ -145,6 +158,14 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * get field orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of field orders
+   */
   @Override
   public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> fieldOrders = new HashMap<>();

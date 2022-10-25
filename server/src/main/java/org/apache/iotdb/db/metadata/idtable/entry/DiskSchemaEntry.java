@@ -74,6 +74,11 @@ public class DiskSchemaEntry {
     this.isAligned = isAligned;
   }
 
+  /**
+   * get device path
+   *
+   * @return device path
+   */
   public String getDevicePath() {
     return seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1);
   }

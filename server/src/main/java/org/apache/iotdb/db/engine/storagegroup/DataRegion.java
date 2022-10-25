@@ -306,7 +306,7 @@ public class DataRegion {
     }
 
     // if use id table, we use id table flush time manager
-    if (config.isEnableIDTable() && !config.getSchemaEngineMode().equals("Tag")) {
+    if (config.isEnableIDTable()) {
       idTable = IDTableManager.getInstance().getIDTableDirectly(storageGroupName);
       lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
     } else {

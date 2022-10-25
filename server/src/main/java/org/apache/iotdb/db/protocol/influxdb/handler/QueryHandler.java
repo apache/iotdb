@@ -51,10 +51,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** query handler for IoTDB */
 public class QueryHandler extends AbstractQueryHandler {
 
   ServiceProvider serviceProvider = IoTDB.serviceProvider;
 
+  /**
+   * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
+   * to get the result
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param function influxdb function
+   * @param sessionid session id
+   * @return influxdb function value
+   */
   @Override
   public InfluxFunctionValue updateByIoTDBFunc(
       String database, String measurement, InfluxFunction function, long sessionid) {
@@ -430,6 +441,18 @@ public class QueryHandler extends AbstractQueryHandler {
     return function.calculateByIoTDBFunc();
   }
 
+  /**
+   * Query the result according to the query SQL supported by IoTDB
+   *
+   * @param querySql query sql
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tagOrders tag orders
+   * @param fieldOrders field orders
+   * @param sessionId session id
+   * @return query result
+   * @throws AuthException
+   */
   @Override
   public QueryResult queryByConditions(
       String querySql,

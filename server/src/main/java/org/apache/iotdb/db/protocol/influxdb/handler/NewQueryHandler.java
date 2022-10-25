@@ -31,8 +31,18 @@ import org.influxdb.dto.QueryResult;
 import java.util.List;
 import java.util.Map;
 
+/** query handler for NewIoTDB */
 public class NewQueryHandler extends AbstractQueryHandler {
 
+  /**
+   * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
+   * to get the result
+   *
+   * @param path storage group path
+   * @param function influxdb function
+   * @param sessionid session id
+   * @return influxdb function value
+   */
   public final InfluxFunctionValue updateByIoTDBFunc(
       String path, InfluxFunction function, long sessionid) {
     switch (function.getFunctionName()) {
@@ -144,6 +154,16 @@ public class NewQueryHandler extends AbstractQueryHandler {
     return function.calculateByIoTDBFunc();
   }
 
+  /**
+   * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
+   * to get the result
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param function influxdb function
+   * @param sessionid session id
+   * @return influxdb function value
+   */
   @Override
   public InfluxFunctionValue updateByIoTDBFunc(
       String database, String measurement, InfluxFunction function, long sessionid) {
@@ -151,6 +171,17 @@ public class NewQueryHandler extends AbstractQueryHandler {
     return updateByIoTDBFunc(path, function, sessionid);
   }
 
+  /**
+   * Query the result according to the query SQL supported by IoTDB
+   *
+   * @param querySql query sql
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tagOrders tag orders
+   * @param fieldOrders field orders
+   * @param sessionId session id
+   * @return query result
+   */
   @Override
   public QueryResult queryByConditions(
       String querySql,

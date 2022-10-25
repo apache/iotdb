@@ -50,6 +50,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -70,7 +73,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.external.api.ISeriesNumerLimiter;
+import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -115,20 +118,20 @@ public class TagSchemaRegion implements ISchemaRegion {
   // manager timeSeries, and use a deviceID list manager device id -> INT32 id
   private final IDTableWithDeviceIDListImpl idTableWithDeviceIDList;
 
-  private final ISeriesNumerLimiter seriesNumerLimiter;
+  private final ISeriesNumerMonitor seriesNumerMonitor;
 
   public TagSchemaRegion(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
       IStorageGroupMNode storageGroupMNode,
-      ISeriesNumerLimiter seriesNumerLimiter)
+      ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
     String storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
     this.storageGroupMNode = storageGroupMNode;
-    this.seriesNumerLimiter = seriesNumerLimiter;
+    this.seriesNumerMonitor = seriesNumerMonitor;
     File schemaRegionDir = new File(schemaRegionDirPath);
     idTableWithDeviceIDList = new IDTableWithDeviceIDListImpl(schemaRegionDir);
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
@@ -935,8 +938,26 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
     throw new UnsupportedOperationException("getPathsUsingTemplate");
+  }
+
+  @Override
+  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException("constructSchemaBlackListWithTemplate");
+  }
+
+  @Override
+  public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException("rollbackSchemaBlackListWithTemplate");
+  }
+
+  @Override
+  public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException("deactivateTemplateInBlackList");
   }
 
   @Override

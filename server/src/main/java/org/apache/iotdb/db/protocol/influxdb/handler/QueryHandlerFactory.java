@@ -19,22 +19,25 @@
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 
+/** Generate the corresponding QueryHandler object according to the configuration */
 public class QueryHandlerFactory {
+
+  /**
+   * get QueryHandler object according to the configuration
+   *
+   * @return QueryHandler object
+   */
   public static AbstractQueryHandler getInstance() {
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getRpcImplClassName()
         .equals(ClientRPCServiceImpl.class.getName())) {
-      switch (SchemaEngineMode.valueOf(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
-        case Tag:
-          return new TagQueryHandler();
-        default:
-          return new NewQueryHandler();
+      if ("Tag".equals(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
+        return new TagQueryHandler();
       }
+      return new NewQueryHandler();
     } else {
       return new QueryHandler();
     }

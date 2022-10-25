@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/** InfluxDBMetaManager used in schema region is memory or schema file */
 public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManager {
 
   protected static final String SELECT_TAG_INFO_SQL =
@@ -33,6 +34,14 @@ public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManage
   protected static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
+  /**
+   * get tag orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of tag orders
+   */
   @Override
   public Map<String, Integer> getTagOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> tagOrders = new HashMap<>();
@@ -47,8 +56,20 @@ public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManage
     return tagOrders;
   }
 
+  /**
+   * set storage group
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   abstract void setStorageGroup(String database, long sessionID);
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   abstract void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID);
 
   public final synchronized Map<String, Map<String, Integer>> createDatabase(
@@ -69,6 +90,16 @@ public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManage
     return createDatabase(database, sessionID).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
+  /**
+   * generate time series path for insertion
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tags influxdb tags
+   * @param fields influxdb fields
+   * @param sessionID session id
+   * @return series path
+   */
   @Override
   public final synchronized String generatePath(
       String database,

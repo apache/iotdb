@@ -54,11 +54,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Used to process influxdb query requests, this abstract class defines some template methods */
 public abstract class AbstractQueryHandler {
 
+  /**
+   * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
+   * to get the result
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param function influxdb function
+   * @param sessionid session id
+   * @return influxdb function value
+   */
   abstract InfluxFunctionValue updateByIoTDBFunc(
       String database, String measurement, InfluxFunction function, long sessionid);
 
+  /**
+   * The method that needs to be implemented is to query the result according to the query SQL
+   * supported by IoTDB
+   *
+   * @param querySql query sql
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tagOrders tag orders
+   * @param fieldOrders field orders
+   * @param sessionId session id
+   * @return query result
+   * @throws AuthException
+   */
   abstract QueryResult queryByConditions(
       String querySql,
       String database,

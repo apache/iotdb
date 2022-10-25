@@ -37,6 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Represent an IoTDB point, including the device path to be written, the measurement point and the
+ * corresponding value
+ */
 public class IoTDBPoint {
 
   private final String deviceId;
@@ -153,6 +157,13 @@ public class IoTDBPoint {
         false);
   }
 
+  /**
+   * Convert IoTDB point to InsertRecordReq
+   *
+   * @param sessionID session id
+   * @return InsertRecordReq
+   * @throws IoTDBConnectionException
+   */
   public TSInsertRecordReq convertToTSInsertRecordReq(long sessionID)
       throws IoTDBConnectionException {
     TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();

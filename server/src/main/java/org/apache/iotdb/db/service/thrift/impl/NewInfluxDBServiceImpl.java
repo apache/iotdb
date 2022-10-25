@@ -55,6 +55,9 @@ import org.influxdb.dto.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * When using NewIoTDB, use this object to handle read and write requests of the influxdb protocol
+ */
 public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
 
   private static final ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
@@ -73,6 +76,13 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return clientRPCService;
   }
 
+  /**
+   * open session
+   *
+   * @param req InfluxOpenSessionReq
+   * @return InfluxOpenSessionResp
+   * @throws TException
+   */
   @Override
   public InfluxOpenSessionResp openSession(InfluxOpenSessionReq req) throws TException {
     TSOpenSessionReq tsOpenSessionReq = InfluxReqAndRespUtils.convertOpenSessionReq(req);
@@ -80,6 +90,12 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return InfluxReqAndRespUtils.convertOpenSessionResp(tsOpenSessionResp);
   }
 
+  /**
+   * close session
+   *
+   * @param req InfluxCloseSessionReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus closeSession(InfluxCloseSessionReq req) {
     TSCloseSessionReq tsCloseSessionReq = InfluxReqAndRespUtils.convertCloseSessionReq(req);
@@ -87,6 +103,12 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return DataTypeUtils.RPCStatusToInfluxDBTSStatus(tsStatus);
   }
 
+  /**
+   * Handling insert requests
+   *
+   * @param req InfluxWritePointsReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus writePoints(InfluxWritePointsReq req) {
     List<InfluxTSStatus> tsStatusList = new ArrayList<>();
@@ -105,6 +127,12 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return new InfluxTSStatus().setCode(executeCode).setSubStatus(tsStatusList);
   }
 
+  /**
+   * Create a database in the influxdb semantics
+   *
+   * @param req InfluxCreateDatabaseReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) {
     TSStatus tsStatus =
@@ -116,6 +144,13 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return DataTypeUtils.RPCStatusToInfluxDBTSStatus(tsStatus);
   }
 
+  /**
+   * Process query requests
+   *
+   * @param req InfluxQueryReq
+   * @return InfluxQueryResultRsp
+   * @throws TException
+   */
   @Override
   public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
@@ -123,6 +158,13 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return queryHandler.queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
   }
 
+  /**
+   * execute sql statement
+   *
+   * @param sql sql statement
+   * @param sessionId session id
+   * @return TSExecuteStatementResp
+   */
   public static TSExecuteStatementResp executeStatement(String sql, long sessionId) {
     TSExecuteStatementReq tsExecuteStatementReq = new TSExecuteStatementReq();
     tsExecuteStatementReq.setStatement(sql);
@@ -135,6 +177,7 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return executeStatementResp;
   }
 
+  /** handle client exit, close session and resource */
   @Override
   public void handleClientExit() {
     clientRPCService.handleClientExit();

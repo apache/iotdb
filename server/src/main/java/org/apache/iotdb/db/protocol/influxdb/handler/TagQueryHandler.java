@@ -35,9 +35,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** use in tag schema region */
+/** Query Handler for NewIoTDB When schema region is tag schema region */
 public class TagQueryHandler extends NewQueryHandler {
 
+  /**
+   * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
+   * to get the result
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param function influxdb function
+   * @param sessionid session id
+   * @return influxdb function value
+   */
   @Override
   public InfluxFunctionValue updateByIoTDBFunc(
       String database, String measurement, InfluxFunction function, long sessionid) {
@@ -45,6 +55,17 @@ public class TagQueryHandler extends NewQueryHandler {
     return updateByIoTDBFunc(path, function, sessionid);
   }
 
+  /**
+   * Query the result according to the query SQL supported by IoTDB
+   *
+   * @param querySql query sql
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tagOrders tag orders
+   * @param fieldOrders field orders
+   * @param sessionId session id
+   * @return query result
+   */
   @Override
   public QueryResult queryByConditions(
       String querySql,

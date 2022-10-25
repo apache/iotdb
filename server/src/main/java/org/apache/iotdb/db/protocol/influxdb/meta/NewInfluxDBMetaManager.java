@@ -39,8 +39,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** InfluxDBMetaManager for NewIoTDB When schema region is memory or schema file */
 public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
+  // NewIoTDB uses ClientRPCServiceImpl to handle the request
   private final ClientRPCServiceImpl clientRPCService;
 
   private NewInfluxDBMetaManager() {
@@ -51,6 +53,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     return InfluxDBMetaManagerHolder.INSTANCE;
   }
 
+  /** recover the influxdb metadata */
   @Override
   public void recover() {
     long sessionID = 0;
@@ -99,6 +102,12 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * set storage group
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   @Override
   public void setStorageGroup(String database, long sessionID) {
     TSStatus status = clientRPCService.setStorageGroup(sessionID, "root." + database);
@@ -109,6 +118,12 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     throw new InfluxDBException(status.getMessage());
   }
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   @Override
   public void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID) {
     try {
@@ -124,6 +139,14 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * get field orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of field orders
+   */
   @Override
   public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> fieldOrders = new HashMap<>();

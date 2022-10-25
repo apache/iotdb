@@ -30,9 +30,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-/** use in tag schema region */
+/** InfluxDBMetaManager for NewIoTDB When schema region is tag schema region */
 public class TagInfluxDBMetaManager implements IInfluxDBMetaManager {
-  private static final String STORAGE_GROUP_PATH = "root.influxdbmate";
+
+  // The storage group used to save influxdb metadata in IoTDB
+  private static final String STORAGE_GROUP_PATH = "root.influxdbmeta";
 
   private static final String TAGS_SET = "set.tags";
 

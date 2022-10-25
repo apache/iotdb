@@ -24,10 +24,29 @@ import java.util.Set;
 /** used to manage influxdb metadata */
 public interface IInfluxDBMetaManager {
 
+  /** recover the influxdb metadata */
   void recover();
 
+  /**
+   * get field orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionId session id
+   * @return a map of field orders
+   */
   Map<String, Integer> getFieldOrders(String database, String measurement, long sessionId);
 
+  /**
+   * generate time series path for insertion
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tags influxdb tags
+   * @param fields influxdb fields
+   * @param sessionID session id
+   * @return series path
+   */
   String generatePath(
       String database,
       String measurement,
@@ -35,5 +54,13 @@ public interface IInfluxDBMetaManager {
       Set<String> fields,
       long sessionID);
 
+  /**
+   * get tag orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of tag orders
+   */
   Map<String, Integer> getTagOrders(String database, String measurement, long sessionID);
 }

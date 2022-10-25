@@ -19,22 +19,25 @@
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 
+/** generate InfluxDBMetaManager object according to configuration */
 public class InfluxDBMetaManagerFactory {
+
+  /**
+   * generate InfluxDBMetaManager object according to configuration
+   *
+   * @return InfluxDBMetaManager object
+   */
   public static IInfluxDBMetaManager getInstance() {
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getRpcImplClassName()
         .equals(ClientRPCServiceImpl.class.getName())) {
-      switch (SchemaEngineMode.valueOf(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
-        case Tag:
-          return TagInfluxDBMetaManager.getInstance();
-        default:
-          return NewInfluxDBMetaManager.getInstance();
+      if ("Tag".equals(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
+        return TagInfluxDBMetaManager.getInstance();
       }
+      return NewInfluxDBMetaManager.getInstance();
     } else {
       return InfluxDBMetaManager.getInstance();
     }
