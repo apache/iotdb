@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -45,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
@@ -692,6 +694,52 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     return new AllTemplateSetInfoResp(outputStream.toByteArray());
+  }
+
+  /**
+   * Get the templateId set on paths covered by input path pattern. Resolve the input path patterns
+   * into specified path pattern start with template set path. The result set is organized as
+   * specified path pattern -> template id
+   */
+  public TemplateSetInfoResp getTemplateSetInfo(GetTemplateSetInfoPlan plan) {
+    TemplateSetInfoResp resp = new TemplateSetInfoResp();
+    try {
+
+      Map<PartialPath, Set<Integer>> allTemplateSetInfo = new HashMap<>();
+      for (PartialPath pattern : plan.getPatternList()) {
+        Map<Integer, Set<PartialPath>> templateSetInfo = mTree.getTemplateSetInfo(pattern);
+        if (templateSetInfo.isEmpty()) {
+          continue;
+        }
+        templateSetInfo.forEach(
+            (templateId, templateSetPathList) -> {
+              for (PartialPath templateSetPath : templateSetPathList) {
+                pattern
+                    .alterPrefixPath(templateSetPath)
+                    .forEach(
+                        path ->
+                            allTemplateSetInfo
+                                .computeIfAbsent(path, k -> new HashSet<>())
+                                .add(templateId));
+              }
+            });
+      }
+      Map<PartialPath, List<Template>> result = new HashMap<>();
+      for (Map.Entry<PartialPath, Set<Integer>> entry : allTemplateSetInfo.entrySet()) {
+        List<Template> templateList = new ArrayList<>(entry.getValue().size());
+        for (int templateId : entry.getValue()) {
+          templateList.add(templateTable.getTemplate(templateId));
+        }
+        result.put(entry.getKey(), templateList);
+      }
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setPatternTemplateMap(result);
+      return resp;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+    return resp;
   }
 
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(

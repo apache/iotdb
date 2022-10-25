@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -44,7 +44,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -204,8 +205,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       String udfName, String className, List<String> uris) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFRegistrationService.getInstance()
-          .register(udfName, className, uris, UDFExecutableManager.getInstance(), true);
+      UDFManagementService.getInstance().register(new UDFInformation(udfName, className));
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
@@ -223,7 +223,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFRegistrationService.getInstance().deregister(udfName);
+      UDFManagementService.getInstance().deregister(udfName);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
@@ -481,6 +481,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
+      String queryId, DeactivateTemplateStatement deactivateTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing deactivate schema template is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createPipeSink(
       CreatePipeSinkStatement createPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -590,7 +601,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement) {
+  public SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
         new IoTDBException(

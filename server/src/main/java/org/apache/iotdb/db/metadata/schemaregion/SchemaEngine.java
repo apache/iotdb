@@ -37,7 +37,7 @@ import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.external.api.ISeriesNumerLimiter;
+import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -71,22 +71,8 @@ public class SchemaEngine {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  private ISeriesNumerLimiter seriesNumerLimiter =
-      new ISeriesNumerLimiter() {
-        @Override
-        public void init(Properties properties) {}
-
-        @Override
-        public boolean addTimeSeries(int number) {
-          // always return true, don't limit the number of series
-          return true;
-        }
-
-        @Override
-        public void deleteTimeSeries(int number) {
-          // do nothing
-        }
-      };
+  // seriesNumberMonitor may be null
+  private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
@@ -99,7 +85,21 @@ public class SchemaEngine {
     private SchemaEngineManagerHolder() {}
   }
 
-  private SchemaEngine() {}
+  private SchemaEngine() {
+    // init ISeriesNumerMonitor if there is.
+    // each mmanager instance will generate an ISeriesNumerMonitor instance
+    // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
+    ServiceLoader<ISeriesNumerMonitor> monitorServiceLoader =
+        ServiceLoader.load(ISeriesNumerMonitor.class);
+    for (ISeriesNumerMonitor loader : monitorServiceLoader) {
+      if (this.seriesNumerMonitor != null) {
+        // it means there is more than one ISeriesNumerMonitor implementation.
+        logger.warn("There are more than one ISeriesNumerMonitor implementation. pls check.");
+      }
+      logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
+      this.seriesNumerMonitor = loader;
+    }
+  }
 
   public static SchemaEngine getInstance() {
     return SchemaEngineManagerHolder.INSTANCE;
@@ -311,12 +311,12 @@ public class SchemaEngine {
       case Memory:
         schemaRegion =
             new SchemaRegionMemoryImpl(
-                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
+                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerMonitor);
         break;
       case Schema_File:
         schemaRegion =
             new SchemaRegionSchemaFileImpl(
-                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
+                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerMonitor);
         break;
       case Rocksdb_based:
         schemaRegion =
@@ -392,7 +392,7 @@ public class SchemaEngine {
     }
   }
 
-  public void setSeriesNumerLimiter(ISeriesNumerLimiter seriesNumerLimiter) {
-    this.seriesNumerLimiter = seriesNumerLimiter;
+  public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
+    this.seriesNumerMonitor = seriesNumerMonitor;
   }
 }

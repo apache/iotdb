@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteTimeSeriesRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
@@ -153,9 +153,12 @@ public class AsyncClientHandler<Q, R> {
     switch (requestType) {
       case CONSTRUCT_SCHEMA_BLACK_LIST:
       case ROLLBACK_SCHEMA_BLACK_LIST:
-      case DELETE_DATA_FOR_DELETE_TIMESERIES:
+      case DELETE_DATA_FOR_DELETE_SCHEMA:
       case DELETE_TIMESERIES:
-        return new DeleteTimeSeriesRPCHandler(
+      case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+      case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+      case DEACTIVATE_TEMPLATE:
+        return new DeleteSchemaRPCHandler(
             requestType,
             requestId,
             targetDataNode,
@@ -179,6 +182,7 @@ public class AsyncClientHandler<Q, R> {
       case DROP_TRIGGER_INSTANCE:
       case ACTIVE_TRIGGER_INSTANCE:
       case INACTIVE_TRIGGER_INSTANCE:
+      case UPDATE_TRIGGER_LOCATION:
       case MERGE:
       case FULL_MERGE:
       case FLUSH:

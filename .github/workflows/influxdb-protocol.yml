@@ -61,7 +61,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single-influxdb -t "apache/iotdb:influxdb-protocol-on"
+          docker build . -f docker/src/main/Dockerfile-1c1d-influxdb -t "apache/iotdb:influxdb-protocol-on"
           docker images
 
       - name: IT Test

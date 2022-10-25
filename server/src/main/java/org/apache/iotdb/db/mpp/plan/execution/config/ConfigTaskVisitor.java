@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroup
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.SetSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
@@ -69,7 +70,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -84,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -266,6 +268,12 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitDeactivateTemplate(
+      DeactivateTemplateStatement deactivateTemplateStatement, TaskContext context) {
+    return new DeactivateSchemaTemplateTask(context.getQueryId(), deactivateTemplateStatement);
+  }
+
+  @Override
   public IConfigTask visitShowDataNodes(
       ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
     return new ShowDataNodesTask(showDataNodesStatement);
@@ -327,8 +335,9 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitGetRegion(GetRegionStatement getRegionStatement, TaskContext context) {
-    return new GetRegionTask(getRegionStatement);
+  public IConfigTask visitGetRegionId(
+      GetRegionIdStatement getRegionIdStatement, TaskContext context) {
+    return new GetRegionIdTask(getRegionIdStatement);
   }
 
   @Override

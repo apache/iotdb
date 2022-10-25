@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -111,7 +113,7 @@ public class SyncManager {
   // region Implement of Pipe
   // ======================================================
 
-  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException {
+  public void checkAddPipe(PipeInfo pipeInfo) throws PipeException, PipeSinkNotExistException {
     clusterSyncInfo.checkAddPipe(pipeInfo);
   }
 
@@ -122,6 +124,10 @@ public class SyncManager {
 
   public TSStatus setPipeStatus(String pipeName, PipeStatus pipeStatus) {
     return getConsensusManager().write(new SetPipeStatusPlan(pipeName, pipeStatus)).getStatus();
+  }
+
+  public TSStatus dropPipe(String pipeName) {
+    return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
   }
 
   public TShowPipeResp showPipe(String pipeName) {

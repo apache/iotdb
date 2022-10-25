@@ -168,6 +168,7 @@ public class AlignedChunkData implements ChunkData {
 
   @Override
   public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     serializeTsFileData(stream, tsFile);
@@ -403,7 +404,7 @@ public class AlignedChunkData implements ChunkData {
           if (isTimeChunk) {
             long time = ReadWriteIOUtils.readLong(stream);
             timePageBatch[i] = time;
-            chunkWriter.write(time);
+            chunkWriter.writeTime(time);
           } else {
             boolean isNull = ReadWriteIOUtils.readBool(stream);
             switch (chunkHeader.getDataType()) {
@@ -441,6 +442,12 @@ public class AlignedChunkData implements ChunkData {
           timeBatch.add(timePageBatch);
         }
         decodePageIndex += 1;
+
+        if (isTimeChunk) {
+          chunkWriter.sealCurrentTimePage();
+        } else {
+          chunkWriter.sealCurrentValuePage(valueChunkIndex);
+        }
       } else {
         PageHeader pageHeader = PageHeader.deserializeFrom(stream, chunkHeader.getDataType(), true);
         if (isTimeChunk) {

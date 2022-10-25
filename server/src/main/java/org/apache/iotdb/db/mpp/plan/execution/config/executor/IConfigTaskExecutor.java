@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -115,6 +116,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
 
+  SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
+      String queryId, DeactivateTemplateStatement deactivateTemplateStatement);
+
   SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
   SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
@@ -134,7 +138,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 
-  SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement);
+  SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
   SettableFuture<ConfigTaskResult> getSeriesSlotList(
       GetSeriesSlotListStatement getSeriesSlotListStatement);

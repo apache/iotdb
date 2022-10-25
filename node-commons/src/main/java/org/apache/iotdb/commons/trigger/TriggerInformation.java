@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -52,6 +53,7 @@ public class TriggerInformation {
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
+  private FailureStrategy failureStrategy;
   /** MD5 of the Jar File */
   private String jarFileMD5;
 
@@ -67,6 +69,7 @@ public class TriggerInformation {
       TTriggerState triggerState,
       boolean isStateful,
       TDataNodeLocation dataNodeLocation,
+      FailureStrategy failureStrategy,
       String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
@@ -77,6 +80,8 @@ public class TriggerInformation {
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
+    // default value is OPTIMISTIC
+    this.failureStrategy = failureStrategy;
     this.jarFileMD5 = jarFileMD5;
   }
 
@@ -99,6 +104,7 @@ public class TriggerInformation {
     if (isStateful) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
+    ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
     ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
@@ -118,6 +124,8 @@ public class TriggerInformation {
       triggerInformation.dataNodeLocation =
           ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     }
+    triggerInformation.failureStrategy =
+        FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
     triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
@@ -215,6 +223,14 @@ public class TriggerInformation {
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;
+  }
+
+  public FailureStrategy getFailureStrategy() {
+    return failureStrategy;
+  }
+
+  public void setFailureStrategy(FailureStrategy failureStrategy) {
+    this.failureStrategy = failureStrategy;
   }
 
   public String getJarFileMD5() {

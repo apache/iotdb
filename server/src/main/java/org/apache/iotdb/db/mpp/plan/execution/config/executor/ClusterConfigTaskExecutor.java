@@ -33,7 +33,9 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -41,15 +43,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRoutingResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -70,7 +71,7 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -90,7 +91,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -816,6 +818,66 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
+      String queryId, DeactivateTemplateStatement deactivateTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TDeactivateSchemaTemplateReq req = new TDeactivateSchemaTemplateReq();
+    req.setQueryId(queryId);
+    req.setTemplateName(deactivateTemplateStatement.getTemplateName());
+    req.setPathPatternTree(
+        serializePatternListToByteBuffer(deactivateTemplateStatement.getPathPatternList()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
+            ConfigNodeInfo.partitionRegionId)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.deactivateSchemaTemplate(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute deactivate schema template {} from {} in config node, status is {}.",
+            deactivateTemplateStatement.getPathPatternList(),
+            deactivateTemplateStatement.getTemplateName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  private ByteBuffer serializePatternListToByteBuffer(List<PartialPath> patternList) {
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath pathPattern : patternList) {
+      patternTree.appendPathPattern(pathPattern);
+    }
+    patternTree.constructTree();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // memory operation, won't happen
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createPipeSink(
       CreatePipeSinkStatement createPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -889,13 +951,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TPipeInfo pipeInfo =
-          new TPipeInfo()
+      TCreatePipeReq req =
+          new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
               .setPipeSinkName(createPipeStatement.getPipeSinkName())
               .setStartTime(createPipeStatement.getStartTime())
               .setAttributes(createPipeStatement.getPipeAttributes());
-      TSStatus tsStatus = configNodeClient.createPipe(pipeInfo);
+      TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to create PIPE {} in config node, status is {}.",
@@ -989,20 +1051,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath pathPattern : deleteTimeSeriesStatement.getPathPatternList()) {
-      patternTree.appendPathPattern(pathPattern);
-    }
-    patternTree.constructTree();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      patternTree.serialize(dataOutputStream);
-    } catch (IOException ignored) {
-      // memory operation, won't happen
-    }
     TDeleteTimeSeriesReq req =
-        new TDeleteTimeSeriesReq(queryId, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        new TDeleteTimeSeriesReq(
+            queryId,
+            serializePatternListToByteBuffer(deleteTimeSeriesStatement.getPathPatternList()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
             ConfigNodeInfo.partitionRegionId)) {
@@ -1038,20 +1090,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> getRegion(GetRegionStatement getRegionStatement) {
+  public SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TGetRoutingResp resp = new TGetRoutingResp();
+    TGetRegionIdResp resp = new TGetRegionIdResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TGetRoutingReq tGetRoutingReq =
-          new TGetRoutingReq(
-              getRegionStatement.getStorageGroup(),
-              getRegionStatement.getPartitionType(),
-              getRegionStatement.getSeriesSlotId());
-      if (getRegionStatement.getTimeSlotId() != null) {
-        tGetRoutingReq.setTimeSlotId(getRegionStatement.getTimeSlotId());
+      TGetRegionIdReq tGetRegionIdReq =
+          new TGetRegionIdReq(
+              getRegionIdStatement.getStorageGroup(),
+              getRegionIdStatement.getPartitionType(),
+              getRegionIdStatement.getSeriesSlotId());
+      if (getRegionIdStatement.getTimeSlotId() != null) {
+        tGetRegionIdReq.setTimeSlotId(getRegionIdStatement.getTimeSlotId());
       }
-      resp = configNodeClient.getRouting(tGetRoutingReq);
+      resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
@@ -1059,7 +1111,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetRegionTask.buildTSBlock(resp, future);
+    GetRegionIdTask.buildTSBlock(resp, future);
     return future;
   }
 

@@ -26,33 +26,37 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRoutingPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -62,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
@@ -71,7 +76,9 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -239,6 +246,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetTriggerTable:
           req = new GetTriggerTablePlan();
           break;
+        case GetTriggerLocation:
+          req = new GetTriggerLocationPlan();
+          break;
         case GetTriggerJar:
           req = new GetTriggerJarPlan();
           break;
@@ -262,6 +272,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetSchemaTemplate:
           req = new SetSchemaTemplatePlan();
+          break;
+        case GetTemplateSetInfo:
+          req = new GetTemplateSetInfoPlan();
           break;
         case GetNodePathsPartition:
           req = new GetNodePathsPartitionPlan();
@@ -287,17 +300,32 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetPipeStatus:
           req = new SetPipeStatusPlan();
           break;
+        case DropPipe:
+          req = new DropPipePlan();
+          break;
         case ShowPipe:
           req = new ShowPipePlan();
           break;
-        case GetRouting:
-          req = new GetRoutingPlan();
+        case GetRegionId:
+          req = new GetRegionIdPlan();
           break;
         case GetTimeSlotList:
           req = new GetTimeSlotListPlan();
           break;
         case GetSeriesSlotList:
           req = new GetSeriesSlotListPlan();
+          break;
+        case UpdateLoadStatistics:
+          req = new UpdateLoadStatisticsPlan();
+          break;
+        case UpdateTriggersOnTransferNodes:
+          req = new UpdateTriggersOnTransferNodesPlan();
+          break;
+        case UpdateTriggerLocation:
+          req = new UpdateTriggerLocationPlan();
+          break;
+        case GetTransferringTriggers:
+          req = new GetTransferringTriggersPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

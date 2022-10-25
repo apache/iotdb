@@ -50,17 +50,19 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -144,10 +146,12 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
+import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetPath;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -204,6 +208,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.info("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
+        if (queryStatement.isSelectInto()) {
+          analysis.setRespDatasetHeader(
+              DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+        }
         if (queryStatement.isLastQuery()) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
         }
@@ -238,6 +246,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeDeviceToSource(analysis, queryStatement);
         analyzeDeviceView(analysis, queryStatement, outputExpressions);
+
+        analyzeInto(analysis, queryStatement, deviceSet, outputExpressions);
       } else {
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree);
 
@@ -256,6 +266,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeSourceTransform(analysis, queryStatement);
 
         analyzeSource(analysis, queryStatement);
+
+        analyzeInto(analysis, queryStatement, outputExpressions);
       }
 
       analyzeGroupBy(analysis, queryStatement);
@@ -410,15 +422,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
-    Set<PartialPath> deviceList = new LinkedHashSet<>();
+    Set<PartialPath> deviceSet = new LinkedHashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
-      deviceList.addAll(
+      deviceSet.addAll(
           schemaTree.getMatchedDevices(devicePattern).stream()
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
-    return deviceList;
+    return deviceSet;
   }
 
   private List<Pair<Expression, String>> analyzeSelect(
@@ -737,7 +749,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     outputExpressions.clear();
     for (String tagKey : tagKeys) {
-      Expression tagKeyExpression = new ConstantOperand(TSDataType.TEXT, tagKey);
+      Expression tagKeyExpression =
+          TimeSeriesOperand.constructColumnHeaderExpression(tagKey, TSDataType.TEXT);
       analyzeExpression(analysis, tagKeyExpression);
       outputExpressions.add(new Pair<>(tagKeyExpression, null));
     }
@@ -996,6 +1009,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
+    if (queryStatement.isSelectInto()) {
+      analysis.setRespDatasetHeader(
+          DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+      return;
+    }
+
     boolean isIgnoreTimestamp =
         queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
@@ -1070,6 +1089,93 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  private void analyzeInto(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      Set<PartialPath> deviceSet,
+      List<Pair<Expression, String>> outputExpressions) {
+    if (!queryStatement.isSelectInto()) {
+      return;
+    }
+
+    List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
+    List<Expression> sourceColumns =
+        outputExpressions.stream()
+            .map(Pair::getLeft)
+            .collect(Collectors.toCollection(ArrayList::new));
+
+    IntoComponent intoComponent = queryStatement.getIntoComponent();
+    intoComponent.validate(sourceDevices, sourceColumns);
+
+    DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor = new DeviceViewIntoPathDescriptor();
+    IntoComponent.IntoDeviceMeasurementIterator intoDeviceMeasurementIterator =
+        intoComponent.getIntoDeviceMeasurementIterator();
+    for (PartialPath sourceDevice : sourceDevices) {
+      PartialPath deviceTemplate = intoDeviceMeasurementIterator.getDeviceTemplate();
+      boolean isAlignedDevice = intoDeviceMeasurementIterator.isAlignedDevice();
+      PartialPath targetDevice = constructTargetDevice(sourceDevice, deviceTemplate);
+      deviceViewIntoPathDescriptor.specifyDeviceAlignment(targetDevice.toString(), isAlignedDevice);
+
+      for (Expression sourceColumn : sourceColumns) {
+        String measurementTemplate = intoDeviceMeasurementIterator.getMeasurementTemplate();
+        String targetMeasurement;
+        if (sourceColumn instanceof TimeSeriesOperand) {
+          targetMeasurement =
+              constructTargetMeasurement(
+                  sourceDevice.concatNode(sourceColumn.toString()), measurementTemplate);
+        } else {
+          targetMeasurement = measurementTemplate;
+        }
+        deviceViewIntoPathDescriptor.specifyTargetDeviceMeasurement(
+            sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
+        intoDeviceMeasurementIterator.nextMeasurement();
+      }
+
+      intoDeviceMeasurementIterator.nextDevice();
+    }
+    deviceViewIntoPathDescriptor.validate();
+    analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
+  }
+
+  private void analyzeInto(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      List<Pair<Expression, String>> outputExpressions) {
+    if (!queryStatement.isSelectInto()) {
+      return;
+    }
+
+    List<Expression> sourceColumns =
+        outputExpressions.stream()
+            .map(Pair::getLeft)
+            .collect(Collectors.toCollection(ArrayList::new));
+
+    IntoComponent intoComponent = queryStatement.getIntoComponent();
+    intoComponent.validate(sourceColumns);
+
+    IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
+    IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
+    for (Expression sourceColumn : sourceColumns) {
+      PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
+      String measurementTemplate = intoPathIterator.getMeasurementTemplate();
+      boolean isAlignedDevice = intoPathIterator.isAlignedDevice();
+
+      PartialPath targetPath;
+      if (sourceColumn instanceof TimeSeriesOperand) {
+        PartialPath sourcePath = ((TimeSeriesOperand) sourceColumn).getPath();
+        targetPath = constructTargetPath(sourcePath, deviceTemplate, measurementTemplate);
+      } else {
+        targetPath = deviceTemplate.concatNode(measurementTemplate);
+      }
+      intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
+      intoPathDescriptor.specifyDeviceAlignment(
+          targetPath.getDevicePath().toString(), isAlignedDevice);
+      intoPathIterator.next();
+    }
+    intoPathDescriptor.validate();
+    analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
 
   /**
@@ -1540,9 +1646,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // construct TsFileResource
       TsFileResource resource = new TsFileResource(tsFile);
-      FileLoaderUtils.updateTsFileResource(device2Metadata, resource);
-      resource.updatePlanIndexes(reader.getMinPlanIndex());
-      resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      if (!resource.resourceFileExists()) {
+        FileLoaderUtils.updateTsFileResource(
+            device2Metadata, resource); // serialize it in LoadSingleTsFileNode
+        resource.updatePlanIndexes(reader.getMinPlanIndex());
+        resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      } else {
+        resource.deserialize();
+      }
 
       // construct device time range
       for (String device : resource.getDevices()) {
@@ -2148,7 +2259,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Pair<Template, List<PartialPath>> templateSetInfo =
         schemaFetcher.getAllPathsSetTemplate(showPathsUsingTemplateStatement.getTemplateName());
-    analysis.setTemplateSetInfo(templateSetInfo);
+
     if (templateSetInfo == null
         || templateSetInfo.right == null
         || templateSetInfo.right.isEmpty()) {
@@ -2156,12 +2267,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
+    analysis.setTemplateSetInfo(templateSetInfo);
+
     PathPatternTree patternTree = new PathPatternTree();
+    PartialPath rawPathPattern = showPathsUsingTemplateStatement.getPathPattern();
+    List<PartialPath> specifiedPatternList = new ArrayList<>();
     templateSetInfo.right.forEach(
-        path -> {
-          patternTree.appendPathPattern(path);
-          patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        setPath -> {
+          for (PartialPath specifiedPattern : rawPathPattern.alterPrefixPath(setPath)) {
+            patternTree.appendPathPattern(specifiedPattern);
+            specifiedPatternList.add(specifiedPattern);
+          }
         });
+
+    if (specifiedPatternList.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    analysis.setSpecifiedTemplateRelatedPathPatternList(specifiedPatternList);
 
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(partition);

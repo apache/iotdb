@@ -31,9 +31,14 @@ public class PendingBatch {
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
 
-  public PendingBatch(long startIndex, long endIndex, List<TLogBatch> batches) {
-    this.startIndex = startIndex;
-    this.endIndex = endIndex;
+  public PendingBatch(List<TLogBatch> batches) {
+    if (!batches.isEmpty()) {
+      this.startIndex = batches.get(0).getSearchIndex();
+      this.endIndex = batches.get(batches.size() - 1).getSearchIndex();
+    } else {
+      this.startIndex = 0;
+      this.endIndex = 0;
+    }
     this.batches = batches;
     this.synced = false;
   }
