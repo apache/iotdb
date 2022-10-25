@@ -59,7 +59,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.error("Executor " + this.getName() + "failed to poll driver task from queue");
+          logger.error("Executor " + this.getName() + " failed to poll driver task from queue");
           Thread.currentThread().interrupt();
           break;
         }
@@ -84,7 +84,16 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         }
       }
     } finally {
-      producer.produce(getName(), getThreadGroup(), queue, producer);
+      // unless we have been closed, we need to replace this thread
+      if (!closed) {
+        logger.warn(
+            "Executor "
+                + this.getName()
+                + " exits because it's interrupted, and we will produce another thread to replace.");
+        producer.produce(getName(), getThreadGroup(), queue, producer);
+      } else {
+        logger.info("Executor " + this.getName() + " exits because it is closed.");
+      }
     }
   }
 
