@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
-import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
@@ -30,10 +29,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
-
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogReader;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogSerializer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,12 +90,14 @@ public abstract class PageManager implements IPageManager {
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
 
-  PageManager(FileChannel channel, int lastPageIndex, String logPath) throws IOException, MetadataException {
+  PageManager(FileChannel channel, int lastPageIndex, String logPath)
+      throws IOException, MetadataException {
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
-    this.lastPageIndex = lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
+    this.lastPageIndex =
+        lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     treeTrace = new int[16];
     this.channel = channel;
 
@@ -205,7 +205,10 @@ public abstract class PageManager implements IPageManager {
           short newSegSize =
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
-                  ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().size());
+                  ICachedMNodeContainer.getCachedMNodeContainer(node)
+                      .getNewChildBuffer()
+                      .entrySet()
+                      .size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize);
 
           // with single segment, curSegAddr equals actualAddress
@@ -611,8 +614,10 @@ public abstract class PageManager implements IPageManager {
   }
 
   /**
-   * This method {@linkplain #reEstimateSegSize} is called when {@linkplain SchemaPageOverflowException} occurs. It
-   * is designed to accelerate when there is lots of new children nodes, avoiding segments extend several times.
+   * This method {@linkplain #reEstimateSegSize} is called when {@linkplain
+   * SchemaPageOverflowException} occurs. It is designed to accelerate when there is lots of new
+   * children nodes, avoiding segments extend several times.
+   *
    * @param expSize
    * @param batchSize
    * @return

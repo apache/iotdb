@@ -21,11 +21,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log;
 
 import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class SchemaFileLogSerializer implements ISerializer<ISchemaPage> {
 

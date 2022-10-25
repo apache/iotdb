@@ -19,32 +19,20 @@
 
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileLogCorrupted;
-import org.apache.iotdb.db.metadata.logfile.IDeserializer;
-import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Load bytes from SchemaFileLog while assuring integrity of entries and marks, leaving semantic
@@ -87,7 +75,8 @@ public class SchemaFileLogReader {
       inputStream.read(tempBytes, 0, 1);
 
       if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
-        throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "COMMIT_MARK without PREPARE_MARK");
+        throw new SchemaFileLogCorrupted(
+            logFile.getAbsolutePath(), "COMMIT_MARK without PREPARE_MARK");
       }
 
       // handle prepare mark
@@ -103,8 +92,9 @@ public class SchemaFileLogReader {
         if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
           colBuffers.clear();
         } else {
-          throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "an extraneous byte rather than " +
-              "COMMIT_MARK after PREPARE_MARK");
+          throw new SchemaFileLogCorrupted(
+              logFile.getAbsolutePath(),
+              "an extraneous byte rather than " + "COMMIT_MARK after PREPARE_MARK");
         }
 
         // no bytes after commit mark, safe to exit
@@ -122,7 +112,8 @@ public class SchemaFileLogReader {
       tempBytes = new byte[SchemaFileConfig.PAGE_LENGTH];
     }
 
-    throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "not ended by COMMIT_MARK nor PREPARE_MARK.");
+    throw new SchemaFileLogCorrupted(
+        logFile.getAbsolutePath(), "not ended by COMMIT_MARK nor PREPARE_MARK.");
   }
 
   public void close() throws IOException {

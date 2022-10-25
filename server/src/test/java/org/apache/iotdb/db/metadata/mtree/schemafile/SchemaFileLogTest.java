@@ -19,25 +19,16 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,17 +37,11 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.channels.FileChannel;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
 
-import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.addNodeToUpdateBuffer;
-import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getMeasurementNode;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getSegAddrInContainer;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getTreeBFT;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.virtualTriangleMTree;
@@ -84,7 +69,8 @@ public class SchemaFileLogTest {
 
   @Test
   public void essentialLogTest() throws IOException, MetadataException {
-    SchemaFile sf = (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
+    SchemaFile sf =
+        (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
     sf.updateStorageGroupNode(newSGNode);
 
@@ -103,8 +89,9 @@ public class SchemaFileLogTest {
     long address = getSegAddrInContainer(lastNode);
     int corruptPageIndex = SchemaFile.getPageIndex(address);
 
-    ISchemaPage corPage = ISchemaPage.initSegmentedPage(
-        ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), corruptPageIndex);
+    ISchemaPage corPage =
+        ISchemaPage.initSegmentedPage(
+            ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), corruptPageIndex);
 
     // record number of children now
     Iterator<IMNode> res = sf.getChildren(lastNode);
@@ -144,7 +131,8 @@ public class SchemaFileLogTest {
     FileOutputStream outputStream = null;
     FileChannel channel;
     try {
-      File logFile = new File("target\\tmp\\system\\schema\\root.test.vRoot1\\0\\schema_file_log.bin");
+      File logFile =
+          new File("target\\tmp\\system\\schema\\root.test.vRoot1\\0\\schema_file_log.bin");
       outputStream = new FileOutputStream(logFile, true);
       channel = outputStream.getChannel();
       System.out.println("now");
@@ -164,5 +152,4 @@ public class SchemaFileLogTest {
     Assert.assertEquals(cnt, cnt2);
     sf.close();
   }
-
 }

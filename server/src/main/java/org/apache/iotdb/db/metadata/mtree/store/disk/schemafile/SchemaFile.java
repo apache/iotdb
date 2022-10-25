@@ -25,14 +25,11 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogSerializer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
@@ -83,11 +80,8 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
-    String folderPath =  SchemaFileConfig.SCHEMA_FOLDER
-        + File.separator
-        + sgName
-        + File.separator
-        + schemaRegionId;
+    String folderPath =
+        SchemaFileConfig.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId;
 
     this.storageGroupName = sgName;
     this.filePath = folderPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;

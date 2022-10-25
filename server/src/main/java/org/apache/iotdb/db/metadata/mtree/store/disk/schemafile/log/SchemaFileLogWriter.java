@@ -27,17 +27,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A specialisation of {@linkplain SchemaLogWriter} for integrity of SchemaFile, acting like a redo log as in InnoDB.
+ * A specialisation of {@linkplain SchemaLogWriter} for integrity of SchemaFile, acting like a redo
+ * log as in InnoDB.
  */
 public class SchemaFileLogWriter extends SchemaLogWriter<ISchemaPage> {
 
   // TODO: improve if the following considered as waste
   public static final ISchemaPage PREPARE_MARK =
-      ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE),
-          SchemaFileConfig.SF_PREPARE_MARK);
+      ISchemaPage.initSegmentedPage(
+          ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE), SchemaFileConfig.SF_PREPARE_MARK);
   public static final ISchemaPage COMMIT_MARK =
-      ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE),
-          SchemaFileConfig.SF_COMMIT_MARK);
+      ISchemaPage.initSegmentedPage(
+          ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE), SchemaFileConfig.SF_COMMIT_MARK);
   public static final SchemaFileLogSerializer SERIALIZER = new SchemaFileLogSerializer();
 
   private final String logPath;
