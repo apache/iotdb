@@ -53,7 +53,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
-public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
+public class IoTDBJDBCResultSet implements ResultSet {
 
   protected Statement statement;
   protected SQLWarning warningChain = null;
@@ -61,7 +61,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
-  private BitSet aliasColumnMap;
+
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
@@ -102,7 +102,6 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
             aliasColumnMap);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
-    this.aliasColumnMap = aliasColumnMap;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -284,7 +283,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
     try {
-      return getBoolean(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getBoolean(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -471,14 +470,8 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     String operationType = "";
     boolean nonAlign = false;
     try {
-      if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
-        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
-      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
-        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
-        nonAlign = true;
-      }
+      operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+      this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
     } catch (SQLException throwables) {
       throwables.printStackTrace();
     }
@@ -757,7 +750,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   }
 
   /** @return true means has results */
-  protected boolean fetchResults() throws SQLException {
+  private boolean fetchResults() throws SQLException {
     try {
       return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
@@ -765,7 +758,6 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
   }
 
-  @Override
   boolean hasCachedResults() {
     return hasCachedBlock() || hasCachedByteBuffer();
   }
@@ -1235,14 +1227,6 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   public boolean wasNull() {
     return ioTDBRpcDataSet.lastReadWasNull;
   }
-
-  protected void checkRecord() throws SQLException {
-    try {
-      ioTDBRpcDataSet.checkRecord();
-    } catch (StatementExecutionException e) {
-      throw new SQLException(e.getMessage());
-    }
-  };
 
   protected String getValueByName(String columnName) throws SQLException {
     try {

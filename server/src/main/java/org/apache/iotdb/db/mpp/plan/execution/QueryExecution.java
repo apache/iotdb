@@ -347,8 +347,7 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
-  private Optional<Object> getResult(ISourceHandleSupplier<Object> dataSupplier)
-      throws IoTDBException {
+  private <T> Optional<T> getResult(ISourceHandleSupplier<T> dataSupplier) throws IoTDBException {
     checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
@@ -373,7 +372,7 @@ public class QueryExecution implements IQueryExecution {
         blocked.get();
         if (!resultHandle.isFinished()) {
           // use the getSerializedTsBlock instead of receive to get ByteBuffer result
-          Object res = dataSupplier.get();
+          T res = dataSupplier.get();
           if (res == null) {
             continue;
           }
@@ -403,14 +402,20 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public Optional<TsBlock> getBatchResult() throws IoTDBException {
-    Optional<Object> res = getResult(() -> resultHandle.receive());
-    return res.map(o -> (TsBlock) o);
+    return getResult(this::getDeserializedTsBlock);
+  }
+
+  private TsBlock getDeserializedTsBlock() {
+    return resultHandle.receive();
   }
 
   @Override
   public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
-    Optional<Object> res = getResult(() -> resultHandle.getSerializedTsBlock());
-    return res.map(o -> (ByteBuffer) o);
+    return getResult(this::getSerializedTsBlock);
+  }
+
+  private ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    return resultHandle.getSerializedTsBlock();
   }
 
   /** @return true if there is more tsblocks, otherwise false */
