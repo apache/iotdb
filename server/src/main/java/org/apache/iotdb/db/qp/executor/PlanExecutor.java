@@ -508,13 +508,21 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance()
-        .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    try {
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
   private boolean operateDropFunction(DropFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance().deregister(plan.getUdfName(), false);
+    try {
+      UDFManagementService.getInstance().deregister(plan.getUdfName(), false);
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
