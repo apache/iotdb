@@ -116,23 +116,26 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)) {
+
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
           logWriter.force();
         } catch (IOException e) {
-          LOGGER.error("Can't force logWrite", e);
+          LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
         }
         for (int retry = 0; retry < 5; retry++) {
           try {
             logWriter.close();
           } catch (IOException e) {
-            LOGGER.warn("Can't close StandAloneLog: {}, retrying...", logFile.getAbsolutePath());
+            LOGGER.warn("Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
+                    logFile.getAbsolutePath(), retry);
             try {
               // Sleep 1s and retry
               TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException ignored) {
-              // Ignore and retry
+            } catch (InterruptedException e2) {
+              Thread.currentThread().interrupt();
+              LOGGER.warn("Unexpected interruption during the close method of logWriter");
             }
             continue;
           }
@@ -140,33 +143,17 @@ public class PartitionRegionStateMachine
         }
         createLogFile(logFileId + 1);
       }
+
       try {
         ByteBuffer buffer = plan.serializeToByteBuffer();
         // The method logWriter.write will execute flip() firstly, so we must make position==limit
         buffer.position(buffer.limit());
         logWriter.write(buffer);
       } catch (IOException e) {
-        LOGGER.error("can't serialize current ConfigPhysicalPlan", e);
+        LOGGER.error("can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
       }
     }
     return result;
-  }
-
-  private void createLogFile(int logFileId) {
-    logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
-    try {
-      if (logFile.createNewFile()) {
-        logWriter = new LogWriter(logFile, false);
-        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException ignored) {
-        // Ignore and retry
-      }
-    }
   }
 
   @Override
@@ -247,43 +234,6 @@ public class PartitionRegionStateMachine
     }
   }
 
-  private void initStandAloneConfigNode() {
-    String[] list = new File(fileDir).list();
-    if (list != null && list.length != 0) {
-      for (String logFileName : list) {
-        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
-        SingleFileLogReader logReader;
-        try {
-          logReader = new SingleFileLogReader(logFile);
-        } catch (FileNotFoundException e) {
-          LOGGER.error(
-              "OperationSyncProtector can't open OperationSyncLog: {}, discarded",
-              logFile.getAbsolutePath(),
-              e);
-          continue;
-        }
-        while (logReader.hasNext()) {
-          // read and re-serialize the PhysicalPlan
-          ConfigPhysicalPlan nextPlan = logReader.next();
-          try {
-            executor.executeNonQueryPlan(nextPlan);
-          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
-            LOGGER.error(e.getMessage());
-          }
-        }
-        logReader.close();
-      }
-    }
-    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath);
-      if (!file.exists()) {
-        logFileId = ID;
-        break;
-      }
-    }
-    createLogFile(logFileId);
-  }
-
   @Override
   public void stop() {
     // do nothing
@@ -310,5 +260,59 @@ public class PartitionRegionStateMachine
   public long getSleepTime() {
     // TODO implement this
     return RetryPolicy.super.getSleepTime();
+  }
+
+  private void initStandAloneConfigNode() {
+    String[] list = new File(fileDir).list();
+    if (list != null && list.length != 0) {
+      for (String logFileName : list) {
+        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+        SingleFileLogReader logReader;
+        try {
+          logReader = new SingleFileLogReader(logFile);
+        } catch (FileNotFoundException e) {
+          LOGGER.error(
+                  "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+                  logFile.getAbsolutePath(),
+                  e);
+          continue;
+        }
+        while (logReader.hasNext()) {
+          // read and re-serialize the PhysicalPlan
+          ConfigPhysicalPlan nextPlan = logReader.next();
+          try {
+            executor.executeNonQueryPlan(nextPlan);
+          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+            LOGGER.error(e.getMessage());
+          }
+        }
+        logReader.close();
+      }
+    }
+    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
+      File file = SystemFileFactory.INSTANCE.getFile(filePath);
+      if (!file.exists()) {
+        logFileId = ID;
+        break;
+      }
+    }
+    createLogFile(logFileId);
+  }
+
+  private void createLogFile(int logFileId) {
+    logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
+    try {
+      if (logFile.createNewFile()) {
+        logWriter = new LogWriter(logFile, false);
+        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException ignored) {
+        // Ignore and retry
+      }
+    }
   }
 }
