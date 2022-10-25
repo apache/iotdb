@@ -21,14 +21,18 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogSerializer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +58,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_CACHE_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_INDEX_MASK;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_LENGTH;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SCHEMA_FILE_LOG_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
@@ -82,17 +87,22 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
-  PageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
+  private final AtomicInteger logCounter;
+  private SchemaFileLogWriter logWriter;
+
+  PageManager(FileChannel channel, int lastPageIndex, String logPath) throws IOException, MetadataException {
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
-    lastPageIndex = lpi >= 0 ? new AtomicInteger(lpi) : new AtomicInteger(0);
+    this.lastPageIndex = lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     treeTrace = new int[16];
     this.channel = channel;
+    this.logWriter = new SchemaFileLogWriter(logPath);
+    logCounter = new AtomicInteger(0);
 
     // construct first page if file to init
-    if (lpi < 0) {
+    if (lastPageIndex < 0) {
       ISegmentedPage rootPage = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), 0);
       rootPage.allocNewSegment(SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
@@ -353,6 +363,20 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void flushDirtyPages() throws IOException {
+    // TODO: better performance expected while ensuring integrity when exception interrupts
+    if (logCounter.get() > SCHEMA_FILE_LOG_SIZE) {
+      logWriter = logWriter.renew();
+      logCounter.set(0);
+    }
+
+    logCounter.addAndGet(dirtyPages.size());
+    for (ISchemaPage page : dirtyPages.values()) {
+      page.syncPageBuffer();
+      logWriter.write(page);
+    }
+    logWriter.force();
+    logWriter.commit();
+
     for (ISchemaPage page : dirtyPages.values()) {
       page.flushPageToChannel(channel);
     }
@@ -364,6 +388,7 @@ public abstract class PageManager implements IPageManager {
     dirtyPages.clear();
     pageInstCache.clear();
     lastPageIndex.set(0);
+    logWriter.clear();
   }
 
   @Override
@@ -372,6 +397,11 @@ public abstract class PageManager implements IPageManager {
       builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
     }
     return builder;
+  }
+
+  @Override
+  public void close() throws IOException {
+    logWriter.close();
   }
 
   // endregion

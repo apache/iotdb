@@ -20,10 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
+import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -39,13 +41,9 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getSegIndex;
 
 public class BTreePageManager extends PageManager {
-  private BTreePageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
-    super(channel, lpi);
-  }
 
-  public static IPageManager getBTreePageManager(FileChannel channel, int lastPageIdx)
-      throws IOException, MetadataException {
-    return new BTreePageManager(channel, lastPageIdx);
+  public BTreePageManager(FileChannel channel, int lastPageIndex, String logPath) throws IOException, MetadataException {
+    super(channel, lastPageIndex, logPath);
   }
 
   @Override

@@ -34,6 +34,10 @@ public class SchemaFileConfig {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .getPageCacheSizeInSchemaFile(); // size of page cache
+
+  // size of page within one redo log, restricting log under 1GB
+  public static final int SCHEMA_FILE_LOG_SIZE = 256 * 256;
+
   // endregion
 
   // region Page Configuration
