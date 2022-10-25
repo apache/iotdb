@@ -23,6 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,11 +41,17 @@ public class UnsetTemplateProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     String queryId = "1";
-    int templateId = 1;
-    String templateName = "template1";
+    Template template = new Template();
+    template.setId(0);
+    template.setName("t1");
+    template.addUnalignedMeasurements(
+        new String[] {"s1", "s2"},
+        new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
+        new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
+        new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
     PartialPath path = new PartialPath("root.sg");
     UnsetTemplateProcedure unsetTemplateProcedure =
-        new UnsetTemplateProcedure(queryId, templateId, templateName, path);
+        new UnsetTemplateProcedure(queryId, template, path);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -56,8 +66,10 @@ public class UnsetTemplateProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());
-    Assert.assertEquals(templateId, deserializedProcedure.getTemplateId());
-    Assert.assertEquals(templateName, deserializedProcedure.getTemplateName());
+    Assert.assertEquals(template.getId(), deserializedProcedure.getTemplateId());
+    Assert.assertEquals(template.getName(), deserializedProcedure.getTemplateName());
+    Assert.assertEquals(
+        template.getSchemaMap(), deserializedProcedure.getTemplate().getSchemaMap());
     Assert.assertEquals(path, deserializedProcedure.getPath());
   }
 }

@@ -1076,10 +1076,7 @@ public class ConfigManager implements IManager {
     if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
         return procedureManager.unsetSchemaTemplate(
-            req.getQueryId(),
-            checkResult.right.getId(),
-            checkResult.right.getName(),
-            new PartialPath(req.getPath()));
+            req.getQueryId(), checkResult.right, new PartialPath(req.getPath()));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }

@@ -256,8 +256,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus unsetSchemaTemplate(
-      String queryId, int templateId, String templateName, PartialPath path) {
+  public TSStatus unsetSchemaTemplate(String queryId, Template template, PartialPath path) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -273,7 +272,7 @@ public class ProcedureManager {
           procedureId = unsetTemplateProcedure.getProcId();
           break;
         }
-        if (templateId == unsetTemplateProcedure.getTemplateId()
+        if (template.getId() == unsetTemplateProcedure.getTemplateId()
             && path.equals(unsetTemplateProcedure.getPath())) {
           hasOverlappedTask = true;
         }
@@ -289,8 +288,7 @@ public class ProcedureManager {
               "Some other task is unsetting target template from target path.");
         }
         procedureId =
-            this.executor.submitProcedure(
-                new UnsetTemplateProcedure(queryId, templateId, templateName, path));
+            this.executor.submitProcedure(new UnsetTemplateProcedure(queryId, template, path));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
