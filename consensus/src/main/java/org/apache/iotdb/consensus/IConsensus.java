@@ -107,9 +107,7 @@ public interface IConsensus {
    */
   ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
 
-  /**
-   * Call this method on any member of originalGroup
-   */
+  /** Call this method on any member of originalGroup */
   default ConsensusGenericResponse addNewNodeToExistedGroup(
       ConsensusGroupId groupId, Peer newNode, List<Peer> originalGroup) {
     return ConsensusGenericResponse.newBuilder()
