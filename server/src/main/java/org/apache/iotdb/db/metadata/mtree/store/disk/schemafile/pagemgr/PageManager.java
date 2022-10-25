@@ -364,6 +364,10 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void flushDirtyPages() throws IOException {
+    if (dirtyPages.size() == 0) {
+      return;
+    }
+
     // TODO: better performance expected while ensuring integrity when exception interrupts
     if (logCounter.get() > SCHEMA_FILE_LOG_SIZE) {
       logWriter = logWriter.renew();
@@ -375,12 +379,12 @@ public abstract class PageManager implements IPageManager {
       page.syncPageBuffer();
       logWriter.write(page);
     }
-    logWriter.force();
-    logWriter.commit();
+    logWriter.prepare();
 
     for (ISchemaPage page : dirtyPages.values()) {
       page.flushPageToChannel(channel);
     }
+    logWriter.commit();
     dirtyPages.clear();
   }
 

@@ -35,8 +35,12 @@ public class SchemaFileConfig {
           .getConfig()
           .getPageCacheSizeInSchemaFile(); // size of page cache
 
-  // size of page within one redo log, restricting log under 1GB
+  // size of page within one redo log, restricting log around 1GB
   public static final int SCHEMA_FILE_LOG_SIZE = 256 * 256;
+
+  // marks to note the state of schema file log
+  public static final byte SF_PREPARE_MARK = (byte) 0xfe;
+  public static final byte SF_COMMIT_MARK = (byte) 0xff;
 
   // endregion
 
@@ -75,7 +79,13 @@ public class SchemaFileConfig {
   public static final short[] SEG_SIZE_METRIC = {20, 40, 75, 150, 300};
 
   // formula: (PAGE_LENGTH-PAGE_HEADER)/n - SEG_OFF_DIG
-  public static final short[] SEG_SIZE_LST = {1020,2042,4086,8174,SEG_MAX_SIZ};
+  public static final short[] SEG_SIZE_LST = {
+      (PAGE_LENGTH-PAGE_HEADER_SIZE)/16-SEG_OFF_DIG,
+      (PAGE_LENGTH-PAGE_HEADER_SIZE)/8-SEG_OFF_DIG,
+      (PAGE_LENGTH-PAGE_HEADER_SIZE)/4-SEG_OFF_DIG,
+      (PAGE_LENGTH-PAGE_HEADER_SIZE)/2-SEG_OFF_DIG,
+      SEG_MAX_SIZ
+  };
 
   // endregion
 

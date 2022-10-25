@@ -83,7 +83,7 @@ public abstract class SchemaPage implements ISchemaPage {
   public void flushPageToStream(OutputStream stream) throws IOException {
     if (pageIndex < 0) {
       // mark as check point
-      stream.write(new byte[] {(byte) 0b11111111});
+      stream.write(new byte[] {(byte) pageIndex});
       return;
     }
 

@@ -32,8 +32,12 @@ import java.nio.ByteBuffer;
 public class SchemaFileLogWriter extends SchemaLogWriter<ISchemaPage> {
 
   // TODO: improve if the following considered as waste
+  public static final ISchemaPage PREPARE_MARK =
+      ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE),
+          SchemaFileConfig.SF_PREPARE_MARK);
   public static final ISchemaPage COMMIT_MARK =
-      ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE), -1);
+      ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_HEADER_SIZE),
+          SchemaFileConfig.SF_COMMIT_MARK);
   public static final SchemaFileLogSerializer SERIALIZER = new SchemaFileLogSerializer();
 
   private final String logPath;
@@ -43,8 +47,14 @@ public class SchemaFileLogWriter extends SchemaLogWriter<ISchemaPage> {
     logPath = logFilePath;
   }
 
-  public void commit() throws IOException {
+  public synchronized void prepare() throws IOException {
     // mark that all dirty pages had been logged during a flush
+    write(PREPARE_MARK);
+    force();
+  }
+
+  public synchronized void commit() throws IOException {
+    // all dirty pages had been flushed correctly, entries before this is disposable now
     write(COMMIT_MARK);
     force();
   }
