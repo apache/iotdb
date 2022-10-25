@@ -135,11 +135,19 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
     try {
+      TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
       new TsFileSplitter(
-              node.getTsFileResource().getTsFile(),
-              new TsFileDataManager(this, node)::addOrSendTsFileData)
+              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
           .splitTsFileByDataPartition();
+      if (!tsFileDataManager.sendAllTsFileData()) {
+        return false;
+      }
     } catch (IllegalStateException e) {
+      logger.error(
+          String.format(
+              "Dispatch TsFileData error when parsing TsFile %s.",
+              node.getTsFileResource().getTsFile()),
+          e);
       return false;
     } catch (Exception e) {
       stateMachine.transitionToFailed(e);
@@ -353,6 +361,19 @@ public class LoadTsFileScheduler implements IScheduler {
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         dataSize += deletionData.getDataSize();
         entry.getValue().addTsFileData(deletionData);
+      }
+      return true;
+    }
+
+    private boolean sendAllTsFileData() {
+      for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
+        if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
+          logger.error(
+              String.format(
+                  "Dispatch piece node %s of TsFile %s error.",
+                  entry.getValue(), singleTsFileNode.getTsFileResource().getTsFile()));
+          return false;
+        }
       }
       return true;
     }

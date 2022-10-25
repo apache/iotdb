@@ -40,7 +40,7 @@ public class DeletionData implements TsFileData {
 
   @Override
   public long getDataSize() {
-    return 0;
+    return Long.BYTES;
   }
 
   @Override

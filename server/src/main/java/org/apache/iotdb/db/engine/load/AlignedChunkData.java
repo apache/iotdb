@@ -128,7 +128,7 @@ public class AlignedChunkData implements ChunkData {
 
   @Override
   public long getDataSize() {
-    return dataSize.stream().mapToLong(o -> o).sum();
+    return totalDataSize;
   }
 
   @Override
@@ -302,6 +302,7 @@ public class AlignedChunkData implements ChunkData {
 
   public void writeDecodeValuePage(long[] times, TsPrimitiveType[] values, TSDataType dataType)
       throws IOException {
+    pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     long startTime = timePartitionSlot.getStartTime();
     long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
     int satisfiedLength = satisfiedLengthQueue.poll();
