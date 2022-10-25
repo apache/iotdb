@@ -108,7 +108,7 @@ public class UDFManager {
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TDropFunctionInstanceReq request = new TDropFunctionInstanceReq(functionName);
+    final TDropFunctionInstanceReq request = new TDropFunctionInstanceReq(functionName, false);
 
     AsyncClientHandler<TDropFunctionInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
