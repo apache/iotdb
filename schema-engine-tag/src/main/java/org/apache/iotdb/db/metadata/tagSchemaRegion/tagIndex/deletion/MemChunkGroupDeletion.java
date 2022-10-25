@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionReq
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 
 import java.util.ArrayList;

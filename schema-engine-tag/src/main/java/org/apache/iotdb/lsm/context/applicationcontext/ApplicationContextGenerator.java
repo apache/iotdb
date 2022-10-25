@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.property;
+package org.apache.iotdb.lsm.context.applicationcontext;
 
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
@@ -31,60 +31,89 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class PropertyGenerator {
+/** Used to generate ApplicationContext object based on annotations or configuration files */
+public class ApplicationContextGenerator {
 
-  public static Property GeneratePropertyWithAnnotation(String packageName) {
+  /**
+   * Scan the package to get all classes, and generate ApplicationContext object based on the
+   * annotations of these classes
+   *
+   * @param packageName package name
+   * @return ApplicationContext object
+   */
+  public static ApplicationContext GeneratePropertyWithAnnotation(String packageName) {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()
                 .forPackage(packageName)
                 .filterInputsBy(new FilterBuilder().includePackage(packageName)));
-    Property property = new Property();
-    setDeletionLevelProcess(property, reflections);
-    setInsertionLevelProcess(property, reflections);
-    setQueryLevelProcess(property, reflections);
-    return property;
+    ApplicationContext applicationContext = new ApplicationContext();
+    setDeletionLevelProcessor(applicationContext, reflections);
+    setInsertionLevelProcessor(applicationContext, reflections);
+    setQueryLevelProcessor(applicationContext, reflections);
+    return applicationContext;
   }
 
-  private static void setInsertionLevelProcess(Property property, Reflections reflections) {
+  /**
+   * Assign value to the insertion level processor of the ApplicationContext object
+   *
+   * @param applicationContext ApplicationContext object
+   * @param reflections This object holds all the classes scanned in the package
+   */
+  private static void setInsertionLevelProcessor(
+      ApplicationContext applicationContext, Reflections reflections) {
     Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(InsertionProcessor.class);
     List<String> levelProcessClass = new ArrayList<>();
     for (Class<?> clz : annotated) {
       InsertionProcessor annotationInfo = clz.getAnnotation(InsertionProcessor.class);
       setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
-    property.setInsertionLevelProcessClass(levelProcessClass);
+    applicationContext.setInsertionLevelProcessClass(levelProcessClass);
   }
 
-  private static void setDeletionLevelProcess(Property property, Reflections reflections) {
+  /**
+   * Assign value to the deletion level processor of the ApplicationContext object
+   *
+   * @param applicationContext ApplicationContext object
+   * @param reflections This object holds all the classes scanned in the package
+   */
+  private static void setDeletionLevelProcessor(
+      ApplicationContext applicationContext, Reflections reflections) {
     Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(DeletionProcessor.class);
     List<String> levelProcessClass = new ArrayList<>();
     for (Class<?> clz : annotated) {
       DeletionProcessor annotationInfo = clz.getAnnotation(DeletionProcessor.class);
       setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
-    property.setDeletionLevelProcessClass(levelProcessClass);
+    applicationContext.setDeletionLevelProcessClass(levelProcessClass);
   }
 
-  private static <A extends Annotation> void setQueryLevelProcess(
-      Property property, Reflections reflections) {
+  /**
+   * Assign value to the query level processor of the ApplicationContext object
+   *
+   * @param applicationContext ApplicationContext object
+   * @param reflections This object holds all the classes scanned in the package
+   */
+  private static <A extends Annotation> void setQueryLevelProcessor(
+      ApplicationContext applicationContext, Reflections reflections) {
     List<String> levelProcessClass = new ArrayList<>();
     Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(QueryProcessor.class);
     for (Class<?> clz : annotated) {
       QueryProcessor annotationInfo = clz.getAnnotation(QueryProcessor.class);
       setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
-    property.setQueryLevelProcessClass(levelProcessClass);
+    applicationContext.setQueryLevelProcessClass(levelProcessClass);
   }
 
-  private static void setLevelProcessors(List<String> levelProcessClass, Class<?> clz, int level) {
-    if (level < levelProcessClass.size()) {
-      levelProcessClass.set(level, clz.getName());
+  private static void setLevelProcessors(
+      List<String> levelProcessorClass, Class<?> clz, int level) {
+    if (level < levelProcessorClass.size()) {
+      levelProcessorClass.set(level, clz.getName());
     } else {
-      for (int i = levelProcessClass.size(); i < level; i++) {
-        levelProcessClass.add("");
+      for (int i = levelProcessorClass.size(); i < level; i++) {
+        levelProcessorClass.add("");
       }
-      levelProcessClass.add(clz.getName());
+      levelProcessorClass.add(clz.getName());
     }
   }
 }

@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
 
-/** manage deletion to MemTable */
+/** manage deletion to root memory node */
 public class DeletionManager<T, R extends IDeletionRequest>
     extends BasicLSMManager<T, R, DeleteRequestContext> {
 
@@ -37,7 +37,6 @@ public class DeletionManager<T, R extends IDeletionRequest>
    *
    * @param root root memory node
    * @param context request context
-   * @throws Exception
    */
   @Override
   public void preProcess(T root, R deletionRequest, DeleteRequestContext context) {

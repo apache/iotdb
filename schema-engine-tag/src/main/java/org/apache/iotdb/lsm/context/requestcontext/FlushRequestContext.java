@@ -16,19 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 /**
- * represents the context of a deletion request, this class can be extended to implement a custom
+ * represents the context of a flush request, this class can be extended to implement a custom
  * context
  */
-public class DeleteRequestContext extends RequestContext {
-
-  public DeleteRequestContext() {
+public class FlushRequestContext extends RequestContext {
+  public FlushRequestContext() {
     super();
-    // post-order traversal strategy is used by default
-    accessStrategy = new PostOrderAccessStrategy();
+    // use the reverse breadth-first traversal strategy to access memory nodes
+    accessStrategy = new RBFSAccessStrategy();
   }
 }

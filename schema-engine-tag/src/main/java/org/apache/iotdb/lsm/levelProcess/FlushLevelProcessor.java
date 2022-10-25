@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.FlushRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 
 /** indicates the flush method of each layer of memory nodes */
 public abstract class FlushLevelProcessor<I, O>

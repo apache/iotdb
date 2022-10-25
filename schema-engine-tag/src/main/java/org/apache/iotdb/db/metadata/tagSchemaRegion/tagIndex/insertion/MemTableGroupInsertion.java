@@ -23,17 +23,25 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRe
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
-import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** insertion for MemTableGroup */
 @InsertionProcessor(level = 0)
 public class MemTableGroupInsertion
     extends InsertLevelProcessor<MemTableGroup, MemTable, InsertionRequest> {
 
+  /**
+   * get all MemTable that need to be processed in the current MemTableGroup
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemTables
+   */
   @Override
   public List<MemTable> getChildren(
       MemTableGroup memNode, InsertionRequest request, InsertRequestContext context) {
@@ -42,6 +50,12 @@ public class MemTableGroupInsertion
     return memTables;
   }
 
+  /**
+   * the insert method corresponding to the MemTableGroup node
+   *
+   * @param memNode memory node
+   * @param context insert request context
+   */
   @Override
   public void insert(
       MemTableGroup memNode, InsertionRequest request, InsertRequestContext context) {

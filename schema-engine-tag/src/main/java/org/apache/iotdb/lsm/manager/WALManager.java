@@ -29,7 +29,7 @@ import java.io.IOException;
 /** Manage wal entry writes and reads */
 public abstract class WALManager {
 
-  private final String schemaDirPath;
+  private final String walDirPath;
 
   private File walFile;
 
@@ -42,27 +42,27 @@ public abstract class WALManager {
   private boolean recover;
 
   public WALManager(String schemaDirPath) {
-    this.schemaDirPath = schemaDirPath;
+    this.walDirPath = schemaDirPath;
   }
 
   public WALManager(
-      String schemaDirPath,
+      String walDirPath,
       String walFileName,
       int walBufferSize,
       IWALRecord walRecord,
       boolean forceEachWrite)
       throws IOException {
-    this.schemaDirPath = schemaDirPath;
-    initFile(schemaDirPath, walFileName);
+    this.walDirPath = walDirPath;
+    initFile(walDirPath, walFileName);
     walWriter = new WALWriter(walFile, walBufferSize, forceEachWrite);
     walReader = new WALReader(walFile, walRecord);
     recover = false;
   }
 
-  private void initFile(String schemaDirPath, String walFileName) throws IOException {
-    File schemaDir = new File(schemaDirPath);
+  private void initFile(String walDirPath, String walFileName) throws IOException {
+    File schemaDir = new File(walDirPath);
     schemaDir.mkdirs();
-    walFile = new File(this.schemaDirPath, walFileName);
+    walFile = new File(this.walDirPath, walFileName);
     if (!walFile.exists()) {
       walFile.createNewFile();
     }
@@ -77,7 +77,7 @@ public abstract class WALManager {
   public abstract void write(IRequest request);
 
   /**
-   * for recover
+   * for recover, read a wal record and generate it as a request
    *
    * @return request
    */
@@ -89,7 +89,7 @@ public abstract class WALManager {
   }
 
   public String getSchemaDirPath() {
-    return schemaDirPath;
+    return walDirPath;
   }
 
   public File getWalFile() {

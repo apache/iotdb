@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 
-/** manage insertion to MemTable */
+/** manage insertion to root memory node */
 public class InsertionManager<T, R extends IInsertionRequest>
     extends BasicLSMManager<T, R, InsertRequestContext> {
 
@@ -37,7 +37,6 @@ public class InsertionManager<T, R extends IInsertionRequest>
    *
    * @param root root memory node
    * @param context insert request context
-   * @throws Exception
    */
   @Override
   public void preProcess(T root, R insertionRequest, InsertRequestContext context) {

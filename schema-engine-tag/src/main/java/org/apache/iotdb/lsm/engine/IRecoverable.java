@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.engine;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.lsm.request.IRequest;
 
-/**
- * represents the context of a query request, this class can be extended to implement a custom
- * context
- */
-public class QueryRequestContext extends RequestContext {
+/** Any object implements this interface can be recovered by RecoverManager */
+public interface IRecoverable {
 
-  public QueryRequestContext() {
-    super();
-    // post-order traversal strategy is used by default
-    accessStrategy = new PostOrderAccessStrategy();
-  }
+  /**
+   * Use Request to recover the object which implements the interface
+   *
+   * @param request insertionRequest or deletionRequest
+   * @param <K> The type of key in the request data
+   * @param <V> The type of value in the request data
+   * @param <R> return value type after recover
+   */
+  <K, V, R> void recover(IRequest<K, V, R> request);
 }

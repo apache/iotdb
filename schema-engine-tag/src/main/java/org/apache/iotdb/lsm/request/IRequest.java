@@ -18,19 +18,59 @@
  */
 package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 
 import java.util.List;
 
+/**
+ * Represents a request that can be processed by the lsm framework
+ *
+ * @param <K> The type of each layer key
+ * @param <V> The type of value
+ * @param <R> type of processed result
+ */
 public interface IRequest<K, V, R> {
 
+  /**
+   * Get the key of a layer
+   *
+   * @param context request context
+   * @return the key of the layer
+   */
   K getKey(RequestContext context);
 
+  /**
+   * Get the processed result
+   *
+   * @return the processed result
+   */
   R getResult();
 
+  /**
+   * set processed result
+   *
+   * @param result processed result
+   */
   void setResult(R result);
 
+  /**
+   * get all keys
+   *
+   * @return all keys
+   */
   List<K> getKeys();
 
+  /**
+   * get the value
+   *
+   * @return value of the request
+   */
+  V getValue();
+
+  /**
+   * get request type
+   *
+   * @return request type
+   */
   RequestType getRequestType();
 }

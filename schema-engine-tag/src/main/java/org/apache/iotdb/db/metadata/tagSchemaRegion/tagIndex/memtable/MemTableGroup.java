@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 import java.util.HashMap;
 import java.util.Map;
 
-/** used to manage working and immutableMemTable */
+/** used to manage working and immutableMemTables */
 public class MemTableGroup {
 
   // the maximum number of device ids managed by a working memTable

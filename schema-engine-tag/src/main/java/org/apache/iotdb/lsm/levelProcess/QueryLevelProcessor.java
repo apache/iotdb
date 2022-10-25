@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 
 /** indicates the query method of each layer of memory nodes */
 public abstract class QueryLevelProcessor<I, O, R>

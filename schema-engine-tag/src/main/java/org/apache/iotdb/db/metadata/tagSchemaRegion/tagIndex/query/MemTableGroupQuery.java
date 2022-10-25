@@ -22,14 +22,23 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryReques
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/** query for MemTableGroup */
 @QueryProcessor(level = 0)
 public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTable, QueryRequest> {
+
+  /**
+   * get all MemTable that need to be processed in the current MemTableGroup
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemTable
+   */
   @Override
   public List<MemTable> getChildren(
       MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {
@@ -39,6 +48,12 @@ public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTa
     return memTables;
   }
 
+  /**
+   * the query method corresponding to the MemTable node, do nothing
+   *
+   * @param memNode memory node
+   * @param context query request context
+   */
   @Override
   public void query(MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {}
 }

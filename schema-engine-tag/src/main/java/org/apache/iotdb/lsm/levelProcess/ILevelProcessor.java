@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 
 /** the processing method corresponding to each layer of memory nodes */
 public interface ILevelProcessor<I, O, R, C extends RequestContext> {

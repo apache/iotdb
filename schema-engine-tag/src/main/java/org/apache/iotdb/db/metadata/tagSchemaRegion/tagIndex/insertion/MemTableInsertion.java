@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRe
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
-import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
 import java.util.ArrayList;

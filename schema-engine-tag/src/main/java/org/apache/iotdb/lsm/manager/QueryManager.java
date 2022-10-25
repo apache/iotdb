@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 
-/** manage query to MemTable */
+/** manage query to root memory node */
 public class QueryManager<T, R extends IQueryRequest>
     extends BasicLSMManager<T, R, QueryRequestContext> {
   @Override

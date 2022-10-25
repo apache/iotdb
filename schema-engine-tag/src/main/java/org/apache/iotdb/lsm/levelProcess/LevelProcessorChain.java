@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.request.IRequest;
 
+/** Save the level processor of each layer in hierarchical order */
 public class LevelProcessorChain<T, R extends IRequest, C extends RequestContext> {
 
   // the level process of the first layer of memory nodes
@@ -31,6 +32,13 @@ public class LevelProcessorChain<T, R extends IRequest, C extends RequestContext
     return next;
   }
 
+  /**
+   * Use the level processor of each layer to process memory nodes
+   *
+   * @param memNode memory node
+   * @param request extends IRequest
+   * @param context extends RequestContext
+   */
   public void process(T memNode, R request, C context) {
     headLevelProcess.process(memNode, request, context);
   }

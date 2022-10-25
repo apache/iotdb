@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 
 /** indicates the insertion method of each layer of memory nodes */
 public abstract class InsertLevelProcessor<I, O, R>

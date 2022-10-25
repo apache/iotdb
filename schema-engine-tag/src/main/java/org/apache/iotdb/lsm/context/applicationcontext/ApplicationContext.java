@@ -16,16 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.property;
+package org.apache.iotdb.lsm.context.applicationcontext;
 
 import java.util.List;
 
-public class Property {
+/**
+ * Indicates the information of a user program, the user can customize the configuration startup
+ * information, and the lsm framework can use this information to generate the lsm engine
+ */
+public class ApplicationContext {
 
+  // Save the insertion level processor of each layer in hierarchical order
   List<String> insertionLevelProcessClass;
 
+  // Save the deletion level processor of each layer in hierarchical order
   List<String> deletionLevelProcessClass;
 
+  // Save the query level processor of each layer in hierarchical order
   List<String> queryLevelProcessClass;
 
   public List<String> getInsertionLevelProcessClass() {

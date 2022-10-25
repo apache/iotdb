@@ -41,17 +41,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/** tag inverted index, tag is <tagkey,tagValue> and id is int32 auto increment id */
 public class TagInvertedIndex implements ITagInvertedIndex {
 
+  // This file records the wal log
   private static final String WAL_FILE_NAME = "tag_inverted_index.log";
 
   private static final Logger logger = LoggerFactory.getLogger(TagInvertedIndex.class);
 
+  // Manage configuration information of tag schema region
   private static final TagSchemaConfig tagSchemaConfig =
       TagSchemaDescriptor.getInstance().getTagSchemaConfig();
 
+  // Directly use the lsm engine that comes with the lsm framework to implement the tag inverted
+  // index
   LSMEngine<MemTableGroup> lsmEngine;
 
+  /**
+   * initialization method
+   *
+   * @param schemaDirPath schema dirPath
+   */
   public TagInvertedIndex(String schemaDirPath) {
     try {
       WALManager walManager =
@@ -61,20 +71,30 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               tagSchemaConfig.getWalBufferSize(),
               new WALEntry(),
               false);
+      // root memory node, used to manage working and immutableMemTables
       MemTableGroup memTableGroup =
           new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable());
-      LSMEngineBuilder<MemTableGroup> lsmEngineBuilder = new LSMEngineBuilder<>();
+
+      // build lsm engine
       lsmEngine =
-          lsmEngineBuilder
+          new LSMEngineBuilder<MemTableGroup>()
               .buildLSMManagers("org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex", walManager)
               .buildRootMemNode(memTableGroup)
               .build();
+
+      // recover the lsm engine
       lsmEngine.recover();
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
   }
 
+  /**
+   * insert tags and device id
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @param id INT32 device id
+   */
   @Override
   public synchronized void addTags(Map<String, String> tags, int id) {
     try {
@@ -88,6 +108,12 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     }
   }
 
+  /**
+   * delete tags and id using delete request context
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @param id INT32 device id
+   */
   @Override
   public synchronized void removeTags(Map<String, String> tags, int id) {
     try {
@@ -101,6 +127,12 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     }
   }
 
+  /**
+   * get all matching device ids
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @return
+   */
   @Override
   public synchronized List<Integer> getMatchedIDs(Map<String, String> tags) {
     RoaringBitmap roaringBitmap = new RoaringBitmap();
@@ -121,6 +153,13 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
   }
 
+  /**
+   * Generate the keys in the request
+   *
+   * @param tagKey tag key
+   * @param tagValue tag value
+   * @return keys
+   */
   private List<String> generateKeys(String tagKey, String tagValue) {
     List<String> keys = new ArrayList<>();
     keys.add(tagKey);
@@ -128,12 +167,25 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     return keys;
   }
 
-  private RoaringBitmap getMatchedIDs(String tagKey, String tagValue) throws Exception {
+  /**
+   * Get ids matching the tag
+   *
+   * @param tagKey tag key
+   * @param tagValue tag value
+   * @return roaring bitmap
+   */
+  private RoaringBitmap getMatchedIDs(String tagKey, String tagValue) {
     QueryRequest queryRequest = new QueryRequest(generateKeys(tagKey, tagValue));
     lsmEngine.query(queryRequest);
     return queryRequest.getResult();
   }
 
+  /**
+   * Close all open resources
+   *
+   * @throws IOException
+   */
+  @Override
   @TestOnly
   public void clear() throws IOException {
     lsmEngine.clear();

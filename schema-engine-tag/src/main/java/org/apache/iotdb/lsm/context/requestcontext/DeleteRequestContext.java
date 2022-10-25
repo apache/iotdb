@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
+import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
 
 /**
- * represents the context of a insertion request, this class can be extended to implement a custom
+ * represents the context of a deletion request, this class can be extended to implement a custom
  * context
  */
-public class InsertRequestContext extends RequestContext {
+public class DeleteRequestContext extends RequestContext {
 
-  public InsertRequestContext() {
+  public DeleteRequestContext() {
     super();
-    // preorder traversal strategy is used by default
-    accessStrategy = new PreOrderAccessStrategy();
+    // post-order traversal strategy is used by default
+    accessStrategy = new PostOrderAccessStrategy();
   }
 }

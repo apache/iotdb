@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.lsm.context.requestcontext;
 
 import org.apache.iotdb.lsm.strategy.IAccessStrategy;
 import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;

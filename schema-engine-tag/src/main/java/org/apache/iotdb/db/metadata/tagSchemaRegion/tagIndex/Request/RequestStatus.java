@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
+/** Indicates the status of the request, whether it is successful after the request is processed */
 public class RequestStatus {
 
   Boolean success;

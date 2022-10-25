@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.lsm.request;
 
+/** Represents a insertion request that can be processed by the lsm framework */
 public interface IInsertionRequest<K, V, R> extends IRequest<K, V, R> {
 
   RequestType requestType = RequestType.INSERT;
-
-  V getValue();
 
   @Override
   default RequestType getRequestType() {

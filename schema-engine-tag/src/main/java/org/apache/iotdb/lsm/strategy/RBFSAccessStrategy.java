@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.strategy;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcessor;
 
 import java.util.List;

@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryReques
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
-import org.apache.iotdb.lsm.context.QueryRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
 import java.util.ArrayList;

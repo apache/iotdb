@@ -16,11 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.recover;
+package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.lsm.request.IRequest;
+import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
-public interface IRecoverable {
+/**
+ * represents the context of a insertion request, this class can be extended to implement a custom
+ * context
+ */
+public class InsertRequestContext extends RequestContext {
 
-  <K, V, R> void recover(IRequest<K, V, R> Request);
+  public InsertRequestContext() {
+    super();
+    // preorder traversal strategy is used by default
+    accessStrategy = new PreOrderAccessStrategy();
+  }
 }

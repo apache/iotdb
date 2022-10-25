@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -47,4 +50,12 @@ public interface ITagInvertedIndex {
    * @return device ids
    */
   List<Integer> getMatchedIDs(Map<String, String> tags);
+
+  /**
+   * Close all open resources
+   *
+   * @throws IOException
+   */
+  @TestOnly
+  void clear() throws IOException;
 }

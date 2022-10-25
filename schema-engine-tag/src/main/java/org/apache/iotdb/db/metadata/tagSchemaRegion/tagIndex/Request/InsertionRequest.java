@@ -18,17 +18,21 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 
 import java.util.List;
 
+/** Represents a insertion request */
 public class InsertionRequest implements IInsertionRequest<String, Integer, RequestStatus> {
 
+  // tags
   List<String> keys;
 
+  // int32 id
   int value;
 
+  // insertion result
   RequestStatus requestStatus;
 
   public InsertionRequest() {

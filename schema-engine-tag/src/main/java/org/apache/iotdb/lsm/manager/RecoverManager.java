@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.recover.IRecoverable;
+import org.apache.iotdb.lsm.engine.IRecoverable;
 import org.apache.iotdb.lsm.request.IRequest;
 
 /** for memory structure recovery */
@@ -34,7 +34,7 @@ public class RecoverManager<T extends IRecoverable> {
   /**
    * recover
    *
-   * @param t
+   * @param t extends IRecoverable
    */
   public void recover(T t) {
     while (true) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.request;
 
+/** Indicates the request type of request */
 public enum RequestType {
   NONE,
   INSERT,

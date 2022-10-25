@@ -22,15 +22,24 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionReq
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
-import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/** deletion for MemTableGroup */
 @DeletionProcessor(level = 0)
 public class MemTableGroupDeletion
     extends DeleteLevelProcessor<MemTableGroup, MemTable, DeletionRequest> {
+
+  /**
+   * get all MemTables that need to be processed in the current MemTableGroup
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemTables
+   */
   @Override
   public List<MemTable> getChildren(
       MemTableGroup memNode, DeletionRequest request, DeleteRequestContext context) {
@@ -45,6 +54,12 @@ public class MemTableGroupDeletion
     return memTables;
   }
 
+  /**
+   * the delete method corresponding to the MemTableGroup node, do nothing
+   *
+   * @param memNode memory node
+   * @param context deletion request context
+   */
   @Override
   public void delete(
       MemTableGroup memNode, DeletionRequest request, DeleteRequestContext context) {}

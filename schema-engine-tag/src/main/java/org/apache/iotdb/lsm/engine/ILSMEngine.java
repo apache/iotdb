@@ -28,22 +28,45 @@ import java.io.IOException;
 /**
  * This interface defines the appearance of the LSM framework and provides read and write methods
  */
-public interface ILSMEngine {
+public interface ILSMEngine extends IRecoverable {
 
   /**
-   * @param insertionRequest
-   * @param <K>
-   * @param <V>
-   * @param <R>
+   * Use this ILSMEngine to insert data
+   *
+   * @param insertionRequest Encapsulates the data to be inserted
+   * @param <K> The type of key in the request data
+   * @param <V> The type of value in the request data
+   * @param <R> return value type after insertion
    */
   <K, V, R> void insert(IInsertionRequest<K, V, R> insertionRequest);
 
+  /**
+   * Use this ILSMEngine to query
+   *
+   * @param queryRequest Encapsulates query data
+   * @param <K> The type of key in the request data
+   * @param <R> return value type after query
+   */
   <K, R> void query(IQueryRequest<K, R> queryRequest);
 
+  /**
+   * Use this ILSMEngine to delete data
+   *
+   * @param deletionRequest Encapsulates the data to be deleted
+   * @param <K> The type of key in the request data
+   * @param <V> The type of value in the request data
+   * @param <R> return value type after deletion
+   */
   <K, V, R> void delete(IDeletionRequest<K, V, R> deletionRequest);
 
+  /** recover the ILSMEngine */
   void recover();
 
+  /**
+   * Close all open resources
+   *
+   * @throws IOException
+   */
   @TestOnly
   void clear() throws IOException;
 }

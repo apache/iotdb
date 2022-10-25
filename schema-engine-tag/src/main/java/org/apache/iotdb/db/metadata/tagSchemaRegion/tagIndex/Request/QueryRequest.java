@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
-import org.apache.iotdb.lsm.context.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.util.List;
 
+/** Represents a query request */
 public class QueryRequest implements IQueryRequest<String, RoaringBitmap> {
 
+  // tags
   List<String> keys;
 
+  // Query results, encapsulating ids
   RoaringBitmap roaringBitmap;
 
   public QueryRequest(List<String> keys) {
