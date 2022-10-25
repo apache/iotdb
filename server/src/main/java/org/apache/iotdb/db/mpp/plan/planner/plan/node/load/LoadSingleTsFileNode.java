@@ -78,27 +78,31 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
   private File tsFile;
+  private TsFileResource resource;
   private boolean needDecodeTsFile;
+  private boolean deleteAfterLoad;
 
   private Map<TRegionReplicaSet, List<LoadTsFilePieceNode>> replicaSet2Pieces;
-
-  private TsFileResource resource;
   private TRegionReplicaSet localRegionReplicaSet;
-
-  private boolean deleteAfterLoad;
+  private DataPartition dataPartition;
 
   public LoadSingleTsFileNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
+  public LoadSingleTsFileNode(
+      PlanNodeId id,
+      TsFileResource resource,
+      boolean deleteAfterLoad,
+      DataPartition dataPartition) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.dataPartition = dataPartition;
   }
 
-  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) throws IOException {
+  public void checkIfNeedDecodeTsFile() throws IOException {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
@@ -150,6 +154,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
    */
   public TRegionReplicaSet getLocalRegionReplicaSet() {
     return localRegionReplicaSet;
+  }
+
+  public DataPartition getDataPartition() {
+    return dataPartition;
   }
 
   public TsFileResource getTsFileResource() {

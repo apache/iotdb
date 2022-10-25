@@ -24,6 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.load.ChunkData;
+import org.apache.iotdb.db.engine.load.TsFileData;
+import org.apache.iotdb.db.engine.load.TsFileSplitter;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -46,6 +51,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +63,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * {@link LoadTsFileScheduler} is used for scheduling {@link LoadSingleTsFileNode} and {@link
@@ -65,15 +73,17 @@ import java.util.concurrent.TimeoutException;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
-  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
-
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
+  private static final long MAX_MEMORY_SIZE =
+      Math.min(config.getThriftMaxFrameSize() / 2, config.getAllocateMemoryForStorageEngine() / 8);
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
-  private LoadTsFileDispatcherImpl dispatcher;
-  private List<LoadSingleTsFileNode> tsFileNodeList;
-  private PlanFragmentId fragmentId;
+  private final LoadTsFileDispatcherImpl dispatcher;
+  private final List<LoadSingleTsFileNode> tsFileNodeList;
+  private final PlanFragmentId fragmentId;
 
   private Set<TRegionReplicaSet> allReplicaSets;
 
@@ -124,74 +134,73 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
-    if (!dispatchOneTsFile(node)) {
+    try {
+      new TsFileSplitter(
+              node.getTsFileResource().getTsFile(),
+              new TsFileDataManager(this, node)::addOrSendTsFileData)
+          .splitTsFileByDataPartition();
+    } catch (IllegalStateException e) {
+      return false;
+    } catch (Exception e) {
+      stateMachine.transitionToFailed(e);
       logger.error(
-          String.format("Dispatch Single TsFile Node error, LoadSingleTsFileNode %s.", node));
+          String.format("Parse TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
     }
     return true;
   }
 
-  private boolean dispatchOneTsFile(LoadSingleTsFileNode node) {
-    logger.info(
-        String.format(
-            "Start dispatching TsFile %s", node.getTsFileResource().getTsFile().getPath()));
-    for (Map.Entry<TRegionReplicaSet, List<LoadTsFilePieceNode>> entry :
-        node.getReplicaSet2Pieces().entrySet()) {
-      allReplicaSets.add(entry.getKey());
-      for (LoadTsFilePieceNode pieceNode : entry.getValue()) {
-        FragmentInstance instance =
-            new FragmentInstance(
-                new PlanFragment(fragmentId, pieceNode),
-                fragmentId.genFragmentInstanceId(),
-                null,
-                queryContext.getQueryType(),
-                queryContext.getTimeOut());
-        instance.setDataRegionAndHost(entry.getKey());
-        Future<FragInstanceDispatchResult> dispatchResultFuture =
-            dispatcher.dispatch(Collections.singletonList(instance));
+  private boolean dispatchOnePieceNode(
+      LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
+    allReplicaSets.add(replicaSet);
+    FragmentInstance instance =
+        new FragmentInstance(
+            new PlanFragment(fragmentId, pieceNode),
+            fragmentId.genFragmentInstanceId(),
+            null,
+            queryContext.getQueryType(),
+            queryContext.getTimeOut());
+    instance.setDataRegionAndHost(replicaSet);
+    Future<FragInstanceDispatchResult> dispatchResultFuture =
+        dispatcher.dispatch(Collections.singletonList(instance));
 
-        try {
-          FragInstanceDispatchResult result =
-              dispatchResultFuture.get(
-                  LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
-          if (!result.isSuccessful()) {
-            // TODO: retry.
+    try {
+      FragInstanceDispatchResult result =
+          dispatchResultFuture.get(
+              LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
+      if (!result.isSuccessful()) {
+        // TODO: retry.
+        logger.error(
+            String.format(
+                "Dispatch one piece to ReplicaSet %s error, result status code %s.",
+                replicaSet, TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
+        logger.error(
+            String.format("Result status message %s.", result.getFailureStatus().getMessage()));
+        if (result.getFailureStatus().getSubStatus() != null) {
+          for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             logger.error(
                 String.format(
-                    "Dispatch one piece to ReplicaSet %s error, result status code %s.",
-                    entry.getKey(),
-                    TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
-            logger.error(
-                String.format("Result status message %s.", result.getFailureStatus().getMessage()));
-            if (result.getFailureStatus().getSubStatus() != null) {
-              for (TSStatus status : result.getFailureStatus().getSubStatus()) {
-                logger.error(
-                    String.format(
-                        "Sub status code %s.", TSStatusCode.representOf(status.getCode()).name()));
-                logger.error(String.format("Sub status message %s.", status.getMessage()));
-              }
-            }
-            logger.error(String.format("Dispatch piece node error:%n%s", pieceNode));
-            stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
-            return false;
+                    "Sub status code %s.", TSStatusCode.representOf(status.getCode()).name()));
+            logger.error(String.format("Sub status message %s.", status.getMessage()));
           }
-        } catch (InterruptedException | ExecutionException | CancellationException e) {
-          if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-          }
-          logger.warn("Interrupt or Execution error.", e);
-          stateMachine.transitionToFailed(e);
-          return false;
-        } catch (TimeoutException e) {
-          dispatchResultFuture.cancel(true);
-          logger.error(
-              String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()),
-              e);
-          stateMachine.transitionToFailed(e);
-          return false;
         }
+        logger.error(String.format("Dispatch piece node error:%n%s", pieceNode));
+        stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
+        return false;
       }
+    } catch (InterruptedException | ExecutionException | CancellationException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      logger.warn("Interrupt or Execution error.", e);
+      stateMachine.transitionToFailed(e);
+      return false;
+    } catch (TimeoutException e) {
+      dispatchResultFuture.cancel(true);
+      logger.error(
+          String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
+      stateMachine.transitionToFailed(e);
+      return false;
     }
     return true;
   }
@@ -273,5 +282,79 @@ public class LoadTsFileScheduler implements IScheduler {
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
+  }
+
+  private class TsFileDataManager {
+    private final LoadTsFileScheduler scheduler;
+    private final LoadSingleTsFileNode singleTsFileNode;
+
+    private long dataSize;
+    private Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
+
+    public TsFileDataManager(LoadTsFileScheduler scheduler, LoadSingleTsFileNode singleTsFileNode) {
+      this.scheduler = scheduler;
+      this.singleTsFileNode = singleTsFileNode;
+      this.dataSize = 0;
+      this.replicaSet2Piece = new HashMap<>();
+    }
+
+    private boolean addOrSendTsFileData(TsFileData tsFileData) {
+      return tsFileData.isModification()
+          ? addOrSendDeletionData(tsFileData)
+          : addOrSendChunkData((ChunkData) tsFileData);
+    }
+
+    private boolean addOrSendChunkData(ChunkData chunkData) {
+      dataSize += chunkData.getDataSize();
+      if (dataSize > MAX_MEMORY_SIZE) {
+        List<TRegionReplicaSet> sortedReplicaSets =
+            replicaSet2Piece.keySet().stream()
+                .sorted(
+                    Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
+                .collect(Collectors.toList());
+
+        for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
+          LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
+          if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
+            break;
+          }
+          if (!scheduler.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
+            return false;
+          }
+
+          dataSize -= pieceNode.getDataSize();
+          replicaSet2Piece.put(
+              sortedReplicaSet,
+              new LoadTsFilePieceNode(
+                  singleTsFileNode.getPlanNodeId(),
+                  singleTsFileNode.getTsFileResource().getTsFile()));
+          if (dataSize <= MAX_MEMORY_SIZE) {
+            break;
+          }
+        }
+      }
+      TRegionReplicaSet replicaSet =
+          singleTsFileNode
+              .getDataPartition()
+              .getDataRegionReplicaSetForWriting(
+                  chunkData.getDevice(), chunkData.getTimePartitionSlot());
+      replicaSet2Piece
+          .computeIfAbsent(
+              replicaSet,
+              o ->
+                  new LoadTsFilePieceNode(
+                      singleTsFileNode.getPlanNodeId(),
+                      singleTsFileNode.getTsFileResource().getTsFile()))
+          .addTsFileData(chunkData);
+      return true;
+    }
+
+    private boolean addOrSendDeletionData(TsFileData deletionData) {
+      for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
+        dataSize += deletionData.getDataSize();
+        entry.getValue().addTsFileData(deletionData);
+      }
+      return true;
+    }
   }
 }

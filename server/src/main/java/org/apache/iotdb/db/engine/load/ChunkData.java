@@ -22,11 +22,13 @@ package org.apache.iotdb.db.engine.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public interface ChunkData extends TsFileData {
   String getDevice();
@@ -37,6 +39,8 @@ public interface ChunkData extends TsFileData {
 
   void setNotDecode(IChunkMetadata chunkMetadata);
 
+  void setNotDecode();
+
   boolean needDecodeChunk();
 
   void setHeadPageNeedDecode(boolean headPageNeedDecode);
@@ -46,6 +50,12 @@ public interface ChunkData extends TsFileData {
   void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
 
   boolean isAligned();
+
+  void writeEntireChunk(ByteBuffer chunkData, IChunkMetadata chunkMetadata) throws IOException;
+
+  void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException;
+
+  void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
 
   @Override
   default boolean isModification() {
@@ -64,5 +74,15 @@ public interface ChunkData extends TsFileData {
     return isAligned
         ? new AlignedChunkData(offset, device, chunkHeader)
         : new NonAlignedChunkData(offset, device, chunkHeader);
+  }
+
+  static ChunkData createChunkData(
+      boolean isAligned,
+      String device,
+      ChunkHeader chunkHeader,
+      TTimePartitionSlot timePartitionSlot) {
+    return isAligned
+        ? new AlignedChunkData(device, chunkHeader, timePartitionSlot)
+        : new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
   }
 }

@@ -65,6 +65,12 @@ public class DeletionData implements TsFileData {
     deletion.serializeWithoutFileOffset(stream);
   }
 
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isModification(), stream);
+    deletion.serializeWithoutFileOffset(stream);
+  }
+
   public static DeletionData deserialize(InputStream stream)
       throws IllegalPathException, IOException {
     return new DeletionData(Deletion.deserializeWithoutFileOffset(new DataInputStream(stream)));

@@ -82,26 +82,46 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     this.uuid = uuid;
   }
 
+  //  @Override
+  //  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+  //    return executor.submit(
+  //        () -> {
+  //          for (FragmentInstance instance : instances) {
+  //            try (SetThreadName threadName =
+  //                new SetThreadName(
+  //                    LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
+  //              dispatchOneInstance(instance);
+  //            } catch (FragmentInstanceDispatchException e) {
+  //              return new FragInstanceDispatchResult(e.getFailureStatus());
+  //            } catch (Throwable t) {
+  //              logger.error("cannot dispatch FI for load operation", t);
+  //              return new FragInstanceDispatchResult(
+  //                  RpcUtils.getStatus(
+  //                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " +
+  // t.getMessage()));
+  //            }
+  //          }
+  //          return new FragInstanceDispatchResult(true);
+  //        });
+  //  }
+
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-    return executor.submit(
-        () -> {
-          for (FragmentInstance instance : instances) {
-            try (SetThreadName threadName =
-                new SetThreadName(
-                    LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
-              dispatchOneInstance(instance);
-            } catch (FragmentInstanceDispatchException e) {
-              return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Throwable t) {
-              logger.error("cannot dispatch FI for load operation", t);
-              return new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
-            }
-          }
-          return new FragInstanceDispatchResult(true);
-        });
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName =
+          new SetThreadName(LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+      } catch (Throwable t) {
+        logger.error("cannot dispatch FI for load operation", t);
+        return immediateFuture(
+            new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+      }
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -112,7 +132,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint); // TODO: can read only once
+        dispatchRemote(instance, endPoint);
       }
     }
   }

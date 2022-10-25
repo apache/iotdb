@@ -135,11 +135,12 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
     for (TsFileData tsFileData : tsFileDataList) {
       try {
-        tsFileData.serialize(stream, tsFile);
+        tsFileData.serialize(stream);
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Parse page of TsFile %s error, skip chunk %s", tsFile.getPath(), tsFileData));
+                "Serialize data of TsFile %s error, skip TsFileData %s",
+                tsFile.getPath(), tsFileData));
       }
     }
   }

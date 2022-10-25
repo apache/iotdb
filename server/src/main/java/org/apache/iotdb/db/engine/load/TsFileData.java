@@ -38,6 +38,8 @@ public interface TsFileData {
 
   void serialize(DataOutputStream stream, File tsFile) throws IOException;
 
+  void serialize(DataOutputStream stream) throws IOException;
+
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {
     boolean isModification = ReadWriteIOUtils.readBool(stream);
