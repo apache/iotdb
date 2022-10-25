@@ -182,4 +182,9 @@ public class RemoteServerEnv implements BaseEnv {
   public void shutdownDataNode(int index) {
     getDataNodeWrapperList().get(index).stop();
   }
+
+  @Override
+  public int getMqttPort() {
+    throw new UnsupportedOperationException();
+  }
 }
