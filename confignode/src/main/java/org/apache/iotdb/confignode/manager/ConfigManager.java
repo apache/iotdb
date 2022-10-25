@@ -470,8 +470,7 @@ public class ConfigManager implements IManager {
         (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
+    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
 
     return resp;
   }
@@ -511,8 +510,7 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
         devicePaths,
         resp);
@@ -535,7 +533,6 @@ public class ConfigManager implements IManager {
           resp.convertToRpcSchemaNodeManagementPartitionResp(
               getLoadManager().getLatestRegionRouteMap());
 
-      // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
           "getNodePathsPartition receive devicePaths: {}, level: {}, return TSchemaNodeManagementResp: {}",
           partialPath,
@@ -562,8 +559,7 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}",
         getDataPartitionPlan.getPartitionSlotsMap(),
         resp);
@@ -587,8 +583,7 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
         getOrCreateDataPartitionReq.getPartitionSlotsMap(),
         resp);
