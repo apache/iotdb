@@ -30,6 +30,8 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,10 +48,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -125,15 +124,17 @@ public class IoTDBJDBCResultSetTest {
 
     execResp.queryDataSet = FakedFirstFetchResult();
 
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
+
     when(connection.isClosed()).thenReturn(false);
-    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);
     when(execResp.getStatus()).thenReturn(successStatus);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
     when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
 
-    when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
+    when(client.fetchResultsV2(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(successStatus);
 
     TSStatus closeResp = successStatus;
@@ -401,5 +402,73 @@ public class IoTDBJDBCResultSetTest {
     for (Object[] row : input) {
       standardObject.addAll(Arrays.asList(row));
     }
+  }
+
+  private List<ByteBuffer> FakedFirstFetchTsBlockResult() {
+    List<TSDataType> tsDataTypeList = new ArrayList<>();
+    tsDataTypeList.add(TSDataType.FLOAT); // root.vehicle.d0.s2
+    tsDataTypeList.add(TSDataType.INT64); // root.vehicle.d0.s1
+    tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
+
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
+
+    Object[][] input = {
+      {
+        2L, 2.22F, 40000L, null,
+      },
+      {
+        3L, 3.33F, null, null,
+      },
+      {
+        4L, 4.44F, null, null,
+      },
+      {
+        50L, null, 50000L, null,
+      },
+      {
+        100L, null, 199L, null,
+      },
+      {
+        101L, null, 199L, null,
+      },
+      {
+        103L, null, 199L, null,
+      },
+      {
+        105L, 11.11F, 199L, 33333,
+      },
+      {
+        1000L, 1000.11F, 55555L, 22222,
+      }
+    };
+    for (int row = 0; row < input.length; row++) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong((long) input[row][0]);
+      if (input[row][1] != null) {
+        tsBlockBuilder.getColumnBuilder(0).writeFloat((float) input[row][1]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(0).appendNull();
+      }
+      if (input[row][2] != null) {
+        tsBlockBuilder.getColumnBuilder(1).writeLong((long) input[row][2]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(1).appendNull();
+      }
+      if (input[row][3] != null) {
+        tsBlockBuilder.getColumnBuilder(2).writeInt((int) input[row][3]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(2).appendNull();
+      }
+
+      tsBlockBuilder.declarePosition();
+    }
+
+    ByteBuffer tsBlock = null;
+    try {
+      tsBlock = new TsBlockSerde().serialize(tsBlockBuilder.build());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return Collections.singletonList(tsBlock);
   }
 }
