@@ -121,6 +121,11 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
   public static final String COLUMN_WRITTEN = "written";
 
+  // column names for show cq
+  public static final String COLUMN_CQ_ID = "cq id";
+  public static final String COLUMN_QUERY = "query";
+  public static final String COLUMN_STATE = "state";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
@@ -303,4 +308,10 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_CQ_ID, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_QUERY, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_STATE, TSDataType.TEXT));
 }

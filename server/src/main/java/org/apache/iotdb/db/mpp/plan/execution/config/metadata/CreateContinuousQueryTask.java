@@ -37,6 +37,6 @@ public class CreateContinuousQueryTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return null;
+    return configTaskExecutor.createContinuousQuery(createContinuousQueryStatement);
   }
 }

@@ -814,6 +814,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateContinuousQuery(IoTDBSqlParser.CreateContinuousQueryContext ctx) {
     CreateContinuousQueryStatement statement = new CreateContinuousQueryStatement();
+    statement.setSql(ctx.getText());
     statement.setCqId(parseIdentifier(ctx.cqId.getText()));
 
     statement.setQueryBody(ctx.selectStatement().getText());

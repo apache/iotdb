@@ -33,6 +33,7 @@ import java.util.List;
 
 public class CreateContinuousQueryStatement extends Statement implements IConfigStatement {
 
+  private String sql;
   private String cqId;
 
   // The query execution time interval, default value is group_by_interval in group by clause.
@@ -57,6 +58,14 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   public CreateContinuousQueryStatement() {
     super();
     statementType = StatementType.CREATE_CONTINUOUS_QUERY;
+  }
+
+  public String getSql() {
+    return sql;
+  }
+
+  public void setSql(String sql) {
+    this.sql = sql;
   }
 
   public String getCqId() {
@@ -121,6 +130,10 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public void setQueryBodyStatement(QueryStatement queryBodyStatement) {
     this.queryBodyStatement = queryBodyStatement;
+  }
+
+  public String getZoneId() {
+    return queryBodyStatement.getSelectComponent().getZoneId().getId();
   }
 
   @Override
