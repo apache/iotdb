@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
@@ -97,6 +98,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
         break;
+      case UNSET_TEMPLATE_PROCEDURE:
+        procedure = new UnsetTemplateProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
@@ -134,6 +138,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_PIPE_PROCEDURE;
     } else if (procedure instanceof DeactivateTemplateProcedure) {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof UnsetTemplateProcedure) {
+      return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
     }
     return null;
   }
@@ -152,7 +158,8 @@ public class ProcedureFactory implements IProcedureFactory {
     START_PIPE_PROCEDURE,
     STOP_PIPE_PROCEDURE,
     DROP_PIPE_PROCEDURE,
-    DEACTIVATE_TEMPLATE_PROCEDURE
+    DEACTIVATE_TEMPLATE_PROCEDURE,
+    UNSET_TEMPLATE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

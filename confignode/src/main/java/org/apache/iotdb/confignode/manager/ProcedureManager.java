@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
@@ -255,8 +256,51 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus unsetSchemaTemplate(String queryId, int templateId, String path) {
-    return StatusUtils.OK;
+  public TSStatus unsetSchemaTemplate(
+      String queryId, int templateId, String templateName, PartialPath path) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      UnsetTemplateProcedure unsetTemplateProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureFactory.ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          continue;
+        }
+        unsetTemplateProcedure = (UnsetTemplateProcedure) procedure;
+        if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
+          procedureId = unsetTemplateProcedure.getProcId();
+          break;
+        }
+        if (templateId == unsetTemplateProcedure.getTemplateId()
+            && path.equals(unsetTemplateProcedure.getPath())) {
+          hasOverlappedTask = true;
+        }
+        if (hasOverlappedTask) {
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is unsetting target template from target path.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new UnsetTemplateProcedure(queryId, templateId, templateName, path));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
   }
 
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
