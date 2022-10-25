@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.constant.UDFTestConstant;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,6 +43,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /** Test for SessionWindow, StateWindow and UserDefinedWindow. */
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBUDFOtherWindowQueryIT {

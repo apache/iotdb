@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -36,6 +37,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@Ignore
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDTFHybridQueryIT {
 

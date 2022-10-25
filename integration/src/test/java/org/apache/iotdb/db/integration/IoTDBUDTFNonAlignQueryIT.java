@@ -27,6 +27,7 @@ import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -42,6 +43,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+@Ignore
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDTFNonAlignQueryIT {
 

@@ -36,6 +36,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@Ignore
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDFWindowQueryIT {
 
