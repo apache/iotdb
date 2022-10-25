@@ -164,7 +164,7 @@ resampleClause
     : RESAMPLE
         (EVERY everyInterval=DURATION_LITERAL)?
         (FOR DURATION_LITERAL)?
-        (BOUNDARY executionBoundaryTime=dateExpression)?
+        (BOUNDARY boundaryTime=dateExpression)?
         (RANGE startTimeOffset=DURATION_LITERAL (COMMA endTimeOffset=DURATION_LITERAL))?
     ;
 
