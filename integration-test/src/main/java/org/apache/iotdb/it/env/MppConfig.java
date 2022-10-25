@@ -281,4 +281,40 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
     return this;
   }
+
+  @Override
+  public BaseConfig setEnableWatermark(boolean enableWatermark) {
+    engineProperties.setProperty("watermark_module_opened", String.valueOf(enableWatermark));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    engineProperties.setProperty("watermark_secret_key", watermarkSecretKey);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkBitString(String watermarkBitString) {
+    engineProperties.setProperty("watermark_bit_string", watermarkBitString);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkMethod(String watermarkMethod) {
+    engineProperties.setProperty("watermark_method", watermarkMethod);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
 }

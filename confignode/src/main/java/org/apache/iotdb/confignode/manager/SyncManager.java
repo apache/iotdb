@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
@@ -66,6 +68,14 @@ public class SyncManager {
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
+  }
+
+  public void lockSyncMetadata() {
+    clusterSyncInfo.lockSyncMetadata();
+  }
+
+  public void unlockSyncMetadata() {
+    clusterSyncInfo.unlockSyncMetadata();
   }
 
   // ======================================================
@@ -148,6 +158,22 @@ public class SyncManager {
     return clusterSyncInfo.getPipeInfo(pipeName);
   }
 
+  public TGetAllPipeInfoResp getAllPipeInfo() {
+    try {
+      // Should lock SyncMetadata to block operation PIPE procedure
+      lockSyncMetadata();
+      TGetAllPipeInfoResp resp = new TGetAllPipeInfoResp();
+      resp.setStatus(StatusUtils.OK);
+      resp.setAllPipeInfo(
+          clusterSyncInfo.getAllPipeInfos().stream()
+              .map(PipeInfo::serializeToByteBuffer)
+              .collect(Collectors.toList()));
+      return resp;
+    } finally {
+      unlockSyncMetadata();
+    }
+  }
+
   /**
    * Broadcast DataNodes to operate PIPE operation.
    *
@@ -160,8 +186,6 @@ public class SyncManager {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
-    final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
 
@@ -169,7 +193,7 @@ public class SyncManager {
         new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
-    return dataNodeResponseStatus;
+    return clientHandler.getResponseList();
   }
 
   /**

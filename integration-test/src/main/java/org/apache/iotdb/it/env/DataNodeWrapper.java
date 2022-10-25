@@ -33,16 +33,18 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private String internal_address;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
+  private final int mqttPort;
 
   public DataNodeWrapper(
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
+    this.internal_address = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
-    internal_address = super.getIp();
+    this.mqttPort = portList[5];
   }
 
   @Override
@@ -56,6 +58,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+    properties.setProperty("mqtt_host", super.getIp());
+    properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
       properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
@@ -80,7 +84,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(
-            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback-datanode.xml",
             "-DIOTDB_HOME=" + workDir,
             "-DTSFILE_HOME=" + workDir,
             "-DIOTDB_CONF=" + confDir,
@@ -137,5 +141,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getSchemaRegionConsensusPort() {
     return schemaRegionConsensusPort;
+  }
+
+  public int getMqttPort() {
+    return mqttPort;
   }
 }

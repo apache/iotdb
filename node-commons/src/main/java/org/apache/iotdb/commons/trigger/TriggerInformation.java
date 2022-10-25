@@ -69,6 +69,7 @@ public class TriggerInformation {
       TTriggerState triggerState,
       boolean isStateful,
       TDataNodeLocation dataNodeLocation,
+      FailureStrategy failureStrategy,
       String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
@@ -80,7 +81,7 @@ public class TriggerInformation {
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
     // default value is OPTIMISTIC
-    this.failureStrategy = FailureStrategy.OPTIMISTIC;
+    this.failureStrategy = failureStrategy;
     this.jarFileMD5 = jarFileMD5;
   }
 

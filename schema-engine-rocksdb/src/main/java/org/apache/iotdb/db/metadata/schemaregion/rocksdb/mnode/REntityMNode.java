@@ -89,6 +89,26 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
   }
 
   @Override
+  public boolean isPreDeactivateTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void preDeactivateTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackPreDeactivateTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deactivateTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public boolean isAligned() {
     return isAligned;
   }

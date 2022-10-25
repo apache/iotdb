@@ -86,7 +86,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(
-            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback-confignode.xml",
             "-DCONFIGNODE_HOME=" + workDir,
             "-DCONFIGNODE_CONF=" + confDir,
             "org.apache.iotdb.confignode.service.ConfigNode",
