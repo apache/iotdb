@@ -107,7 +107,19 @@ public interface IConsensus {
    */
   ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
 
-  /** Call this method on any member of originalGroup */
+  /**
+   * Tell the group to [create a new Peer on new node] and [add this member to join the group].
+   *
+   * <p>The underlying implementation should <br>
+   * 1. first call createPeer on the new member <br>
+   * 2. then call addPeer for configuration change call this method on any node of the <em>original
+   * group</em>. <br>
+   * NOTICE: Currently only RatisConsensus implements this method.
+   *
+   * @param groupId the consensus group
+   * @param newNode the new member
+   * @param originalGroup the original members of the existed group
+   */
   default ConsensusGenericResponse addNewNodeToExistedGroup(
       ConsensusGroupId groupId, Peer newNode, List<Peer> originalGroup) {
     return ConsensusGenericResponse.newBuilder()
