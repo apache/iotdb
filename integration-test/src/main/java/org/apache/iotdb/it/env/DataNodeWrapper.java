@@ -32,6 +32,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final int internalPort;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
+  private final int mqttPort;
 
   public DataNodeWrapper(
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
@@ -41,6 +42,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
+    this.mqttPort = portList[5];
   }
 
   @Override
@@ -54,6 +56,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+    properties.setProperty("mqtt_host", super.getIp());
+    properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
       properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
@@ -105,5 +109,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getSchemaRegionConsensusPort() {
     return schemaRegionConsensusPort;
+  }
+
+  public int getMqttPort() {
+    return mqttPort;
   }
 }
