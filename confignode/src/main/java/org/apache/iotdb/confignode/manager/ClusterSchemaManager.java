@@ -70,17 +70,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -461,18 +459,10 @@ public class ClusterSchemaManager {
 
     Template template = resp.getTemplateList().get(0);
 
-    // prepare template data and req
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(1, outputStream);
-      template.serialize(outputStream);
-      ReadWriteIOUtils.write(1, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-    }
+    // prepare req
     TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
-    req.setTemplateInfo(outputStream.toByteArray());
+    req.setTemplateInfo(TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, path));
 
     // sync template set info to all dataNodes
     TSStatus status;
@@ -506,14 +496,8 @@ public class ClusterSchemaManager {
     // construct the rollbackReq
     TUpdateTemplateReq rollbackReq = new TUpdateTemplateReq();
     rollbackReq.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateId, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-
-    }
-    rollbackReq.setTemplateInfo(outputStream.toByteArray());
+    rollbackReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(templateId, path));
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =

@@ -55,17 +55,16 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -678,26 +677,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
     }
 
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
-
-      for (Template template : templateList) {
-        if (templateSetInfo.containsKey(template.getId())) {
-          template.serialize(outputStream);
-
-          List<String> pathsSetTemplate = templateSetInfo.get(template.getId());
-          ReadWriteIOUtils.write(pathsSetTemplate.size(), outputStream);
-          for (String path : pathsSetTemplate) {
-            ReadWriteIOUtils.write(path, outputStream);
-          }
-        }
+    Map<Template, List<String>> templateSetInfoMap = new HashMap<>();
+    for (Template template : templateList) {
+      if (templateSetInfo.containsKey(template.getId())) {
+        templateSetInfoMap.put(template, templateSetInfo.get(template.getId()));
       }
-    } catch (IOException ignored) {
-
     }
 
-    return new AllTemplateSetInfoResp(outputStream.toByteArray());
+    return new AllTemplateSetInfoResp(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(templateSetInfoMap));
   }
 
   /**
