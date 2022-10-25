@@ -477,7 +477,7 @@ public class SchemaFileTest {
     sf.writeMNode(ent1);
 
     Assert.assertEquals(
-        1024, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
+        1020, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
 
     ent1.getChildren().clear();
 

@@ -63,7 +63,7 @@ public class SchemaFileConfig {
   public static final int SEG_HEADER_SIZE = 25; // in bytes
   public static final short SEG_OFF_DIG =
       2; // length of short, which is the type of segment offset and index
-  public static final short SEG_MAX_SIZ = (short) (16 * 1024 - PAGE_HEADER_SIZE - SEG_OFF_DIG);
+  public static final short SEG_MAX_SIZ = (short) (PAGE_LENGTH - PAGE_HEADER_SIZE - SEG_OFF_DIG);
   public static final short SEG_MIN_SIZ =
       IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile() > SEG_MAX_SIZ
           ? SEG_MAX_SIZ
@@ -72,8 +72,10 @@ public class SchemaFileConfig {
   public static final int SEG_INDEX_DIGIT = 16; // for type short in bits
   public static final long SEG_INDEX_MASK = 0xffffL; // help to translate address
 
-  public static final short[] SEG_SIZE_METRIC = {300, 150, 75, 40, 20};
-  public static final short[] SEG_SIZE_LST = {1024, 2 * 1024, 4 * 1024, 8 * 1024, SEG_MAX_SIZ};
+  public static final short[] SEG_SIZE_METRIC = {20, 40, 75, 150, 300};
+
+  // formula: (PAGE_LENGTH-PAGE_HEADER)/n - SEG_OFF_DIG
+  public static final short[] SEG_SIZE_LST = {1020,2042,4086,8174,SEG_MAX_SIZ};
 
   // endregion
 

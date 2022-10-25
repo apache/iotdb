@@ -179,7 +179,8 @@ public abstract class PageManager implements IPageManager {
           short actSegId = getSegIndex(actualAddress);
           short newSegSize =
               reEstimateSegSize(
-                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
+                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
+                  ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize);
 
           // with single segment, curSegAddr equals actualAddress
@@ -388,7 +389,7 @@ public abstract class PageManager implements IPageManager {
     dirtyPages.clear();
     pageInstCache.clear();
     lastPageIndex.set(0);
-    logWriter.clear();
+    logWriter = logWriter.renew();
   }
 
   @Override
@@ -552,30 +553,54 @@ public abstract class PageManager implements IPageManager {
    */
   private static short estimateSegmentSize(IMNode node) {
     int childNum = node.getChildren().size();
-    int tier = SEG_SIZE_LST.length;
-
-    for (int i = 1; i < SEG_SIZE_METRIC.length + 1; i++) {
-      if (childNum > SEG_SIZE_METRIC[i - 1]) {
-        return SEG_SIZE_LST[tier - i] > SEG_MIN_SIZ ? SEG_SIZE_LST[tier - i] : SEG_MIN_SIZ;
+    if (childNum < SEG_SIZE_METRIC[0]) {
+      // for record offset, length of string key
+      int totalSize = SEG_HEADER_SIZE + 6 * childNum;
+      for (IMNode child : node.getChildren().values()) {
+        totalSize += child.getName().getBytes().length;
+        if (child.isMeasurement()) {
+          totalSize +=
+              child.getAsMeasurementMNode().getAlias() == null
+                  ? 4
+                  : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
+          totalSize += 24; // slightly larger than actually HEADER size
+        } else {
+          totalSize += 16; // slightly larger
+        }
       }
+      return (short) totalSize > SEG_MIN_SIZ ? (short) totalSize : SEG_MIN_SIZ;
     }
 
-    // for childNum < 20, count for actually
-    int totalSize = SEG_HEADER_SIZE;
-    for (IMNode child : node.getChildren().values()) {
-      totalSize += child.getName().getBytes().length;
-      totalSize += 2 + 4; // for record offset, length of string key
-      if (child.isMeasurement()) {
-        totalSize +=
-            child.getAsMeasurementMNode().getAlias() == null
-                ? 4
-                : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
-        totalSize += 24; // slightly larger than actually HEADER size
-      } else {
-        totalSize += 16; // slightly larger
+    int tier = SEG_SIZE_LST.length - 1;
+    while (tier > 0) {
+      if (childNum > SEG_SIZE_METRIC[tier]) {
+        return SEG_SIZE_LST[tier];
       }
+      tier--;
     }
-    return (short) totalSize > SEG_MIN_SIZ ? (short) totalSize : SEG_MIN_SIZ;
+    return SEG_SIZE_LST[0];
+  }
+
+  /**
+   * This method {@linkplain #reEstimateSegSize} is called when {@linkplain SchemaPageOverflowException} occurs. It
+   * is designed to accelerate when there is lots of new children nodes, avoiding segments extend several times.
+   * @param expSize
+   * @param batchSize
+   * @return
+   * @throws MetadataException
+   */
+  private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
+    if (batchSize < SEG_SIZE_METRIC[0]) {
+      return reEstimateSegSize(expSize);
+    }
+    int tier = SEG_SIZE_LST.length - 1;
+    while (tier > 0) {
+      if (batchSize > SEG_SIZE_METRIC[tier]) {
+        return SEG_SIZE_LST[tier];
+      }
+      tier--;
+    }
+    return SEG_SIZE_LST[0];
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {
