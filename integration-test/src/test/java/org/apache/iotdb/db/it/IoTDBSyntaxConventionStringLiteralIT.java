@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.constant.TestConstant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -297,6 +298,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
+  @Ignore
   @Test
   public void testUDFClassName() {
     String errorMsg =
