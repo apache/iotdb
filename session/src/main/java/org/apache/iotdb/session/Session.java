@@ -831,6 +831,18 @@ public class Session implements ISession {
       getSessionConnection(prefixPath).insertRecord(request);
     } catch (RedirectException e) {
       handleRedirection(prefixPath, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(prefixPath) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(prefixPath));
+        deviceIdToEndpoint.remove(prefixPath);
+
+        // reconnect with default connection
+        insertRecord(prefixPath, request);
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -840,6 +852,18 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecord(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        insertRecord(deviceId, request);
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -885,9 +909,11 @@ public class Session implements ISession {
     }
   }
 
-  private void handleRedirection(String deviceId, TEndPoint endpoint)
-      throws IoTDBConnectionException {
+  private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableCacheLeader) {
+      if (endpoint.ip.equals("0.0.0.0")) {
+        return;
+      }
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       deviceIdToEndpoint.put(deviceId, endpoint);
       SessionConnection connection =
@@ -903,7 +929,7 @@ public class Session implements ISession {
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
-        throw new IoTDBConnectionException(exceptionReference.get());
+        logger.warn("Can not redirect to {}, because session can not connect to it.", endpoint);
       }
     }
   }
@@ -1153,11 +1179,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1407,11 +1429,7 @@ public class Session implements ISession {
 
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1587,11 +1605,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1637,11 +1651,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1707,6 +1717,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1750,6 +1775,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1833,6 +1873,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1876,6 +1931,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2178,6 +2248,21 @@ public class Session implements ISession {
       getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
       handleRedirection(tablet.deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertTablet(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2211,6 +2296,21 @@ public class Session implements ISession {
       getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
       handleRedirection(tablet.deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertTablet(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2266,11 +2366,7 @@ public class Session implements ISession {
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -2306,11 +2402,7 @@ public class Session implements ISession {
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -3094,21 +3186,18 @@ public class Session implements ISession {
                         try {
                           insertConsumer.insert(connection, recordsReq);
                         } catch (RedirectException e) {
-                          e.getDeviceEndPointMap()
-                              .forEach(
-                                  (deviceId, endpoint) -> {
-                                    try {
-                                      handleRedirection(deviceId, endpoint);
-                                    } catch (IoTDBConnectionException ioTDBConnectionException) {
-                                      throw new CompletionException(ioTDBConnectionException);
-                                    }
-                                  });
+                          e.getDeviceEndPointMap().forEach(this::handleRedirection);
                         } catch (StatementExecutionException e) {
                           throw new CompletionException(e);
                         } catch (IoTDBConnectionException e) {
                           // remove the broken session
                           removeBrokenSessionConnection(connection);
-                          throw new CompletionException(e);
+                          try {
+                            insertConsumer.insert(defaultSessionConnection, recordsReq);
+                          } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                            throw new CompletionException(ex);
+                          } catch (RedirectException ignored) {
+                          }
                         }
                       },
                       OPERATION_EXECUTOR);
