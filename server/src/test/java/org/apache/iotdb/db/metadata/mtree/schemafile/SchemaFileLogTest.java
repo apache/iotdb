@@ -18,11 +18,49 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
+import java.nio.channels.FileChannel;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
+
+import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.addNodeToUpdateBuffer;
+import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getMeasurementNode;
+import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getSegAddrInContainer;
+import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getTreeBFT;
+import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.virtualTriangleMTree;
+import static org.junit.Assert.fail;
 
 public class SchemaFileLogTest {
 
@@ -43,4 +81,88 @@ public class SchemaFileLogTest {
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
+
+  @Test
+  public void essentialLogTest() throws IOException, MetadataException {
+    SchemaFile sf = (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
+    IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
+    sf.updateStorageGroupNode(newSGNode);
+
+    IMNode root = virtualTriangleMTree(5, "root.test");
+
+    Iterator<IMNode> ite = getTreeBFT(root);
+    IMNode lastNode = null;
+    while (ite.hasNext()) {
+      IMNode curNode = ite.next();
+      if (!curNode.isMeasurement()) {
+        sf.writeMNode(curNode);
+        lastNode = curNode;
+      }
+    }
+
+    long address = getSegAddrInContainer(lastNode);
+    int corruptPageIndex = SchemaFile.getPageIndex(address);
+
+    ISchemaPage corPage = ISchemaPage.initSegmentedPage(
+        ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), corruptPageIndex);
+
+    // record number of children now
+    Iterator<IMNode> res = sf.getChildren(lastNode);
+    int cnt = 0;
+    while (res.hasNext()) {
+      cnt++;
+      res.next();
+    }
+
+    System.out.println("To corrupt page:" + corruptPageIndex);
+    try {
+      Class schemaFileClass = SchemaFile.class;
+      Field channelField = schemaFileClass.getDeclaredField("channel");
+      channelField.setAccessible(true);
+
+      FileChannel fileChannel = (FileChannel) channelField.get(sf);
+      corPage.flushPageToChannel(fileChannel);
+    } catch (NoSuchFieldException e) {
+      throw new RuntimeException(e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    } finally {
+      sf.close();
+    }
+
+    sf = (SchemaFile) SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
+    try {
+      sf.getChildren(lastNode);
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals("Segment(index:0) not found in page(index:2).", e.getMessage());
+    } finally {
+      sf.close();
+    }
+
+    // modify log file to restore schema file
+    FileOutputStream outputStream = null;
+    FileChannel channel;
+    try {
+      File logFile = new File("target\\tmp\\system\\schema\\root.test.vRoot1\\0\\schema_file_log.bin");
+      outputStream = new FileOutputStream(logFile, true);
+      channel = outputStream.getChannel();
+      System.out.println("now");
+      channel.truncate(channel.size() - 1);
+    } finally {
+      outputStream.close();
+    }
+
+    // verify that schema file has been repaired
+    sf = (SchemaFile) SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
+    res = sf.getChildren(lastNode);
+    int cnt2 = 0;
+    while (res.hasNext()) {
+      res.next();
+      cnt2++;
+    }
+    Assert.assertEquals(cnt, cnt2);
+    sf.close();
+  }
+
 }

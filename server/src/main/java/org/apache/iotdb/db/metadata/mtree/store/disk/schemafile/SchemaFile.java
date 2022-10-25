@@ -254,6 +254,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void clear() throws IOException, MetadataException {
     pageManager.clear();
+    pageManager.close();
     channel.close();
     if (pmtFile.exists()) {
       Files.delete(Paths.get(pmtFile.toURI()));

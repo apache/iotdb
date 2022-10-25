@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileLogCorrupted;
 import org.apache.iotdb.db.metadata.logfile.IDeserializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
@@ -33,8 +34,10 @@ import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -57,14 +60,35 @@ public class SchemaFileLogReader {
 
   public SchemaFileLogReader(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    inputStream = new FileInputStream(logFile);
+    inputStream = logFile.exists() ? new FileInputStream(logFile) : null;
   }
 
-  public Collection<byte[]> collectUpdatedEntries() throws IOException {
+  public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorrupted {
+    if (inputStream == null || inputStream.getChannel().size() == 0) {
+      return Collections.emptyList();
+    }
+
+    // skip to the tail and do quick check
+    FileChannel channel = inputStream.getChannel();
+    if (channel.size() > 2) {
+      channel.position(channel.size() - 2);
+      byte[] tailBytes = new byte[2];
+      inputStream.read(tailBytes);
+      if (tailBytes[0] == SchemaFileConfig.SF_PREPARE_MARK
+          && tailBytes[1] == SchemaFileConfig.SF_COMMIT_MARK) {
+        return Collections.emptyList();
+      }
+    }
+
+    channel.position(0L);
     List<byte[]> colBuffers = new ArrayList<>();
     byte[] tempBytes = new byte[SchemaFileConfig.PAGE_LENGTH];
     while (inputStream.available() > 0) {
-      int i2 = inputStream.read(tempBytes, 0, 1);
+      inputStream.read(tempBytes, 0, 1);
+
+      if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
+        throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "COMMIT_MARK without PREPARE_MARK");
+      }
 
       // handle prepare mark
       if (tempBytes[0] == SchemaFileConfig.SF_PREPARE_MARK) {
@@ -79,33 +103,31 @@ public class SchemaFileLogReader {
         if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
           colBuffers.clear();
         } else {
-          LOGGER.error("SchemaFileLog {} corrupted since an extraneous byte rather " +
-              "than COMMIT_MARK after PREPARE_MARK", logFile.getPath());
-          throw new IOException("SchemaFileLog corrupted.");
+          throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "an extraneous byte rather than " +
+              "COMMIT_MARK after PREPARE_MARK");
         }
 
         // no bytes after commit mark, safe to exit
         if (inputStream.read(tempBytes, 0, 1) < 0) {
-          return Collections.emptySet();
+          return Collections.emptyList();
         }
       }
 
       // corrupted within one entry
-      int cnt = inputStream.read(tempBytes, 1, tempBytes.length - 1);
-      if (cnt < tempBytes.length - 2) {
-        LOGGER.error("SchemaFileLog {} corrupted for an incomplete entry.");
-        throw new EOFException();
+      if (inputStream.read(tempBytes, 1, tempBytes.length - 1) < tempBytes.length - 2) {
+        throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "incomplete entry.");
       }
 
       colBuffers.add(tempBytes);
       tempBytes = new byte[SchemaFileConfig.PAGE_LENGTH];
     }
 
-    LOGGER.error("SchemaFileLog {} corrupted since not ended by COMMIT_MARK nor PREPARE_MARK.", logFile.getPath());
-    throw new EOFException();
+    throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "not ended by COMMIT_MARK nor PREPARE_MARK.");
   }
 
   public void close() throws IOException {
-    inputStream.close();
+    if (inputStream != null) {
+      inputStream.close();
+    }
   }
 }

@@ -31,11 +31,13 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogReader;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogSerializer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -98,6 +100,9 @@ public abstract class PageManager implements IPageManager {
     this.lastPageIndex = lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     treeTrace = new int[16];
     this.channel = channel;
+
+    // recover if log exists
+    recoverFromLog(logPath);
     this.logWriter = new SchemaFileLogWriter(logPath);
     logCounter = new AtomicInteger(0);
 
@@ -107,6 +112,26 @@ public abstract class PageManager implements IPageManager {
       rootPage.allocNewSegment(SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
       markDirty(rootPage);
+    }
+  }
+
+  /** load bytes from log, deserialize and flush directly into channel */
+  private void recoverFromLog(String logPath) throws IOException, MetadataException {
+    SchemaFileLogReader reader = new SchemaFileLogReader(logPath);
+    ISchemaPage page;
+    List<byte[]> res = reader.collectUpdatedEntries();
+    for (byte[] entry : res) {
+      // TODO check bytes semantic correctness with CRC32 or other way
+      page = ISchemaPage.loadSchemaPage(ByteBuffer.wrap(entry));
+      page.flushPageToChannel(this.channel);
+    }
+    reader.close();
+
+    // complete log file
+    if (res.size() != 0) {
+      FileOutputStream outputStream = new FileOutputStream(logPath, true);
+      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+      outputStream.close();
     }
   }
 
