@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -133,7 +134,7 @@ class RatisConsensus implements IConsensus {
         properties, Collections.singletonList(new File(config.getStorageDir())));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
-    addExecutor = Executors.newSingleThreadExecutor(new IoTThreadFactory("ratis-add"));
+    addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool("ratis-add");
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
@@ -163,7 +164,7 @@ class RatisConsensus implements IConsensus {
     try {
       addExecutor.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor", this);
+      logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
@@ -492,9 +493,9 @@ class RatisConsensus implements IConsensus {
         CompletableFuture.supplyAsync(() -> addPeer(groupId, newNode), addExecutor);
 
     try {
-      Thread.sleep(500);
+      TimeUnit.MILLISECONDS.sleep(500);
     } catch (InterruptedException i) {
-      logger.debug("{}: interrupted when wait to create new peer", this);
+      logger.debug("{}: interrupted when wait to create new peer with exception {}", this, i);
       Thread.currentThread().interrupt();
     }
 
