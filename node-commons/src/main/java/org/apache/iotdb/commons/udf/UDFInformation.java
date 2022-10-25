@@ -39,7 +39,7 @@ public class UDFInformation {
 
   public UDFInformation(
       String functionName, String className, boolean isBuiltin, String jarName, String jarMD5) {
-    this.functionName = functionName;
+    this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
     this.jarName = jarName;
