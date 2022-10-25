@@ -1124,6 +1124,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseOrderByClause(ctx.orderByClause());
     }
 
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+
     return queryStatement;
   }
 
@@ -1210,6 +1215,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLimitStatement(IoTDBSqlParser.LimitStatementContext ctx) {
+    if ((ctx.limitClause() != null || ctx.slimitClause() != null)
+        && queryStatement.isGroupByTag()) {
+      // TODO: I will support limit and slimit in later PRs
+      throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+    }
     // parse LIMIT
     parseLimitClause(ctx.limitClause(), queryStatement);
 
