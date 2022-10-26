@@ -43,7 +43,7 @@ public class PageElement {
 
   public IChunkReader iChunkReader;
 
-  public int priority;
+  public long priority;
 
   public long startTime;
 
@@ -59,7 +59,7 @@ public class PageElement {
       ChunkReader chunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
-      int priority) {
+      long priority) {
     this.pageHeader = pageHeader;
     this.pageData = pageData;
     this.priority = priority;
@@ -77,7 +77,7 @@ public class PageElement {
       AlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
-      int priority) {
+      long priority) {
     this.pageHeader = timePageHeader;
     this.valuePageHeaders = valuePageHeaders;
     this.pageData = timePageData;

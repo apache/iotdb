@@ -123,14 +123,14 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
             });
 
     pageQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
             });
   }
 

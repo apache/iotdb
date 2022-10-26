@@ -187,7 +187,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
-                (int) resource.getVersion(),
+                resource.getVersion(),
                 i == alignedChunkMetadataList.size() - 1,
                 fileElement));
       }

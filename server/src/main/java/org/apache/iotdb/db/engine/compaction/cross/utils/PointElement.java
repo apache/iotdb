@@ -26,7 +26,7 @@ import java.io.IOException;
 
 public class PointElement {
   public long timestamp;
-  public int priority;
+  public long priority;
   public TimeValuePair timeValuePair;
   public IPointReader pointReader;
   public PageElement pageElement;

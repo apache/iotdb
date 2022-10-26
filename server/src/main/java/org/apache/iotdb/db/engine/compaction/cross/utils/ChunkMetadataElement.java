@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 public class ChunkMetadataElement {
   public IChunkMetadata chunkMetadata;
 
-  public int priority;
+  public long priority;
 
   public boolean isOverlaped = false;
 
@@ -34,7 +34,7 @@ public class ChunkMetadataElement {
   public FileElement fileElement;
 
   public ChunkMetadataElement(
-      IChunkMetadata chunkMetadata, int priority, boolean isLastChunk, FileElement fileElement) {
+      IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
     this.startTime = chunkMetadata.getStartTime();
