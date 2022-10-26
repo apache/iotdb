@@ -202,4 +202,9 @@ public class StandaloneEnv implements BaseEnv {
   public void shutdownDataNode(int index) {
     // Do nothing
   }
+
+  @Override
+  public int getMqttPort() {
+    return 1883;
+  }
 }

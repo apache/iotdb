@@ -305,11 +305,19 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required list<string> uris
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+}
+
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
 }
 
 // Trigger
@@ -484,6 +492,11 @@ struct TShowPipeInfo {
   4: required string remote
   5: required string status
   6: required string message
+}
+
+struct TGetAllPipeInfoResp{
+  1: required common.TSStatus status
+  2: optional list<binary> allPipeInfo
 }
 
 struct TCreatePipeReq {
@@ -774,6 +787,11 @@ service IConfigNodeRPCService {
    */
   common.TSStatus dropFunction(TDropFunctionReq req)
 
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
+
   // ======================================================
   // Trigger
   // ======================================================
@@ -913,6 +931,9 @@ service IConfigNodeRPCService {
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo();
 
   // ======================================================
   // TestTools

@@ -395,6 +395,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(cur, upperTemplate);
   }
 
+  @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     IMNode device = null;
@@ -780,6 +781,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
+  @Override
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
@@ -979,6 +981,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  @Override
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {

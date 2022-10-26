@@ -16,41 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools;
+package org.apache.iotdb.db.it.watermark;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import static org.apache.iotdb.itbase.constant.TestConstant.BASE_OUTPUT_PATH;
 import static org.junit.Assert.fail;
 
-/**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
- * IoTDB server should be defined as integration test.
- */
-public class IoTDBWatermarkTest {
+@Ignore // TODO add it back when we support watermark in mpp mode
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
+public class IoTDBWatermarkIT {
 
-  private static String filePath1 =
-      TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
-  private static String filePath2 =
-      TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
+  private static final String filePath1 = BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
+  private static final String filePath2 =
+      BASE_OUTPUT_PATH.concat(File.separator).concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
   private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
@@ -58,19 +57,33 @@ public class IoTDBWatermarkTest {
   private static int embed_row_cycle = 5;
   private static int embed_lsb_num = 5;
 
+  private boolean originEnableWatermark;
+
+  private String originWatermarkSecretKey;
+
+  private String originWatermarkBitString;
+
+  private String originWatermarkMethod;
+
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableWatermark(true); // default false
-    IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
-    IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
+
+    originEnableWatermark = ConfigFactory.getConfig().isEnableWatermark();
+    originWatermarkSecretKey = ConfigFactory.getConfig().getWatermarkSecretKey();
+    originWatermarkBitString = ConfigFactory.getConfig().getWatermarkBitString();
+    originWatermarkMethod = ConfigFactory.getConfig().getWatermarkMethod();
+
+    ConfigFactory.getConfig().setEnableWatermark(true);
+    ConfigFactory.getConfig().setWatermarkSecretKey(secretKey);
+    ConfigFactory.getConfig().setWatermarkBitString(watermarkBitString);
+    ConfigFactory.getConfig()
         .setWatermarkMethod(
             String.format(
                 "GroupBasedLSBMethod" + "(embed_row_cycle=%d,embed_lsb_num=%d)",
                 embed_row_cycle, embed_lsb_num));
 
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
+
     insertData();
 
     File file1 = new File(filePath1);
@@ -98,14 +111,16 @@ public class IoTDBWatermarkTest {
     if (file2.exists()) {
       file2.delete();
     }
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
+
+    ConfigFactory.getConfig().setEnableWatermark(originEnableWatermark);
+    ConfigFactory.getConfig().setWatermarkSecretKey(originWatermarkSecretKey);
+    ConfigFactory.getConfig().setWatermarkBitString(originWatermarkBitString);
+    ConfigFactory.getConfig().setWatermarkMethod(originWatermarkMethod);
   }
 
-  private static void insertData() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  private static void insertData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       String[] create_sql =
@@ -123,7 +138,7 @@ public class IoTDBWatermarkTest {
         String sql =
             String.format(
                 "insert into root.vehicle.d0(timestamp,s0,s2) values(%s,%s,%s)",
-                time, time % 50, time % 50, time % 50);
+                time, time % 50, time % 50);
         statement.execute(sql);
         if (time % 10 == 0) {
           sql =
@@ -139,36 +154,24 @@ public class IoTDBWatermarkTest {
   }
 
   @Test
-  public void EncodeAndDecodeTest1()
-      throws IOException, ClassNotFoundException, LogicalOperatorException {
+  public void EncodeAndDecodeTest1() {
     // Watermark Embedding
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("GRANT WATERMARK_EMBEDDING TO root");
-      boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s0,s1,s2 FROM root.vehicle.d0")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s0)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s1)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s2);
           writer1.println(ans);
         }
         writer1.close();
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -178,50 +181,43 @@ public class IoTDBWatermarkTest {
     // Watermark Detection
     double alpha = 0.1;
     int columnIndex = 1;
-    boolean isWatermarked =
-        WatermarkDetector.isWatermarked(
-            filePath1,
-            secretKey,
-            watermarkBitString,
-            embed_row_cycle,
-            embed_lsb_num,
-            alpha,
-            columnIndex,
-            "int");
-    Assert.assertTrue(isWatermarked);
+    try {
+      boolean isWatermarked =
+          WatermarkDetector.isWatermarked(
+              filePath1,
+              secretKey,
+              watermarkBitString,
+              embed_row_cycle,
+              embed_lsb_num,
+              alpha,
+              columnIndex,
+              "int");
+      Assert.assertTrue(isWatermarked);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
-  public void EncodeAndDecodeTest2()
-      throws IOException, ClassNotFoundException, LogicalOperatorException {
+  public void EncodeAndDecodeTest2() {
     // No Watermark Embedding
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("REVOKE WATERMARK_EMBEDDING FROM root");
-      boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s0,s1,s2 FROM root.vehicle.d0")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s0)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s1)
                   + ","
-                  + resultSet.getString(
-                      TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
+                  + resultSet.getString(TestConstant.d0 + "." + TestConstant.s2);
           writer2.println(ans);
         }
         writer2.close();
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -231,16 +227,21 @@ public class IoTDBWatermarkTest {
     // Watermark Detection
     double alpha = 0.1;
     int columnIndex = 1;
-    boolean isWatermarked =
-        WatermarkDetector.isWatermarked(
-            filePath2,
-            secretKey,
-            watermarkBitString,
-            embed_row_cycle,
-            embed_lsb_num,
-            alpha,
-            columnIndex,
-            "int");
-    Assert.assertFalse(isWatermarked);
+    try {
+      boolean isWatermarked =
+          WatermarkDetector.isWatermarked(
+              filePath2,
+              secretKey,
+              watermarkBitString,
+              embed_row_cycle,
+              embed_lsb_num,
+              alpha,
+              columnIndex,
+              "int");
+      Assert.assertFalse(isWatermarked);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

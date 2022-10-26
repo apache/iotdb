@@ -22,9 +22,10 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
@@ -46,19 +47,18 @@ public class UDFInfo implements SnapshotProcessor {
       ConfigNodeDescriptor.getInstance().getConf();
 
   private final UDFExecutableManager udfExecutableManager;
-  private final UDFRegistrationService udfRegistrationService;
+  private final UDFManagementService udfRegistrationService;
 
-  public UDFInfo() {
+  public UDFInfo() throws IOException {
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
-    udfRegistrationService =
-        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
+    udfRegistrationService = UDFManagementService.getInstance();
   }
 
   public synchronized void validateBeforeRegistration(
       String functionName, String className, List<String> uris) throws Exception {
-    udfRegistrationService.validate(functionName, className);
+    udfRegistrationService.validate(new UDFInformation(functionName, className));
 
     if (uris.isEmpty()) {
       fetchExecutablesAndCheckInstantiation(className);
@@ -94,7 +94,7 @@ public class UDFInfo implements SnapshotProcessor {
     final List<String> uris = req.getUris();
 
     try {
-      udfRegistrationService.register(functionName, className, uris, udfExecutableManager, true);
+      udfRegistrationService.register(new UDFInformation(functionName, className));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
@@ -109,7 +109,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   public synchronized TSStatus dropFunction(DropFunctionPlan req) {
     try {
-      udfRegistrationService.deregister(req.getFunctionName());
+      udfRegistrationService.deregister(req.getFunctionName(), false);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
@@ -124,13 +124,12 @@ public class UDFInfo implements SnapshotProcessor {
 
   @Override
   public synchronized boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return udfExecutableManager.processTakeSnapshot(snapshotDir)
-        && udfRegistrationService.processTakeSnapshot(snapshotDir);
+    // todo: implementation
+    return true;
   }
 
   @Override
   public synchronized void processLoadSnapshot(File snapshotDir) throws IOException {
-    udfExecutableManager.processLoadSnapshot(snapshotDir);
-    udfRegistrationService.processLoadSnapshot(snapshotDir);
+    // todo: implementation
   }
 }
