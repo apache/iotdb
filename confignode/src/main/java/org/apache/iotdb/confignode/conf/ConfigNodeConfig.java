@@ -701,7 +701,7 @@ public class ConfigNodeConfig {
   }
 
   public void setPartitionRegionStandAloneLogSegmentSizeMax(
-          long partitionRegionStandAloneLogSegmentSizeMax) {
+      long partitionRegionStandAloneLogSegmentSizeMax) {
     this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
   }
 

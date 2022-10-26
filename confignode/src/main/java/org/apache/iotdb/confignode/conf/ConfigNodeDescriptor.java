@@ -357,10 +357,10 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
     conf.setPartitionRegionStandAloneLogSegmentSizeMax(
-            Long.parseLong(
-                    properties.getProperty(
-                            "partition_region_standalone_log_segment_size_max",
-                            String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_standalone_log_segment_size_max",
+                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
