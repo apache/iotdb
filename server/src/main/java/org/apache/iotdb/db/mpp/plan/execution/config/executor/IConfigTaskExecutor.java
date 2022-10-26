@@ -71,6 +71,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
 
+  SettableFuture<ConfigTaskResult> showFunctions();
+
   SettableFuture<ConfigTaskResult> createTrigger(CreateTriggerStatement createTriggerStatement);
 
   SettableFuture<ConfigTaskResult> dropTrigger(String triggerName);
