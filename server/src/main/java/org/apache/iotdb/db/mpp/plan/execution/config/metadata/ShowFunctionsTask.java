@@ -68,6 +68,7 @@ public class ShowFunctionsTask implements IConfigTask {
         appendUDFInformation(builder, udfInformation);
       }
     }
+    // native and built-in functions
     UDFManagementService.getInstance()
         .getAllBuiltInTimeSeriesGeneratingInformation()
         .forEach(udfInformation -> appendUDFInformation(builder, udfInformation));
