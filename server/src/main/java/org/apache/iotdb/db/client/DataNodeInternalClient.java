@@ -80,7 +80,7 @@ public class DataNodeInternalClient {
 
       LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), sessionId);
     } catch (Exception e) {
-      LOGGER.info("User {} opens internal Session failed.", sessionInfo.getUserName());
+      LOGGER.warn("User {} opens internal Session failed.", sessionInfo.getUserName(), e);
       throw new IntoProcessException(
           String.format("User %s opens internal Session failed.", sessionInfo.getUserName()));
     }
@@ -120,7 +120,7 @@ public class DataNodeInternalClient {
     IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
+        LOGGER.info("[CleanUpQuery]");
         queryExecution.stopAndCleanup();
         COORDINATOR.removeQueryExecution(queryId);
       }

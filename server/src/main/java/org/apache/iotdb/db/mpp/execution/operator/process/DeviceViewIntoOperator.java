@@ -99,7 +99,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       }
     }
 
-    if (child.hasNext()) {
+    if (hasNext()) {
       return null;
     } else {
       insertMultiTabletsInternally(false);

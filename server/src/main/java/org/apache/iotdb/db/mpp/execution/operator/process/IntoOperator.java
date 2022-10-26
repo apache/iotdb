@@ -74,7 +74,7 @@ public class IntoOperator extends AbstractIntoOperator {
       }
     }
 
-    if (child.hasNext()) {
+    if (hasNext()) {
       return null;
     } else {
       insertMultiTabletsInternally(false);
