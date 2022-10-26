@@ -327,6 +327,14 @@ public interface BaseConfig {
     return this;
   }
 
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
+  }
+
   default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     return this;
   }

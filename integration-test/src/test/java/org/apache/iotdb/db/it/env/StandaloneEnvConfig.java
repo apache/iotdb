@@ -328,6 +328,17 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    IoTDBDescriptor.getInstance().getConfig().setSchemaEngineMode(schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public String getSchemaEngineMode() {
+    return IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode();
+  }
+
+  @Override
   public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     IoTDBDescriptor.getInstance()
         .getConfig()

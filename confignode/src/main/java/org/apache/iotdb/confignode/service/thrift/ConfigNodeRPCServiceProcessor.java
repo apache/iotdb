@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -487,7 +488,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
-    return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
+    // todo: implementation
+    return configManager.createFunction(
+        req.getUdfName(), req.getClassName(), Collections.emptyList());
   }
 
   @Override
@@ -673,6 +676,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) {
     return configManager.showPipe(req);
+  }
+
+  @Override
+  public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
+    return configManager.getAllPipeInfo();
   }
 
   @Override

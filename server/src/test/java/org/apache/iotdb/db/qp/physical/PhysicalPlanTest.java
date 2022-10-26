@@ -78,6 +78,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -97,6 +98,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@Ignore
 public class PhysicalPlanTest {
 
   private final Planner processor = new Planner();

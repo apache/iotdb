@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -202,16 +203,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris) {
+      CreateFunctionStatement createFunctionStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String udfName = createFunctionStatement.getUdfName();
+    String className = createFunctionStatement.getClassName();
     try {
       UDFManagementService.getInstance().register(new UDFInformation(udfName, className));
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
-          String.format(
-              "Failed to create function %s(%s), URI: %s, because %s.",
-              udfName, className, uris, e.getMessage());
+          String.format("Failed to create function %s(%s), because %s.", udfName, className, e);
       LOGGER.error(message, e);
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
