@@ -508,8 +508,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance()
-        .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    try {
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
@@ -1088,15 +1092,15 @@ public class PlanExecutor implements IPlanExecutor {
       String functionType = "";
       try {
         if (info.isBuiltin()) {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDAF;
           }
         } else {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }

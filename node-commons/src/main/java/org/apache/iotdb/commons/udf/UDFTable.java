@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.commons.udf;
 
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UDFTable {
   private final Map<String, UDFInformation> udfInformationMap;
 
+  /** maintain a map for creating instance */
+  private final Map<String, Class<?>> functionToClassMap;
+
   public UDFTable() {
     udfInformationMap = new ConcurrentHashMap<>();
+    functionToClassMap = new ConcurrentHashMap<>();
   }
 
   public void addUDFInformation(String functionName, UDFInformation udfInformation) {
@@ -39,6 +45,20 @@ public class UDFTable {
 
   public UDFInformation getUDFInformation(String functionName) {
     return udfInformationMap.get(functionName.toUpperCase());
+  }
+
+  public void addFunctionAndClass(String functionName, Class<?> clazz) {
+    functionToClassMap.put(functionName.toUpperCase(), clazz);
+  }
+
+  public Class<?> getFunctionClass(String functionName) {
+    return functionToClassMap.get(functionName.toUpperCase());
+  }
+
+  public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
+      throws ClassNotFoundException {
+    Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);
+    functionToClassMap.put(udfInformation.getClassName(), functionClass);
   }
 
   public UDFInformation[] getAllUDFInformation() {

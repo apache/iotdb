@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -88,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -263,20 +266,93 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris) {
+      CreateFunctionStatement createFunctionStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String udfName = createFunctionStatement.getUdfName();
+    String className = createFunctionStatement.getClassName();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      final TSStatus executionStatus =
-          client.createFunction(new TCreateFunctionReq(udfName, className, uris));
+      String libRoot = UDFExecutableManager.getInstance().getLibRoot();
+      String jarFileName;
+      ByteBuffer jarFile;
+      String jarMd5;
+      if (createFunctionStatement.isUsingURI()) {
+        try {
+          // download executable
+          ExecutableResource resource =
+              UDFExecutableManager.getInstance()
+                  .request(Collections.singletonList(createFunctionStatement.getJarPath()));
+          String uriString = createFunctionStatement.getJarPath();
+          jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+          // move to ext
+          UDFExecutableManager.getInstance()
+              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
+          // jarFilePath after moving to ext lib
+          String jarFilePathUnderLib =
+              UDFExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
+          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderLib);
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib)));
 
+        } catch (IOException | URISyntaxException e) {
+          LOGGER.warn(
+              "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
+              createFunctionStatement.getUdfName(),
+              createFunctionStatement.getJarPath(),
+              e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to download executable for UDF '"
+                      + createFunctionStatement.getUdfName()
+                      + "'",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
+        }
+      } else {
+        // change libRoot
+        libRoot = createFunctionStatement.getJarPath();
+
+        jarFileName = new File(createFunctionStatement.getJarPath()).getName();
+        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
+        jarFile = ExecutableManager.transferToBytebuffer(createFunctionStatement.getJarPath());
+        // set md5 of the jar file
+        jarMd5 =
+            DigestUtils.md5Hex(
+                Files.newInputStream(Paths.get(createFunctionStatement.getJarPath())));
+      }
+
+      // try to create instance, this request will fail if creation is not successful
+      try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
+        // Ensure that jar file contains the class
+        Class.forName(createFunctionStatement.getClassName(), true, classLoader);
+      } catch (ClassNotFoundException e) {
+        LOGGER.warn(
+            "Failed to create function when try to create UDF({}) instance first, the cause is: {}",
+            createFunctionStatement.getUdfName(),
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to load class '"
+                    + createFunctionStatement.getClassName()
+                    + "', because it's not found in jar file: "
+                    + createFunctionStatement.getJarPath(),
+                TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+        return future;
+      }
+
+      final TSStatus executionStatus =
+          client.createFunction(
+              new TCreateFunctionReq(
+                  createFunctionStatement.getUdfName(),
+                  createFunctionStatement.getClassName(),
+                  jarFileName,
+                  jarFile,
+                  jarMd5));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.error(
-            "[{}] Failed to create function {}({}) in config node, URI: {}.",
-            executionStatus,
+            "Failed to create function {}({}) because {}",
             udfName,
             className,
-            uris);
+            executionStatus.getMessage());
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
