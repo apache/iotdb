@@ -271,7 +271,7 @@ public class ConfigPlanExecutor {
       case RemoveConfigNode:
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
       case CreateFunction:
-        return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
+        return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
       case AddTriggerInTable:
