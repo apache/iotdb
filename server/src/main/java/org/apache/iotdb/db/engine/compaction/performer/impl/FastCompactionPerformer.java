@@ -24,8 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.AlignedFastCompactionPerformerSubTask;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NonAlignedFastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
@@ -159,15 +158,14 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
-    new AlignedFastCompactionPerformerSubTask(
+    new FastCompactionPerformerSubTask(
             fastCrossCompactionWriter,
             timeseriesMetadataOffsetMap,
-            measurementSchemas,
             readerCacheMap,
             modificationCache,
             sortedSourceFiles,
-            deviceId,
-            0)
+            measurementSchemas,
+            deviceId)
         .call();
   }
 
@@ -203,13 +201,13 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       futures.add(
           CompactionTaskManager.getInstance()
               .submitSubTask(
-                  new NonAlignedFastCompactionPerformerSubTask(
+                  new FastCompactionPerformerSubTask(
                       fastCrossCompactionWriter,
                       timeseriesMetadataOffsetMap,
-                      measurementsForEachSubTask[i],
                       readerCacheMap,
                       modificationCache,
                       sortedSourceFiles,
+                      measurementsForEachSubTask[i],
                       deviceID,
                       i)));
     }

@@ -16,13 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
+package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
-import org.apache.iotdb.db.engine.compaction.cross.utils.FileElement;
-import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -48,47 +45,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerformerSubTask {
-  private List<IMeasurementSchema> measurementSchemas;
+public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
-  public AlignedFastCompactionPerformerSubTask(
+  // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+  // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
+  private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
+
+  private final List<IMeasurementSchema> measurementSchemas;
+
+  public AlignedSeriesCompactionExecutor(
       FastCrossCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      List<IMeasurementSchema> measurementSchemas,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
-      int subTaskId) {
-    super(
-        compactionWriter,
-        timeseriesMetadataOffsetMap,
-        readerCacheMap,
-        modificationCacheMap,
-        sortedSourceFiles,
-        deviceId,
-        true,
-        subTaskId);
+      int subTaskId,
+      List<IMeasurementSchema> measurementSchemas) {
+    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId);
+    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
-  }
-
-  @Override
-  protected void startMeasurement() {
-    throw new RuntimeException("Does not support startMeasruement methods");
-  }
-
-  @Override
-  public Void call()
-      throws IOException, PageException, WriteProcessException, IllegalPathException {
-    // get source files which are sorted by the startTime of current device from old to new, files
-    // that do not contain the current device have been filtered out as well.
+    // get source files which are sorted by the startTime of current device from old to new,
+    // files that do not contain the current device have been filtered out as well.
     sortedSourceFiles.forEach(x -> fileList.add(new FileElement(x)));
+  }
 
+  @Override
+  public void excute()
+      throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactionWriter.startMeasurement(measurementSchemas, subTaskId);
     compactFiles();
     compactionWriter.endMeasurement(subTaskId);
+  }
 
-    return null;
+  @Override
+  protected void compactFiles()
+      throws PageException, IOException, WriteProcessException, IllegalPathException {
+    while (!fileList.isEmpty()) {
+      List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
+
+      // read chunk metadatas from files and put them into chunk metadata queue
+      deserializeFileIntoQueue(overlappedFiles);
+
+      compactChunks();
+    }
   }
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */

@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointElement;
+import org.apache.iotdb.db.engine.compaction.cross.utils.SeriesCompactionExecutor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -42,13 +42,13 @@ public class PointPriorityReader {
 
   private final PriorityQueue<PointElement> pointQueue;
 
-  private final FastCompactionPerformerSubTask.RemovePage removePage;
+  private final SeriesCompactionExecutor.RemovePage removePage;
 
   private TimeValuePair currentPoint;
 
   private boolean shouldReadNextPoint = true;
 
-  public PointPriorityReader(FastCompactionPerformerSubTask.RemovePage removePage) {
+  public PointPriorityReader(SeriesCompactionExecutor.RemovePage removePage) {
     this.removePage = removePage;
     pointQueue =
         new PriorityQueue<>(
