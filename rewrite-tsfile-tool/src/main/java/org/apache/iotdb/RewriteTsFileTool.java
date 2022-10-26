@@ -260,6 +260,7 @@ public class RewriteTsFileTool {
       System.out.printf("Loading %s(%d/%d)...", file.getPath(), i + 1, size);
       try {
         seqWriteSingleTsFile(file.getPath(), session);
+        session.executeNonQueryStatement("FLUSH");
       } catch (Exception e) {
         System.out.println(
             "------------------------------Error Message------------------------------");
@@ -393,6 +394,7 @@ public class RewriteTsFileTool {
                     timeBatch,
                     pageIndex,
                     valueList);
+                addSchema = true;
               } else { // NonAligned Chunk
                 readAndSendSingleSeriesPage(
                     currentDevice, header, pageData, valueDecoder, defaultTimeDecoder, session);
@@ -400,7 +402,7 @@ public class RewriteTsFileTool {
               pageIndex++;
               dataSize -= pageHeader.getSerializedPageSize();
             }
-            if (isAlignedChunk) {
+            if (isAlignedChunk && header.getDataType() != TSDataType.VECTOR) {
               valueForAlignedSeries.add(valueList);
             }
             break;
@@ -409,12 +411,48 @@ public class RewriteTsFileTool {
             if (isAlignedChunk) {
               Tablet tablet = new Tablet(currentDevice, schemaForAlignedSeries, MAX_TABLET_LENGTH);
               for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
-                tablet.timestamps[tablet.rowSize] = timeForAlignedSeries.get(i);
-                TsPrimitiveType[] values = new TsPrimitiveType[valueForAlignedSeries.size()];
+                tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
                 for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
-                  values[j] = valueForAlignedSeries.get(j).get(i);
+                  switch (valueForAlignedSeries.get(j).get(i).getDataType()) {
+                    case INT32:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getInt());
+                      break;
+                    case INT64:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getLong());
+                      break;
+                    case TEXT:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getStringValue());
+                      break;
+                    case BOOLEAN:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getBoolean());
+                      break;
+                    case FLOAT:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getFloat());
+                      break;
+                    case DOUBLE:
+                      tablet.addValue(
+                          schemaForAlignedSeries.get(j).getMeasurementId(),
+                          tablet.rowSize,
+                          valueForAlignedSeries.get(j).get(i).getDouble());
+                      break;
+                  }
                 }
-                tablet.values[tablet.rowSize++] = values;
+                tablet.rowSize++;
                 if (tablet.rowSize >= MAX_TABLET_LENGTH) {
                   session.insertAlignedTablet(tablet);
                   tablet.reset();
@@ -424,6 +462,9 @@ public class RewriteTsFileTool {
                 session.insertAlignedTablet(tablet);
                 tablet.reset();
               }
+              timeForAlignedSeries.clear();
+              valueForAlignedSeries.clear();
+              schemaForAlignedSeries.clear();
             }
             isAlignedChunk = false;
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
@@ -437,6 +478,65 @@ public class RewriteTsFileTool {
                 "Cannot handle marker %d in position %d, stop reading %s%n",
                 marker, reader.position(), filename);
         }
+      }
+
+      if (isAlignedChunk) {
+        Tablet tablet = new Tablet(currentDevice, schemaForAlignedSeries, MAX_TABLET_LENGTH);
+        for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
+          tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
+          for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
+            switch (valueForAlignedSeries.get(j).get(i).getDataType()) {
+              case INT32:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getInt());
+                break;
+              case INT64:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getLong());
+                break;
+              case TEXT:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getStringValue());
+                break;
+              case BOOLEAN:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getBoolean());
+                break;
+              case FLOAT:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getFloat());
+                break;
+              case DOUBLE:
+                tablet.addValue(
+                    schemaForAlignedSeries.get(j).getMeasurementId(),
+                    tablet.rowSize,
+                    valueForAlignedSeries.get(j).get(i).getDouble());
+                break;
+            }
+          }
+          tablet.rowSize++;
+          if (tablet.rowSize >= MAX_TABLET_LENGTH) {
+            session.insertAlignedTablet(tablet);
+            tablet.reset();
+          }
+        }
+        if (tablet.rowSize >= 0) {
+          session.insertAlignedTablet(tablet);
+          tablet.reset();
+        }
+        timeForAlignedSeries.clear();
+        valueForAlignedSeries.clear();
+        schemaForAlignedSeries.clear();
       }
     }
 
@@ -453,14 +553,13 @@ public class RewriteTsFileTool {
       List<long[]> timeBatch,
       int pageIndex,
       List<TsPrimitiveType> valueList) {
-    if (!addSchema) {
+    if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
               header.getMeasurementID(),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
-      addSchema = true;
     }
     ValuePageReader valuePageReader =
         new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
@@ -479,7 +578,7 @@ public class RewriteTsFileTool {
       int pageIndex,
       List<Long> timeForAlignedSeries)
       throws IOException {
-    if (!addSchema) {
+    if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
               header.getMeasurementID(),
@@ -591,6 +690,7 @@ public class RewriteTsFileTool {
           }
         }
       }
+      writeModification(resource.getTsFile().getAbsolutePath(), session);
     }
   }
 
@@ -754,7 +854,41 @@ public class RewriteTsFileTool {
           tablet.addTimestamp(tablet.rowSize, batchDataIterator.currentTime());
           TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
           for (int i = 0; i < schemaList.size(); ++i) {
-            tablet.addValue(schemaList.get(i).getMeasurementId(), tablet.rowSize, pointsData[i]);
+            if (pointsData[i] == null) {
+              continue;
+            }
+            switch (pointsData[i].getDataType()) {
+              case INT32:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(), tablet.rowSize, pointsData[i].getInt());
+                break;
+              case INT64:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(), tablet.rowSize, pointsData[i].getLong());
+                break;
+              case FLOAT:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(), tablet.rowSize, pointsData[i].getFloat());
+                break;
+              case DOUBLE:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(),
+                    tablet.rowSize,
+                    pointsData[i].getDouble());
+                break;
+              case BOOLEAN:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(),
+                    tablet.rowSize,
+                    pointsData[i].getBoolean());
+                break;
+              case TEXT:
+                tablet.addValue(
+                    schemaList.get(i).getMeasurementId(),
+                    tablet.rowSize,
+                    pointsData[i].getStringValue());
+                break;
+            }
           }
           tablet.rowSize++;
           batchDataIterator.next();
