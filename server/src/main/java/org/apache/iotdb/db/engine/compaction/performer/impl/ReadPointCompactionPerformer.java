@@ -43,7 +43,6 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -276,9 +275,7 @@ public class ReadPointCompactionPerformer
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
         while (pointReader.hasNextTimeValuePair()) {
-          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-          writer.write(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+          writer.write(pointReader.nextTimeValuePair(), subTaskId);
         }
       }
     }

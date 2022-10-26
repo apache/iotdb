@@ -275,11 +275,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
       // write data points of the current page into chunk writer
       while (pointPriorityReader.hasNext()
-          && pointPriorityReader.currentPoint().left <= pageElement.pageHeader.getEndTime()) {
-        compactionWriter.write(
-            pointPriorityReader.currentPoint().left,
-            pointPriorityReader.currentPoint().right,
-            subTaskId);
+          && pointPriorityReader.currentPoint().getTimestamp()
+              <= pageElement.pageHeader.getEndTime()) {
+        compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
         pointPriorityReader.next();
       }
     }
@@ -307,12 +305,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       int oldSize = candidateOverlappedPages.size();
       // write currentPage.point.time < nextPage.startTime to chunk writer
       while (pointPriorityReader.hasNext()
-          && pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
+          && pointPriorityReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
         // write data point to chunk writer
-        compactionWriter.write(
-            pointPriorityReader.currentPoint().left,
-            pointPriorityReader.currentPoint().right,
-            subTaskId);
+        compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
         pointPriorityReader.next();
         if (candidateOverlappedPages.size() > oldSize) {
           // during the process of writing overlapped points, if the first page is compacted
@@ -332,7 +327,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       } else {
         boolean isNextPageOverlap =
             (pointPriorityReader.hasNext()
-                    && pointPriorityReader.currentPoint().left
+                    && pointPriorityReader.currentPoint().getTimestamp()
                         <= nextPageElement.pageHeader.getEndTime())
                 || isPageOverlap(nextPageElement);
 
@@ -356,10 +351,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
     while (pointPriorityReader.hasNext()) {
       // write data point to chunk writer
 
-      compactionWriter.write(
-          pointPriorityReader.currentPoint().left,
-          pointPriorityReader.currentPoint().right,
-          subTaskId);
+      compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
       pointPriorityReader.next();
       if (candidateOverlappedPages.size() > 0) {
         // finish compacting the first page or there are new chunks being deserialized and find

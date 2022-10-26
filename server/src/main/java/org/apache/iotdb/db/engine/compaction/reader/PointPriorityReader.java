@@ -23,8 +23,9 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPe
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointElement;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -43,7 +44,7 @@ public class PointPriorityReader {
 
   private final FastCompactionPerformerSubTask.RemovePage removePage;
 
-  private Pair<Long, Object> currentPoint;
+  private TimeValuePair currentPoint;
 
   private boolean shouldReadNextPoint = true;
 
@@ -57,14 +58,14 @@ public class PointPriorityReader {
             });
   }
 
-  public Pair<Long, Object> currentPoint() {
+  public TimeValuePair currentPoint() {
     if (shouldReadNextPoint) {
       // get the highest priority point
       currentPoint = pointQueue.peek().timeValuePair;
-      lastTime = currentPoint.left;
+      lastTime = currentPoint.getTimestamp();
 
       // fill aligned null value with the same timestamp
-      if (currentPoint.right instanceof TsPrimitiveType[]) {
+      if (currentPoint.getValue().getDataType().equals(TSDataType.VECTOR)) {
         fillAlignedNullValue();
       }
 
@@ -82,23 +83,33 @@ public class PointPriorityReader {
     // remove the current point element
     pointElementsWithSameTimestamp.add(pointQueue.poll());
 
-    TsPrimitiveType[] currentValues = (TsPrimitiveType[]) currentPoint.right;
+    TsPrimitiveType[] currentValues = currentPoint.getValue().getVector();
+    int nullValueNum = currentValues.length;
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
         // the smallest time of all pages is later then the last time, then break the loop
         break;
-      }
-      if (pointQueue.peek().page.currentTime() == lastTime) {
+      } else {
+        // find the data points in other pages that has the same timestamp
         PointElement pointElement = pointQueue.poll();
         pointElementsWithSameTimestamp.add(pointElement);
-        TsPrimitiveType[] values = (TsPrimitiveType[]) pointElement.timeValuePair.right;
+        TsPrimitiveType[] values = pointElement.timeValuePair.getValue().getVector();
         for (int i = 0; i < values.length; i++) {
-          if (currentValues[i] == null && values[i] != null) {
-            // if current page of aligned value is null while other page of this aligned value
-            // with same timestamp is not null, then fill it.
-            currentValues[i] = values[i];
+          if (currentValues[i] == null) {
+            if (values[i] != null) {
+              // if current page of aligned value is null while other page of this aligned value
+              // with same timestamp is not null, then fill it.
+              currentValues[i] = values[i];
+              nullValueNum--;
+            }
+          } else {
+            nullValueNum--;
           }
         }
+      }
+      if (nullValueNum == 0) {
+        // if there is no sub sensor with null value, then break the loop
+        break;
       }
     }
 
@@ -110,16 +121,14 @@ public class PointPriorityReader {
     // remove data points with the same timestamp as the last point
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
-        // the smallest time of all pages is later then the last time, then break the loop
+        // the smallest time of all pages is later than the last time, then break the loop
         break;
-      }
-      IBatchDataIterator pageData = pointQueue.peek().page;
-      if (pageData.currentTime() == lastTime) {
+      } else {
         // find the data points in other pages that has the same timestamp
         PointElement pointElement = pointQueue.poll();
-        pageData.next();
-        if (pageData.hasNext()) {
-          pointElement.setPoint(pageData.currentTime(), pageData.currentValue());
+        IPointReader pointReader = pointElement.pointReader;
+        if (pointReader.hasNextTimeValuePair()) {
+          pointElement.setPoint(pointReader.nextTimeValuePair());
           pointQueue.add(pointElement);
         } else {
           // end page

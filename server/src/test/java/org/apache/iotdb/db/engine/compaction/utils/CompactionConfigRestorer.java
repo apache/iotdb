@@ -29,7 +29,7 @@ public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
   private boolean enableUnseqSpaceCompaction = false;
   private boolean enableCrossSpaceCompaction = true;
-  private CrossCompactionSelector crossStrategy = CrossCompactionSelector.REWRITE;
+  private CrossCompactionSelector crossStrategy = CrossCompactionSelector.READ_POINT;
   private InnerSequenceCompactionSelector innerStrategy =
       InnerSequenceCompactionSelector.SIZE_TIERED;
   private CompactionPriority priority = CompactionPriority.BALANCE;

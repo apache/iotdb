@@ -25,9 +25,9 @@ import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -105,7 +105,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void endMeasurement(int subTaskId) throws IOException;
 
-  public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
+  public abstract void write(TimeValuePair timeValuePair, int subTaskId) throws IOException;
 
   public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException;
@@ -118,34 +118,34 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
-  protected void writeDataPoint(Long timestamp, Object value, IChunkWriter iChunkWriter) {
+  protected void writeDataPoint(Long timestamp, TsPrimitiveType value, IChunkWriter iChunkWriter) {
     if (iChunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
         case TEXT:
-          chunkWriter.write(timestamp, (Binary) value);
+          chunkWriter.write(timestamp, value.getBinary());
           break;
         case DOUBLE:
-          chunkWriter.write(timestamp, (Double) value);
+          chunkWriter.write(timestamp, value.getDouble());
           break;
         case BOOLEAN:
-          chunkWriter.write(timestamp, (Boolean) value);
+          chunkWriter.write(timestamp, value.getBoolean());
           break;
         case INT64:
-          chunkWriter.write(timestamp, (Long) value);
+          chunkWriter.write(timestamp, value.getLong());
           break;
         case INT32:
-          chunkWriter.write(timestamp, (Integer) value);
+          chunkWriter.write(timestamp, value.getInt());
           break;
         case FLOAT:
-          chunkWriter.write(timestamp, (Float) value);
+          chunkWriter.write(timestamp, value.getFloat());
           break;
         default:
           throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
       }
     } else {
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
-      for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
+      for (TsPrimitiveType val : value.getVector()) {
         if (val == null) {
           chunkWriter.write(timestamp, null, true);
         } else {

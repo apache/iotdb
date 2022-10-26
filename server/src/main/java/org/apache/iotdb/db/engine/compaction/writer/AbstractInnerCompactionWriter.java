@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -64,7 +65,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
+  public abstract void write(TimeValuePair timeValuePair, int subTaskId) throws IOException;
 
   @Override
   public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)

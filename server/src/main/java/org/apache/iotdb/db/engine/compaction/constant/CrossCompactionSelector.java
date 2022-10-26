@@ -23,11 +23,14 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceComp
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 public enum CrossCompactionSelector {
-  REWRITE;
+  READ_POINT,
+  FAST;
 
   public static CrossCompactionSelector getCrossCompactionSelector(String name) {
-    if (REWRITE.toString().equalsIgnoreCase(name)) {
-      return REWRITE;
+    if (READ_POINT.toString().equalsIgnoreCase(name)) {
+      return READ_POINT;
+    } else if (FAST.toString().equalsIgnoreCase(name)) {
+      return FAST;
     }
     throw new RuntimeException("Illegal Cross Compaction Selector " + name);
   }
@@ -38,7 +41,8 @@ public enum CrossCompactionSelector {
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
-      case REWRITE:
+      case READ_POINT:
+      case FAST:
       default:
         return new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager);
