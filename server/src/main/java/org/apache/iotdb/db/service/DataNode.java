@@ -498,7 +498,7 @@ public class DataNode implements DataNodeMBean {
       } else {
         try {
           // local jar has conflicts with jar on config node, add current triggerInformation to list
-          if (!TriggerManagementService.getInstance().isLocalJarCorrect(triggerInformation)) {
+          if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
             res.add(triggerInformation);
           }
         } catch (TriggerManagementException e) {

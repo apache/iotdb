@@ -511,4 +511,20 @@ public class IoTDBTagAggregationIT {
           e.getMessage().contains("Only time filters are supported in GROUP BY TAGS query"));
     }
   }
+
+  @Test
+  public void testWithHaving() {
+    String query =
+        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) HAVING COUNT(t) > 3";
+    // Having is not supported yet
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet ignored = statement.executeQuery(query)) {
+        Assert.fail();
+      }
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Having clause is not supported yet in GROUP BY TAGS query"));
+    }
+  }
 }
