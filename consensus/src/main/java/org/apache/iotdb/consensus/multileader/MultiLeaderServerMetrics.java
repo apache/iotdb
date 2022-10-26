@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -27,26 +27,39 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
+public class MultiLeaderServerMetrics implements IMetricSet {
+  private final MultiLeaderServerImpl impl;
 
-public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
-  private AtomicLong thriftConnectionNumber;
-
-  public MppDataExchangeServiceThriftHandlerMetrics(AtomicLong thriftConnectionNumber) {
-    this.thriftConnectionNumber = thriftConnectionNumber;
+  public MultiLeaderServerMetrics(MultiLeaderServerImpl impl) {
+    this.impl = impl;
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
         .getOrCreateAutoGauge(
-            Metric.THRIFT_CONNECTIONS.toString(),
+            Metric.MULTI_LEADER.toString(),
             MetricLevel.CORE,
-            thriftConnectionNumber,
-            AtomicLong::get,
+            impl,
+            MultiLeaderServerImpl::getIndex,
             Tag.NAME.toString(),
-            "MPPDataExchange");
+            "multiLeaderServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "searchIndex");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.MULTI_LEADER.toString(),
+            MetricLevel.CORE,
+            impl,
+            MultiLeaderServerImpl::getCurrentSafelyDeletedSearchIndex,
+            Tag.NAME.toString(),
+            "multiLeaderServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "safeIndex");
   }
 
   @Override
@@ -54,22 +67,22 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.THRIFT_CONNECTIONS.toString(),
+            Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
-            "MPPDataExchange");
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    MppDataExchangeServiceThriftHandlerMetrics that =
-        (MppDataExchangeServiceThriftHandlerMetrics) o;
-    return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(thriftConnectionNumber);
+            "multiLeaderServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "searchIndex");
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.MULTI_LEADER.toString(),
+            Tag.NAME.toString(),
+            "multiLeaderServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "safeIndex");
   }
 }

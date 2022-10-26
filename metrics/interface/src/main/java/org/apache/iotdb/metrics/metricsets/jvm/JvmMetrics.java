@@ -17,36 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.metricsets.predefined.jvm;
+package org.apache.iotdb.metrics.metricsets.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.lang.management.ClassLoadingMXBean;
-import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
+import java.util.List;
 
-/** This file is modified from io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics */
-public class JvmClassLoaderMetrics implements IMetricSet {
+public class JvmMetrics implements IMetricSet {
+  private List<IMetricSet> metricSets = new ArrayList<>();
+
+  public JvmMetrics() {
+    metricSets.add(new JvmClassLoaderMetrics());
+    metricSets.add(new JvmCompileMetrics());
+    metricSets.add(new JvmGcMetrics());
+    metricSets.add(new JvmMemoryMetrics());
+    metricSets.add(new JvmThreadMetrics());
+  }
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
-    metricService.getOrCreateAutoGauge(
-        "jvm.classes.loaded.classes",
-        MetricLevel.IMPORTANT,
-        classLoadingBean,
-        ClassLoadingMXBean::getLoadedClassCount);
-    metricService.getOrCreateAutoGauge(
-        "jvm.classes.unloaded.classes",
-        MetricLevel.IMPORTANT,
-        classLoadingBean,
-        ClassLoadingMXBean::getUnloadedClassCount);
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.bindTo(metricService);
+    }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.GAUGE, "jvm.classes.loaded.classes");
-    metricService.remove(MetricType.GAUGE, "jvm.classes.unloaded.classes");
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(metricService);
+    }
   }
 }

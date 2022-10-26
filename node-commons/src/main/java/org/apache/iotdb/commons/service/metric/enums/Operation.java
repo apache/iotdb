@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,18 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.service.metric.enums;
 
-package org.apache.iotdb.metrics.metricsets.predefined;
+public enum Operation {
+  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
+  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
+  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
+  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
+  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
+  EXECUTE_QUERY("EXECUTE_QUERY"),
+  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
 
-public enum PredefinedMetric {
-  JVM,
-  LOGBACK,
-  FILE,
-  PROCESS,
-  SYSTEM;
+  public String getName() {
+    return name;
+  }
 
-  @Override
-  public String toString() {
-    return name();
+  String name;
+
+  Operation(String name) {
+    this.name = name;
   }
 }
