@@ -55,7 +55,8 @@ import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
 public class LogDispatcher {
-  private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
+  private static final int RETRY_NUM = 3;
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
@@ -286,7 +287,10 @@ public class LogDispatcher {
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           // sends batch asynchronously and migrates the retry logic into the callback handler
-          sendBatchAsync(batch, new DispatchLogHandler(this, batch));
+          if (!sendBatchAsync(batch, new DispatchLogHandler(this, batch))) {
+            logger.error("Failed to send batch {} to {}", batch, peer);
+            syncStatus.removeBatch(batch);
+          }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -395,21 +399,30 @@ public class LogDispatcher {
       return batch;
     }
 
-    public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
-      try {
-        AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
-        TSyncLogReq req =
-            new TSyncLogReq(
-                selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
-        logger.debug(
-            "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
-            batch.getStartIndex(),
-            batch.getEndIndex(),
-            peer.getGroupId().convertToTConsensusGroupId());
-        client.syncLog(req, handler);
-      } catch (IOException | TException e) {
-        logger.error("Can not sync logs to peer {} because", peer, e);
+    public boolean sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
+      for (int num = 0; num < RETRY_NUM; num++) {
+        try {
+          AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
+          TSyncLogReq req =
+              new TSyncLogReq(
+                  selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+          logger.debug(
+              "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
+              batch.getStartIndex(),
+              batch.getEndIndex(),
+              peer.getGroupId().convertToTConsensusGroupId());
+          client.syncLog(req, handler);
+          return true;
+        } catch (IOException | TException e) {
+          logger.error("Can not sync logs to peer {} because", peer, e);
+          try {
+            TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, num));
+          } catch (InterruptedException e2) {
+            logger.error("Retry wait failed.", e2);
+          }
+        }
       }
+      return false;
     }
 
     public SyncStatus getSyncStatus() {
