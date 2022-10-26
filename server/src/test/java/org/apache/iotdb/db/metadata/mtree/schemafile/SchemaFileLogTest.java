@@ -130,8 +130,11 @@ public class SchemaFileLogTest {
     FileOutputStream outputStream = null;
     FileChannel channel;
     try {
-      File logFile =
-          new File("target\\tmp\\system\\schema\\root.test.vRoot1\\0\\schema_file_log.bin");
+      String[] logFilePath =
+          new String[] {
+            "target", "tmp", "system", "schema", "root.test.vRoot1", "0", "schema_file_log.bin"
+          };
+      File logFile = new File(String.join(File.separator, logFilePath));
       outputStream = new FileOutputStream(logFile, true);
       channel = outputStream.getChannel();
       channel.truncate(channel.size() - 1);
