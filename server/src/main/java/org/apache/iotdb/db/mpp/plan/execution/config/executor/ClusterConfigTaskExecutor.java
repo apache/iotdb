@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTas
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
@@ -379,6 +381,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (TException | IOException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showFunctions() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetUDFTableResp getUDFTableResp = client.getUDFTable();
+      if (getUDFTableResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                getUDFTableResp.getStatus().message, getUDFTableResp.getStatus().code));
+        return future;
+      }
+      // convert triggerTable and buildTsBlock
+      ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+
     return future;
   }
 

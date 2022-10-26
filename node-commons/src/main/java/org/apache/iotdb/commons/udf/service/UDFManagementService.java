@@ -38,7 +38,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class UDFManagementService {
 
@@ -285,6 +288,12 @@ public class UDFManagementService {
 
   public UDFInformation[] getAllUDFInformation() {
     return udfTable.getAllUDFInformation();
+  }
+
+  public List<UDFInformation> getAllBuiltInTimeSeriesGeneratingInformation() {
+    return Arrays.stream(getAllUDFInformation())
+        .filter(UDFInformation::isBuiltin)
+        .collect(Collectors.toList());
   }
 
   private void registerBuiltinTimeSeriesGeneratingFunctions() {

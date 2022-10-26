@@ -237,6 +237,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> showFunctions() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show functions in standalone mode is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createTrigger(
       CreateTriggerStatement createTriggerStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();

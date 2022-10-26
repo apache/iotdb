@@ -428,7 +428,7 @@ specialClause
     | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
     | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
     | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
-    | groupByTagClause orderByClause? #groupByTagStatement
+    | groupByTagClause havingClause? orderByClause? specialLimit? #groupByTagStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 

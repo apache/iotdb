@@ -314,6 +314,12 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
+}
+
 // Trigger
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
@@ -780,6 +786,11 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if operations on any node failed
    */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
 
   // ======================================================
   // Trigger
