@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -39,6 +42,8 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -46,10 +51,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class UnsetTemplateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, UnsetTemplateState> {
@@ -59,6 +69,8 @@ public class UnsetTemplateProcedure
   private String queryId;
   private Template template;
   private PartialPath path;
+
+  private boolean alreadyRollback = false;
 
   private transient ByteBuffer addTemplateSetInfo;
   private transient ByteBuffer invalidateTemplateSetInfo;
@@ -94,8 +106,12 @@ public class UnsetTemplateProcedure
               "Check DataNode template activation of template {} set on {}",
               template.getName(),
               path);
+          if (isFailed()) {
+            return Flow.NO_MORE_STATE;
+          }
           if (checkDataNodeTemplateActivation(env) > 0) {
             setFailure(new ProcedureException(new TemplateIsInUseException(path.getFullPath())));
+            return Flow.NO_MORE_STATE;
           } else {
             setNextState(UnsetTemplateState.UNSET_SCHEMA_TEMPLATE);
           }
@@ -163,7 +179,93 @@ public class UnsetTemplateProcedure
   }
 
   private int checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
-    return 0;
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(path);
+    patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+    }
+    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+    DataNodeRegionTask<TCountPathsUsingTemplateResp> regionTask =
+        new DataNodeRegionTask<TCountPathsUsingTemplateResp>(env, relatedSchemaRegionGroup, false) {
+          @Override
+          protected Map<Integer, TSStatus> sendRequest(
+              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
+            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+            AsyncClientHandler<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
+                clientHandler =
+                    new AsyncClientHandler<>(
+                        DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+                        new TCountPathsUsingTemplateReq(
+                            template.getId(), patternTreeBytes, consensusGroupIdList),
+                        dataNodeLocationMap);
+            AsyncDataNodeClientPool.getInstance()
+                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+            Map<Integer, TSStatus> statusMap = new HashMap<>();
+            clientHandler
+                .getResponseMap()
+                .forEach(
+                    (k, v) -> {
+                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        saveDataNodeResponse(k, v);
+                      }
+                      statusMap.put(k, v.getStatus());
+                    });
+            return statusMap;
+          }
+
+          @Override
+          protected boolean hasFailure() {
+            return isFailed();
+          }
+
+          @Override
+          protected void onExecutionFailure(TDataNodeLocation dataNodeLocation) {
+            LOGGER.error(
+                "Failed to execute [check DataNode template activation] of unset template {} from {} on {}",
+                template.getName(),
+                path,
+                dataNodeLocation);
+            setFailure(
+                new ProcedureException(
+                    new MetadataException(
+                        String.format(
+                            "Unset template %s from %s failed when [check DataNode template activation]",
+                            template.getName(), path))));
+          }
+
+          @Override
+          protected void onAllReplicasetFailure(TConsensusGroupId consensusGroupId) {
+            setFailure(
+                new ProcedureException(
+                    new MetadataException(
+                        String.format(
+                            "Unset template %s from %s failed when [check DataNode template activation] because all replicaset of schemaRegion %s failed.",
+                            template.getName(), path, consensusGroupId.id))));
+          }
+        };
+    regionTask.execute();
+    if (isFailed()) {
+      return 0;
+    }
+
+    int result = 0;
+    Map<Integer, List<TCountPathsUsingTemplateResp>> dataNodeResponseMap =
+        regionTask.getResponseMap();
+    for (List<TCountPathsUsingTemplateResp> respList : dataNodeResponseMap.values()) {
+      for (TCountPathsUsingTemplateResp resp : respList) {
+        result += resp.getCount();
+      }
+    }
+
+    return result;
   }
 
   private void unsetTemplate(ConfigNodeProcedureEnv env) {
@@ -181,6 +283,10 @@ public class UnsetTemplateProcedure
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, UnsetTemplateState unsetTemplateState)
       throws IOException, InterruptedException, ProcedureException {
+    if (alreadyRollback) {
+      return;
+    }
+    alreadyRollback = true;
     ProcedureException rollbackException = null;
     try {
       executeRollbackInvalidateCache(env);
@@ -305,6 +411,7 @@ public class UnsetTemplateProcedure
     ReadWriteIOUtils.write(queryId, stream);
     template.serialize(stream);
     path.serialize(stream);
+    ReadWriteIOUtils.write(alreadyRollback, stream);
   }
 
   @Override
@@ -314,5 +421,6 @@ public class UnsetTemplateProcedure
     template = new Template();
     template.deserialize(byteBuffer);
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    alreadyRollback = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
