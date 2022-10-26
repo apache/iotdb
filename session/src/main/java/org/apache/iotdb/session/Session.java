@@ -917,6 +917,7 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      //no need to redirection
       if (endpoint.ip.equals("0.0.0.0")) {
         return;
       }
