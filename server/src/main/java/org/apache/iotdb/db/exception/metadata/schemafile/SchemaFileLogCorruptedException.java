@@ -15,26 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log;
+package org.apache.iotdb.db.exception.metadata.schemafile;
 
-import org.apache.iotdb.db.metadata.logfile.IDeserializer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
+public class SchemaFileLogCorruptedException extends MetadataException {
 
-public class SchemaFileLogDeserializer implements IDeserializer<ISchemaPage> {
-
-  @Override
-  public ISchemaPage deserialize(InputStream inputStream) throws IOException {
-    return IDeserializer.super.deserialize(inputStream);
-  }
-
-  @Override
-  public ISchemaPage deserialize(ByteBuffer buffer) {
-    return IDeserializer.super.deserialize(buffer);
+  public SchemaFileLogCorruptedException(String fileName, String reason) {
+    super(
+        String.format("SchemaFileLog [%s] corrupted for [%s].", fileName, reason),
+        TSStatusCode.SCHEMA_FILE_LOG_CORR.getStatusCode(),
+        true);
   }
 }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileLogCorrupted;
+import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileLogCorruptedException;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 
 import org.slf4j.Logger;
@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,31 +50,20 @@ public class SchemaFileLogReader {
     inputStream = logFile.exists() ? new FileInputStream(logFile) : null;
   }
 
-  public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorrupted {
+  public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorruptedException {
     if (inputStream == null || inputStream.getChannel().size() == 0) {
       return Collections.emptyList();
     }
 
-    // skip to the tail and do quick check
-    FileChannel channel = inputStream.getChannel();
-    if (channel.size() > 2) {
-      channel.position(channel.size() - 2);
-      byte[] tailBytes = new byte[2];
-      inputStream.read(tailBytes);
-      if (tailBytes[0] == SchemaFileConfig.SF_PREPARE_MARK
-          && tailBytes[1] == SchemaFileConfig.SF_COMMIT_MARK) {
-        return Collections.emptyList();
-      }
-    }
+    // TODO: better performance if not scan from head to tail
 
-    channel.position(0L);
     List<byte[]> colBuffers = new ArrayList<>();
     byte[] tempBytes = new byte[SchemaFileConfig.PAGE_LENGTH];
     while (inputStream.available() > 0) {
       inputStream.read(tempBytes, 0, 1);
 
       if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
-        throw new SchemaFileLogCorrupted(
+        throw new SchemaFileLogCorruptedException(
             logFile.getAbsolutePath(), "COMMIT_MARK without PREPARE_MARK");
       }
 
@@ -92,7 +80,7 @@ public class SchemaFileLogReader {
         if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
           colBuffers.clear();
         } else {
-          throw new SchemaFileLogCorrupted(
+          throw new SchemaFileLogCorruptedException(
               logFile.getAbsolutePath(),
               "an extraneous byte rather than " + "COMMIT_MARK after PREPARE_MARK");
         }
@@ -105,14 +93,14 @@ public class SchemaFileLogReader {
 
       // corrupted within one entry
       if (inputStream.read(tempBytes, 1, tempBytes.length - 1) < tempBytes.length - 2) {
-        throw new SchemaFileLogCorrupted(logFile.getAbsolutePath(), "incomplete entry.");
+        throw new SchemaFileLogCorruptedException(logFile.getAbsolutePath(), "incomplete entry.");
       }
 
       colBuffers.add(tempBytes);
       tempBytes = new byte[SchemaFileConfig.PAGE_LENGTH];
     }
 
-    throw new SchemaFileLogCorrupted(
+    throw new SchemaFileLogCorruptedException(
         logFile.getAbsolutePath(), "not ended by COMMIT_MARK nor PREPARE_MARK.");
   }
 
