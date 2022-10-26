@@ -844,9 +844,14 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
 
     conf.setPageCacheSizeInSchemaFile(
-        Short.parseShort(
+        Integer.parseInt(
             properties.getProperty(
                 "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+
+    conf.setSchemaFileLogSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
     // mqtt
     loadMqttProps(properties);

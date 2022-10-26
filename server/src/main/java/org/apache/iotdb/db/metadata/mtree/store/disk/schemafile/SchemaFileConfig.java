@@ -36,7 +36,8 @@ public class SchemaFileConfig {
           .getPageCacheSizeInSchemaFile(); // size of page cache
 
   // size of page within one redo log, restricting log around 1GB
-  public static final int SCHEMA_FILE_LOG_SIZE = 256 * 256;
+  public static final int SCHEMA_FILE_LOG_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaFileLogSize();
 
   // marks to note the state of schema file log
   public static final byte SF_PREPARE_MARK = (byte) 0xfe;
