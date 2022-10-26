@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -677,18 +678,15 @@ public class IoTDBAggregationByLevelIT {
 
   @Test
   public void groupByLevelWithSameColumn() throws SQLException {
-    String[] retArray = new String[] {"8", "8"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      int cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(status),count(status) from root.*.* GROUP BY level=0")) {
+              "select count(status),count(status) from root.** GROUP BY level=0")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(count("root.*.*.status"));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
+          ResultSetMetaData metaData = resultSet.getMetaData();
+          Assert.assertEquals(metaData.getColumnName(1), metaData.getColumnName(2));
         }
       }
     }
