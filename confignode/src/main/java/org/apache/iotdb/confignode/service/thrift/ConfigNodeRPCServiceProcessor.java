@@ -499,9 +499,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetUDFTableResp getUDFTable() {
-    // get all non-builtin function information
-    // todo: implementation
-    return null;
+    return configManager.getUDFTable();
   }
 
   @Override
