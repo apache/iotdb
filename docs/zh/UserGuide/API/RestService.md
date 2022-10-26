@@ -877,6 +877,12 @@ enable_rest_service=true
 rest_service_port=18080
 ```
 
+* 将 'enable_swagger' 设置 'true' 启用swagger来展示rest接口信息, 而设置为 'false' 关闭该功能. 默认情况下，该值为 `false`。
+
+```properties
+enable_swagger=false
+```
+
 * 一次查询能返回的结果集最大行数。当返回结果集的行数超出参数限制时，您只会得到在行数范围内的结果集，且将得到状态码`411`。
 
 ```properties

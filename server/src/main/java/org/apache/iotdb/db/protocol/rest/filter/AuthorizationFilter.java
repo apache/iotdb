@@ -19,6 +19,7 @@ package org.apache.iotdb.db.protocol.rest.filter;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -45,14 +46,22 @@ public class AuthorizationFilter implements ContainerRequestFilter {
 
   private final IAuthorizer authorizer = AuthorizerManager.getInstance();
   private final UserCache userCache = UserCache.getInstance();
+  IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
   public AuthorizationFilter() throws AuthException {}
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
     if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || "swagger.json".equals(containerRequestContext.getUriInfo().getPath())
-        || "ping".equals(containerRequestContext.getUriInfo().getPath())) {
+        || "ping".equals(containerRequestContext.getUriInfo().getPath())
+        || (config.isEnableSwagger()
+            && "swagger.json".equals(containerRequestContext.getUriInfo().getPath()))) {
+      return;
+    } else if (!config.isEnableSwagger()
+        && "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {
+      Response resp =
+          Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity("").build();
+      containerRequestContext.abortWith(resp);
       return;
     }
 
