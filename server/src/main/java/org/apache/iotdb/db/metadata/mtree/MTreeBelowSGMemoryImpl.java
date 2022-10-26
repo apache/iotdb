@@ -376,11 +376,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
+    if (nodeNames.length == levelOfSG) {
+      return new Pair<>(null, null);
+    }
     IMNode cur = storageGroupMNode;
     IMNode child;
     String childName;
     Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
     for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
@@ -407,6 +410,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
       String deviceName, IMNode deviceParent, Template upperTemplate)
       throws PathAlreadyExistException, TemplateImcompatibeException {
+    if (deviceParent == null) {
+      // device is sg
+      return new Pair<>(storageGroupMNode, null);
+    }
     IMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {

@@ -246,7 +246,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         }
       }
     } finally {
-      unPinMNode(deviceParent);
+      if (deviceParent != null) {
+        unPinMNode(deviceParent);
+      }
     }
   }
 
@@ -347,7 +349,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         }
       }
     } finally {
-      unPinMNode(deviceParent);
+      if (deviceParent != null) {
+        unPinMNode(deviceParent);
+      }
     }
   }
 
@@ -355,12 +359,15 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
+    if (nodeNames.length == levelOfSG) {
+      return new Pair<>(null, null);
+    }
     IMNode cur = storageGroupMNode;
     IMNode child;
     String childName;
     Template upperTemplate = cur.getSchemaTemplate();
     try {
-      // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
+      // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
       for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
@@ -390,6 +397,11 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
       String deviceName, IMNode deviceParent, Template upperTemplate) throws MetadataException {
+    if (deviceParent == null) {
+      // device is sg
+      pinMNode(storageGroupMNode);
+      return new Pair<>(storageGroupMNode, null);
+    }
     IMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {
