@@ -165,7 +165,7 @@ public class TsFileValidationTool {
             findUncorrectFiles(tsFiles);
           }
           // clear map
-          clearMap();
+          clearMap(false);
         }
       }
     }
@@ -565,8 +565,10 @@ public class TsFileValidationTool {
     }
   }
 
-  public static void clearMap() {
-    badFileNum = 0;
+  public static void clearMap(boolean resetBadFileNum) {
+    if (resetBadFileNum) {
+      badFileNum = 0;
+    }
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();

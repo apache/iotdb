@@ -150,7 +150,7 @@ public class CompactionExceptionHandler {
     try {
       for (TsFileResource targetTsFile : targetResourceList) {
         if (targetTsFile == null) {
-          // target file is been deleted due to empty after compaction
+          // target file has been deleted due to empty after compaction
           continue;
         }
         // delete target file

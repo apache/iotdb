@@ -53,9 +53,9 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   protected enum ModifiedStatus {
-    AllDeleted,
-    PartialDeleted,
-    NoneDeleted;
+    ALL_DELETED,
+    PARTIAL_DELETED,
+    NONE_DELETED;
   }
 
   @FunctionalInterface
@@ -229,7 +229,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       PageElement firstPageElement = pageQueue.peek();
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
 
-      if (modifiedStatus == ModifiedStatus.AllDeleted) {
+      if (modifiedStatus == ModifiedStatus.ALL_DELETED) {
         // all data on this page has been deleted, remove it
         removePage(firstPageElement);
         continue;
@@ -238,7 +238,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       List<PageElement> overlapPages = findOverlapPages(firstPageElement);
       boolean isPageOverlap = overlapPages.size() > 1;
 
-      if (isPageOverlap || modifiedStatus == ModifiedStatus.PartialDeleted) {
+      if (isPageOverlap || modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // has overlap or modified pages, then deserialize it
         pointPriorityReader.addNewPage(overlapPages.remove(0));
         addOverlappedPagesIntoList(overlapPages);
@@ -326,7 +326,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
       ModifiedStatus nextPageModifiedStatus = isPageModified(nextPageElement);
 
-      if (nextPageModifiedStatus == ModifiedStatus.AllDeleted) {
+      if (nextPageModifiedStatus == ModifiedStatus.ALL_DELETED) {
         // all data on next page has been deleted, remove it
         removePage(nextPageElement);
       } else {
@@ -336,7 +336,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
                         <= nextPageElement.pageHeader.getEndTime())
                 || isPageOverlap(nextPageElement);
 
-        if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PartialDeleted) {
+        if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
           // has overlap or modified pages, then deserialize it
           pointPriorityReader.addNewPage(nextPageElement);
         } else {
@@ -476,27 +476,27 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /**
-   * -1 means that no data on this page has been deleted. <br>
-   * 0 means that there is data on this page been deleted. <br>
-   * 1 means that all data on this page has been deleted.
+   * NONE_DELETED means that no data on this page has been deleted. <br>
+   * PARTIAL_DELETED means that there is data on this page been deleted. <br>
+   * ALL_DELETED means that all data on this page has been deleted.
    *
-   * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
-   * if and only if no data exists on all value pages is deleted
+   * <p>Notice: If is aligned page, return ALL_DELETED if and only if all value pages are deleted.
+   * Return NONE_DELETED if and only if no data exists on all value pages is deleted
    */
   protected abstract ModifiedStatus isPageModified(PageElement pageElement);
 
   protected ModifiedStatus checkIsModified(
       long startTime, long endTime, Collection<TimeRange> deletions) {
-    ModifiedStatus status = ModifiedStatus.NoneDeleted;
+    ModifiedStatus status = ModifiedStatus.NONE_DELETED;
     if (deletions != null) {
       for (TimeRange range : deletions) {
         if (range.contains(startTime, endTime)) {
           // all data on this page or chunk has been deleted
-          return ModifiedStatus.AllDeleted;
+          return ModifiedStatus.ALL_DELETED;
         }
         if (range.overlaps(new TimeRange(startTime, endTime))) {
           // exist data on this page or chunk been deleted
-          status = ModifiedStatus.PartialDeleted;
+          status = ModifiedStatus.PARTIAL_DELETED;
         }
       }
     }

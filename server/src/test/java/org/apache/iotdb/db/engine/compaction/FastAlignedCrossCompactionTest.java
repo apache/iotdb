@@ -5255,13 +5255,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
   }
 
   protected void validateSeqFiles() {
-    TsFileValidationTool.clearMap();
     List<File> files = new ArrayList<>();
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap(true);
   }
 
   private Map<PartialPath, List<TimeValuePair>> readSourceFiles(

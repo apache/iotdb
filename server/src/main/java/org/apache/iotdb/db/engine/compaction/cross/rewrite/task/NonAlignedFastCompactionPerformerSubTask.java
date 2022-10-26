@@ -187,9 +187,9 @@ public class NonAlignedFastCompactionPerformerSubTask extends FastCompactionPerf
   }
 
   /**
-   * -1 means that no data on this page has been deleted. <br>
-   * 0 means that there is data on this page been deleted. <br>
-   * 1 means that all data on this page has been deleted.
+   * NONE_DELETED means that no data on this page has been deleted. <br>
+   * PARTIAL_DELETED means that there is data on this page been deleted. <br>
+   * ALL_DELETED means that all data on this page has been deleted.
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;

@@ -65,6 +65,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class FastCompactionPerformerTest extends AbstractCompactionTest {
+  private List<TsFileResource> targetResources = new ArrayList<>();
+
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
@@ -83,6 +85,7 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     for (TsFileResource tsFileResource : unseqResources) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
     }
+    targetResources.clear();
   }
 
   /**
@@ -133,8 +136,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader.close();
     assertEquals(500, count);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -247,8 +250,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -442,8 +445,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -634,8 +637,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -816,8 +819,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -991,8 +994,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -1333,8 +1336,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader.close();
     assertEquals(500, count);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -1461,8 +1464,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -1663,8 +1666,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -1900,13 +1903,14 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    targetResources.removeIf(resource -> resource == null);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -2014,8 +2018,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1350, 0, false, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2140,8 +2144,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     deviceIndex.add(3);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 400, 600, 0, false, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2279,8 +2283,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.add(2);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 400, 0, false, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2397,8 +2401,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.add(2);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 600, 0, false, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2532,8 +2536,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.add(2);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 600, 0, false, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2689,8 +2693,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1450, 0, true, true);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1350, 0, true, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -2932,8 +2936,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     deviceIndex.add(3);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 400, 600, 0, true, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -3200,8 +3204,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.add(2);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 600, 0, true, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -3390,8 +3394,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     measurementIndex.add(2);
     createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 600, 0, true, false);
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
@@ -3706,13 +3710,14 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    targetResources.removeIf(resource -> resource == null);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3786,11 +3791,11 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
 
   private void validateSeqFiles() {
     List<File> files = new ArrayList<>();
-    for (TsFileResource resource : seqResources) {
+    for (TsFileResource resource : targetResources) {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
-    TsFileValidationTool.clearMap();
+    TsFileValidationTool.clearMap(true);
   }
 }

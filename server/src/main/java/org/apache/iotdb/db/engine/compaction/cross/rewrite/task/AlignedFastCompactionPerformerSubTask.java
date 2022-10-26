@@ -286,12 +286,12 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
   }
 
   /**
-   * -1 means that no data on this page has been deleted. <br>
-   * 0 means that there is data on this page been deleted. <br>
-   * 1 means that all data on this page has been deleted.
+   * NONE_DELETED means that no data on this page has been deleted. <br>
+   * PARTIAL_DELETED means that there is data on this page been deleted. <br>
+   * ALL_DELETED means that all data on this page has been deleted.
    *
-   * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
-   * if value page has no data or all data being deleted.
+   * <p>Notice: If is aligned page, return ALL_DELETED if and only if all value pages are deleted.
+   * Return NONE_DELETED if and only if no data exists on all value pages is deleted
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.startTime;
@@ -302,11 +302,11 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       ModifiedStatus currentPageStatus =
           valueChunkMetadata == null
-              ? ModifiedStatus.AllDeleted
+              ? ModifiedStatus.ALL_DELETED
               : checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
-      if (currentPageStatus == ModifiedStatus.PartialDeleted) {
+      if (currentPageStatus == ModifiedStatus.PARTIAL_DELETED) {
         // one of the value pages exist data been deleted partially
-        return ModifiedStatus.PartialDeleted;
+        return ModifiedStatus.PARTIAL_DELETED;
       }
       if (lastPageStatus == null) {
         // first page
@@ -316,7 +316,7 @@ public class AlignedFastCompactionPerformerSubTask extends FastCompactionPerform
       if (!currentPageStatus.equals(lastPageStatus)) {
         // there are at least two value pages, one is that all data is deleted, the other is that no
         // data is deleted
-        lastPageStatus = ModifiedStatus.NoneDeleted;
+        lastPageStatus = ModifiedStatus.NONE_DELETED;
       }
     }
     return lastPageStatus;
