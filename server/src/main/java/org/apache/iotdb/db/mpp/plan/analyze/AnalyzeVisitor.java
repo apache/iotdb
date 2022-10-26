@@ -138,6 +138,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -595,7 +596,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     GroupByLevelController groupByLevelController =
         new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
 
-    Set<Expression> groupedSelectExpressions = new LinkedHashSet<>();
+    List<Expression> groupedSelectExpressions = new LinkedList<>();
     for (int i = 0; i < outputExpressions.size(); i++) {
       Pair<Expression, String> expressionAliasPair = outputExpressions.get(i);
       boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
