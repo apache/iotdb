@@ -275,8 +275,6 @@ public class ProcedureManager {
         if (template.getId() == unsetTemplateProcedure.getTemplateId()
             && path.equals(unsetTemplateProcedure.getPath())) {
           hasOverlappedTask = true;
-        }
-        if (hasOverlappedTask) {
           break;
         }
       }
@@ -285,7 +283,8 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is unsetting target template from target path.");
+              "Some other task is unsetting target template from target path "
+                  + path.getFullPath());
         }
         procedureId =
             this.executor.submitProcedure(new UnsetTemplateProcedure(queryId, template, path));

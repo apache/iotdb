@@ -272,7 +272,7 @@ public class UnsetTemplateProcedure
     TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .preUnsetSchemaTemplate(template.getId(), path);
+            .unsetSchemaTemplateInBlackList(template.getId(), path);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
