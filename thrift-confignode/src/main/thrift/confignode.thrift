@@ -70,6 +70,22 @@ struct TRatisConfig {
 
   13: required i64 schemaLeaderElectionTimeoutMax
   14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
+
+  23: required i64 schemaPreserveWhenPurge
+  24: required i64 dataPreserveWhenPurge
+
+  25: required i64 firstElectionTimeoutMin
+  26: required i64 firstElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -178,14 +194,14 @@ struct TDataPartitionTableResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
-struct TGetRoutingReq {
+struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
     3: required common.TSeriesPartitionSlot seriesSlotId
     4: optional common.TTimePartitionSlot timeSlotId
 }
 
-struct TGetRoutingResp {
+struct TGetRegionIdResp {
     1: required common.TSStatus status
     2: optional list<common.TConsensusGroupId> dataRegionIdList
 }
@@ -289,11 +305,19 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required list<string> uris
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+}
+
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
 }
 
 // Trigger
@@ -304,6 +328,8 @@ enum TTriggerState {
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
+  // The intermediate state of Transfer trigger, the cluster is in the process of transferring the trigger.
+  TRANSFERRING
 }
 
 struct TCreateTriggerReq {
@@ -322,6 +348,11 @@ struct TCreateTriggerReq {
 
 struct TDropTriggerReq {
   1: required string triggerName
+}
+
+struct TGetLocationForTriggerResp {
+  1: required common.TSStatus status
+  2: optional common.TDataNodeLocation dataNodeLocation
 }
 
 // Get trigger table from config node
@@ -463,7 +494,12 @@ struct TShowPipeInfo {
   6: required string message
 }
 
-struct TPipeInfo {
+struct TGetAllPipeInfoResp{
+  1: required common.TSStatus status
+  2: optional list<binary> allPipeInfo
+}
+
+struct TCreatePipeReq {
     1: required string pipeName
     2: required string pipeSinkName
     3: required i64 startTime
@@ -501,6 +537,12 @@ struct TShowPipeResp {
 struct TDeleteTimeSeriesReq{
   1: required string queryId
   2: required binary pathPatternTree
+}
+
+struct TDeactivateSchemaTemplateReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional string templateName
 }
 
 service IConfigNodeRPCService {
@@ -730,46 +772,59 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-     * Create a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   /**
-     * Remove a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
 
   // ======================================================
   // Trigger
   // ======================================================
 
   /**
-     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-     * and sync Information of it to all ConfigNodes
-     *
-     * @return SUCCESS_STATUS if the trigger was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+   * and sync Information of it to all ConfigNodes
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-     * Remove a trigger on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a trigger on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropTrigger(TDropTriggerReq req)
 
+  /** Get TDataNodeLocation of a stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
+
   /**
-     * Return the trigger table of config leader
+     * Return the trigger table
      */
   TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
      * Return the trigger jar list of the trigger name list
@@ -838,6 +893,7 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -862,7 +918,7 @@ service IConfigNodeRPCService {
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 
   /** Create Pipe */
-  common.TSStatus createPipe(TPipeInfo req)
+  common.TSStatus createPipe(TCreatePipeReq req)
 
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
@@ -876,12 +932,15 @@ service IConfigNodeRPCService {
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo();
+
   // ======================================================
   // TestTools
   // ======================================================
 
   /** Get a particular DataPartition's corresponding Regions */
-  TGetRoutingResp getRouting(TGetRoutingReq req)
+  TGetRegionIdResp getRegionId(TGetRegionIdReq req)
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)

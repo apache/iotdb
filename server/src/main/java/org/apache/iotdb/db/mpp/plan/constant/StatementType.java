@@ -150,4 +150,6 @@ public enum StatementType {
   DROP_PIPE,
 
   SHOW_TRIGGERS,
+
+  DEACTIVATE_TEMPLATE,
 }

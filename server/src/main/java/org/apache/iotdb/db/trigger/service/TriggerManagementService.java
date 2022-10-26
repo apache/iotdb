@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.trigger.service;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -79,11 +82,13 @@ public class TriggerManagementService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) throws IOException {
+  public void register(TriggerInformation triggerInformation, ByteBuffer jarFile)
+      throws IOException {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
-      doRegister(triggerInformation);
+      saveJarFile(triggerInformation.getJarName(), jarFile);
+      doRegister(triggerInformation, false);
     } finally {
       releaseLock();
     }
@@ -132,13 +137,84 @@ public class TriggerManagementService {
     }
   }
 
+  public void updateLocationOfStatefulTrigger(String triggerName, TDataNodeLocation newLocation)
+      throws IOException {
+    try {
+      acquireLock();
+      TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+      if (triggerInformation == null || !triggerInformation.isStateful()) {
+        return;
+      }
+      triggerInformation.setDataNodeLocation(newLocation);
+      triggerTable.addTriggerInformation(triggerName, triggerInformation);
+      if (newLocation.getDataNodeId() != DATA_NODE_ID) {
+        // The instance of stateful trigger is created on another DataNode. We need to drop the
+        // instance if it exists on this DataNode
+        TriggerExecutor triggerExecutor = executorMap.remove(triggerName);
+        if (triggerExecutor != null) {
+          triggerExecutor.onDrop();
+        }
+      } else {
+        TriggerExecutor triggerExecutor = executorMap.get(triggerName);
+        if (triggerExecutor != null) {
+          return;
+        }
+        // newLocation of stateful trigger is this DataNode, we need to create its instance if it
+        // does not exist.
+        try (TriggerClassLoader currentActiveClassLoader =
+            TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+          TriggerExecutor newExecutor =
+              new TriggerExecutor(
+                  triggerInformation,
+                  constructTriggerInstance(
+                      triggerInformation.getClassName(), currentActiveClassLoader),
+                  true);
+          executorMap.put(triggerName, newExecutor);
+        }
+      }
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public boolean isTriggerTableEmpty() {
+    return triggerTable.isEmpty();
+  }
+
+  public TriggerTable getTriggerTable() {
+    return triggerTable;
+  }
+
+  public TriggerExecutor getExecutor(String triggerName) {
+    return executorMap.get(triggerName);
+  }
+
+  public boolean needToFireOnAnotherDataNode(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    return triggerInformation.isStateful()
+        && triggerInformation.getDataNodeLocation().getDataNodeId() != DATA_NODE_ID;
+  }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.getTriggerInformation(triggerName);
+  }
+
+  /**
+   * @param devicePath PathPattern
+   * @return all the triggers that matched this Pattern
+   */
+  public List<List<String>> getMatchedTriggerListForPath(
+      PartialPath devicePath, List<String> measurements) {
+    return patternTreeMap.getOverlapped(devicePath, measurements);
+  }
+
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {
     String triggerName = triggerInformation.getTriggerName();
     String jarName = triggerInformation.getJarName();
     if (triggerTable.containsTrigger(triggerName)
         && TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
-      if (!isLocalJarCorrect(triggerInformation)) {
+      if (isLocalJarConflicted(triggerInformation)) {
         // same jar name with different md5
         String errorMessage =
             String.format(
@@ -152,9 +228,8 @@ public class TriggerManagementService {
   }
 
   /** check whether local jar is correct according to md5 */
-  public boolean isLocalJarCorrect(TriggerInformation triggerInformation)
+  public boolean isLocalJarConflicted(TriggerInformation triggerInformation)
       throws TriggerManagementException {
-    String jarName = triggerInformation.getJarName();
     String triggerName = triggerInformation.getTriggerName();
     // A jar with the same name exists, we need to check md5
     String existedMd5 = "";
@@ -193,14 +268,21 @@ public class TriggerManagementService {
         throw new TriggerManagementException(errorMessage);
       }
     }
-    return existedMd5.equals(triggerInformation.getJarFileMD5());
+    return !existedMd5.equals(triggerInformation.getJarFileMD5());
+  }
+
+  private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
+    if (byteBuffer != null) {
+      TriggerExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+    }
   }
 
   /**
    * Only call this method directly for registering new data node, otherwise you need to call
    * register().
    */
-  public void doRegister(TriggerInformation triggerInformation) throws IOException {
+  public void doRegister(TriggerInformation triggerInformation, boolean isRestoring)
+      throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
@@ -215,7 +297,8 @@ public class TriggerManagementService {
         Trigger trigger =
             constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
         // construct and save TriggerExecutor after successfully creating trigger instance
-        TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
+        TriggerExecutor triggerExecutor =
+            new TriggerExecutor(triggerInformation, trigger, isRestoring);
         executorMap.put(triggerName, triggerExecutor);
       }
     } catch (Exception e) {
@@ -242,6 +325,19 @@ public class TriggerManagementService {
           String.format(
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
+  }
+
+  /**
+   * @param triggerName given trigger
+   * @return TDataNodeLocation of DataNode where instance of given stateful trigger is on. Null if
+   *     trigger not found.
+   */
+  public TDataNodeLocation getDataNodeLocationOfStatefulTrigger(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    if (triggerInformation.isStateful()) {
+      return triggerInformation.getDataNodeLocation();
+    }
+    return null;
   }
 
   // region only for test

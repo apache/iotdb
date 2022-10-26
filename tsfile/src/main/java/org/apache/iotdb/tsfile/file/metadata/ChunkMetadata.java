@@ -103,6 +103,24 @@ public class ChunkMetadata implements IChunkMetadata {
     this.statistics = statistics;
   }
 
+  // won't clone deleteIntervalList & modified
+  public ChunkMetadata(ChunkMetadata other) {
+    this.measurementUid = other.measurementUid;
+    this.offsetOfChunkHeader = other.offsetOfChunkHeader;
+    this.tsDataType = other.tsDataType;
+    this.version = other.version;
+    this.chunkLoader = other.chunkLoader;
+    this.statistics = other.statistics;
+    this.isFromOldTsFile = other.isFromOldTsFile;
+    this.ramSize = other.ramSize;
+    this.isSeq = other.isSeq;
+    this.isClosed = other.isClosed;
+    this.filePath = other.filePath;
+    this.mask = other.mask;
+    this.tsFilePrefixPath = other.tsFilePrefixPath;
+    this.compactionVersion = other.compactionVersion;
+  }
+
   @Override
   public String toString() {
     return String.format(

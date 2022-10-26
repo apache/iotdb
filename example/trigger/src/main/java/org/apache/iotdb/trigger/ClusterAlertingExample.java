@@ -28,11 +28,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
 public class ClusterAlertingExample implements Trigger {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAlertingExample.class);
 
   private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
@@ -73,12 +77,14 @@ public class ClusterAlertingExample implements Trigger {
         double[] values = (double[]) tablet.values[i];
         for (double value : values) {
           if (value > 100.0) {
+            LOGGER.info("trigger value > 100");
             labels.put("value", String.valueOf(value));
             labels.put("severity", "critical");
             AlertManagerEvent alertManagerEvent =
                 new AlertManagerEvent(alertname, labels, annotations);
             alertManagerHandler.onEvent(alertManagerEvent);
           } else if (value > 50.0) {
+            LOGGER.info("trigger value > 50");
             labels.put("value", String.valueOf(value));
             labels.put("severity", "warning");
             AlertManagerEvent alertManagerEvent =

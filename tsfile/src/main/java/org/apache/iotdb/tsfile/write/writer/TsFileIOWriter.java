@@ -729,4 +729,8 @@ public class TsFileIOWriter implements AutoCloseable {
   public String getCurrentChunkGroupDeviceId() {
     return currentChunkGroupDeviceId;
   }
+
+  public void flush() throws IOException {
+    out.flush();
+  }
 }

@@ -76,7 +76,10 @@ public class Template implements Serializable {
   // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
   private int rehashCode;
 
-  public Template() {}
+  public Template() {
+    schemaMap = new HashMap<>();
+    directNodes = new HashMap<>();
+  }
 
   /**
    * build a template from a createTemplatePlan

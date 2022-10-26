@@ -92,14 +92,48 @@ public class DriverScheduler implements IDriverScheduler, IService {
   @Override
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
+      int index = i;
+      String threadName = "Query-Worker-Thread-" + i;
+      ThreadProducer producer =
+          new ThreadProducer() {
+            @Override
+            public void produce(
+                String threadName,
+                ThreadGroup workerGroups,
+                IndexedBlockingQueue<DriverTask> queue,
+                ThreadProducer producer) {
+              DriverTaskThread newThread =
+                  new DriverTaskThread(threadName, workerGroups, readyQueue, scheduler, this);
+              threads.set(index, newThread);
+              newThread.start();
+            }
+          };
       AbstractDriverThread t =
-          new DriverTaskThread("Query-Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+          new DriverTaskThread(threadName, workerGroups, readyQueue, scheduler, producer);
       threads.add(t);
       t.start();
     }
+
+    String threadName = "Query-Sentinel-Thread";
+    ThreadProducer producer =
+        new ThreadProducer() {
+          @Override
+          public void produce(
+              String threadName,
+              ThreadGroup workerGroups,
+              IndexedBlockingQueue<DriverTask> queue,
+              ThreadProducer producer) {
+            DriverTaskTimeoutSentinelThread newThread =
+                new DriverTaskTimeoutSentinelThread(
+                    threadName, workerGroups, timeoutQueue, scheduler, this);
+            threads.set(WORKER_THREAD_NUM, newThread);
+            newThread.start();
+          }
+        };
+
     AbstractDriverThread t =
         new DriverTaskTimeoutSentinelThread(
-            "Query-Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
+            threadName, workerGroups, timeoutQueue, scheduler, producer);
     threads.add(t);
     t.start();
   }

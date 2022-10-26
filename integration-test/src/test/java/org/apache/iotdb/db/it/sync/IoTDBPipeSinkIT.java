@@ -76,10 +76,7 @@ public class IoTDBPipeSinkIT {
         statement.execute("CREATE PIPESINK demo2 AS IoTDB (ip='192.168.0.2',port='6678');");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage()
-                .contains(
-                    "There is a PipeSink named demo2 in IoTDB, please drop it before recreation."));
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] already exists in IoTDB."));
       }
       statement.execute("CREATE PIPESINK demo3 AS IoTDB;");
       statement.execute("DROP PIPESINK demo2;");
@@ -87,7 +84,7 @@ public class IoTDBPipeSinkIT {
         statement.execute("DROP PIPESINK demo2;");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("PipeSink demo2 does not exist."));
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] does not exist"));
       }
       String expectedHeader =
           ColumnHeaderConstant.COLUMN_PIPESINK_NAME

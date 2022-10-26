@@ -25,13 +25,15 @@ IoTDB 支持对存储组级别设置数据存活时间（TTL），这使得 IoTD
 可以帮助您控制 IoTDB 占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降，
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
 
+TTL的默认单位为毫秒，如果配置文件中的时间精度修改为其他单位，设置ttl时仍然使用毫秒单位。
+
 ## 设置 TTL
 
 设置 TTL 的 SQL 语句如下所示：
 ```
 IoTDB> set ttl to root.ln 3600000
 ```
-这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
+这个例子表示在`root.ln`存储组中，只有3600000毫秒，即最近一个小时的数据将会保存，旧数据会被移除或不可见。
 ```
 IoTDB> set ttl to root.sgcc.** 3600000
 ```
@@ -71,5 +73,17 @@ IoTDB> SHOW TTL ON StorageGroupNames
 ```
 
 SHOW ALL TTL 这个例子会给出所有存储组的 TTL。
-SHOW TTL ON root.group1,root.group2,root.group3 这个例子会显示指定的三个存储组的 TTL。
+SHOW TTL ON root.ln,root.sgcc,root.DB 这个例子会显示指定的三个存储组的 TTL。
 注意：没有设置 TTL 的存储组的 TTL 将显示为 null。
+
+```
+IoTDB> show all ttl
++-------------+-------+
+|storage group|ttl(ms)|
++-------------+-------+
+|      root.ln|3600000|
+|    root.sgcc|   null|
+|      root.DB|3600000|
++-------------+-------+
+```
+

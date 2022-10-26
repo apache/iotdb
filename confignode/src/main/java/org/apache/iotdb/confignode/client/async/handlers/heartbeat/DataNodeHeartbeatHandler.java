@@ -55,24 +55,22 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
-    // Update RegionCache
-    if (heartbeatResp.isSetJudgedLeaders()) {
-      heartbeatResp
-          .getJudgedLeaders()
-          .forEach(
-              (consensusGroupId, isLeader) ->
-                  regionGroupCacheMap
-                      .computeIfAbsent(
-                          consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
-                      .cacheHeartbeatSample(
-                          new RegionHeartbeatSample(
-                              heartbeatResp.getHeartbeatTimestamp(),
-                              receiveTime,
-                              dataNodeLocation.getDataNodeId(),
-                              isLeader,
-                              // Region will inherit DataNode's status
-                              RegionStatus.parse(heartbeatResp.getStatus()))));
-    }
+    // Update RegionGroupCache
+    heartbeatResp
+        .getJudgedLeaders()
+        .forEach(
+            (consensusGroupId, isLeader) ->
+                regionGroupCacheMap
+                    .computeIfAbsent(
+                        consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
+                    .cacheHeartbeatSample(
+                        dataNodeLocation.getDataNodeId(),
+                        new RegionHeartbeatSample(
+                            heartbeatResp.getHeartbeatTimestamp(),
+                            receiveTime,
+                            isLeader,
+                            // Region will inherit DataNode's status
+                            RegionStatus.parse(heartbeatResp.getStatus()))));
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -28,15 +29,34 @@ import java.nio.ByteBuffer;
 
 public class GetTriggerTablePlan extends ConfigPhysicalPlan {
 
+  boolean onlyStateful;
+
   public GetTriggerTablePlan() {
     super(ConfigPhysicalPlanType.GetTriggerTable);
+  }
+
+  public GetTriggerTablePlan(boolean onlyStateful) {
+    this();
+    this.onlyStateful = onlyStateful;
+  }
+
+  public boolean isOnlyStateful() {
+    return onlyStateful;
+  }
+
+  public void setOnlyStateful(boolean onlyStateful) {
+    this.onlyStateful = onlyStateful;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.GetTriggerTable.ordinal());
+
+    ReadWriteIOUtils.write(onlyStateful, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    this.onlyStateful = ReadWriteIOUtils.readBool(buffer);
+  }
 }

@@ -78,8 +78,8 @@ def test_non_time_query():
                 "FLOAT",
                 "GORILLA",
                 "SNAPPY",
-                None,
-                None,
+                "null",
+                "null",
             ]
         ],
     )

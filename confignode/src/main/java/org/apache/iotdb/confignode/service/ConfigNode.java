@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -87,6 +85,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
+        LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
@@ -96,10 +96,18 @@ public class ConfigNode implements ConfigNodeMBean {
 
       /* Initial startup of Seed-ConfigNode */
       if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+        LOGGER.info(
+            "The current {} is now starting as the Seed-ConfigNode.",
+            ConfigNodeConstant.GLOBAL_NAME);
+
+        // Init consensusGroup
+        CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
+        // Persistence system parameters after the consensusGroup is built,
+        // or the consensusGroup will not be initialized successfully otherwise.
         SystemPropertiesUtils.storeSystemParameters();
-        SystemPropertiesUtils.storeConfigNodeId(SEED_CONFIG_NODE_ID);
+
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
@@ -125,8 +133,9 @@ public class ConfigNode implements ConfigNodeMBean {
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
-          "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
-          ConfigNodeConstant.GLOBAL_NAME);
+          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
+          ConfigNodeConstant.GLOBAL_NAME,
+          CONF.getConfigNodeId());
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
@@ -180,10 +189,7 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     // Setup UDFService
-    registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(CONF.getTemporaryLibDir(), CONF.getUdfLibDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
-    registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
     registerManager.register(MetricService.getInstance());
     LOGGER.info("Successfully setup internal services.");
@@ -232,9 +238,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        SystemPropertiesUtils.storeConfigNodeId(resp.getConfigNodeId());
         CONF.setConfigNodeId(resp.getConfigNodeId());
-
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {

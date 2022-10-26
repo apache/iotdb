@@ -20,23 +20,26 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class UDFInfo implements SnapshotProcessor {
 
@@ -45,92 +48,86 @@ public class UDFInfo implements SnapshotProcessor {
   private static final ConfigNodeConfig CONFIG_NODE_CONF =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private final UDFExecutableManager udfExecutableManager;
-  private final UDFRegistrationService udfRegistrationService;
+  private final UDFTable udfTable;
+  private final Map<String, String> existedJarToMD5;
 
-  public UDFInfo() {
+  private final UDFExecutableManager udfExecutableManager;
+
+  private final ReentrantLock udfTableLock = new ReentrantLock();
+
+  private final String snapshotFileName = "udf_info.bin";
+
+  public UDFInfo() throws IOException {
+    udfTable = new UDFTable();
+    existedJarToMD5 = new HashMap<>();
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
-    udfRegistrationService =
-        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
   }
 
-  public synchronized void validateBeforeRegistration(
-      String functionName, String className, List<String> uris) throws Exception {
-    udfRegistrationService.validate(functionName, className);
+  public void acquireUDFTableLock() {
+    LOGGER.info("acquire UDFTableLock");
+    udfTableLock.lock();
+  }
 
-    if (uris.isEmpty()) {
-      fetchExecutablesAndCheckInstantiation(className);
-    } else {
-      fetchExecutablesAndCheckInstantiation(className, uris);
+  public void releaseUDFTableLock() {
+    LOGGER.info("release UDFTableLock");
+    udfTableLock.unlock();
+  }
+
+  /** Validate whether the UDF can be created */
+  public void validate(String UDFName, String jarName, String jarMD5) {
+    if (udfTable.containsUDF(UDFName)) {
+      throw new UDFManagementException(
+          String.format("Failed to create UDF [%s], the same name UDF has been created", UDFName));
+    }
+
+    if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
+      throw new UDFManagementException(
+          String.format(
+              "Failed to create UDF [%s], the same name Jar [%s] but different MD5 [%s] has existed",
+              UDFName, jarName, jarMD5));
     }
   }
 
-  private void fetchExecutablesAndCheckInstantiation(String className) throws Exception {
-    try (UDFClassLoader temporaryUdfClassLoader =
-        new UDFClassLoader(CONFIG_NODE_CONF.getUdfLibDir())) {
-      Class.forName(className, true, temporaryUdfClassLoader)
-          .getDeclaredConstructor()
-          .newInstance();
-    }
+  public boolean needToSaveJar(String jarName) {
+    return !existedJarToMD5.containsKey(jarName);
   }
 
-  private void fetchExecutablesAndCheckInstantiation(String className, List<String> uris)
-      throws Exception {
-    final ExecutableResource resource = udfExecutableManager.request(uris);
-    try (UDFClassLoader temporaryUdfClassLoader = new UDFClassLoader(resource.getResourceDir())) {
-      Class.forName(className, true, temporaryUdfClassLoader)
-          .getDeclaredConstructor()
-          .newInstance();
-    } finally {
-      udfExecutableManager.removeFromTemporaryLibRoot(resource);
-    }
-  }
-
-  public synchronized TSStatus createFunction(CreateFunctionPlan req) {
-    final String functionName = req.getFunctionName();
-    final String className = req.getClassName();
-    final List<String> uris = req.getUris();
-
+  public TSStatus addUDFInTable(CreateFunctionPlan physicalPlan) {
     try {
-      udfRegistrationService.register(functionName, className, uris, udfExecutableManager, true);
+      final UDFInformation udfInformation = physicalPlan.getUdfInformation();
+      udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
+      existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+      if (physicalPlan.getJarFile() != null) {
+        udfExecutableManager.writeToLibDir(
+            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
+      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "[ConfigNode] Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
-              functionName, className, uris, e);
+              "Failed to add UDF [%s] in UDF_Table on Config Nodes, because of %s",
+              physicalPlan.getUdfInformation().getFunctionName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
   }
 
-  public synchronized TSStatus dropFunction(DropFunctionPlan req) {
-    try {
-      udfRegistrationService.deregister(req.getFunctionName());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (Exception e) {
-      final String errorMessage =
-          String.format(
-              "[ConfigNode] Failed to deregister UDF %s, because of exception: %s",
-              req.getFunctionName(), e);
-      LOGGER.warn(errorMessage, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(errorMessage);
-    }
+  public TSStatus dropFunction(DropFunctionPlan req) {
+    // TODO
+    return null;
   }
 
   @Override
-  public synchronized boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return udfExecutableManager.processTakeSnapshot(snapshotDir)
-        && udfRegistrationService.processTakeSnapshot(snapshotDir);
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    // todo: implementation
+    return true;
   }
 
   @Override
-  public synchronized void processLoadSnapshot(File snapshotDir) throws IOException {
-    udfExecutableManager.processLoadSnapshot(snapshotDir);
-    udfRegistrationService.processLoadSnapshot(snapshotDir);
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
+    // todo: implementation
   }
 }

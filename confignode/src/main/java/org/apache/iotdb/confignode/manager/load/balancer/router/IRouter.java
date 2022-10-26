@@ -38,6 +38,6 @@ public interface IRouter {
    *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
    *     sorting result have higher priority.
    */
-  Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
+  Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets);
 }

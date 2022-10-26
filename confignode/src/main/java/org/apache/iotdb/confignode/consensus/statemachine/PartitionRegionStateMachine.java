@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -48,12 +47,10 @@ public class PartitionRegionStateMachine
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private final TEndPoint currentNodeTEndPoint;
-  private final int currentNodeId;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
-    this.currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     this.currentNodeTEndPoint =
         new TEndPoint()
             .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
@@ -149,27 +146,31 @@ public class PartitionRegionStateMachine
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-    TConfigNodeLocation newLeaderConfigNodeLocation =
-        configManager.getConfigNodeLocation(currentNodeId);
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the PartitionRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+
     if (currentNodeId == newLeaderId) {
       LOGGER.info(
           "Current node [nodeId: {}, ip:port: {}] becomes Leader",
           newLeaderId,
           currentNodeTEndPoint);
+      configManager.getLoadManager().recoverHeartbeatCache();
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadBalancingService();
       configManager.getNodeManager().startHeartbeatService();
+      configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}, ip:port: {}]",
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
-          newLeaderId,
-          newLeaderConfigNodeLocation.getInternalEndPoint());
+          newLeaderId);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
+      configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
     }
   }

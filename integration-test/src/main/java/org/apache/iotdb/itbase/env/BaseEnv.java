@@ -71,7 +71,8 @@ public interface BaseEnv {
 
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
-  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
+  IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
+      throws IOException, InterruptedException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(
@@ -132,7 +133,16 @@ public interface BaseEnv {
     return session;
   }
 
-  void restartDataNode(int index);
+  /** @return The index of ConfigNode-Leader in configNodeWrapperList */
+  int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
+
+  void startConfigNode(int index);
+
+  void shutdownConfigNode(int index);
+
+  void startDataNode(int index);
 
   void shutdownDataNode(int index);
+
+  int getMqttPort();
 }

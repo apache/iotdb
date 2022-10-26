@@ -172,6 +172,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * <p>The goal of this method is to reduce the search space when querying a storage group with a
    * path with wildcard.
    *
+   * <p>If this path or path pattern doesn't start with given prefix, return empty list. For
+   * example, "root.a.b.c".alterPrefixPath("root.b") or "root.a.**".alterPrefixPath("root.b")
+   * returns [].
+   *
    * @param prefix The prefix. Cannot be null and cannot contain any wildcard.
    */
   public List<PartialPath> alterPrefixPath(PartialPath prefix) {
@@ -614,6 +618,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return true;
+  }
+
+  public boolean startWith(String otherNode) {
+    return nodes[0].equals(otherNode);
+  }
+
+  public boolean containNode(String otherNode) {
+    for (String node : nodes) {
+      if (node.equals(otherNode)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

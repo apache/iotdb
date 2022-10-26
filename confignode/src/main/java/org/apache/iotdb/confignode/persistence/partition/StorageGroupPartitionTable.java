@@ -60,7 +60,7 @@ public class StorageGroupPartitionTable {
   // The name of storage group
   private String storageGroupName;
 
-  // Region
+  // RegionGroup
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
   // SchemaPartition
   private final SchemaPartitionTable schemaPartitionTable;
@@ -368,12 +368,12 @@ public class StorageGroupPartitionTable {
     dataPartitionTable.deserialize(inputStream, protocol);
   }
 
-  public List<TConsensusGroupId> getRouting(
+  public List<TConsensusGroupId> getRegionId(
       TConsensusGroupType type, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
     if (type == TConsensusGroupType.DataRegion) {
-      return dataPartitionTable.getRouting(seriesSlotId, timeSlotId);
+      return dataPartitionTable.getRegionId(seriesSlotId, timeSlotId);
     } else if (type == TConsensusGroupType.SchemaRegion) {
-      return schemaPartitionTable.getRouting(seriesSlotId);
+      return schemaPartitionTable.getRegionId(seriesSlotId);
     } else {
       return new ArrayList<>();
     }
