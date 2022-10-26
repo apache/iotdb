@@ -37,7 +37,6 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
@@ -70,6 +69,7 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -79,7 +79,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -105,6 +104,10 @@ public class DataNode implements DataNodeMBean {
   /** Hold the information of trigger, udf...... */
   private final ResourcesInformationHolder resourcesInformationHolder =
       new ResourcesInformationHolder();
+
+  /** Responsible for keeping trigger information up to date */
+  private final TriggerInformationUpdater triggerInformationUpdater =
+      new TriggerInformationUpdater();
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -269,6 +272,7 @@ public class DataNode implements DataNodeMBean {
 
   private void prepareResources() throws StartupException {
     prepareTriggerResources();
+    prepareUDFResources();
   }
 
   /** register services and set up DataNode */
@@ -401,13 +405,7 @@ public class DataNode implements DataNodeMBean {
 
   private void registerUdfServices() throws StartupException {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(
-            config.getUdfTemporaryLibDir(), config.getUdfDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
-    registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(
-            config.getSystemDir() + File.separator + "udf" + File.separator));
   }
 
   private void initTriggerRelatedInstance() throws StartupException {
@@ -445,7 +443,7 @@ public class DataNode implements DataNodeMBean {
     try {
       for (TriggerInformation triggerInformation :
           resourcesInformationHolder.getTriggerInformationList()) {
-        TriggerManagementService.getInstance().doRegister(triggerInformation);
+        TriggerManagementService.getInstance().doRegister(triggerInformation, true);
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -460,6 +458,9 @@ public class DataNode implements DataNodeMBean {
       logger.debug(
           "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
     }
+
+    // start TriggerInformationUpdater
+    triggerInformationUpdater.startTriggerInformationUpdater();
   }
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
@@ -516,6 +517,18 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
+  private void initUDFRelatedInstance() throws StartupException {
+    try {
+      UDFExecutableManager.setupAndGetInstance(config.getUdfTemporaryLibDir(), config.getUdfDir());
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private void prepareUDFResources() throws StartupException {
+    initUDFRelatedInstance();
+  }
+
   private void initSchemaEngine() {
     long time = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
@@ -558,10 +571,15 @@ public class DataNode implements DataNodeMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB DataNode...");
+    stopTriggerRelatedServices();
     // stopThreadPools();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB DataNode is deactivated.");
+  }
+
+  private void stopTriggerRelatedServices() {
+    triggerInformationUpdater.stopTriggerInformationUpdater();
   }
 
   private void setUncaughtExceptionHandler() {

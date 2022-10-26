@@ -93,6 +93,7 @@ public enum ConfigPhysicalPlanType {
   GetRegionId,
   GetSeriesSlotList,
   GetTimeSlotList,
+  UpdateLoadStatistics,
   UpdateTriggersOnTransferNodes,
   UpdateTriggerLocation,
   GetTransferringTriggers,
@@ -101,5 +102,6 @@ public enum ConfigPhysicalPlanType {
   ACTIVE_CQ,
   ADD_CQ,
   UPDATE_CQ_LAST_EXEC_TIME,
-  SHOW_CQ
+  SHOW_CQ,
+  GetTemplateSetInfo
 }

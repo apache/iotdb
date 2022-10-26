@@ -1288,10 +1288,6 @@ public class TsFileProcessor {
       }
     }
 
-    for (FlushListener flushListener : flushListeners) {
-      flushListener.onMemTableFlushed(memTableToFlush);
-    }
-
     try {
       flushQueryLock.writeLock().lock();
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
@@ -1328,6 +1324,11 @@ public class TsFileProcessor {
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
+
+    // call flushed listener after memtable is released safely
+    for (FlushListener flushListener : flushListeners) {
+      flushListener.onMemTableFlushed(memTableToFlush);
+    }
 
     // retry to avoid unnecessary read-only mode
     int retryCnt = 0;

@@ -170,6 +170,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public int getLeaderConfigNodeIndex() throws IOException {
+    return -1;
+  }
+
+  @Override
   public void startConfigNode(int index) {
     getConfigNodeWrapperList().get(index).start();
   }
@@ -187,5 +192,10 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public void shutdownDataNode(int index) {
     getDataNodeWrapperList().get(index).stop();
+  }
+
+  @Override
+  public int getMqttPort() {
+    throw new UnsupportedOperationException();
   }
 }

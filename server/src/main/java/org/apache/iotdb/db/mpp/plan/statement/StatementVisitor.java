@@ -413,6 +413,11 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(getTimeSlotListStatement, context);
   }
 
+  public R visitDeactivateTemplate(
+      DeactivateTemplateStatement deactivateTemplateStatement, C context) {
+    return visitStatement(deactivateTemplateStatement, context);
+  }
+
   public R visitCreateContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, C context) {
     return visitStatement(createContinuousQueryStatement, context);

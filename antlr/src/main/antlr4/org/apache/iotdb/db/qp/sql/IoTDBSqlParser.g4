@@ -39,7 +39,7 @@ ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
+    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
@@ -210,6 +210,11 @@ deletePartition
     : DELETE PARTITION prefixPath INTEGER_LITERAL(COMMA INTEGER_LITERAL)*
     ;
 
+// Delete Timeseries of Schema Template
+deleteTimeseriesOfSchemaTemplate
+    : (DELETE TIMESERIES OF | DEACTIVATE) SCHEMA? TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    ;
+
 // Drop Function
 dropFunction
     : DROP FUNCTION udfName=identifier
@@ -365,7 +370,7 @@ showPathsSetSchemaTemplate
 
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group

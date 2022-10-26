@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,7 +65,6 @@ public class IoTDBConfig {
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-datanode.properties";
-  public static final String EXTERNAL_CONFIG_NAME = "iotdb-datanode-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -284,16 +284,6 @@ public class IoTDBConfig {
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
-
-  /** External lib directory for properties loader, stores user-uploaded JAR files */
-  private String externalPropertiesLoaderDir =
-      IoTDBConstant.EXT_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
-
-  /** External lib directory for limiter, stores user uploaded JAR files */
-  private String externalLimiterDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
@@ -1060,6 +1050,9 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMinMs = 50L;
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
+  // customizedProperties, this should be empty by default.
+  private Properties customizedProperties = new Properties();
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -1180,8 +1173,7 @@ public class IoTDBConfig {
     triggerDir = addHomeDir(triggerDir);
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     mqttDir = addHomeDir(mqttDir);
-    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
-    externalLimiterDir = addHomeDir(externalLimiterDir);
+
     extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -1430,22 +1422,6 @@ public class IoTDBConfig {
 
   public void setMqttDir(String mqttDir) {
     this.mqttDir = mqttDir;
-  }
-
-  public String getExternalPropertiesLoaderDir() {
-    return externalPropertiesLoaderDir;
-  }
-
-  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
-    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
-  }
-
-  public String getExternalLimiterDir() {
-    return externalLimiterDir;
-  }
-
-  public void setExternalLimiterDir(String externalLimiterDir) {
-    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2150,7 +2126,7 @@ public class IoTDBConfig {
     this.watermarkBitString = watermarkBitString;
   }
 
-  String getWatermarkMethod() {
+  public String getWatermarkMethod() {
     return this.watermarkMethod;
   }
 
@@ -3541,6 +3517,14 @@ public class IoTDBConfig {
 
   public void setSchemaRatisConsensusMaxSleepTimeMs(long schemaRatisConsensusMaxSleepTimeMs) {
     this.schemaRatisConsensusMaxSleepTimeMs = schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
   }
 
   public long getDataRatisConsensusPreserveWhenPurge() {

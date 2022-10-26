@@ -19,11 +19,31 @@
 package org.apache.iotdb.db.sync.receiver.load;
 
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
  * deletePlan.
  */
 public interface ILoader {
+
+  IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  IPartitionFetcher PARTITION_FETCHER =
+      config.isClusterMode()
+          ? ClusterPartitionFetcher.getInstance()
+          : StandalonePartitionFetcher.getInstance();
+
+  ISchemaFetcher SCHEMA_FETCHER =
+      config.isClusterMode()
+          ? ClusterSchemaFetcher.getInstance()
+          : StandaloneSchemaFetcher.getInstance();
+
   void load() throws PipeDataLoadException;
 }

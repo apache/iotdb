@@ -309,6 +309,11 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  @Override
   public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }

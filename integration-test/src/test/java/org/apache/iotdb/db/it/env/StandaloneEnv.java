@@ -31,6 +31,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.util.Version;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -178,6 +179,11 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public int getLeaderConfigNodeIndex() throws IOException {
+    return -1;
+  }
+
+  @Override
   public void startConfigNode(int index) {
     // Do nothing
   }
@@ -195,5 +201,10 @@ public class StandaloneEnv implements BaseEnv {
   @Override
   public void shutdownDataNode(int index) {
     // Do nothing
+  }
+
+  @Override
+  public int getMqttPort() {
+    return 1883;
   }
 }

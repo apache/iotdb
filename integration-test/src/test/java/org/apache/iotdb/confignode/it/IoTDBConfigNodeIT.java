@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
@@ -91,12 +92,10 @@ public class IoTDBConfigNodeIT {
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
 
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
     ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
 
     EnvFactory.getEnv().initBeforeClass();
   }

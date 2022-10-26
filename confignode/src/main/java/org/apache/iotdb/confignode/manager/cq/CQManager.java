@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -132,6 +133,16 @@ public class CQManager {
 
       // 3. get all CQs
       List<CQInfo.CQEntry> allCQs = null;
+      // wait for consensus layer ready
+      while (configManager.getConsensusManager() == null) {
+        try {
+          LOGGER.info("consensus layer is not ready, sleep 1s...");
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn("Unexpected interruption during waiting for consensus layer ready.");
+        }
+      }
       // keep fetching until we get all CQEntries if this node is still leader
       while (allCQs == null && configManager.getConsensusManager().isLeader()) {
         ConsensusReadResponse response = configManager.getConsensusManager().read(new ShowCQPlan());

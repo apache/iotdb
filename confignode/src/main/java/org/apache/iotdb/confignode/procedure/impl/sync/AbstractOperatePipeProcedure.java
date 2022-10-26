@@ -65,7 +65,9 @@ abstract class AbstractOperatePipeProcedure
     try {
       switch (state) {
         case OPERATE_CHECK:
+          env.getConfigManager().getSyncManager().lockSyncMetadata();
           if (executeCheckCanSkip(env)) {
+            env.getConfigManager().getSyncManager().unlockSyncMetadata();
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeState.PRE_OPERATE_PIPE_CONFIGNODE);
@@ -80,6 +82,7 @@ abstract class AbstractOperatePipeProcedure
           break;
         case OPERATE_PIPE_CONFIGNODE:
           executeOperatePipeOnConfigNode(env);
+          env.getConfigManager().getSyncManager().unlockSyncMetadata();
           return Flow.NO_MORE_STATE;
       }
     } catch (PipeException | PipeSinkException e) {

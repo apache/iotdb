@@ -145,7 +145,6 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
@@ -2259,7 +2258,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Pair<Template, List<PartialPath>> templateSetInfo =
         schemaFetcher.getAllPathsSetTemplate(showPathsUsingTemplateStatement.getTemplateName());
-    analysis.setTemplateSetInfo(templateSetInfo);
+
     if (templateSetInfo == null
         || templateSetInfo.right == null
         || templateSetInfo.right.isEmpty()) {
@@ -2267,12 +2266,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
+    analysis.setTemplateSetInfo(templateSetInfo);
+
     PathPatternTree patternTree = new PathPatternTree();
+    PartialPath rawPathPattern = showPathsUsingTemplateStatement.getPathPattern();
+    List<PartialPath> specifiedPatternList = new ArrayList<>();
     templateSetInfo.right.forEach(
-        path -> {
-          patternTree.appendPathPattern(path);
-          patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        setPath -> {
+          for (PartialPath specifiedPattern : rawPathPattern.alterPrefixPath(setPath)) {
+            patternTree.appendPathPattern(specifiedPattern);
+            specifiedPatternList.add(specifiedPattern);
+          }
         });
+
+    if (specifiedPatternList.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    analysis.setSpecifiedTemplateRelatedPathPatternList(specifiedPatternList);
 
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(partition);
