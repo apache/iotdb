@@ -242,6 +242,7 @@ public class UDFManagementService {
       udfTable.removeUDFInformation(functionName);
       udfTable.removeFunctionClass(functionName);
       if (needToDeleteJar) {
+        // remove jar and md5 file
         UDFExecutableManager.getInstance().removeFileUnderLibRoot(information.getJarName());
         UDFExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(functionName.toUpperCase() + ".txt");
