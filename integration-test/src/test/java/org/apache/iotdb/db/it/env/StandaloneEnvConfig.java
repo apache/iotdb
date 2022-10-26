@@ -326,4 +326,15 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(enableMQTTService);
     return this;
   }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    IoTDBDescriptor.getInstance().getConfig().setSchemaEngineMode(schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public String getSchemaEngineMode() {
+    return IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode();
+  }
 }
