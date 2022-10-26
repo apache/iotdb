@@ -23,12 +23,15 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.service.JMXService;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -143,6 +146,7 @@ public class SessionManager implements SessionManagerMBean {
     session.setZoneId(ZoneId.of(zoneId));
     session.setClientVersion(clientVersion);
     session.setLogin(true);
+    session.setLogInTime(System.currentTimeMillis());
   }
 
   /**
@@ -262,6 +266,14 @@ public class SessionManager implements SessionManagerMBean {
   @Override
   public Set<String> getAllRpcClients() {
     return this.sessions.keySet().stream().map(x -> x.toString()).collect(Collectors.toSet());
+  }
+
+  public TSConnectionInfoResp getAllConnectionInfo() {
+    return new TSConnectionInfoResp(
+        sessions.keySet().stream()
+            .map(IClientSession::convertToTSConnectionInfo)
+            .sorted(Comparator.comparingLong(TSConnectionInfo::getLogInTime))
+            .collect(Collectors.toList()));
   }
 
   private static class SessionManagerHelper {

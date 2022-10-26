@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.query.control.clientsession;
 
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Set;
@@ -26,10 +28,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
 /** Client Session is the only identity for a connection. */
 public class ClientSession extends IClientSession {
 
-  Socket clientSocket;
+  private final Socket clientSocket;
 
   // TODO why we use copyOnWriteArraySet instead of HashSet??
-  Set<Long> statements = new CopyOnWriteArraySet();
+  private final Set<Long> statements = new CopyOnWriteArraySet<>();
 
   public ClientSession(Socket clientSocket) {
     this.clientSocket = clientSocket;
@@ -43,6 +45,16 @@ public class ClientSession extends IClientSession {
   @Override
   int getClientPort() {
     return clientSocket.getPort();
+  }
+
+  @Override
+  TSConnectionType getConnectionType() {
+    return TSConnectionType.THRIFT_BASED;
+  }
+
+  @Override
+  String getConnectionId() {
+    return String.format("%s:%s", getClientAddress(), getClientPort());
   }
 
   @Override

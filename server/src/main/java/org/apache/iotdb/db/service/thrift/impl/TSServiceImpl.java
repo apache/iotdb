@@ -91,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -2207,6 +2208,11 @@ public class TSServiceImpl implements TSIService.Iface {
     syncConf.setSecondaryAddress(conf.getSecondaryAddress());
     syncConf.setSecondaryPort(conf.getSecondaryPort());
     return syncConf;
+  }
+
+  @Override
+  public TSConnectionInfoResp fetchAllConnectionsInfo() {
+    return SESSION_MANAGER.getAllConnectionInfo();
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
