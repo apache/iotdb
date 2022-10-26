@@ -376,7 +376,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
-    if (nodeNames.length == levelOfSG) {
+    if (nodeNames.length == levelOfSG + 1) {
       return new Pair<>(null, null);
     }
     IMNode cur = storageGroupMNode;
