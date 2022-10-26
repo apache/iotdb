@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
-import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -70,7 +69,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -253,7 +251,12 @@ public class SyncService implements IService {
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
     logger.info("Execute drop PIPE {}", pipeName);
-    Pipe runningPipe = getPipe(pipeName);
+    Pipe runningPipe;
+    try {
+      runningPipe = getPipe(pipeName);
+    } catch (PipeNotExistException e) {
+      return;
+    }
     if (runningPipe.getPipeSink().getType() != PipeSink.PipeSinkType.IoTDB) { // for external pipe
       // == drop ExternalPipeProcessor
       if (extPipePluginManagers.containsKey(pipeName)) {
@@ -476,14 +479,11 @@ public class SyncService implements IService {
         extPipePluginRegister.getAllPluginName().size(),
         extPipePluginRegister.getAllPluginName());
 
-    File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
-    if (senderLog.exists()) {
-      try {
-        recover();
-      } catch (Exception e) {
-        logger.error("Recover from disk error.", e);
-        throw new StartupException(e);
-      }
+    try {
+      recover();
+    } catch (Exception e) {
+      logger.error("Recover from disk error.", e);
+      throw new StartupException(e);
     }
   }
 
@@ -518,9 +518,27 @@ public class SyncService implements IService {
     return ServiceType.SYNC_SERVICE;
   }
 
+  /**
+   * If run on standalone version, recover from disk.
+   *
+   * <p>If run on MPP version, init or recover from ConfigNode.
+   */
   private void recover() throws IOException, PipeException, PipeSinkException {
     List<PipeInfo> allPipeInfos = syncInfoFetcher.getAllPipeInfos();
     for (PipeInfo pipeInfo : allPipeInfos) {
+      logger.info(
+          "Recover PIPE [{}] whose status is {}",
+          pipeInfo.getPipeName(),
+          pipeInfo.getStatus().name());
+      if (PipeStatus.PREPARE_CREATE.equals(pipeInfo.getStatus())
+          || PipeStatus.PREPARE_DROP.equals(pipeInfo.getStatus())) {
+        // skip
+        logger.info(
+            "Skip PIPE [{}] because its status is {}",
+            pipeInfo.getPipeName(),
+            pipeInfo.getStatus().name());
+        continue;
+      }
       Pipe pipe =
           SyncPipeUtil.parsePipeInfoAsPipe(
               pipeInfo, syncInfoFetcher.getPipeSink(pipeInfo.getPipeSinkName()));
@@ -530,8 +548,13 @@ public class SyncService implements IService {
           pipe.start();
           break;
         case STOP:
+        case PREPARE_START:
+        case PREPARE_STOP:
           pipe.stop();
           break;
+        case PREPARE_CREATE:
+        case PREPARE_DROP:
+          throw new PipeException("Unexpected status " + pipeInfo.getStatus().name());
         default:
           throw new IOException(
               String.format("Can not recognize running pipe status %s.", pipe.getStatus()));

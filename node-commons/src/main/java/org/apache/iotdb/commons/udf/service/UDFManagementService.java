@@ -19,21 +19,25 @@
 
 package org.apache.iotdb.commons.udf.service;
 
-import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class UDFManagementService {
@@ -61,17 +65,27 @@ public class UDFManagementService {
   public void validate(UDFInformation udfInformation) {
     try {
       acquireLock();
-      validateFunctionName(udfInformation);
       checkIfRegistered(udfInformation);
     } finally {
       releaseLock();
     }
   }
 
-  public void register(UDFInformation udfInformation) throws UDFManagementException {
+  public void register(UDFInformation udfInformation, ByteBuffer jarFile) throws Exception {
     try {
       acquireLock();
-      validateFunctionName(udfInformation);
+      checkIfRegistered(udfInformation);
+      saveJarFile(udfInformation.getJarName(), jarFile);
+      doRegister(udfInformation);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  /** temp code for stand-alone */
+  public void register(UDFInformation udfInformation) throws Exception {
+    try {
+      acquireLock();
       checkIfRegistered(udfInformation);
       doRegister(udfInformation);
     } finally {
@@ -79,7 +93,7 @@ public class UDFManagementService {
     }
   }
 
-  private static void validateFunctionName(UDFInformation udfInformation)
+  private void checkIsBuiltInAggregationFunctionName(UDFInformation udfInformation)
       throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
@@ -97,6 +111,7 @@ public class UDFManagementService {
   }
 
   private void checkIfRegistered(UDFInformation udfInformation) throws UDFManagementException {
+    checkIsBuiltInAggregationFunctionName(udfInformation);
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     UDFInformation information = udfTable.getUDFInformation(functionName);
@@ -104,57 +119,73 @@ public class UDFManagementService {
       return;
     }
 
-    String errorMessage;
     if (information.isBuiltin()) {
-      errorMessage =
+      String errorMessage =
           String.format(
               "Failed to register UDF %s(%s), because the given function name is the same as a built-in UDF function name.",
               functionName, className);
+      LOGGER.warn(errorMessage);
+      throw new UDFManagementException(errorMessage);
     } else {
-      if (information.getClassName().equals(className)) {
-        errorMessage =
+      if (UDFExecutableManager.getInstance().hasFileUnderLibRoot(udfInformation.getJarName())
+          && isLocalJarConflicted(udfInformation)) {
+        String errorMessage =
             String.format(
-                "Failed to register UDF %s(%s), because a UDF %s(%s) with the same function name and the class name has already been registered.",
-                functionName, className, information.getFunctionName(), information.getClassName());
-      } else {
-        errorMessage =
-            String.format(
-                "Failed to register UDF %s(%s), because a UDF %s(%s) with the same function name but a different class name has already been registered.",
-                functionName, className, information.getFunctionName(), information.getClassName());
+                "Failed to registered function %s, "
+                    + "because existed md5 of jar file for function %s is different from the new jar file. ",
+                functionName, functionName);
+        LOGGER.warn(errorMessage);
+        throw new UDFManagementException(errorMessage);
       }
     }
-
-    LOGGER.warn(errorMessage);
-    throw new UDFManagementException(errorMessage);
   }
 
-  private void downloadExecutableResources(
-      String functionName,
-      String className,
-      List<String> uris,
-      UDFExecutableManager udfExecutableManager)
-      throws UDFManagementException {
-    if (uris.isEmpty()) {
-      return;
-    }
+  /** check whether local jar is correct according to md5 */
+  public boolean isLocalJarConflicted(UDFInformation udfInformation) throws UDFManagementException {
+    String functionName = udfInformation.getFunctionName();
+    // A jar with the same name exists, we need to check md5
+    String existedMd5 = "";
+    String md5FilePath = functionName + ".txt";
 
-    try {
-      final ExecutableResource resource = udfExecutableManager.request(uris);
+    // if meet error when reading md5 from txt, we need to compute it again
+    boolean hasComputed = false;
+    if (UDFExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
       try {
-        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
-        udfExecutableManager.moveTempDirToExtLibDir(resource, functionName);
-      } catch (Exception innerException) {
-        udfExecutableManager.removeUDFJarFromExtLibDir(functionName);
-        udfExecutableManager.removeFromTemporaryLibRoot(resource);
-        throw innerException;
+        existedMd5 =
+            UDFExecutableManager.getInstance().readTextFromFileUnderTemporaryRoot(md5FilePath);
+        hasComputed = true;
+      } catch (IOException e) {
+        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
       }
-    } catch (Exception outerException) {
-      String errorMessage =
-          String.format(
-              "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
-              functionName.toUpperCase(), className, uris);
-      LOGGER.warn(errorMessage, outerException);
-      throw new UDFManagementException(errorMessage, outerException);
+    }
+    if (!hasComputed) {
+      try {
+        existedMd5 =
+            DigestUtils.md5Hex(
+                Files.newInputStream(
+                    Paths.get(
+                        UDFExecutableManager.getInstance().getLibRoot()
+                            + File.separator
+                            + udfInformation.getJarName())));
+        // save the md5 in a txt under trigger temporary lib
+        UDFExecutableManager.getInstance()
+            .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
+      } catch (IOException e) {
+        String errorMessage =
+            String.format(
+                "Failed to registered function %s, "
+                    + "because error occurred when trying to compute md5 of jar file for function %s ",
+                functionName, functionName);
+        LOGGER.warn(errorMessage, e);
+        throw new UDFManagementException(errorMessage);
+      }
+    }
+    return !existedMd5.equals(udfInformation.getJarMD5());
+  }
+
+  private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
+    if (byteBuffer != null) {
+      UDFExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
     }
   }
 
@@ -168,8 +199,8 @@ public class UDFManagementService {
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
-      udfTable.addUDFInformation(
-          functionName, new UDFInformation(functionName, className, false, functionClass));
+      udfTable.addUDFInformation(functionName, udfInformation);
+      udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -189,7 +220,7 @@ public class UDFManagementService {
       throws ClassNotFoundException {
     for (UDFInformation information : getAllUDFInformation()) {
       if (!information.isBuiltin()) {
-        information.updateFunctionClass(activeClassLoader);
+        udfTable.updateFunctionClass(information, activeClassLoader);
       }
     }
   }
@@ -229,7 +260,7 @@ public class UDFManagementService {
     }
 
     try {
-      return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
+      return (UDF) udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance();
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -254,11 +285,22 @@ public class UDFManagementService {
       udfTable.addUDFInformation(
           functionName,
           new UDFInformation(
-              functionName,
-              builtinTimeSeriesGeneratingFunction.getClassName(),
-              true,
-              builtinTimeSeriesGeneratingFunction.getFunctionClass()));
+              functionName, builtinTimeSeriesGeneratingFunction.getClassName(), true));
+      udfTable.addFunctionAndClass(
+          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }
+  }
+
+  public boolean isUDTF(String functionName)
+      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
+          IllegalAccessException {
+    return udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance()
+        instanceof UDTF;
+  }
+
+  /** always returns false for now */
+  public boolean isUDAF(String functionName) {
+    return false;
   }
 
   @TestOnly

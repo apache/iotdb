@@ -34,8 +34,9 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
-      ITaskScheduler scheduler) {
-    super(workerId, tg, queue, scheduler);
+      ITaskScheduler scheduler,
+      ThreadProducer producer) {
+    super(workerId, tg, queue, scheduler, producer);
   }
 
   @Override
