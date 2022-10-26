@@ -167,7 +167,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagStatementContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
@@ -181,8 +180,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.FileNotFoundException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -702,25 +699,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
+    Pair<String, Boolean> jarPathPair = parseJarLocation(ctx.jarLocation());
     return new CreateFunctionStatement(
         parseIdentifier(ctx.udfName.getText()),
         parseStringLiteral(ctx.className.getText()),
-        parseUris(ctx.uri()));
-  }
-
-  private List<URI> parseUris(List<UriContext> uriContexts) {
-    List<URI> uris = new ArrayList<>();
-    if (uriContexts != null) {
-      for (UriContext uriContext : uriContexts) {
-        final String uriString = uriContext.getText();
-        try {
-          uris.add(new URI(parseStringLiteral(uriString)));
-        } catch (URISyntaxException e) {
-          throw new SemanticException(String.format("'%s' is not a legal URI.", uriString));
-        }
-      }
-    }
-    return uris;
+        jarPathPair.getLeft(),
+        jarPathPair.getRight());
   }
 
   // Drop Function
@@ -733,6 +717,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowFunctions(ShowFunctionsContext ctx) {
     return new ShowFunctionsStatement();
+  }
+
+  private Pair<String, Boolean> parseJarLocation(IoTDBSqlParser.JarLocationContext ctx) {
+    String jarPath;
+    boolean usingURI;
+    if (ctx.FILE() != null) {
+      usingURI = false;
+      jarPath = parseFilePath(ctx.fileName.getText());
+    } else {
+      usingURI = true;
+      jarPath = parseFilePath(ctx.uri().getText());
+    }
+    return new Pair<>(jarPath, usingURI);
   }
 
   // Create Trigger =====================================================================
@@ -748,15 +745,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("Please specify the location of jar.");
     }
     // parse jarPath
-    String jarPath;
-    boolean usingURI;
-    if (ctx.jarLocation().FILE() != null) {
-      usingURI = false;
-      jarPath = parseFilePath(ctx.jarLocation().fileName.getText());
-    } else {
-      usingURI = true;
-      jarPath = parseFilePath(ctx.jarLocation().uri().getText());
-    }
+    Pair<String, Boolean> jarPathPair = parseJarLocation(ctx.jarLocation());
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -769,8 +758,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CreateTriggerStatement(
         parseIdentifier(ctx.triggerName.getText()),
         parseStringLiteral(ctx.className.getText()),
-        jarPath,
-        usingURI,
+        jarPathPair.getLeft(),
+        jarPathPair.getRight(),
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT,
@@ -1207,6 +1196,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseOrderByClause(ctx.orderByClause());
     }
 
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+
     return queryStatement;
   }
 
@@ -1293,6 +1287,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLimitStatement(IoTDBSqlParser.LimitStatementContext ctx) {
+    if ((ctx.limitClause() != null || ctx.slimitClause() != null)
+        && queryStatement.isGroupByTag()) {
+      // TODO: I will support limit and slimit in later PRs
+      throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+    }
     // parse LIMIT
     parseLimitClause(ctx.limitClause(), queryStatement);
 

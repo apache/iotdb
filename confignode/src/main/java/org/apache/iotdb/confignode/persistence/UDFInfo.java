@@ -109,7 +109,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   public synchronized TSStatus dropFunction(DropFunctionPlan req) {
     try {
-      udfRegistrationService.deregister(req.getFunctionName());
+      udfRegistrationService.deregister(req.getFunctionName(), false);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =

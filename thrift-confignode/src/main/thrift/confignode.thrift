@@ -310,11 +310,19 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required list<string> uris
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
 }
 
 struct TDropFunctionReq {
   1: required string udfName
+}
+
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
 }
 
 // Trigger
@@ -814,6 +822,11 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if operations on any node failed
    */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
 
   // ======================================================
   // Trigger

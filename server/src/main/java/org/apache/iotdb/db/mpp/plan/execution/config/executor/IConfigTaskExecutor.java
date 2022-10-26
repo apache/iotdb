@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -53,8 +54,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.util.List;
-
 public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setStorageGroup(
@@ -69,10 +68,11 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement);
 
-  SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris);
+  SettableFuture<ConfigTaskResult> createFunction(CreateFunctionStatement createFunctionStatement);
 
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
+
+  SettableFuture<ConfigTaskResult> showFunctions();
 
   SettableFuture<ConfigTaskResult> createTrigger(CreateTriggerStatement createTriggerStatement);
 
