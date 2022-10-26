@@ -92,19 +92,19 @@ public abstract class PageManager implements IPageManager {
 
   PageManager(FileChannel channel, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
-    pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
-    dirtyPages = new ConcurrentHashMap<>();
-    evictLock = new ReentrantLock();
-    pageLocks = new PageLocks();
+    this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    this.dirtyPages = new ConcurrentHashMap<>();
+    this.evictLock = new ReentrantLock();
+    this.pageLocks = new PageLocks();
     this.lastPageIndex =
         lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
-    treeTrace = new int[16];
+    this.treeTrace = new int[16];
     this.channel = channel;
 
     // recover if log exists
-    recoverFromLog(logPath);
+    int pageAcc = (int) recoverFromLog(logPath) / PAGE_LENGTH;
     this.logWriter = new SchemaFileLogWriter(logPath);
-    logCounter = new AtomicInteger(0);
+    logCounter = new AtomicInteger(pageAcc);
 
     // construct first page if file to init
     if (lastPageIndex < 0) {
@@ -115,8 +115,8 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  /** load bytes from log, deserialize and flush directly into channel */
-  private void recoverFromLog(String logPath) throws IOException, MetadataException {
+  /** Load bytes from log, deserialize and flush directly into channel, return current length */
+  private long recoverFromLog(String logPath) throws IOException, MetadataException {
     SchemaFileLogReader reader = new SchemaFileLogReader(logPath);
     ISchemaPage page;
     List<byte[]> res = reader.collectUpdatedEntries();
@@ -131,8 +131,11 @@ public abstract class PageManager implements IPageManager {
     if (res.size() != 0) {
       FileOutputStream outputStream = new FileOutputStream(logPath, true);
       outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+      long length = outputStream.getChannel().size();
       outputStream.close();
+      return length;
     }
+    return 0L;
   }
 
   // region Framework Methods
