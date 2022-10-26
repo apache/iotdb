@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -38,12 +39,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
 
 /** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
+
+  private static final ExecutorService threadPool =
+      IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private final TEndPoint currentNodeTEndPoint;
@@ -161,7 +166,13 @@ public class PartitionRegionStateMachine
       configManager.getNodeManager().startHeartbeatService();
       configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
-      configManager.getCQManager().startCQScheduler();
+
+      // we do cq recovery async for two reasons:
+      // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+      // make notifyLeaderChanged not blocked by it
+      // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
+      // initialized after notifyLeaderChanged finished
+      threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
     } else {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
