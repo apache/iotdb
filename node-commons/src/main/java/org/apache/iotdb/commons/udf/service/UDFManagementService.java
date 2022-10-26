@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.UDTF;
@@ -50,7 +49,6 @@ public class UDFManagementService {
   private UDFManagementService() {
     lock = new ReentrantLock();
     udfTable = new UDFTable();
-    registerBuiltinTimeSeriesGeneratingFunctions();
   }
 
   public void acquireLock() {
@@ -276,19 +274,6 @@ public class UDFManagementService {
 
   public UDFInformation[] getAllUDFInformation() {
     return udfTable.getAllUDFInformation();
-  }
-
-  private void registerBuiltinTimeSeriesGeneratingFunctions() {
-    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
-        BuiltinTimeSeriesGeneratingFunction.values()) {
-      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
-      udfTable.addUDFInformation(
-          functionName,
-          new UDFInformation(
-              functionName, builtinTimeSeriesGeneratingFunction.getClassName(), true));
-      udfTable.addFunctionAndClass(
-          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
-    }
   }
 
   public boolean isUDTF(String functionName)
