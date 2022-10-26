@@ -101,7 +101,6 @@ public class SchemaFileLogTest {
       res.next();
     }
 
-    System.out.println("To corrupt page:" + corruptPageIndex);
     try {
       Class schemaFileClass = SchemaFile.class;
       Field channelField = schemaFileClass.getDeclaredField("channel");
@@ -135,7 +134,6 @@ public class SchemaFileLogTest {
           new File("target\\tmp\\system\\schema\\root.test.vRoot1\\0\\schema_file_log.bin");
       outputStream = new FileOutputStream(logFile, true);
       channel = outputStream.getChannel();
-      System.out.println("now");
       channel.truncate(channel.size() - 1);
     } finally {
       outputStream.close();
