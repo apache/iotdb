@@ -31,6 +31,7 @@ import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
+import org.apache.iotdb.lsm.response.IResponse;
 
 import java.io.IOException;
 
@@ -67,11 +68,13 @@ public class LSMEngine<T> implements ILSMEngine {
    * @param insertionRequest Encapsulates the data to be inserted
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after insertion
+   * @param <R> type of response
    */
   @Override
-  public <K, V, R> void insert(IInsertionRequest<K, V, R> insertionRequest) {
-    insertionManager.process(rootMemNode, insertionRequest, new InsertRequestContext());
+  public <K, V, R extends IResponse> R insert(IInsertionRequest<K, V> insertionRequest) {
+    InsertRequestContext insertRequestContext = new InsertRequestContext();
+    insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
+    return insertRequestContext.getResponse();
   }
 
   /**
@@ -79,11 +82,13 @@ public class LSMEngine<T> implements ILSMEngine {
    *
    * @param queryRequest Encapsulates query data
    * @param <K> The type of key in the request data
-   * @param <R> return value type after query
+   * @param <R> type of response
    */
   @Override
-  public <K, R> void query(IQueryRequest<K, R> queryRequest) {
-    queryManager.process(rootMemNode, queryRequest, new QueryRequestContext());
+  public <K, R extends IResponse> R query(IQueryRequest<K> queryRequest) {
+    QueryRequestContext queryRequestContext = new QueryRequestContext();
+    queryManager.process(rootMemNode, queryRequest, queryRequestContext);
+    return queryRequestContext.getResponse();
   }
 
   /**
@@ -92,11 +97,13 @@ public class LSMEngine<T> implements ILSMEngine {
    * @param deletionRequest Encapsulates the data to be deleted
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after deletion
+   * @param <R> type of response
    */
   @Override
-  public <K, V, R> void delete(IDeletionRequest<K, V, R> deletionRequest) {
-    deletionManager.process(rootMemNode, deletionRequest, new DeleteRequestContext());
+  public <K, V, R extends IResponse> R delete(IDeletionRequest<K, V> deletionRequest) {
+    DeleteRequestContext deleteRequestContext = new DeleteRequestContext();
+    deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
+    return deleteRequestContext.getResponse();
   }
 
   /** recover the LSMEngine */
@@ -122,16 +129,15 @@ public class LSMEngine<T> implements ILSMEngine {
    * @param request insertionRequest or deletionRequest
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after deletion
    */
   @Override
-  public <K, V, R> void recover(IRequest<K, V, R> request) {
+  public <K, V> void recover(IRequest<K, V> request) {
     switch (request.getRequestType()) {
       case INSERT:
-        insert((IInsertionRequest<K, V, R>) request);
+        insert((IInsertionRequest<K, V>) request);
         break;
       case DELETE:
-        delete((IDeletionRequest<K, V, R>) request);
+        delete((IDeletionRequest<K, V>) request);
         break;
       default:
         break;

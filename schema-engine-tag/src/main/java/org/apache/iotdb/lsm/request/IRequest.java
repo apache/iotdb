@@ -27,9 +27,8 @@ import java.util.List;
  *
  * @param <K> The type of each layer key
  * @param <V> The type of value
- * @param <R> type of processed result
  */
-public interface IRequest<K, V, R> {
+public interface IRequest<K, V> {
 
   /**
    * Get the key of a layer
@@ -38,20 +37,6 @@ public interface IRequest<K, V, R> {
    * @return the key of the layer
    */
   K getKey(RequestContext context);
-
-  /**
-   * Get the processed result
-   *
-   * @return the processed result
-   */
-  R getResult();
-
-  /**
-   * set processed result
-   *
-   * @param result processed result
-   */
-  void setResult(R result);
 
   /**
    * get all keys

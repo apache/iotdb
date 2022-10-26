@@ -16,40 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
-
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IDeletionRequest;
+package org.apache.iotdb.lsm.response;
 
 import java.util.List;
 
-/** Represents a deletion request */
-public class DeletionRequest implements IDeletionRequest<String, Integer> {
+/**
+ * Indicates the response after the lsm framework processes the request, encapsulating the response
+ * value and exception information.
+ *
+ * @param <T> type of the response result
+ */
+public interface IResponse<T> {
 
-  // tags
-  List<String> keys;
+  T getValue();
 
-  // int32 id
-  int value;
+  void setValue(T value);
 
-  public DeletionRequest(List<String> keys, int value) {
-    super();
-    this.keys = keys;
-    this.value = value;
-  }
+  List<Exception> getExceptions();
 
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
-  }
+  void setExceptions(List<Exception> exceptions);
 
-  @Override
-  public List<String> getKeys() {
-    return keys;
-  }
-
-  @Override
-  public Integer getValue() {
-    return value;
-  }
+  /**
+   * If an exception needs to be thrown during the processing of the request, this method can be
+   * used to accept the exception
+   *
+   * @param e Exception
+   */
+  void addException(Exception e);
 }

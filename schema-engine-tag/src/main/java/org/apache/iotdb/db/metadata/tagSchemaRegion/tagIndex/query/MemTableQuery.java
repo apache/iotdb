@@ -62,7 +62,7 @@ public class MemTableQuery extends QueryLevelProcessor<MemTable, MemChunkGroup, 
   public void query(MemTable memNode, QueryRequest queryRequest, QueryRequestContext context) {
     // if the memTable is immutable, we need to delete the id in deletionList in the query result
     if (memNode.isImmutable()) {
-      RoaringBitmap roaringBitmap = queryRequest.getResult();
+      RoaringBitmap roaringBitmap = context.getValue();
       Set<Integer> deletionList = memNode.getDeletionList();
       for (Integer id : deletionList) {
         roaringBitmap.remove(id);

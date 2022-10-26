@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
+import org.apache.iotdb.lsm.response.IResponse;
 import org.apache.iotdb.lsm.strategy.IAccessStrategy;
 import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
@@ -32,6 +33,9 @@ public class RequestContext {
 
   // the maximum level of memory nodes that can be processed
   int levelUpperBound;
+
+  // response, encapsulating the response value and exception information.
+  IResponse response;
 
   public RequestContext() {
     // preorder traversal strategy is used by default
@@ -62,5 +66,43 @@ public class RequestContext {
 
   public void setLevelUpperBound(int levelUpperBound) {
     this.levelUpperBound = levelUpperBound;
+  }
+
+  public <R extends IResponse> R getResponse() {
+    return (R) response;
+  }
+
+  public <R extends IResponse> void setResponse(R response) {
+    this.response = response;
+  }
+
+  /**
+   * get the result of the response
+   *
+   * @param <T> type of the result
+   * @return response result
+   */
+  public <T> T getValue() {
+    return (T) getResponse().getValue();
+  }
+
+  /**
+   * set the result of the response
+   *
+   * @param value response result
+   * @param <T> type of the response result
+   */
+  public <T> void setValue(T value) {
+    response.setValue(value);
+  }
+
+  /**
+   * If an exception needs to be thrown during the processing of the request, this method can be
+   * used to accept the exception
+   *
+   * @param e Exception
+   */
+  public void thrownException(Exception e) {
+    response.addException(e);
   }
 }

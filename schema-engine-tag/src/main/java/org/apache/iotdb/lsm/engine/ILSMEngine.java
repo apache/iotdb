@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
+import org.apache.iotdb.lsm.response.IResponse;
 
 import java.io.IOException;
 
@@ -36,18 +37,18 @@ public interface ILSMEngine extends IRecoverable {
    * @param insertionRequest Encapsulates the data to be inserted
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after insertion
+   * @param <R> type of response
    */
-  <K, V, R> void insert(IInsertionRequest<K, V, R> insertionRequest);
+  <K, V, R extends IResponse> R insert(IInsertionRequest<K, V> insertionRequest);
 
   /**
    * Use this ILSMEngine to query
    *
    * @param queryRequest Encapsulates query data
    * @param <K> The type of key in the request data
-   * @param <R> return value type after query
+   * @param <R> type of response
    */
-  <K, R> void query(IQueryRequest<K, R> queryRequest);
+  <K, R extends IResponse> R query(IQueryRequest<K> queryRequest);
 
   /**
    * Use this ILSMEngine to delete data
@@ -55,9 +56,9 @@ public interface ILSMEngine extends IRecoverable {
    * @param deletionRequest Encapsulates the data to be deleted
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after deletion
+   * @param <R> type of response
    */
-  <K, V, R> void delete(IDeletionRequest<K, V, R> deletionRequest);
+  <K, V, R extends IResponse> R delete(IDeletionRequest<K, V> deletionRequest);
 
   /** recover the ILSMEngine */
   void recover();

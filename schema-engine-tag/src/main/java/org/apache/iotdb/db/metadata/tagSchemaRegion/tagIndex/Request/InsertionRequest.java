@@ -24,16 +24,13 @@ import org.apache.iotdb.lsm.request.IInsertionRequest;
 import java.util.List;
 
 /** Represents a insertion request */
-public class InsertionRequest implements IInsertionRequest<String, Integer, RequestStatus> {
+public class InsertionRequest implements IInsertionRequest<String, Integer> {
 
   // tags
   List<String> keys;
 
   // int32 id
   int value;
-
-  // insertion result
-  RequestStatus requestStatus;
 
   public InsertionRequest() {
     super();
@@ -43,22 +40,11 @@ public class InsertionRequest implements IInsertionRequest<String, Integer, Requ
     super();
     this.keys = keys;
     this.value = value;
-    requestStatus = new RequestStatus();
   }
 
   @Override
   public String getKey(RequestContext context) {
     return keys.get(context.getLevel() - 1);
-  }
-
-  @Override
-  public RequestStatus getResult() {
-    return requestStatus;
-  }
-
-  @Override
-  public void setResult(RequestStatus result) {
-    requestStatus = result;
   }
 
   @Override

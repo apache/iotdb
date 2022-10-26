@@ -29,7 +29,6 @@ public interface IRecoverable {
    * @param request insertionRequest or deletionRequest
    * @param <K> The type of key in the request data
    * @param <V> The type of value in the request data
-   * @param <R> return value type after recover
    */
-  <K, V, R> void recover(IRequest<K, V, R> request);
+  <K, V> void recover(IRequest<K, V> request);
 }
