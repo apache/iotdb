@@ -246,7 +246,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -274,7 +277,10 @@ public class SessionPoolTest {
               false,
               null,
               false,
-              SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+              SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+              SessionConfig.DEFAULT_VERSION,
+              SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+              SessionConfig.DEFAULT_MAX_FRAME_SIZE);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
@@ -306,7 +312,10 @@ public class SessionPoolTest {
                 false,
                 null,
                 false,
-                SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+                SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+                SessionConfig.DEFAULT_VERSION,
+                SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+                SessionConfig.DEFAULT_MAX_FRAME_SIZE);
         correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
       } catch (StatementExecutionException es) {
@@ -336,7 +345,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
@@ -373,7 +385,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     // stop the server.
     pool.close();
@@ -390,7 +405,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
@@ -431,7 +449,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     pool.close();
     try {
       pool.insertRecord(
