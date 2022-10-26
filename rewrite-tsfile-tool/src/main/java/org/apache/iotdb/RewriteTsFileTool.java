@@ -413,6 +413,9 @@ public class RewriteTsFileTool {
               for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
                 tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
                 for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
+                  if (valueForAlignedSeries.get(j).get(i) == null) {
+                    continue;
+                  }
                   switch (valueForAlignedSeries.get(j).get(i).getDataType()) {
                     case INT32:
                       tablet.addValue(
@@ -485,6 +488,9 @@ public class RewriteTsFileTool {
         for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
           tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
           for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
+            if (valueForAlignedSeries.get(j).get(i) == null) {
+              continue;
+            }
             switch (valueForAlignedSeries.get(j).get(i).getDataType()) {
               case INT32:
                 tablet.addValue(

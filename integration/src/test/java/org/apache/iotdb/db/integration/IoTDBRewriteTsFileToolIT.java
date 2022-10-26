@@ -272,7 +272,6 @@ public class IoTDBRewriteTsFileToolIT {
               statement.executeQuery(
                   String.format(
                       "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
-          System.out.println(timestamp);
           Assert.assertTrue(resultSet.next());
           float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
           float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
