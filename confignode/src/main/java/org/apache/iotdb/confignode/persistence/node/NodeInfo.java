@@ -200,13 +200,11 @@ public class NodeInfo implements SnapshotProcessor {
    *     UPDATE_DATA_NODE_ERROR
    */
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      dataNodeInfoReadWriteLock.writeLock().lock();
       registeredDataNodes
           .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
           .setLocation(updateDataNodePlan.getDataNodeLocation());
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.UPDATE_DATANODE_FAILED.getStatusCode());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

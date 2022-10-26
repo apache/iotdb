@@ -191,9 +191,14 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
 
-        // Check if need to start the update process
-        if (IoTDBStartCheck.getInstance().isUpdate()) {
+        // Check if it's needed to start the update process
+        if (IoTDBStartCheck.getInstance().isIpPortUpdated()) {
           logger.info("Start updating datanode in the cluster.");
+          if (IoTDBStartCheck.getInstance().checkNonModifiableConfiguration()) {
+            throw new IoTDBException(
+                TSStatusCode.UPDATE_DATANODE_FAILED.toString(),
+                TSStatusCode.UPDATE_DATANODE_FAILED.getStatusCode());
+          }
           TDataNodeLocation newDataNodeLocation = generateDataNodeLocation();
           TDataNodeUpdateReq req = new TDataNodeUpdateReq();
           req.setDataNodeLocation(newDataNodeLocation);
@@ -204,7 +209,7 @@ public class DataNode implements DataNodeMBean {
           }
 
           IoTDBStartCheck.getInstance().serializeNewDataNode(newDataNodeLocation);
-
+          logger.info("Updated datanode: {}", newDataNodeLocation);
           logger.info("Update datanode in the cluster successfully.");
           return;
         }

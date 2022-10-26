@@ -33,7 +33,7 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
   private TDataNodeLocation dataNodeLocation;
 
   public UpdateDataNodePlan() {
-    super(ConfigPhysicalPlanType.UpdateDataNode);
+    super(ConfigPhysicalPlanType.UpdateDataNodeConfiguration);
   }
 
   public UpdateDataNodePlan(TDataNodeLocation datanodeLocation) {
@@ -47,7 +47,7 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.UpdateDataNode.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.UpdateDataNodeConfiguration.ordinal());
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, stream);
   }
 

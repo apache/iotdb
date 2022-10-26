@@ -135,7 +135,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
           break;
-        case UpdateDataNode:
+        case UpdateDataNodeConfiguration:
           req = new UpdateDataNodePlan();
           break;
         case RemoveDataNode:
