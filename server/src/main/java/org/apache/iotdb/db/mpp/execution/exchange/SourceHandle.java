@@ -125,7 +125,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock() {
+  public synchronized ByteBuffer getSerializedTsBlock() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
 
       checkState();

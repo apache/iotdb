@@ -69,7 +69,7 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
+  public synchronized ByteBuffer getSerializedTsBlock() throws IoTDBException {
     hasNext = false;
     if (result.isEmpty()) {
       return null;

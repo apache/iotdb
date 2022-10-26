@@ -470,8 +470,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
     String operationType = "";
     boolean nonAlign = false;
     try {
-      operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
-      this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      if (statement.getResultSet() != null) {
+        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      }
     } catch (SQLException throwables) {
       throwables.printStackTrace();
     }
@@ -729,8 +731,29 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
+    if (ioTDBRpcDataSet.hasCachedBlock()) {
+      ioTDBRpcDataSet.constructOneRow();
+      return true;
+    }
+    if (ioTDBRpcDataSet.hasCachedByteBuffer()) {
+      ioTDBRpcDataSet.constructOneTsBlock();
+      ioTDBRpcDataSet.constructOneRow();
+      return true;
+    }
+    if (ioTDBRpcDataSet.emptyResultSet) {
+      return false;
+    }
+    if (isRpcFetchResult && fetchResults() && ioTDBRpcDataSet.hasCachedByteBuffer()) {
+      ioTDBRpcDataSet.constructOneTsBlock();
+      ioTDBRpcDataSet.constructOneRow();
+      return true;
+    }
+    return false;
+  }
+
+  private boolean fetchResults() throws SQLException {
     try {
-      return ioTDBRpcDataSet.next();
+      return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
     }
