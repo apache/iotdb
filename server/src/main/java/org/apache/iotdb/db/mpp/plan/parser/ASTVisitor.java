@@ -818,7 +818,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     statement.setCqId(parseIdentifier(ctx.cqId.getText()));
 
     statement.setQueryBody(ctx.selectStatement().getText());
-    statement.setQueryBodyStatement((QueryStatement) visitSelectStatement(ctx.selectStatement()));
+    QueryStatement queryBodyStatement =
+        (QueryStatement) visitSelectStatement(ctx.selectStatement());
+    queryBodyStatement.setCqQueryBody(true);
+    statement.setQueryBodyStatement(queryBodyStatement);
 
     if (ctx.resampleClause() != null) {
       parseResampleClause(ctx.resampleClause(), statement);

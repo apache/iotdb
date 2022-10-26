@@ -21,11 +21,15 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.Collections;
@@ -149,5 +153,40 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateContinuousQuery(this, context);
+  }
+
+  public void semanticCheck() {
+    if (everyInterval
+        < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+      throw new SemanticException(
+          "CQ: Every interval should not be lower than the `continuous_query_minimum_every_interval` configured.");
+    }
+    if (startTimeOffset <= 0) {
+      throw new SemanticException("CQ: The start time offset should be greater than 0.");
+    }
+    if (endTimeOffset < 0) {
+      throw new SemanticException("CQ: The end time offset should be greater than or equal to 0.");
+    }
+    if (startTimeOffset <= endTimeOffset) {
+      throw new SemanticException(
+          "CQ: The start time offset should be greater than end time offset.");
+    }
+    if (everyInterval > startTimeOffset) {
+      throw new SemanticException(
+          "CQ: The start time offset should be greater than or equal to every interval.");
+    }
+
+    if (!queryBodyStatement.isSelectInto()) {
+      throw new SemanticException("CQ: The query body is missing an INTO clause.");
+    }
+    GroupByTimeComponent groupByTimeComponent = queryBodyStatement.getGroupByTimeComponent();
+    if (groupByTimeComponent.getStartTime() != 0 || groupByTimeComponent.getEndTime() != 0) {
+      throw new SemanticException(
+          "CQ: Specifying time range in GROUP BY TIME clause is prohibited");
+    }
+    if (ExpressionAnalyzer.checkIfTimeFilterExist(
+        queryBodyStatement.getWhereCondition().getPredicate())) {
+      throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
+    }
   }
 }
