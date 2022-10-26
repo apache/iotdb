@@ -409,7 +409,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public float getFloat(int columnIndex) throws SQLException {
     try {
-      return getFloat(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getFloat(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -432,7 +432,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public int getInt(int columnIndex) throws SQLException {
     try {
-      return getInt(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getInt(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -450,7 +450,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public long getLong(int columnIndex) throws SQLException {
     try {
-      return getLong(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getLong(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -601,7 +601,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public String getString(int columnIndex) throws SQLException {
     try {
-      return getString(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return ioTDBRpcDataSet.getString(columnIndex);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -729,53 +729,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if (hasCachedBlock()) {
-      constructOneRow();
-      return true;
-    }
-    if (hasCachedByteBuffer()) {
-      constructOneBlock();
-      constructOneRow();
-      return true;
-    }
-    if (ioTDBRpcDataSet.emptyResultSet) {
-      return false;
-    }
-    if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
-      constructOneBlock();
-      constructOneRow();
-      return true;
-    }
-    return false;
-  }
-
-  /** @return true means has results */
-  private boolean fetchResults() throws SQLException {
     try {
-      return ioTDBRpcDataSet.fetchResults();
+      return ioTDBRpcDataSet.next();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
     }
-  }
-
-  boolean hasCachedResults() {
-    return hasCachedBlock() || hasCachedByteBuffer();
-  }
-
-  protected boolean hasCachedByteBuffer() {
-    return ioTDBRpcDataSet.hasCachedByteBuffer();
-  }
-
-  protected boolean hasCachedBlock() {
-    return ioTDBRpcDataSet.hasCachedBlock();
-  }
-
-  protected void constructOneRow() {
-    ioTDBRpcDataSet.constructOneRow();
-  }
-
-  protected void constructOneBlock() {
-    ioTDBRpcDataSet.constructOneTsBlock();
   }
 
   @Override

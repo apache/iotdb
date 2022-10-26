@@ -34,6 +34,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.sql.BatchUpdateException;
@@ -79,6 +81,8 @@ public class IoTDBStatement implements Statement {
   private long sessionId;
   private long stmtId = -1;
   private long queryId = -1;
+
+  private Logger log = LoggerFactory.getLogger(IoTDBStatement.class);
 
   /** Constructor of IoTDBStatement. */
   IoTDBStatement(
@@ -379,6 +383,7 @@ public class IoTDBStatement implements Statement {
     try {
       return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
+      log.info("3936error " + e.getMessage() + "\n" + e.getStackTrace());
       if (reConnect()) {
         try {
           return executeQuerySQL(sql, timeoutInMS);

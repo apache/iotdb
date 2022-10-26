@@ -105,11 +105,11 @@ public class SessionDataSet implements AutoCloseable {
   }
 
   public List<String> getColumnNames() {
-    return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
+    return ioTDBRpcDataSet.columnNameList;
   }
 
   public List<String> getColumnTypes() {
-    return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
+    return ioTDBRpcDataSet.columnTypeList;
   }
 
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
