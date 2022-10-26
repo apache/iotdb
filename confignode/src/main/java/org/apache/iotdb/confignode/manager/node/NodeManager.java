@@ -248,9 +248,9 @@ public class NodeManager {
   /**
    * Remove DataNodes
    *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return DataNodeToStatusResp, The TSStatue will be SUCCEED_STATUS when request is accept,
-   *     DATANODE_NOT_EXIST when some datanode not exist.
+   * @param removeDataNodePlan removeDataNodePlan
+   * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
+   *     DATANODE_NOT_EXIST when some datanode does not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
@@ -261,7 +261,7 @@ public class NodeManager {
         dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
-          "the remove Data Node request check failed.  req: {}, check result: {}",
+          "The remove DataNode request check failed.  req: {}, check result: {}",
           removeDataNodePlan,
           preCheckStatus.getStatus());
       return preCheckStatus;
@@ -282,10 +282,10 @@ public class NodeManager {
     TSStatus status;
     if (registerSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accept the request");
+      status.setMessage("Server accepted the request");
     } else {
       status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
-      status.setMessage("Server reject the request, maybe request is too much");
+      status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);
 
@@ -465,7 +465,7 @@ public class NodeManager {
    * @param removeConfigNodePlan RemoveConfigNodePlan
    */
   public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
-    removeConfigNodeLock.tryLock();
+    removeConfigNodeLock.lock();
     try {
       // Check OnlineConfigNodes number
       if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
@@ -500,7 +500,7 @@ public class NodeManager {
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Success remove confignode.");
+        .setMessage("Successfully remove confignode.");
   }
 
   private TSStatus transferLeader(
