@@ -489,9 +489,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
-    // todo: implementation
-    return configManager.createFunction(
-        req.getUdfName(), req.getClassName(), Collections.emptyList());
+    return configManager.createFunction(req);
   }
 
   @Override
