@@ -295,11 +295,6 @@ public class MultiLeaderConsensus implements IConsensus {
 
   private void doSpotClean(Peer peer, MultiLeaderServerImpl impl) {
     try {
-      impl.cleanupLocalSnapshot();
-    } catch (ConsensusGroupAddPeerException e) {
-      logger.warn("[MultiLeaderConsensus] failed to cleanup local snapshot", e);
-    }
-    try {
       impl.cleanupRemoteSnapshot(peer);
     } catch (ConsensusGroupAddPeerException e) {
       logger.warn("[MultiLeaderConsensus] failed to cleanup remote snapshot", e);

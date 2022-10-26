@@ -610,18 +610,6 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public void cleanupLocalSnapshot() throws ConsensusGroupAddPeerException {
-    File snapshotDir = new File(storageDir, latestSnapshotId);
-    if (snapshotDir.exists()) {
-      try {
-        FileUtils.deleteDirectory(snapshotDir);
-      } catch (IOException e) {
-        throw new ConsensusGroupAddPeerException(
-            String.format("cleanup local snapshot[%s] failed", snapshotDir.getAbsolutePath()), e);
-      }
-    }
-  }
-
   public void cleanupTransferredSnapshot(String snapshotId) throws ConsensusGroupAddPeerException {
     File snapshotDir = new File(storageDir, snapshotId);
     if (snapshotDir.exists()) {
