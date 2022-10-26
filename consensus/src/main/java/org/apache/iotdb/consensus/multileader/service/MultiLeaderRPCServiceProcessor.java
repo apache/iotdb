@@ -34,6 +34,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotReq;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
@@ -275,6 +277,34 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     impl.loadSnapshot(req.snapshotId);
     resultHandler.onComplete(
         new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+  }
+
+  @Override
+  public void cleanupTransferredSnapshot(
+      TCleanupTransferredSnapshotReq req,
+      AsyncMethodCallback<TCleanupTransferredSnapshotRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TCleanupTransferredSnapshotRes(status));
+      return;
+    }
+    TSStatus responseStatus = null;
+    try {
+      impl.cleanupTransferredSnapshot(req.snapshotId);
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (ConsensusGroupAddPeerException e) {
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus.setMessage(e.getMessage());
+    }
+    resultHandler.onComplete(new TCleanupTransferredSnapshotRes(responseStatus));
   }
 
   public void handleClientExit() {}
