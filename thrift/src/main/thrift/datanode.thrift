@@ -165,7 +165,8 @@ struct TCreateFunctionInstanceReq {
 }
 
 struct TDropFunctionInstanceReq {
-  1: required string udfName
+  1: required string functionName
+  2: required bool needToDeleteJar
 }
 
 struct TCreateTriggerInstanceReq {

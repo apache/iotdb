@@ -79,7 +79,7 @@ public class ConsensusManager {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(CONF.getPartitionRegionId());
 
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)) {
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   ConsensusFactory.StandAloneConsensus,
@@ -96,7 +96,7 @@ public class ConsensusManager {
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               ConsensusFactory.StandAloneConsensus)));
     } else {
-
+      // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   CONF.getConfigNodeConsensusProtocolClass(),
@@ -178,7 +178,6 @@ public class ConsensusManager {
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               CONF.getConfigNodeConsensusProtocolClass())));
     }
-
     consensusImpl.start();
 
     if (SystemPropertiesUtils.isRestarted()) {
