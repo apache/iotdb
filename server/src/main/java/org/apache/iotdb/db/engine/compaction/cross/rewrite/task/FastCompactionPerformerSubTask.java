@@ -94,8 +94,10 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
 
   protected String deviceId;
 
-  // Pages in the list will be sequentially judged whether there is a real overlap to choose whether
-  // to put them in the point priority reader to deserialize or directly flush to chunk writer
+  // Pages in this list will be sequentially judged whether there is a real overlap to choose
+  // whether to put them in the point priority reader to deserialize or directly flush to chunk
+  // writer. During the process of compacting overlapped page, there may be new overlapped pages
+  // added into this list.
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
 
   public FastCompactionPerformerSubTask(
@@ -175,7 +177,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
         compactWithOverlapChunks(overlappedChunkMetadatas);
       } else {
         // has none overlap or modified chunk, flush it to file writer directly
-        compactWithNonOverlapChunks(firstChunkMetadataElement);
+        compactWithNonOverlapChunk(firstChunkMetadataElement);
       }
     }
   }
@@ -198,7 +200,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * Flush chunk to target file directly. If the end time of chunk exceeds the end time of file or
    * the unsealed chunk is too small, then deserialize it.
    */
-  private void compactWithNonOverlapChunks(ChunkMetadataElement chunkMetadataElement)
+  private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (compactionWriter.flushChunkToFileWriter(
         chunkMetadataElement.chunkMetadata,
@@ -353,6 +355,7 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
       throws IOException, IllegalPathException, WriteProcessException, PageException {
     while (pointPriorityReader.hasNext()) {
       // write data point to chunk writer
+
       compactionWriter.write(
           pointPriorityReader.currentPoint().left,
           pointPriorityReader.currentPoint().right,
@@ -409,9 +412,10 @@ public abstract class FastCompactionPerformerSubTask implements Callable<Void> {
    * list is ordered according to the startTime of the chunk from small to large, so that each chunk
    * can be compacted in order.
    */
-  private List<ChunkMetadataElement> findOverlapChunkMetadatas(ChunkMetadataElement chunkMetadata) {
+  private List<ChunkMetadataElement> findOverlapChunkMetadatas(
+      ChunkMetadataElement chunkMetadataElement) {
     List<ChunkMetadataElement> elements = new ArrayList<>();
-    long endTime = chunkMetadata.chunkMetadata.getEndTime();
+    long endTime = chunkMetadataElement.chunkMetadata.getEndTime();
     for (ChunkMetadataElement element : chunkMetadataQueue) {
       if (element.chunkMetadata.getStartTime() <= endTime) {
         if (!element.isOverlaped) {

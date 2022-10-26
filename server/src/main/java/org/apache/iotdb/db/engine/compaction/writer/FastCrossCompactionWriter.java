@@ -124,17 +124,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       int subTaskId)
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
-    int fileIndex = seqFileIndexArray[subTaskId];
-    boolean isUnsealedPageLargeEnough =
-        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
-    if (!isUnsealedPageLargeEnough
-        || (timePageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
+    if (!checkIsPageSatisfied(timePageHeader, subTaskId)) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
+    int fileIndex = seqFileIndexArray[subTaskId];
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriters[subTaskId];
     // seal current page
     alignedChunkWriter.sealCurrentPage();
@@ -171,17 +166,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);
-    int fileIndex = seqFileIndexArray[subTaskId];
-    boolean isUnsealedPageLargeEnough =
-        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
-    if (!isUnsealedPageLargeEnough
-        || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
+    if (!checkIsPageSatisfied(pageHeader, subTaskId)) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
+    int fileIndex = seqFileIndexArray[subTaskId];
     ChunkWriterImpl chunkWriter = (ChunkWriterImpl) chunkWriters[subTaskId];
     // seal current page
     chunkWriter.sealCurrentPage();
@@ -195,6 +185,20 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         targetFileWriters.get(fileIndex), chunkWriter, subTaskId, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    return true;
+  }
+
+  private boolean checkIsPageSatisfied(PageHeader pageHeader, int subTaskId) {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    boolean isUnsealedPageLargeEnough =
+        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+    if (!isUnsealedPageLargeEnough
+        || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
+            && fileIndex != targetFileWriters.size() - 1)) {
+      // unsealed page is too small or page.endTime > file.endTime
+      return false;
+    }
     return true;
   }
 }

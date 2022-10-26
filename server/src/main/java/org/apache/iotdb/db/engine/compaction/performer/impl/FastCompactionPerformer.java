@@ -47,11 +47,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
 public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
@@ -150,7 +153,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
-      if (!entry.getKey().equals("")) {
+      if (!entry.getKey().equals(TIME_COLUMN_ID)) {
         measurementSchemas.add(entry.getValue().left);
       }
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
@@ -186,10 +189,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
-    List<String>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
+    List<String>[] measurementsForEachSubTask = new LinkedList[subTaskNums];
     for (int idx = 0; idx < allMeasurements.size(); idx++) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new ArrayList<>();
+        measurementsForEachSubTask[idx % subTaskNums] = new LinkedList<>();
       }
       measurementsForEachSubTask[idx % subTaskNums].add(allMeasurements.get(idx));
     }
@@ -211,7 +214,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
                       i)));
     }
 
-    // wait for all sub tasks finish
+    // wait for all sub tasks to finish
     for (int i = 0; i < subTaskNums; i++) {
       try {
         futures.get(i).get();

@@ -98,9 +98,6 @@ public class TsFileIOWriter implements AutoCloseable {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool and split tool
-  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
-
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
   private long minPlanIndex;
@@ -572,6 +569,22 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public TsFileOutput getIOWriterOut() {
     return out;
+  }
+
+  /**
+   * This method should be called before flushing chunk group metadatas.
+   *
+   * @return return chunk null if current file does not contain chunk metadatas of this device in
+   *     memory
+   */
+  public List<ChunkMetadata> getChunkMetadatasOfDeviceInMemory(String deviceId) {
+    for (int i = chunkGroupMetadataList.size() - 1; i >= 0; i--) {
+      ChunkGroupMetadata chunkGroupMetadata = chunkGroupMetadataList.get(i);
+      if (chunkGroupMetadata.getDevice().equals(deviceId)) {
+        return chunkGroupMetadata.getChunkMetadataList();
+      }
+    }
+    return null;
   }
 
   /**

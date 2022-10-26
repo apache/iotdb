@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -154,18 +155,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   public void checkAndMayFlushChunkMetadata() throws IOException {
     for (int i = 0; i < targetFileWriters.size(); i++) {
       TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource resource = targetResources.get(i);
       // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
       // time and end time in resource.
-      List<TimeseriesMetadata> timeseriesMetadatasOfCurrentDevice =
-          fileIOWriter.getDeviceTimeseriesMetadataMap().get(deviceId);
-      if (timeseriesMetadatasOfCurrentDevice != null) {
-        // this target file contains current device
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadatasOfCurrentDevice) {
-          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
-          resource.updateEndTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
+      CompactionUtils.updateResource(targetResources.get(i), fileIOWriter, deviceId);
       fileIOWriter.checkMetadataSizeAndMayFlush();
     }
   }

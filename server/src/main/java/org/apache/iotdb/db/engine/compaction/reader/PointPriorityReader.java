@@ -45,7 +45,7 @@ public class PointPriorityReader {
 
   private Pair<Long, Object> currentPoint;
 
-  private boolean isNewPoint = true;
+  private boolean shouldReadNextPoint = true;
 
   public PointPriorityReader(FastCompactionPerformerSubTask.RemovePage removePage) {
     this.removePage = removePage;
@@ -58,7 +58,7 @@ public class PointPriorityReader {
   }
 
   public Pair<Long, Object> currentPoint() {
-    if (isNewPoint) {
+    if (shouldReadNextPoint) {
       // get the highest priority point
       currentPoint = pointQueue.peek().timeValuePair;
       lastTime = currentPoint.left;
@@ -68,7 +68,7 @@ public class PointPriorityReader {
         fillAlignedNullValue();
       }
 
-      isNewPoint = false;
+      shouldReadNextPoint = false;
     }
     return currentPoint;
   }
@@ -127,7 +127,7 @@ public class PointPriorityReader {
         }
       }
     }
-    isNewPoint = true;
+    shouldReadNextPoint = true;
   }
 
   public boolean hasNext() {
@@ -138,6 +138,6 @@ public class PointPriorityReader {
   public void addNewPage(PageElement pageElement) throws IOException {
     pageElement.deserializePage();
     pointQueue.add(new PointElement(pageElement));
-    isNewPoint = true;
+    shouldReadNextPoint = true;
   }
 }

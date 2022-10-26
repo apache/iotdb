@@ -19,15 +19,14 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
-import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
   protected TsFileIOWriter fileWriter;
@@ -91,15 +90,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   public void checkAndMayFlushChunkMetadata() throws IOException {
     // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
     // time and end time in resource.
-    List<TimeseriesMetadata> timeseriesMetadatasOfCurrentDevice =
-        fileWriter.getDeviceTimeseriesMetadataMap().get(deviceId);
-    if (timeseriesMetadatasOfCurrentDevice != null) {
-      // this target file contains current device
-      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadatasOfCurrentDevice) {
-        targetResource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
-        targetResource.updateEndTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
-      }
-    }
+    CompactionUtils.updateResource(targetResource, fileWriter, deviceId);
     fileWriter.checkMetadataSizeAndMayFlush();
   }
 }

@@ -72,7 +72,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  */
 public class TsFileValidationTool {
   // print detail type of overlap or not
-  private static boolean printDetails = true;
+  private static boolean printDetails = false;
 
   // print to local file or not
   private static boolean printToFile = false;

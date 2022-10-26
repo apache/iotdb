@@ -22,8 +22,6 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.IOException;
-
 public class PointElement {
   public long timestamp;
   public int priority;
@@ -31,7 +29,7 @@ public class PointElement {
   public IBatchDataIterator page;
   public PageElement pageElement;
 
-  public PointElement(PageElement pageElement) throws IOException {
+  public PointElement(PageElement pageElement) {
     this.pageElement = pageElement;
     if (pageElement.iChunkReader instanceof ChunkReader) {
       this.page = pageElement.batchData.getTsBlockSingleColumnIterator();
@@ -41,11 +39,6 @@ public class PointElement {
     this.timestamp = page.currentTime();
     this.timeValuePair = new Pair<>(timestamp, page.currentValue());
     this.priority = pageElement.priority;
-  }
-
-  public void updateTimeValuePair() {
-    timeValuePair.left = page.currentTime();
-    timeValuePair.right = page.currentValue();
   }
 
   public void setPoint(Long timestamp, Object value) {
