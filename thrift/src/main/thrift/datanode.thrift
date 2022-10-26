@@ -319,6 +319,7 @@ struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
+    3: optional i64 createTime
 }
 
 service IDataNodeRPCService {

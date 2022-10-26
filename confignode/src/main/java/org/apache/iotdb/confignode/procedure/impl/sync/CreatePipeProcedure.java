@@ -39,12 +39,17 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedure.class);
 
   private PipeInfo pipeInfo;
+  private final Set<Integer> executedDataNodeIds = new HashSet<>();
 
   public CreatePipeProcedure() {
     super();
@@ -74,9 +79,10 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", pipeInfo.getPipeName());
-    TSStatus status =
-        RpcUtils.squashResponseStatusList(
-            env.getConfigManager().getSyncManager().preCreatePipeOnDataNodes(pipeInfo));
+    Map<Integer, TSStatus> responseMap =
+        env.getConfigManager().getSyncManager().preCreatePipeOnDataNodes(pipeInfo);
+    TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
+    executedDataNodeIds.addAll(responseMap.keySet());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
@@ -105,6 +111,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   protected boolean isRollbackSupported(OperatePipeState state) {
     switch (state) {
+      case OPERATE_CHECK:
       case PRE_OPERATE_PIPE_CONFIGNODE:
       case OPERATE_PIPE_DATANODE:
         return true;
@@ -115,10 +122,11 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    LOGGER.error("Roll back CreatePipeProcedure at STATE [{}]", state);
-    env.getConfigManager().getSyncManager().unlockSyncMetadata();
-    // TODO(sync): roll back logic;
+    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
     switch (state) {
+      case OPERATE_CHECK:
+        env.getConfigManager().getSyncManager().unlockSyncMetadata();
+        break;
       case PRE_OPERATE_PIPE_CONFIGNODE:
         TSStatus status = env.getConfigManager().getSyncManager().dropPipe(pipeInfo.getPipeName());
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -129,20 +137,20 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
         }
         break;
       case OPERATE_PIPE_DATANODE:
-        status =
-            RpcUtils.squashResponseStatusList(
-                env.getConfigManager()
-                    .getSyncManager()
-                    .operatePipeOnDataNodes(pipeInfo.getPipeName(), SyncOperation.DROP_PIPE));
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          status = env.getConfigManager().getSyncManager().dropPipe(pipeInfo.getPipeName());
-        }
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new ProcedureException(
-              String.format(
-                  "Failed to create pipe and failed to roll back because %s. Please execute [DROP PIPE %s] manually.",
-                  status.getMessage(), pipeInfo.getPipeName()));
-        }
+        env.getConfigManager()
+            .getSyncManager()
+            .operatePipeOnDataNodesForRollback(
+                pipeInfo.getPipeName(),
+                pipeInfo.getCreateTime(),
+                SyncOperation.DROP_PIPE,
+                executedDataNodeIds);
+        //        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        //          throw new ProcedureException(
+        //              String.format(
+        //                  "Failed to create pipe and failed to roll back because %s. Please
+        // execute [DROP PIPE %s] manually.",
+        //                  status.getMessage(), pipeInfo.getPipeName()));
+        //        }
         break;
       default:
         LOGGER.error("Unsupported roll back STATE [{}]", state);

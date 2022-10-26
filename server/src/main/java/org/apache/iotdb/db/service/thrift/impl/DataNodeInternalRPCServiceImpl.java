@@ -686,13 +686,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       switch (SyncOperation.values()[req.getOperation()]) {
         case START_PIPE:
-          SyncService.getInstance().startPipe(req.getPipeName());
+          if (req.isSetCreateTime()) {
+            SyncService.getInstance().startPipe(req.getPipeName(), req.getCreateTime());
+          } else {
+            SyncService.getInstance().startPipe(req.getPipeName());
+          }
           break;
         case STOP_PIPE:
-          SyncService.getInstance().stopPipe(req.getPipeName());
+          if (req.isSetCreateTime()) {
+            SyncService.getInstance().stopPipe(req.getPipeName(), req.getCreateTime());
+          } else {
+            SyncService.getInstance().stopPipe(req.getPipeName());
+          }
           break;
         case DROP_PIPE:
-          SyncService.getInstance().dropPipe(req.getPipeName());
+          if (req.isSetCreateTime()) {
+            SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
+          } else {
+            SyncService.getInstance().dropPipe(req.getPipeName());
+          }
           break;
         default:
           return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())

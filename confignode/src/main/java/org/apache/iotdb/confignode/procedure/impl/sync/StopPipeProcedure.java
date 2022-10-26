@@ -37,12 +37,18 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(StopPipeProcedure.class);
 
   private String pipeName;
+  private PipeInfo pipeInfo;
+  private final Set<Integer> executedDataNodeIds = new HashSet<>();
 
   public StopPipeProcedure() {
     super();
@@ -56,7 +62,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to stop PIPE [{}]", pipeName);
-    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+    pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
     return pipeInfo.getStatus().equals(PipeStatus.STOP);
   }
 
@@ -73,11 +79,12 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
-    TSStatus status =
-        RpcUtils.squashResponseStatusList(
-            env.getConfigManager()
-                .getSyncManager()
-                .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE));
+    Map<Integer, TSStatus> responseMap =
+        env.getConfigManager()
+            .getSyncManager()
+            .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE);
+    TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
+    executedDataNodeIds.addAll(responseMap.keySet());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
@@ -101,9 +108,43 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
+  protected boolean isRollbackSupported(OperatePipeState state) {
+    switch (state) {
+      case OPERATE_CHECK:
+      case PRE_OPERATE_PIPE_CONFIGNODE:
+      case OPERATE_PIPE_DATANODE:
+        return true;
+    }
+    return false;
+  }
+
+  @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    env.getConfigManager().getSyncManager().unlockSyncMetadata();
+    LOGGER.info("Roll back StopPipeProcedure at STATE [{}]", state);
+    switch (state) {
+      case OPERATE_CHECK:
+        env.getConfigManager().getSyncManager().unlockSyncMetadata();
+        break;
+      case PRE_OPERATE_PIPE_CONFIGNODE:
+        TSStatus status =
+            env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new ProcedureException(
+              String.format(
+                  "Failed to stop pipe and failed to roll back because %s. Please execute [STOP PIPE %s] manually.",
+                  status.getMessage(), pipeName));
+        }
+        break;
+      case OPERATE_PIPE_DATANODE:
+        env.getConfigManager()
+            .getSyncManager()
+            .operatePipeOnDataNodesForRollback(
+                pipeName, pipeInfo.getCreateTime(), SyncOperation.START_PIPE, executedDataNodeIds);
+        break;
+      default:
+        LOGGER.error("Unsupported roll back STATE [{}]", state);
+    }
   }
 
   @Override

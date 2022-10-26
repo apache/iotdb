@@ -787,6 +787,17 @@ public class NodeManager {
   }
 
   /**
+   * Get NodeStatus by nodeId
+   *
+   * @param nodeId The specific NodeId
+   * @return NodeStatus of the specific node. If node does not exist, return null.
+   */
+  public NodeStatus getNodeStatusByNodeId(int nodeId) {
+    BaseNodeCache baseNodeCache = nodeCacheMap.get(nodeId);
+    return baseNodeCache == null ? null : baseNodeCache.getNodeStatus();
+  }
+
+  /**
    * Filter the registered DataNodes through the specific NodeStatus
    *
    * @param status The specific NodeStatus

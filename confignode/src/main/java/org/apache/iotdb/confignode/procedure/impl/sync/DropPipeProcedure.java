@@ -38,9 +38,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 
-// TODO(sync): drop logic need to be updated
 public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedure.class);
 
@@ -79,11 +80,11 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to broadcast drop PIPE [{}] on Data Nodes", pipeName);
-    TSStatus status =
-        RpcUtils.squashResponseStatusList(
-            env.getConfigManager()
-                .getSyncManager()
-                .operatePipeOnDataNodes(pipeName, SyncOperation.DROP_PIPE));
+    Map<Integer, TSStatus> responseMap =
+        env.getConfigManager()
+            .getSyncManager()
+            .operatePipeOnDataNodes(pipeName, SyncOperation.DROP_PIPE);
+    TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
@@ -106,10 +107,19 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
+  protected boolean isRollbackSupported(OperatePipeState state) {
+    return state == OperatePipeState.OPERATE_CHECK;
+  }
+
+  @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-
-    env.getConfigManager().getSyncManager().unlockSyncMetadata();
+    LOGGER.info("Roll back DropPipeProcedure at STATE [{}]", state);
+    if (state == OperatePipeState.OPERATE_CHECK) {
+      env.getConfigManager().getSyncManager().unlockSyncMetadata();
+    } else {
+      LOGGER.error("Unsupported roll back STATE [{}]", state);
+    }
   }
 
   @Override

@@ -232,6 +232,28 @@ public class SyncService implements IService {
     }
   }
 
+  // only used for roll back
+  public synchronized void stopPipe(String pipeName, long createTime) {
+    Pipe runningPipe;
+    try {
+      runningPipe = getPipe(pipeName);
+      if (runningPipe.getCreateTime() == createTime) {
+        stopPipe(pipeName);
+      } else {
+        logger.warn(
+            "Skip execute stop PIPE {} with createTime {} because of createTime mismatch.",
+            pipeName,
+            createTime);
+      }
+    } catch (PipeException e) {
+      logger.warn(
+          "Skip execute stop PIPE {} with createTime {} because {}",
+          pipeName,
+          createTime,
+          e.getMessage());
+    }
+  }
+
   public synchronized void startPipe(String pipeName) throws PipeException {
     logger.info("Execute start PIPE {}", pipeName);
     Pipe runningPipe = getPipe(pipeName);
@@ -246,6 +268,28 @@ public class SyncService implements IService {
     TSStatus status = syncInfoFetcher.startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.message);
+    }
+  }
+
+  // only used for roll back
+  public synchronized void startPipe(String pipeName, long createTime) {
+    Pipe runningPipe;
+    try {
+      runningPipe = getPipe(pipeName);
+      if (runningPipe.getCreateTime() == createTime) {
+        startPipe(pipeName);
+      } else {
+        logger.warn(
+            "Skip execute start PIPE {} with createTime {} because of createTime mismatch.",
+            pipeName,
+            createTime);
+      }
+    } catch (PipeException e) {
+      logger.warn(
+          "Skip execute start PIPE {} with createTime {} because {}",
+          pipeName,
+          createTime,
+          e.getMessage());
     }
   }
 
@@ -276,11 +320,33 @@ public class SyncService implements IService {
     }
   }
 
+  // only used for roll back
+  public synchronized void dropPipe(String pipeName, long createTime) {
+    Pipe runningPipe;
+    try {
+      runningPipe = getPipe(pipeName);
+      if (runningPipe.getCreateTime() == createTime) {
+        dropPipe(pipeName);
+      } else {
+        logger.warn(
+            "Skip execute drop PIPE {} with createTime {} because of createTime mismatch.",
+            pipeName,
+            createTime);
+      }
+    } catch (PipeException e) {
+      logger.warn(
+          "Skip execute drop PIPE {} with createTime {} because {}",
+          pipeName,
+          createTime,
+          e.getMessage());
+    }
+  }
+
   public List<PipeInfo> getAllPipeInfos() {
     return syncInfoFetcher.getAllPipeInfos();
   }
 
-  private Pipe getPipe(String pipeName) throws PipeException {
+  private Pipe getPipe(String pipeName) throws PipeNotExistException {
     if (!pipes.containsKey(pipeName)) {
       throw new PipeNotExistException(pipeName);
     } else {
