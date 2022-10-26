@@ -398,7 +398,7 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_rpc_leader_election_timeout_min_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs()))));
 
-    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_rpc_leader_election_timeout_max_ms",

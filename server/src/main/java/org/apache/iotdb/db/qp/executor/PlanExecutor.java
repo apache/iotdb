@@ -36,9 +36,9 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -183,7 +183,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -507,13 +507,18 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
-    UDFRegistrationService.getInstance().register(plan.getUdfName(), plan.getClassName(), true);
+  private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFManagementException {
+    try {
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
-  private boolean operateDropFunction(DropFunctionPlan plan) throws UDFRegistrationException {
-    UDFRegistrationService.getInstance().deregister(plan.getUdfName());
+  private boolean operateDropFunction(DropFunctionPlan plan) throws UDFManagementException {
+    UDFManagementService.getInstance().deregister(plan.getUdfName());
     return true;
   }
 
@@ -1081,22 +1086,21 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void appendUDFs(ListDataSet listDataSet) throws QueryProcessException {
-    for (UDFRegistrationInformation info :
-        UDFRegistrationService.getInstance().getRegistrationInformation()) {
+    for (UDFInformation info : UDFManagementService.getInstance().getAllUDFInformation()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       String functionType = "";
       try {
         if (info.isBuiltin()) {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDAF;
           }
         } else {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }

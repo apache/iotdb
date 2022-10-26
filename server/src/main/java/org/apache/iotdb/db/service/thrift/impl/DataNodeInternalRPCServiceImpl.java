@@ -40,9 +40,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
-import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
@@ -76,7 +75,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
@@ -100,16 +102,18 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
@@ -131,6 +135,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -458,8 +463,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
-      throws TException {
+  public TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<PartialPath> pathList = patternTree.getAllPathPatterns();
@@ -506,6 +510,152 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
+  public TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
+      throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    int preDeactivateTemplateNum = 0;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new PreDeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        preDeactivateTemplateNum += Integer.parseInt(status.getMessage());
+      } else {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.getStatus(
+        TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateTemplateNum));
+  }
+
+  private Map<PartialPath, List<Integer>> transformTemplateSetInfo(
+      Map<String, List<Integer>> rawTemplateSetInfo) {
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    rawTemplateSetInfo.forEach(
+        (k, v) -> {
+          try {
+            result.put(new PartialPath(k), v);
+          } catch (IllegalPathException ignored) {
+            // won't reach here
+          }
+        });
+    return result;
+  }
+
+  private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
+      Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
+
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    Map<PartialPath, List<Integer>> result = new HashMap<>();
+    templateSetInfo.forEach(
+        (k, v) -> {
+          if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
+            result.put(k, v);
+          }
+        });
+    return result;
+  }
+
+  private PartialPath getStorageGroupPath(TConsensusGroupId consensusGroupId) {
+    PartialPath storageGroupPath = null;
+    try {
+      storageGroupPath =
+          new PartialPath(
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getStorageGroupFullPath());
+    } catch (IllegalPathException ignored) {
+      // won't reach here
+    }
+    return storageGroupPath;
+  }
+
+  @Override
+  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
+      throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new RollbackPreDeactivateTemplateNode(
+                      new PlanNodeId(""), filteredTemplateSetInfo))
+              .getStatus();
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
+  public TSStatus deactivateTemplate(TDeactivateTemplateReq req) throws TException {
+    Map<PartialPath, List<Integer>> templateSetInfo =
+        transformTemplateSetInfo(req.getTemplateSetInfo());
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+      if (filteredTemplateSetInfo.isEmpty()) {
+        continue;
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         failureList.add(status);
@@ -940,26 +1090,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createFunction(TCreateFunctionRequest request) {
+  public TSStatus createFunction(TCreateFunctionInstanceReq req) {
     try {
-      UDFRegistrationService.getInstance()
-          .register(
-              request.getUdfName(),
-              request.getClassName(),
-              request.getUris(),
-              UDFExecutableManager.getInstance(),
-              true);
+      UDFInformation udfInformation = UDFInformation.deserialize(req.udfInformation);
+      UDFManagementService.getInstance().register(udfInformation, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_FUNCTION_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
 
   @Override
-  public TSStatus dropFunction(TDropFunctionRequest request) {
+  public TSStatus dropFunction(TDropFunctionInstanceReq req) {
     try {
-      UDFRegistrationService.getInstance().deregister(request.getUdfName());
+      UDFManagementService.getInstance().deregister(req.getUdfName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -971,14 +1116,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) throws TException {
     TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
     try {
-      // save jar file at trigger_lib_dir
-      if (req.getJarFile() != null) {
-        TriggerExecutableManager.getInstance()
-            .writeToLibDir(req.jarFile, triggerInformation.getJarName());
-      }
       // register trigger information with TriggerRegistrationService
       // config nodes take responsibility for synchronization control
-      TriggerManagementService.getInstance().register(triggerInformation);
+      TriggerManagementService.getInstance().register(triggerInformation, req.jarFile);
     } catch (Exception e) {
       LOGGER.warn(
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",

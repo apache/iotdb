@@ -70,8 +70,8 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan
   }
 
   @Override
-  public void setTemplateId(int templateSetLevel) {
-    this.templateSetLevel = templateSetLevel;
+  public void setTemplateId(int templateId) {
+    this.templateId = templateId;
   }
 
   public int getTemplateSetLevel() {
@@ -79,8 +79,8 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan
   }
 
   @Override
-  public void setTemplateSetLevel(int templateId) {
-    this.templateId = templateId;
+  public void setTemplateSetLevel(int templateSetLevel) {
+    this.templateSetLevel = templateSetLevel;
   }
 
   public boolean isAligned() {

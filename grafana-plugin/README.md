@@ -19,73 +19,346 @@
 
 -->
 
-# Grafana Data Source Backend Plugin Template
+## Grafana-Plugin
 
-[![Build](https://github.com/grafana/grafana-starter-datasource-backend/workflows/CI/badge.svg)](https://github.com/grafana/grafana-datasource-backend/actions?query=workflow%3A%22CI%22)
 
-This template is a starting point for building Grafana Data Source Backend Plugins
+Grafana is an open source volume metrics monitoring and visualization tool, which can be used to present time series data and analyze application runtime status.
 
-## What is Grafana Data Source Backend Plugin?
+We developed the Grafana-Plugin for IoTDB, using the IoTDB REST service to present time series data and providing many visualization methods for time series data.
+Compared with previous IoTDB-Grafana-Connector, current Grafana-Plugin performs more efficiently and supports more query types. So, **we recommend using Grafana-Plugin instead of IoTDB-Grafana-Connector**.
 
-Grafana supports a wide range of data sources, including Prometheus, MySQL, and even Datadog. There’s a good chance you can already visualize metrics from the systems you have set up. In some cases, though, you already have an in-house metrics solution that you’d like to add to your Grafana dashboards. Grafana Data Source Plugins enables integrating such solutions with Grafana.
+### Installation and deployment
 
-For more information about backend plugins, refer to the documentation on [Backend plugins](https://grafana.com/docs/grafana/latest/developers/plugins/backend/).
+#### Install Grafana
 
-## Getting started
+* Download url: https://grafana.com/grafana/download
+* Version >= 7.0.0
 
-A data source backend plugin consists of both frontend and backend components.
 
-### Frontend
+#### Acquisition method of grafana plugin
 
-1. Install dependencies
+##### Method 1: grafana plugin binary Download
 
-   ```bash
-   yarn install
-   ```
+Download url：https://iotdb.apache.org/zh/Download/
 
-2. Build plugin in development mode or run in watch mode
+##### Method 2: separate compilation of grafana plugin
 
-   ```bash
-   yarn dev
-   ```
+We need to compile the front-end project in the IoTDB `grafana-plugin` directory and then generate the `dist` directory. The specific execution process is as follows.
 
-   or
+Source download
 
-   ```bash
-   yarn watch
-   ```
+* Plugin name: grafana-plugin
+* Download url: https://github.com/apache/iotdb.git
 
-3. Build plugin in production mode
+Execute the following command:
 
-   ```bash
-   yarn build
-   ```
+```shell
+git clone https://github.com/apache/iotdb.git
+```
 
-### Backend
+* Option 1 (compile with maven): execute following command in the `grafana-plugin` directory:
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/docs/grafana/latest/developers/plugins/backend/grafana-plugin-sdk-for-go/) dependency to the latest minor version:
+```shell
+mvn install package -P compile-grafana-plugin
+```
 
-   ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
-   go mod tidy
-   ```
+* Option 2 (compile with yarn): execute following command in the `grafana-plugin` directory:
 
-2. Build backend plugin binaries for Linux, Windows and Darwin:
+```shell
+yarn install
+yarn build
+go get -u github.com/grafana/grafana-plugin-sdk-go
+go mod tidy
+mage -v
+```
 
-   ```bash
-   mage -v
-   ```
+When using the go get -u command, the following error may be reported. In this case, we need to execute `go env -w GOPROXY=https://goproxy.cn`, and then execute `go get -u github.com/grafana/grafana -plugin-sdk-go`
 
-3. List all available Mage targets for additional commands:
+```
+go get: module github.com/grafana/grafana-plugin-sdk-go: Get "https://proxy.golang.org/github.com/grafana/grafana-plugin-sdk-go/@v/list": dial tcp 142.251.42.241:443: i/o timeout
+```
 
-   ```bash
-   mage -l
-   ```
+If compiling successful, you can see the `dist` directory , which contains the compiled Grafana-Plugin:
 
-## Learn more
+<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana-plugin-build.png?raw=true">
 
-- [Build a data source backend plugin tutorial](https://grafana.com/tutorials/build-a-data-source-backend-plugin)
-- [Grafana documentation](https://grafana.com/docs/)
-- [Grafana Tutorials](https://grafana.com/tutorials/) - Grafana Tutorials are step-by-step guides that help you make the most of Grafana
-- [Grafana UI Library](https://developers.grafana.com/ui) - UI components to help you build interfaces using Grafana Design System
-- [Grafana plugin SDK for Go](https://grafana.com/docs/grafana/latest/developers/plugins/backend/grafana-plugin-sdk-for-go/)
+##### Method 3: The distribution package of IoTDB is fully compiled
+
+We can also obtain the front-end project of `grafana-plugin` and other IoTDB executable files by executing the **package instruction** of the IoTDB project.
+
+Execute following command in the IoTDB root directory:
+
+```shell
+ mvn clean package -pl distribution -am -DskipTests -P compile-grafana-plugin
+```
+
+If compiling successful, you can see that the `distribution/target` directory contains the compiled Grafana-Plugin:
+
+<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/distribution.png?raw=true">
+
+
+#### Install Grafana-Plugin
+
+* Copy the front-end project target folder generated above to Grafana's plugin directory `${Grafana directory}\data\plugins\`。If there is no such directory, you can manually create it or start grafana and it will be created automatically. Of course, you can also modify the location of plugins. For details, please refer to the following instructions for modifying the location of Grafana's plugin directory.
+
+
+* Modify Grafana configuration file: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
+
+  ```ini
+  allow_loading_unsigned_plugins = apache-iotdb-datasource
+  ```
+* Modify the location of Grafana's plugin directory: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
+
+  ```ini
+  plugins = data/plugins
+  ```
+* Start Grafana (restart if the Grafana service is already started)
+
+For more details，please click [here](https://grafana.com/docs/grafana/latest/plugins/installation/)
+
+#### Start Grafana
+
+Start Grafana with the following command in the Grafana directory:
+
+* Windows:
+
+```shell
+bin\grafana-server.exe
+```
+* Linux:
+
+```shell
+sudo service grafana-server start
+```
+
+* MacOS:
+
+```shell
+brew services start grafana
+```
+
+For more details，please click [here](https://grafana.com/docs/grafana/latest/installation/)
+
+
+
+#### Configure IoTDB REST Service
+
+* Modify `{iotdb directory}/conf/iotdb-rest.properties` as following:
+
+```properties
+# Is the REST service enabled
+enable_rest_service=true
+
+# the binding port of the REST service
+rest_service_port=18080
+```
+
+Start IoTDB (restart if the IoTDB service is already started)
+
+
+### How to use Grafana-Plugin
+
+#### Access Grafana dashboard
+
+Grafana displays data in a web page dashboard. Please open your browser and visit `http://<ip>:<port>` when using it.
+
+* IP is the IP of the server where your Grafana is located, and Port is the running port of Grafana (default 3000).
+
+* The default login username and password are both `admin`.
+
+
+#### Add IoTDB as Data Source
+
+Click the `Settings` icon on the left, select the `Data Source` option, and then click `Add data source`.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_1.png?raw=true">
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_2.png?raw=true">
+
+Select the `Apache IoTDB` data source.
+
+* Fill in `http://<ip>:<port>` in the `URL` field
+   * ip is the host ip where your IoTDB server is located
+   * port is the running port of the REST service (default 18080).
+* Enter the username and password of the IoTDB server
+
+Click `Save & Test`, and `Success` will appear.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_3.png?raw=true">
+
+
+#### Create a new Panel
+
+Click the `Dashboards` icon on the left, and select `Manage` option.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/manage.png?raw=true">
+
+Click the `New Dashboard` icon on the top right, and select `Add an empty panel` option.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
+
+Grafana plugin supports SQL: Full Customized mode and SQL: Drop-down List mode, and the default mode is SQL: Full Customized mode.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
+
+##### SQL: Full Customized input method
+
+Enter content in the SELECT, FROM , WHERE and CONTROL input box, where the WHERE and CONTROL input boxes are optional.
+
+If a query involves multiple expressions, we can click `+` on the right side of the SELECT input box to add expressions in the SELECT clause, or click `+` on the right side of the FROM input box to add a path prefix:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input.png?raw=true">
+
+SELECT input box: contents can be the time series suffix, function, udf, arithmetic expression, or nested expressions. You can also use the as clause to rename the result.
+
+Here are some examples of valid SELECT content:
+
+* `s1`
+* `top_k(s1, 'k'='1') as top`
+* `sin(s1) + cos(s1 + s2)`
+* `udf(s1) as "alias"`
+
+FROM input box: contents must be the prefix path of the time series, such as `root.sg.d`.
+
+WHERE input box: contents should be the filter condition of the query, such as `time > 0` or `s1 < 1024 and s2 > 1024`.
+
+CONTROL input box: contents should be a special clause that controls the query type and output format.
+The GROUP BY input box supports the use of grafana's global variables to obtain the current time interval changes $__from (start time), $__to (end time)
+
+Here are some examples of valid CONTROL content:
+
+*  `GROUP BY ([$__from, $__to), 1d)`
+*  `GROUP BY ([$__from, $__to),3h,1d)`
+*  `GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00), 1d)`
+*  `GROUP BY ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)`
+*  `GROUP BY ([$__from, $__to), 1m) FILL (PREVIOUSUNTILLAST)`
+*  `GROUP BY ([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (PREVIOUSUNTILLAST)`
+*  `GROUP BY ([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (PREVIOUS, 1m)`
+*  `GROUP BY ([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (LINEAR, 5m, 5m)`
+*  `GROUP BY ((2017-11-01T00:00:00, 2017-11-07T23:00:00], 1d), LEVEL=1`
+*  `GROUP BY ([0, 20), 2ms, 3ms), LEVEL=1`
+
+
+Tip: Statements like `select * from root.xx.**` are not recommended because those statements may cause OOM.
+
+##### SQL: Drop-down List
+
+Select a time series in the TIME-SERIES selection box, select a function in the FUNCTION option, and enter the contents in the SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL input boxes, where TIME-SERIES is a required item and the rest are non required items.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input2.png?raw=true">
+
+#### Support for variables and template functions
+
+Both SQL: Full Customized and SQL: Drop-down List input methods support the variable and template functions of grafana. In the following example, raw input method is used, and aggregation is similar.
+
+After creating a new Panel, click the Settings button in the upper right corner:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/setconf.png?raw=true">
+
+Select `Variables`, click `Add variable`:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/addvaribles.png?raw=true">
+
+Example 1：Enter `Name`, `Label`, and `Query`, and then click the `Update` button:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput.png?raw=true">
+
+Apply Variables, enter the variable in the `grafana panel` and click the `save` button:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/applyvariables.png?raw=true">
+
+Example 2: Nested use of variables:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2.png?raw=true">
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2-1.png?raw=true">
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2-2.png?raw=true">
+
+
+Example 3: using function variables
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variablesinput3.png?raw=true">
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variablesinput3-1.png?raw=true">
+
+The Name in the above figure is the variable name and the variable name we will use in the panel in the future. Label is the display name of the variable. If it is empty, the variable of Name will be displayed. Otherwise, the name of the Label will be displayed.
+There are Query, Custom, Text box, Constant, DataSource, Interval, Ad hoc filters, etc. in the Type drop-down, all of which can be used in IoTDB's Grafana Plugin
+For a more detailed introduction to usage, please check the official manual (https://grafana.com/docs/grafana/latest/variables/)
+
+In addition to the examples above, the following statements are supported:
+
+*  `show storage group`
+*  `show timeseries`
+*  `show child nodes`
+*  `show all ttl`
+*  `show latest timeseries`
+*  `show devices`
+*  `select xx from root.xxx limit xx 等sql 查询`
+
+Tip: If the query field contains Boolean data, the result value will be converted to 1 by true and 0 by false.
+
+#### Grafana alert function
+
+This plugin supports Grafana alert function.
+
+1. In the Grafana sidebar, hover over the `Alerting` icon and click `Notification channels`.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting1.png?raw=true">
+
+2. Click Add Channel.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting2.png?raw=true">
+
+3. Fill in the fields described below or select options. There are many types of Type, including DingDing, Email, Slack, WebHook, Prometheus Alertmanager, etc.
+   This sample Type uses `Prometheus Alertmanager`. Prometheus Alertmanager needs to be installed in advance. For more detailed configuration and parameter introduction, please refer to the official documentation: https://grafana.com/docs/grafana/v8.0/alerting/old- alerting/notifications/.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting3.png?raw=true">
+
+4. Click the `Test` button, the `Test notification sent` appears, click the `Save` button to save
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting4.png?raw=true">
+
+5. After creating a new Panel, enter the query parameters and click Save, then select `Alert` and click `Create Alert`, as shown in the following figure:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle1.png?raw=true">
+
+6、Fill out the fields described below or select an option， `Name`- Enter a descriptive name. The name will be displayed in the Alert Rules list. This field supports templating.
+`Evaluate every` - Specify how often the scheduler should evaluate the alert rule. This is referred to as the evaluation interval.
+`For` - Specify how long the query needs to violate the configured thresholds before the alert notification triggers.。`Conditions`- Represents query criteria. Multiple combined query criteria can be configured.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle2.jpg?raw=true">
+
+Query conditions in the figure：avg() OF query(A,5m,now) IS ABOVE -1
+
+avg() Controls how the values for each series should be reduced to a value that can be compared against the threshold. Click on the function to change it to another aggregation function
+query(A, 15m, now) The letter defines what query to execute from the Metrics tab. The second two parameters define the time range, 15m, now means 15 minutes ago to now. You can also do 10m
+IS ABOVE -1 Defines the type of threshold and the threshold value. You can click on  IS ABOVE to change the type of threshold
+
+Tips:The query used in an alert rule cannot contain any template variables. Currently we only support AND and OR operators between conditions and they are executed serially.
+
+For example, we have 3 conditions in the following order: condition:A(evaluates to: TRUE) OR condition:B(evaluates to: FALSE) AND condition:C(evaluates to: TRUE) so the result will be calculated as ((TRUE OR FALSE) AND TRUE) = TRUE.
+
+More details can be found in the official documents:https://grafana.com/docs/grafana/latest/alerting/old-alerting/create-alerts/
+
+
+7、Click the `Test rule` button and the `firing: true` appears, the configuration is successful, click the `save` button
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel3.png?raw=true">
+
+8、The following figure shows the alarm displayed in the grafana panel
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel4.png?raw=true">
+
+9、View alert rules
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertPanel5.png?raw=true">
+
+10、View alert records in promehthus alertmanager
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel6.png?raw=true">
+
+
+### More Details about Grafana
+
+For more details about Grafana operation, please refer to the official Grafana documentation: http://docs.grafana.org/guides/getting_started/.

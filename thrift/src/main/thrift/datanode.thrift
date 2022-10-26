@@ -159,13 +159,12 @@ struct TDisableDataNodeReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
-struct TCreateFunctionRequest {
-  1: required string udfName
-  2: required string className
-  3: required list<string> uris
+struct TCreateFunctionInstanceReq {
+  1: binary udfInformation
+  2: binary jarFile
 }
 
-struct TDropFunctionRequest {
+struct TDropFunctionInstanceReq {
   1: required string udfName
 }
 
@@ -286,7 +285,7 @@ struct TFetchSchemaBlackListResp{
   2: required binary pathPatternTree
 }
 
-struct TDeleteDataForDeleteTimeSeriesReq{
+struct TDeleteDataForDeleteSchemaReq{
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
 }
@@ -294,6 +293,21 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TConstructSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TRollbackSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TDeactivateTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
 }
 
 struct TCreatePipeOnDataNodeReq{
@@ -437,14 +451,14 @@ service IDataNodeRPCService {
    *
    * @param function name, function class name, and executable uris
    **/
-  common.TSStatus createFunction(TCreateFunctionRequest req)
+  common.TSStatus createFunction(TCreateFunctionInstanceReq req)
 
   /**
    * Config node will drop a function on a list of data nodes.
    *
    * @param function name
    **/
-  common.TSStatus dropFunction(TDropFunctionRequest req)
+  common.TSStatus dropFunction(TDropFunctionInstanceReq req)
 
   /**
    * Config node will create a trigger instance on data node.
@@ -553,12 +567,28 @@ service IDataNodeRPCService {
   /**
    * Config node inform this dataNode to execute a distribution data deleion mpp task
    */
-  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+  common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
 
- /**
-  * Delete matched timeseries and remove according schema black list in target schemRegion
-  */
+  /**
+   * Delete matched timeseries and remove according schema black list in target schemRegion
+   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
+   */
+  common.TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries represent by template
+   */
+  common.TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Deactivate template on device matched by input path pattern
+   * and remove according template schema black list in target schemRegion
+   */
+  common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
 
  /**
   * Create PIPE on DataNode
