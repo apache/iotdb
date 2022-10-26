@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.multileader;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -50,8 +51,6 @@ import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,7 @@ public class MultiLeaderServerImpl {
 
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
 
-  private final Peer thisNode;
+  private Peer thisNode;
   private final IStateMachine stateMachine;
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
@@ -409,6 +408,15 @@ public class MultiLeaderServerImpl {
               String.format("error when removing sync log channel to %s", peer), e);
         }
       }
+    }
+  }
+
+  public void updatePeer(Peer oldPeer, Peer newPeer) {
+    if (thisNode.equals(oldPeer)) {
+      thisNode = newPeer;
+      logDispatcher.setSelfPeerId(newPeer.getEndpoint().toString());
+    } else {
+      logDispatcher.updatePeer(oldPeer, newPeer);
     }
   }
 

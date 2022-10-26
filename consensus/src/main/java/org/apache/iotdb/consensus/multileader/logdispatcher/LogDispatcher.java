@@ -59,7 +59,7 @@ public class LogDispatcher {
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
-  private final String selfPeerId;
+  private String selfPeerId;
   private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
   private ExecutorService executorService;
 
@@ -167,11 +167,21 @@ public class LogDispatcher {
     }
   }
 
+  public void updatePeer(Peer oldPeer, Peer newPeer) {
+    for (LogDispatcherThread thread : threads) {
+      thread.updatePeer(oldPeer, newPeer);
+    }
+  }
+
+  public void setSelfPeerId(String selfPeerId) {
+    this.selfPeerId = selfPeerId;
+  }
+
   public class LogDispatcherThread implements Runnable {
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
     private static final long START_INDEX = 1;
     private final MultiLeaderConfig config;
-    private final Peer peer;
+    private Peer peer;
     private final IndexController controller;
     // A sliding window class that manages asynchronously pendingBatches
     private final SyncStatus syncStatus;
@@ -469,6 +479,12 @@ public class LogDispatcher {
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
       for (ByteBuffer innerRequest : request.getSerializedRequests()) {
         logBatches.add(new TLogBatch(innerRequest, request.getSearchIndex(), false));
+      }
+    }
+
+    void updatePeer(Peer oldPeer, Peer newPeer) {
+      if (peer.equals(oldPeer)) {
+        peer = newPeer;
       }
     }
   }
