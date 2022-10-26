@@ -241,7 +241,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isLastQuery() {
-    return selectComponent.isHasLast();
+    return selectComponent.hasLast();
   }
 
   public boolean isAggregationQuery() {
@@ -304,6 +304,14 @@ public class QueryStatement extends Statement {
       return Collections.emptyList();
     }
     return orderByComponent.getSortItemList();
+  }
+
+  public boolean hasFill() {
+    return fillComponent != null;
+  }
+
+  public boolean hasOrderBy() {
+    return orderByComponent != null;
   }
 
   public boolean isSelectInto() {
@@ -442,6 +450,53 @@ public class QueryStatement extends Statement {
         throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
       }
     }
+  }
+
+  public String constructFormattedSQL() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append(selectComponent.toSQLString()).append("\n");
+    if (isSelectInto()) {
+      sqlBuilder.append("\t").append(intoComponent.toSQLString()).append("\n");
+    }
+    sqlBuilder.append("\t").append(fromComponent.toSQLString()).append("\n");
+    if (hasWhere()) {
+      sqlBuilder.append("\t").append(whereCondition.toSQLString()).append("\n");
+    }
+    if (isGroupByTime()) {
+      sqlBuilder.append("\t").append(groupByTimeComponent.toSQLString()).append("\n");
+    }
+    if (isGroupByLevel()) {
+      sqlBuilder
+          .append("\t")
+          .append(groupByLevelComponent.toSQLString(isGroupByTime()))
+          .append("\n");
+    }
+    if (hasHaving()) {
+      sqlBuilder.append("\t").append(havingCondition.toSQLString()).append("\n");
+    }
+    if (hasFill()) {
+      sqlBuilder.append("\t").append(fillComponent.toSQLString()).append("\n");
+    }
+    if (hasOrderBy()) {
+      sqlBuilder.append("\t").append(orderByComponent.toSQLString()).append("\n");
+    }
+    if (rowLimit != 0) {
+      sqlBuilder.append("\t").append("LIMIT").append(' ').append(rowLimit).append("\n");
+    }
+    if (rowOffset != 0) {
+      sqlBuilder.append("\t").append("OFFSET").append(' ').append(rowOffset).append("\n");
+    }
+    if (seriesLimit != 0) {
+      sqlBuilder.append("\t").append("SLIMIT").append(' ').append(seriesLimit).append("\n");
+    }
+    if (seriesOffset != 0) {
+      sqlBuilder.append("\t").append("SOFFSET").append(' ').append(seriesOffset).append("\n");
+    }
+    if (isAlignByDevice()) {
+      sqlBuilder.append("\t").append("ALIGN BY DEVICE").append("\n");
+    }
+    sqlBuilder.append(';');
+    return sqlBuilder.toString();
   }
 
   @Override

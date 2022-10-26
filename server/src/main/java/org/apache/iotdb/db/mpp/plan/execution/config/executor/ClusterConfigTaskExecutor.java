@@ -1277,6 +1277,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement) {
     createContinuousQueryStatement.semanticCheck();
+
+    String queryBody = createContinuousQueryStatement.getQueryBody();
+    String sql = createContinuousQueryStatement.getSql();
+    // TODO Do not modify Statement in Analyzer
     Analyzer.validate(createContinuousQueryStatement.getQueryBodyStatement());
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -1290,8 +1294,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getStartTimeOffset(),
               createContinuousQueryStatement.getEndTimeOffset(),
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
-              createContinuousQueryStatement.getQueryBody(),
-              createContinuousQueryStatement.getSql(),
+              queryBody,
+              sql,
               createContinuousQueryStatement.getZoneId());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {

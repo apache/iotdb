@@ -37,7 +37,6 @@ import java.util.List;
 
 public class CreateContinuousQueryStatement extends Statement implements IConfigStatement {
 
-  private String sql;
   private String cqId;
 
   // The query execution time interval, default value is group_by_interval in group by clause.
@@ -56,20 +55,12 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   // while the next execution time has reached, default value is BLOCKED.
   private TimeoutPolicy timeoutPolicy = TimeoutPolicy.BLOCKED;
 
-  private String queryBody;
   private QueryStatement queryBodyStatement;
+  private String queryBody;
 
   public CreateContinuousQueryStatement() {
     super();
     statementType = StatementType.CREATE_CONTINUOUS_QUERY;
-  }
-
-  public String getSql() {
-    return sql;
-  }
-
-  public void setSql(String sql) {
-    this.sql = sql;
   }
 
   public String getCqId() {
@@ -120,14 +111,6 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     this.timeoutPolicy = timeoutPolicy;
   }
 
-  public String getQueryBody() {
-    return queryBody;
-  }
-
-  public void setQueryBody(String queryBody) {
-    this.queryBody = queryBody;
-  }
-
   public QueryStatement getQueryBodyStatement() {
     return queryBodyStatement;
   }
@@ -138,6 +121,41 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public String getZoneId() {
     return queryBodyStatement.getSelectComponent().getZoneId().getId();
+  }
+
+  public String getSql() {
+    return constructFormattedSQL();
+  }
+
+  public String getQueryBody() {
+    if (queryBody == null) {
+      queryBody = queryBodyStatement.constructFormattedSQL();
+    }
+    return queryBody;
+  }
+
+  public String constructFormattedSQL() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("CREATE CQ ").append(cqId).append('\n');
+    sqlBuilder.append("RESAMPLE\n");
+    sqlBuilder.append('\t').append("EVERY ").append(everyInterval).append("ms\n");
+    sqlBuilder.append('\t').append("BOUNDARY ").append(boundaryTime).append("\n");
+    ;
+    sqlBuilder.append('\t').append("RANGE ").append(startTimeOffset).append("ms");
+    if (endTimeOffset != 0) {
+      sqlBuilder.append(", ").append(endTimeOffset).append("ms\n");
+    } else {
+      sqlBuilder.append("\n");
+    }
+    sqlBuilder.append("TIMEOUT POLICY ").append(timeoutPolicy.toString()).append('\n');
+    sqlBuilder.append("BEGIN\n");
+    String[] queryBodySlices = getQueryBody().split("\n");
+    for (int i = 0; i < queryBodySlices.length - 1; i++) { // skip ';' in queryBody
+      sqlBuilder.append('\t').append(queryBodySlices[i]).append('\n');
+    }
+    sqlBuilder.append("END\n");
+    sqlBuilder.append(";");
+    return sqlBuilder.toString();
   }
 
   @Override
@@ -159,7 +177,10 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     if (everyInterval
         < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
       throw new SemanticException(
-          "CQ: Every interval should not be lower than the `continuous_query_minimum_every_interval` configured.");
+          String.format(
+              "CQ: Every interval [%d] should not be lower than the `continuous_query_minimum_every_interval` [%d] configured.",
+              everyInterval,
+              IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()));
     }
     if (startTimeOffset <= 0) {
       throw new SemanticException("CQ: The start time offset should be greater than 0.");
@@ -177,15 +198,17 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     }
 
     if (!queryBodyStatement.isSelectInto()) {
-      throw new SemanticException("CQ: The query body is missing an INTO clause.");
+      throw new SemanticException("CQ: The query body misses an INTO clause.");
     }
     GroupByTimeComponent groupByTimeComponent = queryBodyStatement.getGroupByTimeComponent();
-    if (groupByTimeComponent.getStartTime() != 0 || groupByTimeComponent.getEndTime() != 0) {
+    if (groupByTimeComponent != null
+        && (groupByTimeComponent.getStartTime() != 0 || groupByTimeComponent.getEndTime() != 0)) {
       throw new SemanticException(
-          "CQ: Specifying time range in GROUP BY TIME clause is prohibited");
+          "CQ: Specifying time range in GROUP BY TIME clause is prohibited.");
     }
-    if (ExpressionAnalyzer.checkIfTimeFilterExist(
-        queryBodyStatement.getWhereCondition().getPredicate())) {
+    if (queryBodyStatement.getWhereCondition() != null
+        && ExpressionAnalyzer.checkIfTimeFilterExist(
+            queryBodyStatement.getWhereCondition().getPredicate())) {
       throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
     }
   }

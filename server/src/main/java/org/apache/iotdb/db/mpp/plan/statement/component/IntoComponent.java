@@ -234,4 +234,16 @@ public class IntoComponent extends StatementNode {
       return intoItems.get(deviceIndex).isAligned();
     }
   }
+
+  public String toSQLString() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("INTO ");
+    for (int i = 0; i < intoItems.size(); i++) {
+      sqlBuilder.append(intoItems.get(i).toSQLString());
+      if (i < intoItems.size() - 1) {
+        sqlBuilder.append(", ");
+      }
+    }
+    return sqlBuilder.toString();
+  }
 }

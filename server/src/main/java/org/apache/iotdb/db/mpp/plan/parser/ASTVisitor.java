@@ -804,10 +804,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateContinuousQuery(IoTDBSqlParser.CreateContinuousQueryContext ctx) {
     CreateContinuousQueryStatement statement = new CreateContinuousQueryStatement();
-    statement.setSql(ctx.getText());
+
     statement.setCqId(parseIdentifier(ctx.cqId.getText()));
 
-    statement.setQueryBody(ctx.selectStatement().getText());
     QueryStatement queryBodyStatement =
         (QueryStatement) visitSelectStatement(ctx.selectStatement());
     queryBodyStatement.setCqQueryBody(true);
@@ -815,6 +814,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.resampleClause() != null) {
       parseResampleClause(ctx.resampleClause(), statement);
+    } else {
+      QueryStatement queryStatement = statement.getQueryBodyStatement();
+      if (!queryStatement.isGroupByTime()) {
+        throw new SemanticException(
+            "CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.");
+      }
+
+      long interval = queryStatement.getGroupByTimeComponent().getInterval();
+      statement.setEveryInterval(interval);
+      statement.setStartTimeOffset(interval);
     }
 
     if (ctx.timeoutPolicyClause() != null) {
@@ -843,7 +852,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (ctx.BOUNDARY() != null) {
-      statement.setBoundaryTime(parseDateExpression(ctx.boundaryTime));
+      statement.setBoundaryTime(parseTimeValue(ctx.boundaryTime, DateTimeUtils.currentTime()));
     }
 
     if (ctx.RANGE() != null) {

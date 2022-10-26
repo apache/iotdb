@@ -816,7 +816,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     if (ctx.BOUNDARY() != null) {
-      operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
+      operator.setFirstExecutionTimeBoundary(
+          parseTimeValue(ctx.timeValue(), DateTimeUtils.currentTime()));
     }
   }
 

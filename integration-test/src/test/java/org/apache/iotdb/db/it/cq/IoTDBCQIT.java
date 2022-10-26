@@ -24,7 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -34,11 +33,11 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category(ClusterIT.class)
-@Ignore
 public class IoTDBCQIT {
 
   @BeforeClass
@@ -70,7 +69,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: Specifying time range in GROUP BY TIME clause is prohibited.",
+            e.getMessage());
       }
 
       // 2. specify time filter in where clause
@@ -87,7 +88,8 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: Specifying time filters in the query body is prohibited.", e.getMessage());
       }
 
       // 3. no every clause meanwhile no group by time
@@ -102,7 +104,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "416: CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.",
+            e.getMessage());
       }
 
       // 4. no INTO clause
@@ -117,7 +121,7 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals("500: CQ: The query body misses an INTO clause.", e.getMessage());
       }
 
       // 5. EVERY interval is less than continuous_query_min_every_interval_in_ms in
@@ -135,7 +139,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: Every interval [50] should not be lower than the `continuous_query_minimum_every_interval` [1000] configured.",
+            e.getMessage());
       }
 
       // 6. start_time_offset < 0
@@ -152,7 +158,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "401: Error occurred while parsing SQL to physical plan: line 2:15 extraneous input '-' expecting DURATION_LITERAL",
+            e.getMessage());
       }
 
       // 7. start_time_offset == 0
@@ -161,7 +169,7 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq_2\n"
                 + "RESAMPLE RANGE 0m\n"
                 + "BEGIN \n"
-                + "  SELECT count(s1)  \n"
+                + "  SELECT count(s1)\n"
                 + "    INTO root.sg_count.d(count_s1)\n"
                 + "    FROM root.sg.d\n"
                 + "    GROUP BY(30m)\n"
@@ -169,7 +177,7 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals("500: CQ: The start time offset should be greater than 0.", e.getMessage());
       }
 
       // 8. end_time_offset < 0
@@ -186,7 +194,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "401: Error occurred while parsing SQL to physical plan: line 2:20 extraneous input '-' expecting DURATION_LITERAL",
+            e.getMessage());
       }
 
       // 9. end_time_offset == start_time_offset
@@ -203,7 +213,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: The start time offset should be greater than end time offset.",
+            e.getMessage());
       }
 
       // 10. end_time_offset > start_time_offset
@@ -220,7 +232,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: The start time offset should be greater than end time offset.",
+            e.getMessage());
       }
 
       // 11. group_by_interval > start_time_offset
@@ -229,7 +243,7 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq_2\n"
                 + "RESAMPLE RANGE 30m\n"
                 + "BEGIN \n"
-                + "  SELECT count(s1)  \n"
+                + "  SELECT count(s1) \n"
                 + "    INTO root.sg_count.d(count_s1)\n"
                 + "    FROM root.sg.d\n"
                 + "    GROUP BY(1h)\n"
@@ -237,7 +251,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "500: CQ: The start time offset should be greater than or equal to every interval.",
+            e.getMessage());
       }
 
       // 12. TIMEOUT POLICY is not BLOCKED or DISCARD
@@ -255,7 +271,9 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals(
+            "401: Error occurred while parsing SQL to physical plan: line 3:15 mismatched input 'UNKNOWN' expecting {BLOCKED, DISCARD}",
+            e.getMessage());
       }
 
       // 13. create duplicated cq
@@ -272,9 +290,10 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        // TODO add assert for error message
+        assertEquals("932: CQ s1_count_cq has already been created.", e.getMessage());
       }
 
+      statement.execute("DROP CQ s1_count_cq;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -286,6 +305,7 @@ public class IoTDBCQIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      String[] cqIds = {"correct_cq_1", "correct_cq_2", "correct_cq_3", "s1_count_cq_correct"};
       try {
         String sql =
             "CREATE CQ correct_cq_1 \n"
@@ -354,6 +374,10 @@ public class IoTDBCQIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+
+      for (String cqId : cqIds) {
+        statement.execute(String.format("DROP CQ %s;", cqId));
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -406,6 +430,60 @@ public class IoTDBCQIT {
             + "    GROUP BY(10m)\n"
             + "END"
       };
+      String[] formattedCqSQLs = {
+        "CREATE CQ show_cq_1\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms, 600000ms\n"
+            + "TIMEOUT POLICY BLOCKED\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (1800000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ show_cq_2\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY BLOCKED\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (1800000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ show_cq_3\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 600000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY DISCARD\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (600000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ show_cq_4\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY DISCARD\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (600000ms)\n"
+            + "END\n"
+            + ";"
+      };
 
       for (String sql : cqSQLs) {
         statement.execute(sql);
@@ -416,12 +494,16 @@ public class IoTDBCQIT {
         int cnt = 0;
         while (resultSet.next()) {
           // No need to add time column for aggregation query
-          assertEquals(cqIds[cnt], resultSet.getString(0));
-          assertEquals(cqSQLs[cnt], resultSet.getString(1));
-          assertEquals("ACTIVE", resultSet.getString(2));
+          assertEquals(cqIds[cnt], resultSet.getString(1));
+          assertEquals(formattedCqSQLs[cnt], resultSet.getString(2));
+          assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }
         assertEquals(cqIds.length, cnt);
+      }
+
+      for (String cqId : cqIds) {
+        statement.execute(String.format("DROP CQ %s;", cqId));
       }
 
     } catch (Exception e) {
@@ -476,6 +558,60 @@ public class IoTDBCQIT {
             + "    GROUP BY(10m)\n"
             + "END"
       };
+      String[] formattedCqSQLs = {
+        "CREATE CQ drop_cq_1\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms, 600000ms\n"
+            + "TIMEOUT POLICY BLOCKED\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (1800000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ drop_cq_2\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY BLOCKED\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (1800000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ drop_cq_3\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 600000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY DISCARD\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (600000ms)\n"
+            + "END\n"
+            + ";",
+        "CREATE CQ drop_cq_4\n"
+            + "RESAMPLE\n"
+            + "\tEVERY 1800000ms\n"
+            + "\tBOUNDARY 0\n"
+            + "\tRANGE 1800000ms\n"
+            + "TIMEOUT POLICY DISCARD\n"
+            + "BEGIN\n"
+            + "\tSELECT count(s1)\n"
+            + "\t\tINTO root.sg_count.d(count_s1)\n"
+            + "\t\tFROM root.sg.d\n"
+            + "\t\tGROUP BY TIME (600000ms)\n"
+            + "END\n"
+            + ";"
+      };
 
       for (String sql : cqSQLs) {
         statement.execute(sql);
@@ -486,9 +622,9 @@ public class IoTDBCQIT {
         int cnt = 0;
         while (resultSet.next()) {
           // No need to add time column for aggregation query
-          assertEquals(cqIds[cnt], resultSet.getString(0));
-          assertEquals(cqSQLs[cnt], resultSet.getString(1));
-          assertEquals("ACTIVE", resultSet.getString(2));
+          assertEquals(cqIds[cnt], resultSet.getString(1));
+          assertEquals(formattedCqSQLs[cnt], resultSet.getString(2));
+          assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }
         assertEquals(cqIds.length, cnt);
@@ -504,14 +640,19 @@ public class IoTDBCQIT {
         int cnt = 0;
         while (resultSet.next()) {
           // No need to add time column for aggregation query
-          assertEquals(cqIds[resultIndex[cnt]], resultSet.getString(0));
-          assertEquals(cqSQLs[resultIndex[cnt]], resultSet.getString(1));
-          assertEquals("ACTIVE", resultSet.getString(2));
+          assertEquals(cqIds[resultIndex[cnt]], resultSet.getString(1));
+          assertEquals(formattedCqSQLs[resultIndex[cnt]], resultSet.getString(2));
+          assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }
         assertEquals(resultIndex.length, cnt);
       }
 
+      statement.execute("DROP CQ drop_cq_1");
+      statement.execute("DROP CQ drop_cq_4");
+      try (ResultSet resultSet = statement.executeQuery("show CQS")) {
+        assertFalse(resultSet.next());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

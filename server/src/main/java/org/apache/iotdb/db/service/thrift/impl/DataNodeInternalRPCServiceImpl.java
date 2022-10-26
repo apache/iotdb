@@ -752,6 +752,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     long sessionId =
         SESSION_MANAGER.requestSessionId(req.cqId, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
+    String executedSQL = req.queryBody;
 
     try {
       QueryStatement s =
@@ -781,6 +782,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setStartTime(req.startTime);
         s.getGroupByTimeComponent().setEndTime(req.endTime);
       }
+      executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
@@ -792,7 +794,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               s,
               queryId,
               SESSION_MANAGER.getSessionInfo(sessionId),
-              req.queryBody,
+              executedSQL,
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               req.getTimeout());
@@ -818,7 +820,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
-      return onQueryException(e, "\"" + req.queryBody + "\". " + OperationType.EXECUTE_STATEMENT);
+      return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
       SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
       SESSION_MANAGER.closeSession(sessionId);
