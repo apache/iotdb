@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -98,11 +99,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
@@ -114,6 +117,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -775,11 +779,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         attributes);
   }
 
+  // Drop Trigger =====================================================================
   @Override
   public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
     return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
+  // Show Trigger =====================================================================
   @Override
   public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
     return new ShowTriggersStatement();
@@ -803,6 +809,83 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
     }
+  }
+
+  // Create CQ =====================================================================
+  @Override
+  public Statement visitCreateContinuousQuery(IoTDBSqlParser.CreateContinuousQueryContext ctx) {
+    CreateContinuousQueryStatement statement = new CreateContinuousQueryStatement();
+    statement.setSql(ctx.getText());
+    statement.setCqId(parseIdentifier(ctx.cqId.getText()));
+
+    statement.setQueryBody(ctx.selectStatement().getText());
+    QueryStatement queryBodyStatement =
+        (QueryStatement) visitSelectStatement(ctx.selectStatement());
+    queryBodyStatement.setCqQueryBody(true);
+    statement.setQueryBodyStatement(queryBodyStatement);
+
+    if (ctx.resampleClause() != null) {
+      parseResampleClause(ctx.resampleClause(), statement);
+    }
+
+    if (ctx.timeoutPolicyClause() != null) {
+      parseTimeoutPolicyClause(ctx.timeoutPolicyClause(), statement);
+    }
+
+    return statement;
+  }
+
+  private void parseResampleClause(
+      IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
+    if (ctx.FOR() != null) {
+      throw new SemanticException("CQ: The syntax of CREATE CQ statement has changed from v0.14");
+    }
+
+    if (ctx.EVERY() != null) {
+      statement.setEveryInterval(
+          DateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
+    } else {
+      QueryStatement queryStatement = statement.getQueryBodyStatement();
+      if (!queryStatement.isGroupByTime()) {
+        throw new SemanticException(
+            "CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.");
+      }
+      statement.setEveryInterval(queryStatement.getGroupByTimeComponent().getInterval());
+    }
+
+    if (ctx.BOUNDARY() != null) {
+      statement.setBoundaryTime(parseDateExpression(ctx.boundaryTime));
+    }
+
+    if (ctx.RANGE() != null) {
+      statement.setStartTimeOffset(
+          DateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
+      if (ctx.endTimeOffset != null) {
+        statement.setEndTimeOffset(
+            DateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
+      }
+    } else {
+      statement.setStartTimeOffset(statement.getEveryInterval());
+    }
+  }
+
+  private void parseTimeoutPolicyClause(
+      IoTDBSqlParser.TimeoutPolicyClauseContext ctx, CreateContinuousQueryStatement statement) {
+    if (ctx.DISCARD() != null) {
+      statement.setTimeoutPolicy(TimeoutPolicy.DISCARD);
+    }
+  }
+
+  // Drop CQ =====================================================================
+  @Override
+  public Statement visitDropContinuousQuery(IoTDBSqlParser.DropContinuousQueryContext ctx) {
+    return new DropContinuousQueryStatement(parseIdentifier(ctx.cqId.getText()));
+  }
+
+  // Show CQs =====================================================================
+  @Override
+  public Statement visitShowContinuousQueries(IoTDBSqlParser.ShowContinuousQueriesContext ctx) {
+    return new ShowContinuousQueriesStatement();
   }
 
   /** Data Manipulation Language (DML) */
@@ -952,23 +1035,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
     // parse time range
-    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
-    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+    if (ctx.timeRange() != null) {
+      parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+      groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+    }
 
     // parse time interval
     groupByTimeComponent.setInterval(
-        parseTimeIntervalOrSlidingStep(
-            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+        parseTimeIntervalOrSlidingStep(ctx.interval.getText(), true, groupByTimeComponent));
     if (groupByTimeComponent.getInterval() <= 0) {
       throw new SemanticException(
           "The second parameter time interval should be a positive integer.");
     }
 
     // parse sliding step
-    if (ctx.DURATION_LITERAL().size() == 2) {
+    if (ctx.step != null) {
       groupByTimeComponent.setSlidingStep(
-          parseTimeIntervalOrSlidingStep(
-              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+          parseTimeIntervalOrSlidingStep(ctx.step.getText(), false, groupByTimeComponent));
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
       groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
@@ -1006,23 +1089,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
     // parse time range
-    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
-    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+    if (ctx.timeRange() != null) {
+      parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+      groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+    }
 
     // parse time interval
     groupByTimeComponent.setInterval(
-        parseTimeIntervalOrSlidingStep(
-            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+        parseTimeIntervalOrSlidingStep(ctx.interval.getText(), true, groupByTimeComponent));
     if (groupByTimeComponent.getInterval() <= 0) {
       throw new SemanticException(
           "The second parameter time interval should be a positive integer.");
     }
 
     // parse sliding step
-    if (ctx.DURATION_LITERAL().size() == 2) {
+    if (ctx.step != null) {
       groupByTimeComponent.setSlidingStep(
-          parseTimeIntervalOrSlidingStep(
-              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+          parseTimeIntervalOrSlidingStep(ctx.step.getText(), false, groupByTimeComponent));
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
       groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());

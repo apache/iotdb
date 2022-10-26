@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -145,4 +146,11 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> getTimeSlotList(
       GetTimeSlotListStatement getTimeSlotListStatement);
+
+  SettableFuture<ConfigTaskResult> createContinuousQuery(
+      CreateContinuousQueryStatement createContinuousQueryStatement);
+
+  SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
+
+  SettableFuture<ConfigTaskResult> showContinuousQueries();
 }

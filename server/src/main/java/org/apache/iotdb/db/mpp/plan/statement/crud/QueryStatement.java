@@ -69,38 +69,40 @@ import java.util.Set;
  */
 public class QueryStatement extends Statement {
 
-  protected SelectComponent selectComponent;
-  protected FromComponent fromComponent;
-  protected WhereCondition whereCondition;
-  protected HavingCondition havingCondition;
+  private SelectComponent selectComponent;
+  private FromComponent fromComponent;
+  private WhereCondition whereCondition;
+  private HavingCondition havingCondition;
 
   // row limit and offset for result set. The default value is 0, which means no limit
-  protected int rowLimit = 0;
+  private int rowLimit = 0;
   // row offset for result set. The default value is 0
-  protected int rowOffset = 0;
+  private int rowOffset = 0;
 
   // series limit and offset for result set. The default value is 0, which means no limit
-  protected int seriesLimit = 0;
+  private int seriesLimit = 0;
   // series offset for result set. The default value is 0
-  protected int seriesOffset = 0;
+  private int seriesOffset = 0;
 
-  protected FillComponent fillComponent;
+  private FillComponent fillComponent;
 
-  protected OrderByComponent orderByComponent;
+  private OrderByComponent orderByComponent;
 
-  protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
+  private ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
   // `GROUP BY TIME` clause
-  protected GroupByTimeComponent groupByTimeComponent;
+  private GroupByTimeComponent groupByTimeComponent;
 
   // `GROUP BY LEVEL` clause
-  protected GroupByLevelComponent groupByLevelComponent;
+  private GroupByLevelComponent groupByLevelComponent;
 
   // `GROUP BY TAG` clause
-  protected GroupByTagComponent groupByTagComponent;
+  private GroupByTagComponent groupByTagComponent;
 
   // `INTO` clause
-  protected IntoComponent intoComponent;
+  private IntoComponent intoComponent;
+
+  private boolean isCqQueryBody;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -306,6 +308,14 @@ public class QueryStatement extends Statement {
 
   public boolean isSelectInto() {
     return intoComponent != null;
+  }
+
+  public boolean isCqQueryBody() {
+    return isCqQueryBody;
+  }
+
+  public void setCqQueryBody(boolean cqQueryBody) {
+    isCqQueryBody = cqQueryBody;
   }
 
   public void semanticCheck() {
