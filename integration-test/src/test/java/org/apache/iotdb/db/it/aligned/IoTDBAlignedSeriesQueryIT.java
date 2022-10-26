@@ -3334,13 +3334,20 @@ public class IoTDBAlignedSeriesQueryIT {
           "31,0,130.0,null,0,130.0,null",
           "37,0,154.0,null,0,154.0,null"
         };
+    long time1, time2;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       int cnt;
+      time1 = System.nanoTime();
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(d1.s1), sum(d2.s2), avg(d2.s1), count(d1.s3), sum(d1.s2), avg(d2.s3) "
                   + "from root.sg1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgGroupByWithNonAlignedTimeseriesTest executeQuery"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -3360,6 +3367,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgGroupByWithNonAlignedTimeseriesTest next"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(retArray.length, cnt);
       }
 
@@ -3367,6 +3379,11 @@ public class IoTDBAlignedSeriesQueryIT {
           statement.executeQuery(
               "select count(d1.s1), sum(d2.s2), avg(d2.s1), count(d1.s3), sum(d1.s2), avg(d2.s3) "
                   + "from root.sg1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgGroupByWithNonAlignedTimeseriesTest executeQuery2"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -3386,6 +3403,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgGroupByWithNonAlignedTimeseriesTest next2"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(0, cnt);
       }
     }
@@ -4250,10 +4272,17 @@ public class IoTDBAlignedSeriesQueryIT {
         Statement statement = connection.createStatement()) {
 
       int cnt;
+      long time1, time2;
+      time1 = System.nanoTime();
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
                   + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgWithSlidingStepAndValueFilterTest executeQuery"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -4267,6 +4296,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgWithSlidingStepAndValueFilterTest next"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(retArray.length, cnt);
       }
 
@@ -4274,6 +4308,11 @@ public class IoTDBAlignedSeriesQueryIT {
           statement.executeQuery(
               "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
                   + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgWithSlidingStepAndValueFilterTest executeQuery2"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -4287,6 +4326,10 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936test] SeriesQueryIT countSumAvgWithSlidingStepAndValueFilterTest next2"
+                + (double) (time2 - time1) / (1e9));
         Assert.assertEquals(0, cnt);
       }
     }
@@ -5704,7 +5747,6 @@ public class IoTDBAlignedSeriesQueryIT {
         log.info(
             "[3936test] IoTDBAlignedSeriesQueryIT firstLastValueSlidingWindowTest1 next2 "
                 + (double) (time2 - time1) / (1e9));
-        time1 = time2;
         Assert.assertEquals(0, cnt);
       }
     }
@@ -6409,15 +6451,22 @@ public class IoTDBAlignedSeriesQueryIT {
           "37,null,null,null,null,null,null,null,null",
           "39,null,null,null,null,null,null,null,null"
         };
+    long time1, time2;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       int cnt;
+      time1 = System.nanoTime();
       try (ResultSet resultSet =
           statement.executeQuery(
               "select max_value(d2.s3), min_value(d1.s1), max_time(d2.s2), min_time(d1.s3), "
                   + "max_value(d1.s3), min_value(d2.s1), max_time(d1.s2), min_time(d2.s3) "
                   + "from root.sg1 where d2.s3 > 5 and d1.s3 < 25 GROUP BY ([1, 41), 5ms, 2ms)")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936text] IoTDBAlignedSeriesQueryIT maxMinValueTimeSlidingWindowWithNonAlignedAndValueFilterTest executeQuery"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -6441,6 +6490,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936text] IoTDBAlignedSeriesQueryIT maxMinValueTimeSlidingWindowWithNonAlignedAndValueFilterTest next"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(retArray.length, cnt);
       }
 
@@ -6450,6 +6504,11 @@ public class IoTDBAlignedSeriesQueryIT {
                   + "max_value(d1.s3), min_value(d2.s1), max_time(d1.s2), min_time(d2.s3) "
                   + "from root.sg1 where d2.s3 > 5 and d1.s3 < 25 GROUP BY ([1, 41), 5ms, 2ms) "
                   + " order by time desc")) {
+        time2 = System.nanoTime();
+        log.info(
+            "[3936text] IoTDBAlignedSeriesQueryIT maxMinValueTimeSlidingWindowWithNonAlignedAndValueFilterTest executeQuery2"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -6473,6 +6532,11 @@ public class IoTDBAlignedSeriesQueryIT {
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
+        time2 = System.nanoTime();
+        log.info(
+            "[3936text] IoTDBAlignedSeriesQueryIT maxMinValueTimeSlidingWindowWithNonAlignedAndValueFilterTest next2"
+                + (double) (time2 - time1) / (1e9));
+        time1 = time2;
         Assert.assertEquals(0, cnt);
       }
     }
