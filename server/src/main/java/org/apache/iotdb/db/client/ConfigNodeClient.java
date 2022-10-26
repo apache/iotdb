@@ -493,6 +493,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
+      reconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
