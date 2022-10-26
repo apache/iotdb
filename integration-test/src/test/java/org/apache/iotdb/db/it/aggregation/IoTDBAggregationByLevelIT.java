@@ -684,10 +684,11 @@ public class IoTDBAggregationByLevelIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(status),count(status) from root.** GROUP BY level=0")) {
-        while (resultSet.next()) {
-          ResultSetMetaData metaData = resultSet.getMetaData();
-          Assert.assertEquals(metaData.getColumnName(1), metaData.getColumnName(2));
-        }
+
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        Assert.assertEquals(metaData.getColumnName(1), metaData.getColumnName(2));
+        Assert.assertEquals(count("root.*.*.status"), metaData.getColumnName(1));
+        Assert.assertEquals(2, metaData.getColumnCount());
       }
     }
   }
