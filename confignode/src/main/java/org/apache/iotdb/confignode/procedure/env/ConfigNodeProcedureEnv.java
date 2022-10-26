@@ -38,7 +38,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -51,7 +50,6 @@ import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
-import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -171,35 +169,19 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Let the remotely new ConfigNode build the ConsensusGroup
+   * Only ConfigNode leader will invoke this method. Add the new ConfigNode Peer into
+   * PartitionRegionGroup.
    *
-   * @param tConfigNodeLocation New ConfigNode's location
+   * @param newConfigNode The new ConfigNode
+   * @throws AddPeerException When addNewNodeToExistedGroup doesn't success
    */
-  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
-      throws AddConsensusGroupException {
-    List<TConfigNodeLocation> configNodeLocations =
+  public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
+    List<TConfigNodeLocation> originalConfigNodes =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
-    configNodeLocations.add(tConfigNodeLocation);
-    TSStatus status =
-        (TSStatus)
-            SyncConfigNodeClientPool.getInstance()
-                .sendSyncRequestToConfigNodeWithRetry(
-                    tConfigNodeLocation.getInternalEndPoint(),
-                    new TAddConsensusGroupReq(configNodeLocations),
-                    ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AddConsensusGroupException(tConfigNodeLocation);
-    }
-  }
 
-  /**
-   * Leader will add the new ConfigNode Peer into PartitionRegion
-   *
-   * @param configNodeLocation The new ConfigNode
-   * @throws AddPeerException When addPeer doesn't success
-   */
-  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
-    configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
+    configManager
+        .getConsensusManager()
+        .addNewNodeToExistedGroup(originalConfigNodes, newConfigNode);
   }
 
   /**
