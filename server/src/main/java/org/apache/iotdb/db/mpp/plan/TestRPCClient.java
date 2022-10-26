@@ -33,6 +33,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteReq;
+import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -62,9 +64,22 @@ public class TestRPCClient {
 
   public static void main(String args[]) {
     TestRPCClient client = new TestRPCClient();
-    //    client.removeRegionPeer();
-    client.addPeer();
+    client.removeRegionPeer();
+//    client.testWaitSyncLog();
     //    client.loadSnapshot();
+  }
+
+  private void testWaitSyncLog() {
+    try (SyncMultiLeaderServiceClient client =
+             syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
+      TWaitSyncLogCompleteRes res =
+          client.waitSyncLogComplete(
+              new TWaitSyncLogCompleteReq(new DataRegionId(1).convertToTConsensusGroupId()));
+      System.out.printf("%s, %d, %d",res.complete, res.searchIndex, res.safeIndex);
+    } catch (IOException | TException e) {
+      System.out.println("Error: " + e.getMessage());
+      throw new RuntimeException(e);
+    }
   }
 
   private void loadSnapshot() {
@@ -96,7 +111,7 @@ public class TestRPCClient {
     try (SyncDataNodeInternalServiceClient client =
         INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.removeRegionPeer(
-          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
+          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation3(3)));
     } catch (IOException | TException e) {
       throw new RuntimeException(e);
     }
