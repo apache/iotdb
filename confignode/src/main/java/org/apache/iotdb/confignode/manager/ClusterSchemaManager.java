@@ -535,6 +535,9 @@ public class ClusterSchemaManager {
     }
   }
 
+  /**
+   * get all template set info to sync to all dataNodes, the pre unset template info won't be taken
+   */
   public byte[] getAllTemplateSetInfo() {
     AllTemplateSetInfoResp resp =
         (AllTemplateSetInfoResp)

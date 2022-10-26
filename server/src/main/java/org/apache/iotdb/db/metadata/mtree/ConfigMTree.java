@@ -636,7 +636,8 @@ public class ConfigMTree {
     }
   }
 
-  public List<String> getPathsSetOnTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
+      throws MetadataException {
     List<String> resSet = new ArrayList<>();
     CollectorTraverser<Set<String>> setTemplatePaths =
         new CollectorTraverser<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store) {
@@ -656,6 +657,10 @@ public class ConfigMTree {
 
             // if node not set template, go on traversing
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              if (filterPreUnset && node.isSchemaTemplatePreUnset()) {
+                // filter the pre unset template
+                return true;
+              }
               // if set template, and equals to target or target for all, add to result
               if (templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId()) {
                 resSet.add(node.getFullPath());

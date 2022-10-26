@@ -652,7 +652,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus status;
     try {
       int templateId = templateTable.getTemplate(getPathsSetTemplatePlan.getName()).getId();
-      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId));
+      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, false));
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -668,7 +668,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     for (Template template : templateList) {
       id = template.getId();
       try {
-        List<String> pathList = mTree.getPathsSetOnTemplate(id);
+        List<String> pathList = mTree.getPathsSetOnTemplate(id, true);
         if (!pathList.isEmpty()) {
           templateSetInfo.put(id, pathList);
         }
