@@ -37,6 +37,14 @@ public interface IEntityMNode extends IMNode {
 
   void setUseTemplate(boolean useTemplate);
 
+  boolean isPreDeactivateTemplate();
+
+  void preDeactivateTemplate();
+
+  void rollbackPreDeactivateTemplate();
+
+  void deactivateTemplate();
+
   boolean isAligned();
 
   void setAligned(boolean isAligned);

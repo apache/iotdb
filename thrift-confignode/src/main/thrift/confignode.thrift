@@ -344,7 +344,7 @@ struct TDropTriggerReq {
 
 struct TGetLocationForTriggerResp {
   1: required common.TSStatus status
-  2: required common.TDataNodeLocation dataNodeLocation
+  2: optional common.TDataNodeLocation dataNodeLocation
 }
 
 // Get trigger table from config node
@@ -486,7 +486,12 @@ struct TShowPipeInfo {
   6: required string message
 }
 
-struct TPipeInfo {
+struct TGetAllPipeInfoResp{
+  1: required common.TSStatus status
+  2: optional list<binary> allPipeInfo
+}
+
+struct TCreatePipeReq {
     1: required string pipeName
     2: required string pipeSinkName
     3: required i64 startTime
@@ -524,6 +529,12 @@ struct TShowPipeResp {
 struct TDeleteTimeSeriesReq{
   1: required string queryId
   2: required binary pathPatternTree
+}
+
+struct TDeactivateSchemaTemplateReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional string templateName
 }
 
 service IConfigNodeRPCService {
@@ -869,6 +880,7 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -893,7 +905,7 @@ service IConfigNodeRPCService {
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 
   /** Create Pipe */
-  common.TSStatus createPipe(TPipeInfo req)
+  common.TSStatus createPipe(TCreatePipeReq req)
 
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
@@ -906,6 +918,9 @@ service IConfigNodeRPCService {
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo();
 
   // ======================================================
   // TestTools
