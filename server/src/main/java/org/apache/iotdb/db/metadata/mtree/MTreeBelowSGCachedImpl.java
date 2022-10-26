@@ -433,7 +433,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     Template upperTemplate = cur.getSchemaTemplate();
     try {
       // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
-      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+      for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
         if (child == null) {
