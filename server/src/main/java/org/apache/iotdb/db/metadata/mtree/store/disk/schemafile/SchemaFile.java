@@ -117,6 +117,9 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(File file) throws IOException, MetadataException {
     // only used to sketch a schema file so a file object is necessary while
     //  components of log manipulations are not.
+    pmtFile = file;
+    filePath = pmtFile.getPath();
+    logPath = file.getParent() + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
