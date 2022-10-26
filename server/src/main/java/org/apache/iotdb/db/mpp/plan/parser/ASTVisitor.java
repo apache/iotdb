@@ -1801,11 +1801,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   /** function for parsing Alias. */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
-    String alias;
-    if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
-    } else {
-      alias = parseIdentifier(ctx.identifier().getText());
+    String alias = ctx.getText();
+    if (alias.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && alias.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = alias.substring(1, alias.length() - 1);
+      if (PathUtils.isRealNumber(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return alias;
+      }
+      return unWrapped;
     }
     return alias;
   }
