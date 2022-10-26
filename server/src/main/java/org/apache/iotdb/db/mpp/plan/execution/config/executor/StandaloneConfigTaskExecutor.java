@@ -224,7 +224,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFManagementService.getInstance().deregister(udfName);
+      UDFManagementService.getInstance().deregister(udfName, false);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
@@ -233,6 +233,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showFunctions() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show functions in standalone mode is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 
