@@ -60,11 +60,6 @@ public class NodeStatistics {
     return statusReason;
   }
 
-  public void setRemoving() {
-    this.statusReason = null;
-    this.status = NodeStatus.Removing;
-  }
-
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(loadScore, stream);
     ReadWriteIOUtils.write(status.getStatus(), stream);
@@ -106,12 +101,7 @@ public class NodeStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     NodeStatistics that = (NodeStatistics) o;
-    return status == that.status
-        && Objects.equals(statusReason, that.statusReason)
-        // In order to prevent the NodeStatistics from updating too fast.
-        // Here we consider the loadScore equal when the difference is small.
-        // TODO: optimize
-        && Math.abs(loadScore - that.loadScore) < 60 * 1000;
+    return loadScore == that.loadScore && status == that.status && Objects.equals(statusReason, that.statusReason);
   }
 
   @Override

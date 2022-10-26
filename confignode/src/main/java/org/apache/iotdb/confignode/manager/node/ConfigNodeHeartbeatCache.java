@@ -68,7 +68,9 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       status = NodeStatus.Running;
     }
 
-    // Update loadScore
+    /* Update loadScore */
+    // Only consider Running ConfigNode as available currently
+    // TODO: Construct load score module
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);

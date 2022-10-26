@@ -32,9 +32,6 @@ import java.util.Objects;
 
 public class RegionGroupStatistics {
 
-  // The DataNode where the leader resides
-  private int leaderDataNodeId;
-
   private RegionGroupStatus regionGroupStatus;
 
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
@@ -44,16 +41,10 @@ public class RegionGroupStatistics {
   }
 
   public RegionGroupStatistics(
-      int leaderDataNodeId,
       RegionGroupStatus regionGroupStatus,
       Map<Integer, RegionStatistics> regionStatisticsMap) {
-    this.leaderDataNodeId = leaderDataNodeId;
     this.regionGroupStatus = regionGroupStatus;
     this.regionStatisticsMap = regionStatisticsMap;
-  }
-
-  public int getLeaderDataNodeId() {
-    return leaderDataNodeId;
   }
 
   public RegionGroupStatus getRegionGroupStatus() {
@@ -73,11 +64,10 @@ public class RegionGroupStatistics {
   }
 
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-    return new RegionGroupStatistics(-1, RegionGroupStatus.Disabled, new HashMap<>());
+    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new HashMap<>());
   }
 
   public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(leaderDataNodeId, stream);
     ReadWriteIOUtils.write(regionGroupStatus.getStatus(), stream);
 
     ReadWriteIOUtils.write(regionStatisticsMap.size(), stream);
@@ -90,7 +80,6 @@ public class RegionGroupStatistics {
 
   // Deserializer for snapshot
   public void deserialize(InputStream inputStream) throws IOException {
-    this.leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
     this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(inputStream));
 
     int regionNum = ReadWriteIOUtils.readInt(inputStream);
@@ -104,7 +93,6 @@ public class RegionGroupStatistics {
 
   // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
-    this.leaderDataNodeId = buffer.getInt();
     this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(buffer));
 
     int regionNum = buffer.getInt();
@@ -121,25 +109,19 @@ public class RegionGroupStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroupStatistics that = (RegionGroupStatistics) o;
-    return leaderDataNodeId == that.leaderDataNodeId
-        && regionGroupStatus == that.regionGroupStatus
-        && regionStatisticsMap.equals(that.regionStatisticsMap);
+    return regionGroupStatus == that.regionGroupStatus && regionStatisticsMap.equals(that.regionStatisticsMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(leaderDataNodeId, regionGroupStatus, regionStatisticsMap);
+    return Objects.hash(regionGroupStatus, regionStatisticsMap);
   }
 
   @Override
   public String toString() {
-    return "RegionGroupStatistics{"
-        + "leaderDataNodeId="
-        + leaderDataNodeId
-        + ", regionGroupStatus="
-        + regionGroupStatus
-        + ", regionStatisticsMap="
-        + regionStatisticsMap
-        + '}';
+    return "RegionGroupStatistics{" +
+            "regionGroupStatus=" + regionGroupStatus +
+            ", regionStatisticsMap=" + regionStatisticsMap +
+            '}';
   }
 }

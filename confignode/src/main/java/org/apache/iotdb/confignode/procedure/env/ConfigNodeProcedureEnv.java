@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -45,6 +46,7 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
@@ -74,6 +76,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -314,8 +317,36 @@ public class ConfigNodeProcedureEnv {
    *
    * @param dataNodeLocation the datanode to be marked as removing status
    */
-  public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
-    configManager.getNodeManager().setNodeRemovingStatus(dataNodeLocation);
+  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) throws ProcedureException {
+    // Send request to update NodeStatus on the DataNode to be removed
+    SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeLocation.getInternalEndPoint(),
+                    NodeStatus.Removing.getStatus(),
+                    DataNodeRequestType.SET_SYSTEM_STATUS);
+
+    // Waiting for heartbeat update
+    boolean isSuccess = false;
+    for (int retry = 0; retry < 10; retry++) {
+      DataNodeHeartbeatCache cache =
+              (DataNodeHeartbeatCache)
+                      configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
+      if (NodeStatus.Removing.equals(cache.getNodeStatus())) {
+        isSuccess = true;
+        break;
+      }
+
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        LOG.warn("Wait for updating DataNode status been interrupted.");
+      }
+    }
+    if (!isSuccess) {
+      throw new ProcedureException("Change DataNode status failed.");
+    }
+
+    // Broadcast the latest RegionRouteMap
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 

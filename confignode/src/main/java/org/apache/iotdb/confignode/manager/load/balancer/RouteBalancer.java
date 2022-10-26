@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LazyGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RouteMap;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -48,6 +49,8 @@ public class RouteBalancer {
   private final IManager configManager;
 
   private final LazyGreedyRouter lazyGreedyRouter;
+
+  private final RouteMap routeMap;
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;

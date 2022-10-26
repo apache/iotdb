@@ -895,29 +895,6 @@ public class NodeManager {
     return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
   }
 
-  public boolean isNodeRemoving(int dataNodeId) {
-    DataNodeHeartbeatCache cache =
-        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
-    if (cache != null) {
-      return NodeStatus.Removing.equals(cache.getNodeStatus());
-    }
-    return false;
-  }
-
-  public void setNodeRemovingStatus(TDataNodeLocation dataNodeLocation) {
-    SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            dataNodeLocation.getInternalEndPoint(),
-            NodeStatus.Removing.getStatus(),
-            DataNodeRequestType.SET_SYSTEM_STATUS);
-    DataNodeHeartbeatCache cache =
-        (DataNodeHeartbeatCache)
-            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
-    if (cache != null) {
-      cache.setRemoving();
-    }
-  }
-
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     return nodeInfo.getRegisteredConfigNodes();
   }

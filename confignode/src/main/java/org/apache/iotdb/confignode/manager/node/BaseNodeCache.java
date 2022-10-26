@@ -91,8 +91,4 @@ public abstract class BaseNodeCache {
       return statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
     }
   }
-
-  public void setRemoving() {
-    this.statistics.setRemoving();
-  }
 }

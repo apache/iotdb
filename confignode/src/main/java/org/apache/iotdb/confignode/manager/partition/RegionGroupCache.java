@@ -36,12 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
-
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      CONF.getDataRegionConsensusProtocolClass();
-
   private final TConsensusGroupId consensusGroupId;
 
   // Map<DataNodeId(where a RegionReplica resides), RegionCache>
@@ -78,38 +72,21 @@ public class RegionGroupCache {
    *
    * <p>2. RegionStatus
    *
-   * <p>2. LeaderDataNodeId
-   *
    * @return RegionGroupStatistics if some fields of statistics changed, null otherwise
    */
   public RegionGroupStatistics updateRegionGroupStatistics() {
-    long updateVersion = Long.MIN_VALUE;
-    int leaderDataNodeId = -1;
     Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
       // Update RegionStatistics
       RegionStatistics regionStatistics = cacheEntry.getValue().getRegionStatistics();
       regionStatisticsMap.put(cacheEntry.getKey(), regionStatistics);
-
-      // Update leaderDataNodeId
-      if (regionStatistics.getVersionTimestamp() > updateVersion && regionStatistics.isLeader()) {
-        updateVersion = regionStatistics.getVersionTimestamp();
-        leaderDataNodeId = cacheEntry.getKey();
-      }
-    }
-
-    // Keep leaderDataNodeId as the default value when
-    // using the MultiLeader consensus protocol
-    if (ConsensusFactory.MultiLeaderConsensus.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
-        && TConsensusGroupType.DataRegion.equals(consensusGroupId.getType())) {
-      leaderDataNodeId = -1;
     }
 
     // Update RegionGroupStatus
     RegionGroupStatus status = updateRegionGroupStatus(regionStatisticsMap);
 
     RegionGroupStatistics newRegionGroupStatistics =
-        new RegionGroupStatistics(leaderDataNodeId, status, regionStatisticsMap);
+        new RegionGroupStatistics(status, regionStatisticsMap);
     return newRegionGroupStatistics.equals(statistics)
         ? null
         : (statistics = newRegionGroupStatistics);
