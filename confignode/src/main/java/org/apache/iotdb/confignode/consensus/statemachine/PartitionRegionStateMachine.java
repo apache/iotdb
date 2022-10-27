@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +47,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for PartitionRegion */
@@ -58,9 +61,14 @@ public class PartitionRegionStateMachine
   private ConfigManager configManager;
   private LogWriter logWriter;
   private File logFile;
+  private int startIndex;
+
+  private int endIndex;
   private int logFileId;
-  private static final String fileDir = CONF.getConsensusDir();
-  private static final String filePath = fileDir + File.separator + "log_inprogress_";
+
+  private static final String fileDir = CONF.getConsensusDir()+File.separator+"standalone";
+  private static final String fileTempPath = fileDir + File.separator + "log_inprogress_";
+  private static final String filePath = fileDir + File.separator + "log_";
   private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
@@ -121,6 +129,8 @@ public class PartitionRegionStateMachine
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
           logWriter.force();
+          File fileDir= new File(filePath);
+          Files.move(logFile.toPath(), fileDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
           LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
         }
@@ -151,6 +161,7 @@ public class PartitionRegionStateMachine
         // The method logWriter.write will execute flip() firstly, so we must make position==limit
         buffer.position(buffer.limit());
         logWriter.write(buffer);
+        logFileId=logFileId+1;
       } catch (IOException e) {
         LOGGER.error(
             "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
@@ -266,9 +277,14 @@ public class PartitionRegionStateMachine
   }
 
   private void initStandAloneConfigNode() {
+    File dir =new File(fileDir);
+    dir.mkdir();
     String[] list = new File(fileDir).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
+        if (logFileName.startsWith("log_inprogress")){
+          logFileId=Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_")+1,logFileName.length()));
+        }
         File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
         SingleFileLogReader logReader;
         try {
@@ -291,19 +307,15 @@ public class PartitionRegionStateMachine
         }
         logReader.close();
       }
+    }else {
+      logFileId=0;
     }
-    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath);
-      if (!file.exists()) {
-        logFileId = ID;
-        break;
-      }
-    }
+    startIndex=logFileId;
     createLogFile(logFileId);
   }
 
   private void createLogFile(int logFileId) {
-    logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
+    logFile = SystemFileFactory.INSTANCE.getFile(fileTempPath + logFileId);
     try {
       if (logFile.createNewFile()) {
         logWriter = new LogWriter(logFile, false);
