@@ -107,6 +107,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -505,6 +507,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetUDFJarResp getUDFJar(TGetUDFJarReq req) {
+    // todo: implementation
+    return null;
+  }
+
+  @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
     return configManager.createTrigger(req);
   }
@@ -529,6 +537,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.getLocationOfStatefulTrigger(triggerName);
   }
 
+  @Override
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
     return configManager.getTriggerJar(req);
   }
