@@ -23,10 +23,14 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class RPCServiceThriftHandler implements TServerEventHandler {
+public class RPCServiceThriftHandler extends BaseServerContextHandler
+    implements TServerEventHandler {
+  private static final Logger logger = LoggerFactory.getLogger(RPCServiceThriftHandler.class);
   private TSServiceImpl serviceImpl;
   private AtomicLong thriftConnectionNumber = new AtomicLong(0);
 
@@ -37,9 +41,9 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   }
 
   @Override
-  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
+  public ServerContext createContext(TProtocol in, TProtocol out) {
     thriftConnectionNumber.incrementAndGet();
-    return null;
+    return super.createContext(in, out);
   }
 
   @Override
@@ -47,6 +51,7 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
     // release query resources.
     serviceImpl.handleClientExit();
     thriftConnectionNumber.decrementAndGet();
+    super.deleteContext(arg0, arg1, arg2);
   }
 
   @Override
@@ -58,4 +63,11 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
     // nothing
   }
+
+  /**
+   * get the SessionManager Instance. <br>
+   * in v0.13, Cluster mode uses different SessionManager instance...
+   *
+   * @return
+   */
 }

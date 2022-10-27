@@ -22,8 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.query.control.clientsession.MqttClientSession;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -46,7 +46,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PublishHandler extends AbstractInterceptHandler {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
-  private final ConcurrentHashMap<String, Long> clientIdToSessionIdMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
+      new ConcurrentHashMap<>();
   private static final boolean isEnableOperationSync =
       IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
@@ -68,15 +69,17 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
-    if (!clientIdToSessionIdMap.containsKey(msg.getClientID())) {
+    if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       try {
-        BasicOpenSessionResp basicOpenSessionResp =
-            serviceProvider.openSession(
-                msg.getUsername(),
-                new String(msg.getPassword()),
-                ZoneId.systemDefault().toString(),
-                TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-        clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
+        MqttClientSession session = new MqttClientSession(msg.getClientID());
+        // TODO should we put this session into a ThreadLocal in SessionManager?
+        serviceProvider.login(
+            session,
+            msg.getUsername(),
+            new String(msg.getPassword()),
+            ZoneId.systemDefault().toString(),
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+        clientIdToSessionMap.put(msg.getClientID(), session);
       } catch (TException e) {
         throw new RuntimeException(e);
       }
@@ -85,19 +88,19 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
-    if (null != sessionId) {
-      serviceProvider.closeSession(sessionId);
+    MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
+    if (null != session) {
+      serviceProvider.closeSession(session);
     }
   }
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
-    if (!clientIdToSessionIdMap.containsKey(clientId)) {
+    if (!clientIdToSessionMap.containsKey(clientId)) {
       return;
     }
-    long sessionId = clientIdToSessionIdMap.get(clientId);
+    MqttClientSession session = clientIdToSessionMap.get(clientId);
     ByteBuf payload = msg.getPayload();
     String topic = msg.getTopicName();
     String username = msg.getUsername();
@@ -132,7 +135,7 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
-        TSStatus tsStatus = serviceProvider.checkAuthority(plan, sessionId);
+        TSStatus tsStatus = serviceProvider.checkAuthority(plan, session);
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
         } else {
