@@ -482,7 +482,7 @@ public class SessionPoolTest {
             .password("123")
             .fetchSize(1)
             .waitToGetSessionTimeoutInMs(2)
-            .enableCacheLeader(true)
+            .enableRedirection(true)
             .enableCompression(true)
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
@@ -495,7 +495,7 @@ public class SessionPoolTest {
     assertEquals(10, pool.getMaxSize());
     assertEquals(1, pool.getFetchSize());
     assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
-    assertTrue(pool.isEnableCacheLeader());
+    assertTrue(pool.isEnableRedirection());
     assertTrue(pool.isEnableCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());

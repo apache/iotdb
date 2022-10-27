@@ -85,8 +85,7 @@ public class SessionPool {
   private final String password;
   private int fetchSize;
   private ZoneId zoneId;
-  private boolean enableCacheLeader;
-  private boolean enableQueryRedirection = false;
+  private boolean enableRedirection;
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
@@ -121,7 +120,7 @@ public class SessionPool {
         60_000,
         false,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -138,7 +137,7 @@ public class SessionPool {
         60_000,
         false,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -157,7 +156,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -175,7 +174,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -189,7 +188,7 @@ public class SessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         host,
         port,
@@ -200,7 +199,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -213,7 +212,7 @@ public class SessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         nodeUrls,
         user,
@@ -223,7 +222,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -242,7 +241,7 @@ public class SessionPool {
         60_000,
         false,
         zoneId,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -260,7 +259,7 @@ public class SessionPool {
         60_000,
         false,
         zoneId,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -278,7 +277,7 @@ public class SessionPool {
       long waitToGetSessionTimeoutInMs,
       boolean enableCompression,
       ZoneId zoneId,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       int connectionTimeoutInMs,
       Version version,
       int thriftDefaultBufferSize,
@@ -293,7 +292,7 @@ public class SessionPool {
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -309,7 +308,7 @@ public class SessionPool {
       long waitToGetSessionTimeoutInMs,
       boolean enableCompression,
       ZoneId zoneId,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       int connectionTimeoutInMs,
       Version version,
       int thriftDefaultBufferSize,
@@ -324,7 +323,7 @@ public class SessionPool {
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -345,7 +344,7 @@ public class SessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableCacheLeader(enableCacheLeader)
+              .enableRedirection(enableRedirection)
               .version(version)
               .build();
     } else {
@@ -359,11 +358,11 @@ public class SessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableCacheLeader(enableCacheLeader)
+              .enableRedirection(enableRedirection)
               .version(version)
               .build();
     }
-    session.setEnableQueryRedirection(enableQueryRedirection);
+    session.setEnableQueryRedirection(enableRedirection);
     return session;
   }
 
@@ -2442,20 +2441,6 @@ public class SessionPool {
     return fetchSize;
   }
 
-  public void setEnableQueryRedirection(boolean enableQueryRedirection) {
-    this.enableQueryRedirection = enableQueryRedirection;
-    for (Session session : queue) {
-      session.setEnableQueryRedirection(enableQueryRedirection);
-    }
-    for (Session session : occupied.keySet()) {
-      session.setEnableQueryRedirection(enableQueryRedirection);
-    }
-  }
-
-  public boolean isEnableQueryRedirection() {
-    return enableQueryRedirection;
-  }
-
   public void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2494,18 +2479,18 @@ public class SessionPool {
     return enableCompression;
   }
 
-  public void setEnableCacheLeader(boolean enableCacheLeader) {
-    this.enableCacheLeader = enableCacheLeader;
+  public void setEnableRedirection(boolean enableRedirection) {
+    this.enableRedirection = enableRedirection;
     for (Session session : queue) {
-      session.setEnableCacheLeader(enableCacheLeader);
+      session.setEnableRedirection(enableRedirection);
     }
     for (Session session : occupied.keySet()) {
-      session.setEnableCacheLeader(enableCacheLeader);
+      session.setEnableRedirection(enableRedirection);
     }
   }
 
-  public boolean isEnableCacheLeader() {
-    return enableCacheLeader;
+  public boolean isEnableRedirection() {
+    return enableRedirection;
   }
 
   public int getConnectionTimeoutInMs() {
@@ -2554,7 +2539,7 @@ public class SessionPool {
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
-    private boolean enableCacheLeader = SessionConfig.DEFAULT_CACHE_LEADER_MODE;
+    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
@@ -2619,8 +2604,8 @@ public class SessionPool {
       return this;
     }
 
-    public Builder enableCacheLeader(boolean enableCacheLeader) {
-      this.enableCacheLeader = enableCacheLeader;
+    public Builder enableRedirection(boolean enableRedirection) {
+      this.enableRedirection = enableRedirection;
       return this;
     }
 
@@ -2651,7 +2636,7 @@ public class SessionPool {
             waitToGetSessionTimeoutInMs,
             enableCompression,
             zoneId,
-            enableCacheLeader,
+            enableRedirection,
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,
@@ -2666,7 +2651,7 @@ public class SessionPool {
             waitToGetSessionTimeoutInMs,
             enableCompression,
             zoneId,
-            enableCacheLeader,
+            enableRedirection,
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,

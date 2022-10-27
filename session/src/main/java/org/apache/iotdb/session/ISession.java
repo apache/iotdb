@@ -432,9 +432,9 @@ public interface ISession extends AutoCloseable {
 
   void setEnableQueryRedirection(boolean enableQueryRedirection);
 
-  boolean isEnableCacheLeader();
+  boolean isEnableRedirection();
 
-  void setEnableCacheLeader(boolean enableCacheLeader);
+  void setEnableRedirection(boolean enableRedirection);
 
   void sortTablet(Tablet tablet);
 }

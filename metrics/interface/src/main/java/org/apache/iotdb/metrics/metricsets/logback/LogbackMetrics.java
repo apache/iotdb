@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.metricsets.predefined.logback;
+package org.apache.iotdb.metrics.metricsets.logback;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
