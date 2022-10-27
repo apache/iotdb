@@ -135,7 +135,7 @@ public class SyncManager {
   }
 
   public TSStatus preCreatePipe(PipeInfo pipeInfo) {
-    pipeInfo.setStatus(PipeStatus.PREPARE_CREATE);
+    pipeInfo.setStatus(PipeStatus.PARTIAL_CREATE);
     return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
   }
 
@@ -213,6 +213,8 @@ public class SyncManager {
    * Broadcast DataNodes to operate PIPE operation for roll back procedure.
    *
    * @param pipeName name of PIPE
+   * @param createTime specifies the version of the pipe that needs to be rolled back to avoid
+   *     concurrent errors caused by retry requests
    * @param operation only support {@link SyncOperation#START_PIPE}, {@link SyncOperation#STOP_PIPE}
    *     and {@link SyncOperation#DROP_PIPE}
    * @param dataNodeIds target DataNodeId set

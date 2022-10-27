@@ -72,7 +72,7 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to pre-drop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_DROP);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_DROP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -89,14 +89,15 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to drop PIPE [%s] because %s.",
+              "Fail to drop PIPE [%s] because %s. Please execute [DROP PIPE %s] later to retry.",
               pipeName,
               StringUtils.join(
                   responseMap.values().stream()
                       .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .map(TSStatus::getMessage)
                       .toArray(),
-                  ", ")));
+                  ", "),
+              pipeName));
     }
   }
 

@@ -923,7 +923,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void PreCreatePipePlanTest() throws IOException {
     PipeInfo pipeInfo =
         new TsFilePipeInfo(
-            "name", "demo", PipeStatus.PREPARE_CREATE, System.currentTimeMillis(), 999, false);
+            "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
     PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
     PreCreatePipePlan PreCreatePipePlan1 =
         (PreCreatePipePlan)
@@ -933,7 +933,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlan() throws IOException {
-    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PREPARE_CREATE);
+    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PARTIAL_CREATE);
     SetPipeStatusPlan setPipeStatusPlan1 =
         (SetPipeStatusPlan)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());

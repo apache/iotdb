@@ -82,7 +82,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to pre-stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_STOP);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_STOP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }

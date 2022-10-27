@@ -596,8 +596,8 @@ public class SyncService implements IService {
           "Recover PIPE [{}] whose status is {}",
           pipeInfo.getPipeName(),
           pipeInfo.getStatus().name());
-      if (PipeStatus.PREPARE_CREATE.equals(pipeInfo.getStatus())
-          || PipeStatus.PREPARE_DROP.equals(pipeInfo.getStatus())) {
+      if (PipeStatus.PARTIAL_CREATE.equals(pipeInfo.getStatus())
+          || PipeStatus.PARTIAL_DROP.equals(pipeInfo.getStatus())) {
         // skip
         logger.info(
             "Skip PIPE [{}] because its status is {}",
@@ -614,12 +614,12 @@ public class SyncService implements IService {
           pipe.start();
           break;
         case STOP:
-        case PREPARE_START:
-        case PREPARE_STOP:
+        case PARTIAL_START:
+        case PARTIAL_STOP:
           pipe.stop();
           break;
-        case PREPARE_CREATE:
-        case PREPARE_DROP:
+        case PARTIAL_CREATE:
+        case PARTIAL_DROP:
           throw new PipeException("Unexpected status " + pipeInfo.getStatus().name());
         default:
           throw new IOException(

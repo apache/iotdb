@@ -23,8 +23,8 @@ public enum PipeStatus {
   RUNNING,
   STOP,
   // internal status
-  PREPARE_CREATE,
-  PREPARE_START,
-  PREPARE_STOP,
-  PREPARE_DROP
+  PARTIAL_CREATE,
+  PARTIAL_START,
+  PARTIAL_STOP,
+  PARTIAL_DROP
 }
