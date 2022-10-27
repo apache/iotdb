@@ -39,8 +39,7 @@ import java.io.IOException;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
-  protected static final int subTaskNum =
-      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+  protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
@@ -51,39 +50,36 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int[] chunkPointNumArray = new int[subTaskNum];
 
   // used to control the target chunk size
-  public static final long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  public long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   // used to control the point num of target chunk
-  public static final long targetChunkPointNum =
+  public long targetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
-  public static final long chunkSizeLowerBoundInCompaction =
+  public long chunkSizeLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
 
   // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
-  public static final long chunkPointNumLowerBoundInCompaction =
+  public long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   // if unsealed page size is lower then this, then deserialize next page no matter it is
   // overlapped or not
-  public static final long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
+  public long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
 
   // if point num of unsealed page is lower then this, then deserialize next page no matter it is
   // overlapped or not
-  public static final long pagePointNumLowerBoundInCompaction =
-      chunkPointNumLowerBoundInCompaction / 10;
+  public long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
 
   // When num of points writing into target files reaches check point, then check chunk size
-  public static final long checkPoint =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
+  public long checkPoint = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
 
   private long lastCheckIndex = 0;
 
-  private static final boolean enableMetrics =
+  private boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   protected boolean isAlign;
@@ -96,6 +92,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
     chunkPointNumArray[subTaskId] = 0;
+    lastCheckIndex = 0;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {

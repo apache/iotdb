@@ -178,7 +178,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           TsFileMetricManager.getInstance().deleteFile(unseqResource.getTsFileSize(), false);
         }
         for (TsFileResource targetResource : targetTsfileResourceList) {
-          TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+          if (targetResource != null) {
+            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+          }
         }
 
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);

@@ -72,11 +72,11 @@ public class AbstractCompactionTest {
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
-  private final long oldTargetChunkPointNum =
+  private static final long oldTargetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
   private static final int oldChunkGroupSize =
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
-  private static final int oldPagePointSize =
+  private static final int oldPagePointMaxNumber =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final int oldMaxCrossCompactionFileNum =
@@ -388,7 +388,7 @@ public class AbstractCompactionTest {
         .getConfig()
         .setChunkPointNumLowerBoundInCompaction(oldLowerTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(oldMaxDegreeOfIndexNode);
     EnvironmentUtils.cleanEnv();
     if (SEQ_DIRS.exists()) {
