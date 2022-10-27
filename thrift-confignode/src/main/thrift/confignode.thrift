@@ -37,6 +37,7 @@ struct TDataNodeRegisterResp {
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
   7: optional list<binary> allTriggerInformation
+  8: optional list<binary> allUDFInformation
 }
 
 struct TGlobalConfig {
@@ -314,6 +315,22 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
+}
+
+// Get jars of the corresponding trigger
+struct TGetUDFJarReq {
+  1: required list<string> jarNameList
+}
+
+struct TGetUDFJarResp {
+  1: required common.TSStatus status
+  2: required list<binary> jarList
+}
+
 // Trigger
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
@@ -355,14 +372,6 @@ struct TGetTriggerTableResp {
   2: required list<binary> allTriggerInformation
 }
 
-// Show cluster
-struct TShowClusterResp {
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
-}
-
 // Get jars of the corresponding trigger
 struct TGetTriggerJarReq {
   1: required list<string> jarNameList
@@ -371,6 +380,14 @@ struct TGetTriggerJarReq {
 struct TGetTriggerJarResp {
   1: required common.TSStatus status
   2: required list<binary> jarList
+}
+
+// Show cluster
+struct TShowClusterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
 }
 
 // Show datanodes
@@ -780,6 +797,16 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if operations on any node failed
    */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
+
+  /**
+   * Return the UDF jar list of the jar name list
+   */
+  TGetUDFJarResp getUDFJar(TGetUDFJarReq req)
 
   // ======================================================
   // Trigger

@@ -37,6 +37,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -84,9 +87,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
@@ -1096,7 +1096,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       UDFManagementService.getInstance().register(udfInformation, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.CREATE_FUNCTION_INSTANCE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -1104,10 +1104,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus dropFunction(TDropFunctionInstanceReq req) {
     try {
-      UDFManagementService.getInstance().deregister(req.getUdfName());
+      UDFManagementService.getInstance().deregister(req.getFunctionName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }

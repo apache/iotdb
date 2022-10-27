@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.UDTF;
@@ -38,7 +37,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class UDFManagementService {
 
@@ -50,7 +52,6 @@ public class UDFManagementService {
   private UDFManagementService() {
     lock = new ReentrantLock();
     udfTable = new UDFTable();
-    registerBuiltinTimeSeriesGeneratingFunctions();
   }
 
   public void acquireLock() {
@@ -189,7 +190,11 @@ public class UDFManagementService {
     }
   }
 
-  private void doRegister(UDFInformation udfInformation) throws UDFManagementException {
+  /**
+   * Only call this method directly for registering new data node, otherwise you need to call
+   * register().
+   */
+  public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     try {
@@ -225,19 +230,27 @@ public class UDFManagementService {
     }
   }
 
-  public void deregister(String functionName) throws UDFManagementException {
+  public void deregister(String functionName, boolean needToDeleteJar) throws Exception {
     try {
       acquireLock();
       UDFInformation information = udfTable.getUDFInformation(functionName);
-      if (information != null && information.isBuiltin()) {
+      if (information == null) {
+        return;
+      }
+      if (information.isBuiltin()) {
         String errorMessage =
             String.format(
                 "Built-in function %s can not be deregistered.", functionName.toUpperCase());
         LOGGER.warn(errorMessage);
         throw new UDFManagementException(errorMessage);
       }
-
       udfTable.removeUDFInformation(functionName);
+      udfTable.removeFunctionClass(functionName);
+      if (needToDeleteJar) {
+        UDFExecutableManager.getInstance().removeFileUnderLibRoot(information.getJarName());
+        UDFExecutableManager.getInstance()
+            .removeFileUnderTemporaryRoot(functionName.toUpperCase() + ".txt");
+      }
     } finally {
       releaseLock();
     }
@@ -278,17 +291,10 @@ public class UDFManagementService {
     return udfTable.getAllUDFInformation();
   }
 
-  private void registerBuiltinTimeSeriesGeneratingFunctions() {
-    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
-        BuiltinTimeSeriesGeneratingFunction.values()) {
-      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
-      udfTable.addUDFInformation(
-          functionName,
-          new UDFInformation(
-              functionName, builtinTimeSeriesGeneratingFunction.getClassName(), true));
-      udfTable.addFunctionAndClass(
-          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
-    }
+  public List<UDFInformation> getAllBuiltInTimeSeriesGeneratingInformation() {
+    return Arrays.stream(getAllUDFInformation())
+        .filter(UDFInformation::isBuiltin)
+        .collect(Collectors.toList());
   }
 
   public boolean isUDTF(String functionName)
@@ -307,7 +313,11 @@ public class UDFManagementService {
   public void deregisterAll() throws UDFManagementException {
     for (UDFInformation information : getAllUDFInformation()) {
       if (!information.isBuiltin()) {
-        deregister(information.getFunctionName());
+        try {
+          deregister(information.getFunctionName(), false);
+        } catch (Exception e) {
+          throw new UDFManagementException(e.getMessage());
+        }
       }
     }
   }

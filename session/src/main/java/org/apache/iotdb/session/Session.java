@@ -127,7 +127,7 @@ public class Session implements ISession {
   private boolean isClosed = true;
 
   // Cluster version cache
-  protected boolean enableCacheLeader;
+  protected boolean enableRedirection;
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
@@ -146,7 +146,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -160,7 +160,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -174,7 +174,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -188,7 +188,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -208,7 +208,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
@@ -223,12 +223,12 @@ public class Session implements ISession {
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-      String host, int rpcPort, String username, String password, boolean enableCacheLeader) {
+      String host, int rpcPort, String username, String password, boolean enableRedirection) {
     this(
         host,
         rpcPort,
@@ -238,7 +238,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -249,7 +249,7 @@ public class Session implements ISession {
       String password,
       int fetchSize,
       ZoneId zoneId,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         host,
         rpcPort,
@@ -259,7 +259,7 @@ public class Session implements ISession {
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -273,7 +273,7 @@ public class Session implements ISession {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
@@ -282,7 +282,7 @@ public class Session implements ISession {
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.version = version;
   }
 
@@ -295,7 +295,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -313,7 +313,7 @@ public class Session implements ISession {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -326,7 +326,7 @@ public class Session implements ISession {
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -338,7 +338,7 @@ public class Session implements ISession {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version) {
     this.nodeUrls = nodeUrls;
     this.username = username;
@@ -347,7 +347,7 @@ public class Session implements ISession {
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.version = version;
   }
 
@@ -393,7 +393,7 @@ public class Session implements ISession {
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
     defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
     isClosed = false;
-    if (enableCacheLeader || enableQueryRedirection) {
+    if (enableRedirection || enableQueryRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -406,7 +406,7 @@ public class Session implements ISession {
       return;
     }
     try {
-      if (enableCacheLeader) {
+      if (enableRedirection) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
         }
@@ -831,6 +831,21 @@ public class Session implements ISession {
       getSessionConnection(prefixPath).insertRecord(request);
     } catch (RedirectException e) {
       handleRedirection(prefixPath, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(prefixPath) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(prefixPath));
+        deviceIdToEndpoint.remove(prefixPath);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecord(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -840,12 +855,27 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecord(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecord(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
   private SessionConnection getSessionConnection(String deviceId) {
     TEndPoint endPoint;
-    if (enableCacheLeader
+    if (enableRedirection
         && !deviceIdToEndpoint.isEmpty()
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
@@ -862,7 +892,7 @@ public class Session implements ISession {
   // TODO https://issues.apache.org/jira/browse/IOTDB-1399
   private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
     // remove the cached broken leader session
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       TEndPoint endPoint = null;
       for (Iterator<Entry<TEndPoint, SessionConnection>> it =
               endPointToSessionConnection.entrySet().iterator();
@@ -885,9 +915,12 @@ public class Session implements ISession {
     }
   }
 
-  private void handleRedirection(String deviceId, TEndPoint endpoint)
-      throws IoTDBConnectionException {
-    if (enableCacheLeader) {
+  private void handleRedirection(String deviceId, TEndPoint endpoint) {
+    if (enableRedirection) {
+      // no need to redirection
+      if (endpoint.ip.equals("0.0.0.0")) {
+        return;
+      }
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       deviceIdToEndpoint.put(deviceId, endpoint);
       SessionConnection connection =
@@ -903,7 +936,7 @@ public class Session implements ISession {
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
-        throw new IoTDBConnectionException(exceptionReference.get());
+        logger.warn("Can not redirect to {}, because session can not connect to it.", endpoint);
       }
     }
   }
@@ -1135,7 +1168,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
     } else {
       TSInsertStringRecordsReq request;
@@ -1153,11 +1186,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1388,7 +1417,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
     } else {
       TSInsertStringRecordsReq request;
@@ -1407,11 +1436,7 @@ public class Session implements ISession {
 
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1568,7 +1593,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
     } else {
@@ -1587,11 +1612,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1619,7 +1640,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
     } else {
       TSInsertRecordsReq request;
@@ -1637,11 +1658,7 @@ public class Session implements ISession {
       }
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -1707,6 +1724,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1750,6 +1782,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1833,6 +1880,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -1876,6 +1938,21 @@ public class Session implements ISession {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2178,6 +2255,21 @@ public class Session implements ISession {
       getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
       handleRedirection(tablet.deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertTablet(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2211,6 +2303,21 @@ public class Session implements ISession {
       getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
       handleRedirection(tablet.deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertTablet(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -2259,18 +2366,14 @@ public class Session implements ISession {
   @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertTabletsWithLeaderCache(tablets, sorted, false);
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -2299,18 +2402,14 @@ public class Session implements ISession {
   @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (enableCacheLeader) {
+    if (enableRedirection) {
       insertTabletsWithLeaderCache(tablets, sorted, true);
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
-          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
-        }
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -3094,21 +3193,18 @@ public class Session implements ISession {
                         try {
                           insertConsumer.insert(connection, recordsReq);
                         } catch (RedirectException e) {
-                          e.getDeviceEndPointMap()
-                              .forEach(
-                                  (deviceId, endpoint) -> {
-                                    try {
-                                      handleRedirection(deviceId, endpoint);
-                                    } catch (IoTDBConnectionException ioTDBConnectionException) {
-                                      throw new CompletionException(ioTDBConnectionException);
-                                    }
-                                  });
+                          e.getDeviceEndPointMap().forEach(this::handleRedirection);
                         } catch (StatementExecutionException e) {
                           throw new CompletionException(e);
                         } catch (IoTDBConnectionException e) {
                           // remove the broken session
                           removeBrokenSessionConnection(connection);
-                          throw new CompletionException(e);
+                          try {
+                            insertConsumer.insert(defaultSessionConnection, recordsReq);
+                          } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                            throw new CompletionException(ex);
+                          } catch (RedirectException ignored) {
+                          }
                         }
                       },
                       OPERATION_EXECUTOR);
@@ -3144,13 +3240,13 @@ public class Session implements ISession {
   }
 
   @Override
-  public boolean isEnableCacheLeader() {
-    return enableCacheLeader;
+  public boolean isEnableRedirection() {
+    return enableRedirection;
   }
 
   @Override
-  public void setEnableCacheLeader(boolean enableCacheLeader) {
-    this.enableCacheLeader = enableCacheLeader;
+  public void setEnableRedirection(boolean enableRedirection) {
+    this.enableRedirection = enableRedirection;
   }
 
   public static class Builder {
@@ -3162,7 +3258,7 @@ public class Session implements ISession {
     private ZoneId zoneId = null;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    private boolean enableCacheLeader = SessionConfig.DEFAULT_CACHE_LEADER_MODE;
+    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
@@ -3208,8 +3304,8 @@ public class Session implements ISession {
       return this;
     }
 
-    public Builder enableCacheLeader(boolean enableCacheLeader) {
-      this.enableCacheLeader = enableCacheLeader;
+    public Builder enableRedirection(boolean enableRedirection) {
+      this.enableRedirection = enableRedirection;
       return this;
     }
 
@@ -3245,7 +3341,7 @@ public class Session implements ISession {
                 zoneId,
                 thriftDefaultBufferSize,
                 thriftMaxFrameSize,
-                enableCacheLeader,
+                enableRedirection,
                 version);
         newSession.setEnableQueryRedirection(true);
         return newSession;
@@ -3260,7 +3356,7 @@ public class Session implements ISession {
           zoneId,
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
-          enableCacheLeader,
+          enableRedirection,
           version);
     }
   }
