@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -43,8 +45,10 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
@@ -75,11 +79,16 @@ public class SingleSeriesCompactionExecutor {
   private final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
+  private Map<Long, Map<String, TsPrimitiveType>> valueMap;
+  private Map<String, IMeasurementSchema> schemaMap;
+
   public SingleSeriesCompactionExecutor(
       PartialPath series,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
-      TsFileResource targetResource) {
+      TsFileResource targetResource,
+      Map<Long, Map<String, TsPrimitiveType>> valueMap,
+      Map<String, IMeasurementSchema> schemaMap) {
     this.device = series.getDevice();
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
@@ -88,6 +97,8 @@ public class SingleSeriesCompactionExecutor {
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
+    this.valueMap = valueMap;
+    this.schemaMap = schemaMap;
   }
 
   /**
@@ -110,7 +121,7 @@ public class SingleSeriesCompactionExecutor {
             currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
         // if this chunk is modified, deserialize it into points
-        if (chunkMetadata.getDeleteIntervalList() != null) {
+        if (chunkMetadata.getStartTime() > 0) {
           processModifiedChunk(currentChunk);
           continue;
         }
@@ -147,7 +158,8 @@ public class SingleSeriesCompactionExecutor {
             series.getMeasurement(),
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
-            chunkHeader.getCompressionType());
+            CompressionType.GZIP);
+    schemaMap.put(series.getMeasurement(), schema);
     this.chunkWriter = new ChunkWriterImpl(this.schema);
   }
 
@@ -220,13 +232,9 @@ public class SingleSeriesCompactionExecutor {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
-        writeTimeAndValueToChunkWriter(timeValuePair);
-        if (timeValuePair.getTimestamp() > maxEndTimestamp) {
-          maxEndTimestamp = timeValuePair.getTimestamp();
-        }
-        if (timeValuePair.getTimestamp() < minStartTimestamp) {
-          minStartTimestamp = timeValuePair.getTimestamp();
-        }
+        valueMap
+            .computeIfAbsent(timeValuePair.getTimestamp(), x -> new HashMap<>())
+            .put(series.getMeasurement(), timeValuePair.getValue());
       }
     }
     pointCountInChunkWriter += chunk.getChunkStatistic().getCount();

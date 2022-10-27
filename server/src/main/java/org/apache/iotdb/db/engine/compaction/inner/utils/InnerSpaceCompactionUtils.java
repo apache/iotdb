@@ -33,13 +33,14 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -50,8 +51,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class InnerSpaceCompactionUtils {
 
@@ -99,7 +104,7 @@ public class InnerSpaceCompactionUtils {
 
   private static void checkThreadInterrupted(TsFileResource tsFileResource)
       throws InterruptedException {
-    if (Thread.interrupted() || !IoTDB.activated) {
+    if (Thread.interrupted()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
@@ -114,6 +119,8 @@ public class InnerSpaceCompactionUtils {
       throws IOException, MetadataException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
         deviceIterator.iterateNotAlignedSeries(device, true);
+    Map<Long, Map<String, TsPrimitiveType>> valueMap = new TreeMap<>();
+    Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
@@ -125,9 +132,21 @@ public class InnerSpaceCompactionUtils {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              p, readerAndChunkMetadataList, writer, targetResource, valueMap, schemaMap);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
+    List<IMeasurementSchema> schemaList = new ArrayList<>(schemaMap.values());
+    AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
+    for (Map.Entry<Long, Map<String, TsPrimitiveType>> entry : valueMap.entrySet()) {
+      Map<String, TsPrimitiveType> vMap = entry.getValue();
+      TsPrimitiveType[] types = new TsPrimitiveType[schemaList.size()];
+      for (int i = 0; i < schemaList.size(); ++i) {
+        types[i] = vMap.get(schemaList.get(i).getMeasurementId());
+      }
+      chunkWriter.write(entry.getKey(), types);
+    }
+    chunkWriter.writeToFileWriter(writer);
     writer.checkMetadataSizeAndMayFlush();
   }
 
@@ -263,5 +282,12 @@ public class InnerSpaceCompactionUtils {
     targetResource.setFile(newFile);
     targetResource.serialize();
     targetResource.close();
+  }
+
+  public static void main(String[] args) throws Exception {
+    TsFileResource sourceResource =
+        new TsFileResource(new File("E:\\1664917514523-394-1-0.tsfile"));
+    TsFileResource targetResource = new TsFileResource(new File("E:\\Gzip-aligned.tsfile"));
+    InnerSpaceCompactionUtils.compact(targetResource, Collections.singletonList(sourceResource));
   }
 }
