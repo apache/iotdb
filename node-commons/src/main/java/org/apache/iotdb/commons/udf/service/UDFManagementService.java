@@ -197,7 +197,6 @@ public class UDFManagementService {
   public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
-    UDFClassLoaderManager.getInstance();
     try {
       UDFClassLoader currentActiveClassLoader =
           UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();

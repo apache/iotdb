@@ -47,11 +47,11 @@ public class UDFClassLoaderManager implements IService {
    */
   private volatile UDFClassLoader activeClassLoader;
 
-  private UDFClassLoaderManager(String libRoot) throws IOException {
+  private UDFClassLoaderManager(String libRoot) {
     this.libRoot = libRoot;
     LOGGER.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
-    activeClassLoader = new UDFClassLoader(libRoot);
+    activeClassLoader = null;
   }
 
   public void initializeUDFQuery(long queryId) {
@@ -74,7 +74,9 @@ public class UDFClassLoaderManager implements IService {
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
     UDFClassLoader deprecatedClassLoader = activeClassLoader;
     activeClassLoader = new UDFClassLoader(libRoot);
-    deprecatedClassLoader.markAsDeprecated();
+    if (deprecatedClassLoader != null) {
+      deprecatedClassLoader.markAsDeprecated();
+    }
     return activeClassLoader;
   }
 
@@ -113,14 +115,11 @@ public class UDFClassLoaderManager implements IService {
   private static UDFClassLoaderManager INSTANCE = null;
 
   public static synchronized UDFClassLoaderManager setupAndGetInstance(String libRoot) {
-    try {
-      if (INSTANCE == null) {
-        INSTANCE = new UDFClassLoaderManager(libRoot);
-      }
-      return INSTANCE;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+
+    if (INSTANCE == null) {
+      INSTANCE = new UDFClassLoaderManager(libRoot);
     }
+    return INSTANCE;
   }
 
   public static UDFClassLoaderManager getInstance() {
