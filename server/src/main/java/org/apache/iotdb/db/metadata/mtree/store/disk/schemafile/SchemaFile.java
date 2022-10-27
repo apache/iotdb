@@ -299,6 +299,8 @@ public class SchemaFile implements ISchemaFile {
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
    *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
+   *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
+   *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
    * </ul>
    *
@@ -312,6 +314,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
       ReadWriteIOUtils.write(templateHash, headerContent);
+      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
       pageManager = new BTreePageManager(channel, -1, logPath);
     } else {
@@ -322,6 +325,12 @@ public class SchemaFile implements ISchemaFile {
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       templateHash = ReadWriteIOUtils.readInt(headerContent);
       lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
+
+      if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
+        channel.close();
+        throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
+      }
+
       pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
     }
   }
@@ -334,6 +343,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(isEntity, headerContent);
     ReadWriteIOUtils.write(templateHash, headerContent);
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
+    ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);

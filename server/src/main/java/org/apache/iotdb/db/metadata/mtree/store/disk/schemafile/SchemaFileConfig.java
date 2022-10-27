@@ -25,7 +25,10 @@ public class SchemaFileConfig {
 
   // region SchemaFile Configuration
 
-  // folder to store .pmt files
+  // current version of schema file
+  public static final int SCHEMA_FILE_VERSION = 1;
+
+  // folder to store .pst files
   public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
