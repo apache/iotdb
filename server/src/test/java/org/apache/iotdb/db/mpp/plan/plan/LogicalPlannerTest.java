@@ -683,6 +683,46 @@ public class LogicalPlannerTest {
     }
   }
 
+  @Test
+  public void testGroupByTagWithIllegalSpecialLimitClause() {
+    String[] inputSql =
+        new String[] {
+          "select max_value(s1) from root.** group by tags(key1) disable align",
+          "select max_value(s1) from root.** group by tags(key1) align by device",
+          "select max_value(s1) from root.** group by tags(key1) without null any",
+          "select max_value(s1) from root.** group by tags(key1) limit 1",
+          "select max_value(s1) from root.** group by([0, 10000), 5ms), tags(key1) limit 1 offset 1 slimit 1 soffset 1"
+        };
+    String[] expectedMsg =
+        new String[] {
+          "AGGREGATION doesn't support disable align clause",
+          "GROUP BY TAGS does not support align by device now",
+          "WITHOUT NULL clause is not supported yet",
+          "Limit or slimit are not supported yet in GROUP BY TAGS",
+          "Limit or slimit are not supported yet in GROUP BY TAGS",
+        };
+    for (int i = 0; i < inputSql.length; i++) {
+      try {
+        parseSQLToPlanNode(inputSql[i]);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(inputSql[i], e.getMessage().contains(expectedMsg[i]));
+      }
+    }
+  }
+
+  @Test
+  public void testGroupByTagWithDuplicatedAliasWithTagKey() {
+    String sql = "select max_value(s1) as key1 from root.** group by tags(key1)";
+    try {
+      parseSQLToPlanNode(sql);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Output column is duplicated with the tag key: key1"));
+    }
+  }
+
   private PlanNode parseSQLToPlanNode(String sql) {
     Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));

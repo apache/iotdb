@@ -99,6 +99,7 @@ public enum ConfigPhysicalPlanType {
   GetTransferringTriggers,
   GetTriggerLocation,
   GetTemplateSetInfo,
+  GetFunctionTable,
   PreUnsetTemplate,
   RollbackUnsetTemplate,
   UnsetTemplate

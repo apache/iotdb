@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +31,9 @@ public class MultiLeaderMemoryManager {
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
 
-  private MultiLeaderMemoryManager() {}
+  private MultiLeaderMemoryManager() {
+    MetricService.getInstance().addMetricSet(new MultiLeaderMemoryManagerMetrics(this));
+  }
 
   public boolean reserve(long size) {
     synchronized (this) {
@@ -62,6 +66,10 @@ public class MultiLeaderMemoryManager {
 
   public void init(long maxMemorySize) {
     this.maxMemorySizeInByte = maxMemorySize;
+  }
+
+  long getMemorySizeInByte() {
+    return memorySizeInByte.get();
   }
 
   private static final MultiLeaderMemoryManager INSTANCE = new MultiLeaderMemoryManager();

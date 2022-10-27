@@ -356,6 +356,12 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_log_segment_size_max",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
+    conf.setPartitionRegionStandAloneLogSegmentSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_standalone_log_segment_size_max",
+                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
+
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
             properties.getProperty(
@@ -392,7 +398,7 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_rpc_leader_election_timeout_min_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs()))));
 
-    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_rpc_leader_election_timeout_max_ms",

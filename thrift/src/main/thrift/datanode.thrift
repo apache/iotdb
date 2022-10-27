@@ -159,14 +159,14 @@ struct TDisableDataNodeReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
-struct TCreateFunctionRequest {
-  1: required string udfName
-  2: required string className
-  3: required list<string> uris
+struct TCreateFunctionInstanceReq {
+  1: binary udfInformation
+  2: binary jarFile
 }
 
-struct TDropFunctionRequest {
-  1: required string udfName
+struct TDropFunctionInstanceReq {
+  1: required string functionName
+  2: required bool needToDeleteJar
 }
 
 struct TCreateTriggerInstanceReq {
@@ -463,14 +463,14 @@ service IDataNodeRPCService {
    *
    * @param function name, function class name, and executable uris
    **/
-  common.TSStatus createFunction(TCreateFunctionRequest req)
+  common.TSStatus createFunction(TCreateFunctionInstanceReq req)
 
   /**
    * Config node will drop a function on a list of data nodes.
    *
    * @param function name
    **/
-  common.TSStatus dropFunction(TDropFunctionRequest req)
+  common.TSStatus dropFunction(TDropFunctionInstanceReq req)
 
   /**
    * Config node will create a trigger instance on data node.

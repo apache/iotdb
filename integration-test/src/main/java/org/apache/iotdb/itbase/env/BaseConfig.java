@@ -326,4 +326,20 @@ public interface BaseConfig {
   default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
     return this;
   }
+
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
+  }
+
+  default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    return this;
+  }
+
+  default int getSelectIntoInsertTabletPlanRowLimit() {
+    return 10000;
+  }
 }

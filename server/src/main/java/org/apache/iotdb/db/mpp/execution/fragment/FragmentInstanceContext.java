@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.fragment;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -27,6 +29,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,6 +61,9 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
+  // session info
+  private SessionInfo sessionInfo;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -67,8 +73,9 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, sessionInfo);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -79,10 +86,22 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
   }
 
   // used for compaction
@@ -199,5 +218,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return sessionInfo;
   }
 }
