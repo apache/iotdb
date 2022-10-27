@@ -84,7 +84,7 @@ public interface BaseEnv {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -97,7 +97,7 @@ public interface BaseEnv {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version)
       throws IoTDBConnectionException {
     Session session =
@@ -110,7 +110,7 @@ public interface BaseEnv {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader,
+            enableRedirection,
             version);
 
     session.open();
@@ -127,7 +127,7 @@ public interface BaseEnv {
             null,
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
             SessionConfig.DEFAULT_VERSION);
     session.open();
     return session;

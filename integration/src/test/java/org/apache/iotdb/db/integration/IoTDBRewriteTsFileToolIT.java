@@ -19,11 +19,14 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.RewriteTsFileTool;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -36,6 +39,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 public class IoTDBRewriteTsFileToolIT {
@@ -55,6 +59,41 @@ public class IoTDBRewriteTsFileToolIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    if (tmpDir != null) {
+      FileUtils.deleteDirectory(new File(tmpDir));
+    }
+  }
+
+  public void unload(Statement statement)
+      throws IllegalPathException, SQLException, StorageEngineException {
+    for (TsFileResource resource :
+        StorageEngine.getInstance()
+            .getProcessor(new PartialPath("root.sg"))
+            .getSequenceFileList()) {
+      if (tmpDir == null) {
+        tmpDir =
+            resource
+                    .getTsFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParent()
+                + File.separator
+                + "tmp";
+        File tmpFile = new File(tmpDir);
+        if (!tmpFile.exists()) {
+          tmpFile.mkdirs();
+        }
+      }
+      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+    }
+    for (TsFileResource resource :
+        StorageEngine.getInstance()
+            .getProcessor(new PartialPath("root.sg"))
+            .getUnSequenceFileList()) {
+      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+    }
   }
 
   public void prepareTsFiles() throws Exception {
@@ -92,34 +131,7 @@ public class IoTDBRewriteTsFileToolIT {
 
       statement.execute("delete from root.sg.a.s1 where time > 2");
 
-      for (TsFileResource resource :
-          StorageEngine.getInstance()
-              .getProcessor(new PartialPath("root.sg"))
-              .getSequenceFileList()) {
-        if (tmpDir == null) {
-          tmpDir =
-              resource
-                      .getTsFile()
-                      .getParentFile()
-                      .getParentFile()
-                      .getParentFile()
-                      .getParentFile()
-                      .getParent()
-                  + File.separator
-                  + "tmp";
-          File tmpFile = new File(tmpDir);
-          if (!tmpFile.exists()) {
-            tmpFile.mkdirs();
-          }
-        }
-        statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
-      }
-      for (TsFileResource resource :
-          StorageEngine.getInstance()
-              .getProcessor(new PartialPath("root.sg"))
-              .getUnSequenceFileList()) {
-        statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
-      }
+      unload(statement);
     }
   }
 
@@ -151,4 +163,459 @@ public class IoTDBRewriteTsFileToolIT {
       Assert.fail();
     }
   }
+
+  @Test
+  public void testAlignedTsFileR() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            statement.execute(
+                String.format(
+                    "insert into root.sg.d%d(time, s1, s2, s3) aligned values(%d, %d, %d, %d)",
+                    deviceIndex, timestamp, timestamp + 1, timestamp + 2, timestamp + 3));
+          }
+        }
+        statement.execute("FLUSH");
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "r",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testAlignedTsFileS() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            statement.execute(
+                String.format(
+                    "insert into root.sg.d%d(time, s1, s2, s3) aligned values(%d, %d, %d, %d)",
+                    deviceIndex, timestamp, timestamp + 1, timestamp + 2, timestamp + 3));
+          }
+        }
+        statement.execute("FLUSH");
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "s",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testAlignedTsFileWithNullR() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            if (timestamp % 3 == 0) {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s2, s3) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 2, timestamp + 3));
+            } else if (timestamp % 3 == 1) {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s1, s3) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 1, timestamp + 3));
+            } else {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s1, s2) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 1, timestamp + 2));
+            }
+          }
+        }
+        statement.execute("FLUSH");
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "r",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          if (timestamp % 3 != 0) {
+            Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          } else {
+            Assert.assertEquals(s1Val, 0, 0.001);
+          }
+          if (timestamp % 3 != 1) {
+            Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          } else {
+            Assert.assertEquals(s2Val, 0, 0.001);
+          }
+          if (timestamp % 3 != 2) {
+            Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          } else {
+            Assert.assertEquals(s3Val, 0, 0.001);
+          }
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testAlignedTsFileWithNullS() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            if (timestamp % 3 == 0) {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s2, s3) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 2, timestamp + 3));
+            } else if (timestamp % 3 == 1) {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s1, s3) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 1, timestamp + 3));
+            } else {
+              statement.execute(
+                  String.format(
+                      "insert into root.sg.d%d(time, s1, s2) aligned values(%d, %d, %d)",
+                      deviceIndex, timestamp, timestamp + 1, timestamp + 2));
+            }
+          }
+        }
+        statement.execute("FLUSH");
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "s",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          if (timestamp % 3 != 0) {
+            Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          } else {
+            Assert.assertEquals(s1Val, 0, 0.001);
+          }
+          if (timestamp % 3 != 1) {
+            Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          } else {
+            Assert.assertEquals(s2Val, 0, 0.001);
+          }
+          if (timestamp % 3 != 2) {
+            Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          } else {
+            Assert.assertEquals(s3Val, 0, 0.001);
+          }
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testSimpleTsFileWithDeletionR() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            statement.execute(
+                String.format(
+                    "insert into root.sg.d%d(time, s1, s2, s3) aligned values(%d, %d, %d, %d)",
+                    deviceIndex, timestamp, timestamp + 1, timestamp + 2, timestamp + 3));
+          }
+        }
+        statement.execute("FLUSH");
+      }
+    }
+    long deleteStart = 1024, deleteEnd = 2048;
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+        statement.execute(
+            "delete from root.sg.d"
+                + deviceIndex
+                + ".** where time >= "
+                + deleteStart
+                + " and time <= "
+                + deleteEnd);
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "r",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          if (timestamp >= deleteStart && timestamp <= deleteEnd) {
+            Assert.assertFalse(resultSet.next());
+            continue;
+          }
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testSimpleTsFileWithDeletionS() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int fileIndex = 0; fileIndex < 5; fileIndex++) {
+        for (long timestamp = fileIndex * 512, end = fileIndex * 512 + 512;
+            timestamp < end;
+            ++timestamp) {
+          for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+            statement.execute(
+                String.format(
+                    "insert into root.sg.d%d(time, s1, s2, s3) aligned values(%d, %d, %d, %d)",
+                    deviceIndex, timestamp, timestamp + 1, timestamp + 2, timestamp + 3));
+          }
+        }
+        statement.execute("FLUSH");
+      }
+    }
+    long deleteStart = 1024, deleteEnd = 2048;
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+        statement.execute(
+            "delete from root.sg.d"
+                + deviceIndex
+                + ".** where time >= "
+                + deleteStart
+                + " and time <= "
+                + deleteEnd);
+      }
+      unload(statement);
+    }
+    RewriteTsFileTool.main(
+        new String[] {
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "6667",
+          "-u",
+          "root",
+          "-pw",
+          "root",
+          "-f",
+          tmpDir,
+          "-rm",
+          "s",
+          "-ig"
+        });
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (long timestamp = 0; timestamp < 512 * 5; ++timestamp) {
+        for (int deviceIndex = 0; deviceIndex < 5; ++deviceIndex) {
+          ResultSet resultSet =
+              statement.executeQuery(
+                  String.format(
+                      "select s1, s2, s3 from root.sg.d%d where time=%d", deviceIndex, timestamp));
+          if (timestamp >= deleteStart && timestamp <= deleteEnd) {
+            Assert.assertFalse(resultSet.next());
+            continue;
+          }
+          Assert.assertTrue(resultSet.next());
+          float s1Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s1");
+          float s2Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s2");
+          float s3Val = resultSet.getFloat("root.sg.d" + deviceIndex + ".s3");
+          Assert.assertEquals(s1Val, timestamp + 1, 0.001);
+          Assert.assertEquals(s2Val, timestamp + 2, 0.001);
+          Assert.assertEquals(s3Val, timestamp + 3, 0.001);
+          Assert.assertFalse(resultSet.next());
+          resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testWriteAlignedTsFileWithDeletion() {}
 }

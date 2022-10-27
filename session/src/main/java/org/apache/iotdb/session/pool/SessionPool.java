@@ -84,7 +84,7 @@ public class SessionPool {
   private final String password;
   private final int fetchSize;
   private final ZoneId zoneId;
-  private final boolean enableCacheLeader;
+  private final boolean enableRedirection;
 
   // parameters for Session#open()
   private final int connectionTimeoutInMs;
@@ -107,7 +107,7 @@ public class SessionPool {
         60_000,
         false,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -121,7 +121,7 @@ public class SessionPool {
         60_000,
         false,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -137,7 +137,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -152,7 +152,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -163,7 +163,7 @@ public class SessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         host,
         port,
@@ -174,7 +174,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -184,7 +184,7 @@ public class SessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         nodeUrls,
         user,
@@ -194,7 +194,7 @@ public class SessionPool {
         60_000,
         enableCompression,
         null,
-        enableCacheLeader,
+        enableRedirection,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -210,7 +210,7 @@ public class SessionPool {
         60_000,
         false,
         zoneId,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -225,7 +225,7 @@ public class SessionPool {
         60_000,
         false,
         zoneId,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
@@ -240,7 +240,7 @@ public class SessionPool {
       long waitToGetSessionTimeoutInMs,
       boolean enableCompression,
       ZoneId zoneId,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       int connectionTimeoutInMs) {
     this.maxSize = maxSize;
     this.host = host;
@@ -252,7 +252,7 @@ public class SessionPool {
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
 
@@ -265,7 +265,7 @@ public class SessionPool {
       long waitToGetSessionTimeoutInMs,
       boolean enableCompression,
       ZoneId zoneId,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       int connectionTimeoutInMs) {
     this.maxSize = maxSize;
     this.host = null;
@@ -277,7 +277,7 @@ public class SessionPool {
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
 
@@ -293,7 +293,7 @@ public class SessionPool {
               .password(password)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
-              .enableCacheLeader(enableCacheLeader)
+              .enableRedirection(enableRedirection)
               .build();
     } else {
       // Construct redirect-able Session
@@ -304,7 +304,7 @@ public class SessionPool {
               .password(password)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
-              .enableCacheLeader(enableCacheLeader)
+              .enableRedirection(enableRedirection)
               .build();
     }
     return session;
@@ -2297,8 +2297,8 @@ public class SessionPool {
     return enableCompression;
   }
 
-  public boolean isEnableCacheLeader() {
-    return enableCacheLeader;
+  public boolean isEnableRedirection() {
+    return enableRedirection;
   }
 
   public int getConnectionTimeoutInMs() {
@@ -2317,7 +2317,7 @@ public class SessionPool {
     private long waitToGetSessionTimeoutInMs = 60_000;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
-    private boolean enableCacheLeader = SessionConfig.DEFAULT_CACHE_LEADER_MODE;
+    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
 
     public Builder host(String host) {
@@ -2370,8 +2370,8 @@ public class SessionPool {
       return this;
     }
 
-    public Builder enableCacheLeader(boolean enableCacheLeader) {
-      this.enableCacheLeader = enableCacheLeader;
+    public Builder enableRedirection(boolean enableRedirection) {
+      this.enableRedirection = enableRedirection;
       return this;
     }
 
@@ -2392,7 +2392,7 @@ public class SessionPool {
             waitToGetSessionTimeoutInMs,
             enableCompression,
             zoneId,
-            enableCacheLeader,
+            enableRedirection,
             connectionTimeoutInMs);
       } else {
         return new SessionPool(
@@ -2404,7 +2404,7 @@ public class SessionPool {
             waitToGetSessionTimeoutInMs,
             enableCompression,
             zoneId,
-            enableCacheLeader,
+            enableRedirection,
             connectionTimeoutInMs);
       }
     }

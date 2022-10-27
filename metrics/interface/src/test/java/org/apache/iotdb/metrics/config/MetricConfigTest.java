@@ -56,7 +56,6 @@ public class MetricConfigTest {
     assertEquals(3, metricConfig.getMetricReporterList().size());
     assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
-    assertEquals(5, metricConfig.getPredefinedMetrics().size());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
 

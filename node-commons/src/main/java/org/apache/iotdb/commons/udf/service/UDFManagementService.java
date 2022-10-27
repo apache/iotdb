@@ -190,7 +190,11 @@ public class UDFManagementService {
     }
   }
 
-  private void doRegister(UDFInformation udfInformation) throws UDFManagementException {
+  /**
+   * Only call this method directly for registering new data node, otherwise you need to call
+   * register().
+   */
+  public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     try {
