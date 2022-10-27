@@ -20,6 +20,8 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.query.control.clientsession.ClientSession;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 
 import org.slf4j.Logger;
@@ -37,7 +39,7 @@ public class SessionTimeoutManager {
   private static final long SESSION_TIMEOUT =
       IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
 
-  private Map<Long, Long> sessionIdToLastActiveTime;
+  private Map<IClientSession, Long> sessionToLastActiveTime;
   private ScheduledExecutorService executorService;
 
   private SessionTimeoutManager() {
@@ -45,7 +47,7 @@ public class SessionTimeoutManager {
       return;
     }
 
-    this.sessionIdToLastActiveTime = new ConcurrentHashMap<>();
+    this.sessionToLastActiveTime = new ConcurrentHashMap<>();
     this.executorService =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "session-timeout-manager");
 
@@ -59,37 +61,43 @@ public class SessionTimeoutManager {
         TimeUnit.MILLISECONDS);
   }
 
-  public void register(long sessionId) {
+  public void register(IClientSession session) {
     if (SESSION_TIMEOUT == 0) {
       return;
     }
 
-    sessionIdToLastActiveTime.put(sessionId, System.currentTimeMillis());
+    sessionToLastActiveTime.put(session, System.currentTimeMillis());
   }
 
-  public boolean unregister(long sessionId) {
+  /**
+   * unregister the session and release all its query resources.
+   *
+   * @param session
+   * @return true if removing successfully, false otherwise (e.g., the session does not exist)
+   */
+  public boolean unregister(IClientSession session) {
     if (SESSION_TIMEOUT == 0) {
-      return ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId);
+      return ServiceProvider.SESSION_MANAGER.releaseSessionResource(session);
     }
 
-    if (ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId)) {
-      return sessionIdToLastActiveTime.remove(sessionId) != null;
+    if (ServiceProvider.SESSION_MANAGER.releaseSessionResource(session)) {
+      return sessionToLastActiveTime.remove(session) != null;
     }
 
     return false;
   }
 
-  public void refresh(long sessionId) {
+  public void refresh(IClientSession session) {
     if (SESSION_TIMEOUT == 0) {
       return;
     }
 
-    sessionIdToLastActiveTime.computeIfPresent(sessionId, (k, v) -> System.currentTimeMillis());
+    sessionToLastActiveTime.computeIfPresent(session, (k, v) -> System.currentTimeMillis());
   }
 
   private void cleanup() {
     long currentTime = System.currentTimeMillis();
-    sessionIdToLastActiveTime.entrySet().stream()
+    sessionToLastActiveTime.entrySet().stream()
         .filter(entry -> entry.getValue() + SESSION_TIMEOUT < currentTime)
         .forEach(
             entry -> {
@@ -98,6 +106,12 @@ public class SessionTimeoutManager {
                     String.format(
                         "session-%s timed out in %d ms",
                         entry.getKey(), currentTime - entry.getValue()));
+                // close the socket.
+                // currently, we only focus on RPC service.
+                // TODO do we need to consider MQTT ClientSession?
+                if (entry.getKey() instanceof ClientSession) {
+                  ((ClientSession) entry.getKey()).shutdownStream();
+                }
               }
             });
   }
@@ -106,11 +120,11 @@ public class SessionTimeoutManager {
     return SessionTimeoutManagerHelper.INSTANCE;
   }
 
-  public boolean isSessionAlive(long sessionId) {
+  public boolean isSessionAlive(IClientSession session) {
     if (SESSION_TIMEOUT == 0) {
       return true;
     }
-    return sessionIdToLastActiveTime.containsKey(sessionId);
+    return sessionToLastActiveTime.containsKey(session);
   }
 
   private static class SessionTimeoutManagerHelper {

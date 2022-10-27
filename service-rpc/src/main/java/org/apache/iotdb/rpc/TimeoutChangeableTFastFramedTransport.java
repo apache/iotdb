@@ -66,4 +66,10 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
       }
     }
   }
+
+  @Override
+  public TTransport getSocket() {
+    // in fact, this should be the same with underlying...
+    return underlyingSocket;
+  }
 }

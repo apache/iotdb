@@ -584,7 +584,7 @@ public class DateTimeUtils {
           res *= 30 * 86_400_000L;
         } else {
           Calendar calendar = Calendar.getInstance();
-          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+          calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
           calendar.add(Calendar.MONTH, (int) (value));
           res = calendar.getTimeInMillis() - currentTime;
