@@ -394,7 +394,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
-      AUDIT_LOGGER.info("[ycy:fetchResultV2] " + req.statement + " " + "begin");
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
@@ -409,15 +408,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (!hasResultSet) {
           COORDINATOR.removeQueryExecution(req.queryId);
         }
-        AUDIT_LOGGER.info(
-            "[ycy:fetchResultV2] "
-                + req.statement
-                + " "
-                + "finished"
-                + " "
-                + resp.hasResultSet
-                + " "
-                + resp.queryResult.size());
         return resp;
       }
     } catch (Exception e) {

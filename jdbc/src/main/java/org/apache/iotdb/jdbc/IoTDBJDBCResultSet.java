@@ -91,6 +91,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
+            true,
             queryId,
             ((IoTDBStatement) statement).getStmtId(),
             client,
@@ -133,6 +134,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
+            isRpcFetchResult,
             queryId,
             ((IoTDBStatement) statement).getStmtId(),
             client,
@@ -731,24 +733,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if (ioTDBRpcDataSet.hasCachedBlock()) {
-      ioTDBRpcDataSet.constructOneRow();
-      return true;
+    try {
+      return ioTDBRpcDataSet.next();
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new SQLException(e.getMessage());
     }
-    if (ioTDBRpcDataSet.hasCachedByteBuffer()) {
-      ioTDBRpcDataSet.constructOneTsBlock();
-      ioTDBRpcDataSet.constructOneRow();
-      return true;
-    }
-    if (ioTDBRpcDataSet.emptyResultSet) {
-      return false;
-    }
-    if (isRpcFetchResult && fetchResults() && ioTDBRpcDataSet.hasCachedByteBuffer()) {
-      ioTDBRpcDataSet.constructOneTsBlock();
-      ioTDBRpcDataSet.constructOneRow();
-      return true;
-    }
-    return false;
   }
 
   private boolean fetchResults() throws SQLException {

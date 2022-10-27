@@ -64,6 +64,7 @@ public class IoTDBRpcDataSet {
   public long queryId;
   public long statementId;
   public boolean ignoreTimeStamp;
+  public boolean isRpcFetchResult;
 
   public static final TsBlockSerde serde = new TsBlockSerde();
   public List<ByteBuffer> queryResult;
@@ -80,6 +81,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
+      boolean isRpcFetchResult,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -95,6 +97,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.isRpcFetchResult = isRpcFetchResult;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -159,6 +162,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
+      boolean isRpcFetchResult,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -176,6 +180,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.isRpcFetchResult = isRpcFetchResult;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -284,7 +289,7 @@ public class IoTDBRpcDataSet {
             "Cannot close dataset, because of network connection: {} ", e);
       }
     }
-    if (fetchResults() && hasCachedByteBuffer()) {
+    if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
