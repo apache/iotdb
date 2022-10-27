@@ -89,7 +89,7 @@ public abstract class ClusterIT extends Cases {
             .port(getWriteRpcPort())
             .username("root")
             .password("root")
-            .enableCacheLeader(false)
+            .enableRedirection(false)
             .build();
     session.open();
     TimeUnit.MILLISECONDS.sleep(3000);
