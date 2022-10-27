@@ -43,6 +43,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -140,6 +141,7 @@ public class IoTDBClusterRestartIT {
   }
 
   @Test
+  @Ignore
   public void clusterRestartAfterUpdateDataNodeTest() throws InterruptedException {
     TShowClusterResp clusterNodes;
     final String sg0 = "root.sg0";
