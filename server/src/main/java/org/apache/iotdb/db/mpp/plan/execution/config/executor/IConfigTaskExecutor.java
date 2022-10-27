@@ -148,7 +148,7 @@ public interface IConfigTaskExecutor {
       GetTimeSlotListStatement getTimeSlotListStatement);
 
   SettableFuture<ConfigTaskResult> createContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement);
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username);
 
   SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
 

@@ -30,13 +30,20 @@ public class CreateContinuousQueryTask implements IConfigTask {
 
   private final CreateContinuousQueryStatement createContinuousQueryStatement;
 
-  public CreateContinuousQueryTask(CreateContinuousQueryStatement createContinuousQueryStatement) {
+  private final String sql;
+
+  private final String username;
+
+  public CreateContinuousQueryTask(
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
     this.createContinuousQueryStatement = createContinuousQueryStatement;
+    this.sql = sql;
+    this.username = username;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createContinuousQuery(createContinuousQueryStatement);
+    return configTaskExecutor.createContinuousQuery(createContinuousQueryStatement, sql, username);
   }
 }

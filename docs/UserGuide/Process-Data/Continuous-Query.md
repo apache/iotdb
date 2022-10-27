@@ -125,7 +125,7 @@ BEGIN
 SELECT max_value(temperature)
   INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
-  GROUP BY time(10s)
+  GROUP BY(10s)
 END
 ```
 
@@ -182,7 +182,7 @@ BEGIN
   SELECT max_value(temperature)
   INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
-  GROUP BY time(10s)
+  GROUP BY(10s)
 END
 ```
 
@@ -257,7 +257,7 @@ BEGIN
   SELECT max_value(temperature)
   INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
-  GROUP BY time(10s)
+  GROUP BY(10s)
   FILL(100.0)
 END
 ```
@@ -321,7 +321,7 @@ BEGIN
   SELECT max_value(temperature)
   INTO root.ln.wf02.wt02(temperature_max), root.ln.wf02.wt01(temperature_max), root.ln.wf01.wt02(temperature_max), root.ln.wf01.wt01(temperature_max)
   FROM root.ln.*.*
-  GROUP BY time(10s)
+  GROUP BY(10s)
   FILL(100.0)
 END
 ```

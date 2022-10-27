@@ -361,7 +361,8 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitCreateContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, TaskContext context) {
-    return new CreateContinuousQueryTask(createContinuousQueryStatement);
+    return new CreateContinuousQueryTask(
+        createContinuousQueryStatement, context.sql, context.username);
   }
 
   @Override
@@ -380,12 +381,26 @@ public class ConfigTaskVisitor
 
     private final String queryId;
 
-    public TaskContext(String queryId) {
+    private final String sql;
+
+    private final String username;
+
+    public TaskContext(String queryId, String sql, String username) {
       this.queryId = queryId;
+      this.sql = sql;
+      this.username = username;
     }
 
     public String getQueryId() {
       return queryId;
+    }
+
+    public String getSql() {
+      return sql;
+    }
+
+    public String getUsername() {
+      return username;
     }
   }
 }

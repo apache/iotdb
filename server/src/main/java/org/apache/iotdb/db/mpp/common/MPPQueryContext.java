@@ -144,4 +144,8 @@ public class MPPQueryContext {
   public TypeProvider getTypeProvider() {
     return typeProvider;
   }
+
+  public String getSql() {
+    return sql;
+  }
 }

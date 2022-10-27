@@ -646,7 +646,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement) {
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // todo: implementation

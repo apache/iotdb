@@ -96,7 +96,7 @@ public class IoTDBCQExecIT {
               + "  SELECT max_value(s1) \n"
               + "  INTO root.sg.d1(s1_max)\n"
               + "  FROM root.sg.d1\n"
-              + "  GROUP BY time(1s) \n"
+              + "  GROUP BY(1s) \n"
               + "END");
 
       long targetTime = firstExecutionTime + 5_000;
@@ -118,9 +118,9 @@ public class IoTDBCQExecIT {
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
+      } finally {
+        statement.execute("DROP CQ cq1");
       }
-
-      statement.execute("DROP CQ cq1");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -136,7 +136,7 @@ public class IoTDBCQExecIT {
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis();
       long firstExecutionTime = now + 10_000;
-      long startTime = firstExecutionTime - 4_000;
+      long startTime = firstExecutionTime - 3_000;
 
       statement.execute("create timeseries root.sg.d2.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d2.s1_max WITH DATATYPE=INT64");
@@ -174,7 +174,7 @@ public class IoTDBCQExecIT {
               + "  SELECT max_value(s1) \n"
               + "  INTO root.sg.d2(s1_max)\n"
               + "  FROM root.sg.d2\n"
-              + "  GROUP BY time(1s) \n"
+              + "  GROUP BY(1s) \n"
               + "END");
 
       long targetTime = firstExecutionTime + 5_000;
@@ -196,9 +196,9 @@ public class IoTDBCQExecIT {
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
+      } finally {
+        statement.execute("DROP CQ cq2");
       }
-
-      statement.execute("DROP CQ cq2");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -214,7 +214,7 @@ public class IoTDBCQExecIT {
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis();
       long firstExecutionTime = now + 10_000;
-      long startTime = firstExecutionTime - 4_000;
+      long startTime = firstExecutionTime - 3_000;
 
       statement.execute("create timeseries root.sg.d3.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d3.s1_max WITH DATATYPE=INT64");
@@ -245,14 +245,14 @@ public class IoTDBCQExecIT {
 
       statement.execute(
           "CREATE CONTINUOUS QUERY cq3\n"
-              + "RESAMPLE EVERY 20s\n"
+              + "RESAMPLE EVERY 2s\n"
               + String.format("BOUNDARY %d\n", firstExecutionTime)
-              + "RANGE 40s\n"
+              + "RANGE 4s\n"
               + "BEGIN \n"
               + "  SELECT max_value(s1) \n"
               + "  INTO root.sg.d3(s1_max)\n"
               + "  FROM root.sg.d3\n"
-              + "  GROUP BY time(1s) \n"
+              + "  GROUP BY(1s) \n"
               + "  FILL(100)\n"
               + "END");
 
@@ -272,7 +272,12 @@ public class IoTDBCQExecIT {
       };
       long[] expectedValue = {100, 2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d3")) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1_max from root.sg.d3 where time between "
+                  + (startTime - 1_000)
+                  + " and "
+                  + (startTime + 4_000))) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -280,9 +285,9 @@ public class IoTDBCQExecIT {
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
+      } finally {
+        statement.execute("DROP CQ cq3");
       }
-
-      statement.execute("DROP CQ cq3");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -298,7 +303,7 @@ public class IoTDBCQExecIT {
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis();
       long firstExecutionTime = now + 10_000;
-      long startTime = firstExecutionTime - 4_000;
+      long startTime = firstExecutionTime - 3_000;
 
       statement.execute("create timeseries root.sg.d4.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d4.s1_max WITH DATATYPE=INT64");
@@ -329,14 +334,14 @@ public class IoTDBCQExecIT {
 
       statement.execute(
           "CREATE CONTINUOUS QUERY cq4\n"
-              + "RESAMPLE EVERY 20s\n"
+              + "RESAMPLE EVERY 2s\n"
               + String.format("BOUNDARY %d\n", firstExecutionTime)
-              + "RANGE 20s, 10s\n"
+              + "RANGE 2s, 1s\n"
               + "BEGIN \n"
               + "  SELECT max_value(s1) \n"
               + "  INTO root.sg.d4(s1_max)\n"
               + "  FROM root.sg.d4\n"
-              + "  GROUP BY time(1s) \n"
+              + "  GROUP BY(1s) \n"
               + "END");
 
       long targetTime = firstExecutionTime + 5_000;
@@ -345,8 +350,8 @@ public class IoTDBCQExecIT {
         TimeUnit.SECONDS.sleep(1);
       }
 
-      long[] expectedTime = {startTime + 2_000, startTime + 4_000};
-      long[] expectedValue = {6, 10};
+      long[] expectedTime = {startTime + 1_000, startTime + 3_000};
+      long[] expectedValue = {4, 8};
 
       try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
         int cnt = 0;
@@ -356,9 +361,9 @@ public class IoTDBCQExecIT {
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
+      } finally {
+        statement.execute("DROP CQ cq4");
       }
-
-      statement.execute("DROP CQ cq4");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -374,10 +379,10 @@ public class IoTDBCQExecIT {
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis();
       long firstExecutionTime = now + 10_000;
-      long startTime = firstExecutionTime - 4_000;
+      long startTime = firstExecutionTime - 3_000;
 
       statement.execute("create timeseries root.sg.d5.s1 WITH DATATYPE=INT64");
-      statement.execute("create timeseries root.sg.d5.precalculated_s1 WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.sg.d5.precalculated_s1 WITH DATATYPE=DOUBLE");
 
       statement.execute(
           String.format(
@@ -407,6 +412,7 @@ public class IoTDBCQExecIT {
           "CREATE CONTINUOUS QUERY cq5\n"
               + "RESAMPLE EVERY 2s\n"
               + String.format("BOUNDARY %d\n", firstExecutionTime)
+              + "RANGE 4s\n"
               + "BEGIN \n"
               + "  SELECT s1 + 1 \n"
               + "  INTO root.sg.d5(precalculated_s1)\n"
@@ -432,20 +438,25 @@ public class IoTDBCQExecIT {
         startTime + 4_000,
         startTime + 4_500
       };
-      long[] expectedValue = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+      double[] expectedValue = {2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
 
       try (ResultSet resultSet =
-          statement.executeQuery("select precalculated_s1 from root.sg.d5")) {
+          statement.executeQuery(
+              "select precalculated_s1 from root.sg.d5 where time between "
+                  + startTime
+                  + " and "
+                  + (startTime + 4_500))) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d5.precalculated_s1"));
+          assertEquals(
+              expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
+      } finally {
+        statement.execute("DROP CQ cq5");
       }
-
-      statement.execute("DROP CQ cq5");
 
     } catch (Exception e) {
       e.printStackTrace();

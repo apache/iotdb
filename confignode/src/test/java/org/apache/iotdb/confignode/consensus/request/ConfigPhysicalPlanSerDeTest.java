@@ -1056,7 +1056,8 @@ public class ConfigPhysicalPlanSerDeTest {
                 (byte) 0,
                 "select s1 into root.backup.d1.s1 from root.sg.d1",
                 "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
-                "Asia"),
+                "Asia",
+                "root"),
             "testCq1_md5",
             executionTime);
     AddCQPlan addCQPlan1 =
@@ -1098,6 +1099,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
   }
 
+  @Test
   public void GetTriggerJarPlanTest() throws IOException {
     List<String> jarNames = new ArrayList<>();
     jarNames.add("test1");

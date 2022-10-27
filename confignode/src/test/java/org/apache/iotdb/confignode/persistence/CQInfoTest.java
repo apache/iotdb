@@ -68,7 +68,8 @@ public class CQInfoTest {
                 (byte) 0,
                 "select s1 into root.backup.d1.s1 from root.sg.d1",
                 "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
-                "Asia"),
+                "Asia",
+                "root"),
             "testCq1_md5",
             executionTime);
 
@@ -86,7 +87,8 @@ public class CQInfoTest {
                 (byte) 1,
                 "select s1 into root.backup.d2.s1 from root.sg.d2",
                 "create cq testCq2 BEGIN select s1 into root.backup.d2.s1 from root.sg.d2 END",
-                "Asia"),
+                "Asia",
+                "root"),
             "testCq2_md5",
             executionTime);
     cqInfo.addCQ(addCQPlan);

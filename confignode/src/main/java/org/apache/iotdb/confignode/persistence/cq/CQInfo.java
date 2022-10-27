@@ -114,12 +114,15 @@ public class CQInfo implements SnapshotProcessor {
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format("CQ %s doesn't exist.", cqId);
+        LOGGER.warn("Drop CQ {} failed, because it doesn't exist.", cqId);
       } else if ((md5.isPresent() && !md5.get().equals(cqEntry.md5))) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format("MD5 of CQ %s doesn't match", cqId);
+        LOGGER.warn("Drop CQ {} failed, because its MD5 doesn't match.", cqId);
       } else {
         cqMap.remove(cqId);
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        LOGGER.info("Drop CQ {} successfully.", cqId);
       }
       return res;
     } finally {
@@ -291,6 +294,8 @@ public class CQInfo implements SnapshotProcessor {
 
     private final String zoneId;
 
+    private final String username;
+
     private CQState state;
     private long lastExecutionTime;
 
@@ -306,6 +311,7 @@ public class CQInfo implements SnapshotProcessor {
           req.sql,
           md5,
           req.zoneId,
+          req.username,
           CQState.INACTIVE,
           lastExecutionTime);
     }
@@ -322,6 +328,7 @@ public class CQInfo implements SnapshotProcessor {
           other.sql,
           other.md5,
           other.zoneId,
+          other.username,
           other.state,
           other.lastExecutionTime);
     }
@@ -337,6 +344,7 @@ public class CQInfo implements SnapshotProcessor {
         String sql,
         String md5,
         String zoneId,
+        String username,
         CQState state,
         long lastExecutionTime) {
       this.cqId = cqId;
@@ -349,6 +357,7 @@ public class CQInfo implements SnapshotProcessor {
       this.sql = sql;
       this.md5 = md5;
       this.zoneId = zoneId;
+      this.username = username;
       this.state = state;
       this.lastExecutionTime = lastExecutionTime;
     }
@@ -364,6 +373,7 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(sql, stream);
       ReadWriteIOUtils.write(md5, stream);
       ReadWriteIOUtils.write(zoneId, stream);
+      ReadWriteIOUtils.write(username, stream);
       ReadWriteIOUtils.write(state.getType(), stream);
       ReadWriteIOUtils.write(lastExecutionTime, stream);
     }
@@ -379,6 +389,7 @@ public class CQInfo implements SnapshotProcessor {
       String sql = ReadWriteIOUtils.readString(stream);
       String md5 = ReadWriteIOUtils.readString(stream);
       String zoneId = ReadWriteIOUtils.readString(stream);
+      String username = ReadWriteIOUtils.readString(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
       long lastExecutionTime = ReadWriteIOUtils.readLong(stream);
       return new CQEntry(
@@ -392,6 +403,7 @@ public class CQInfo implements SnapshotProcessor {
           sql,
           md5,
           zoneId,
+          username,
           state,
           lastExecutionTime);
     }
@@ -444,6 +456,10 @@ public class CQInfo implements SnapshotProcessor {
       return zoneId;
     }
 
+    public String getUsername() {
+      return username;
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
@@ -460,6 +476,7 @@ public class CQInfo implements SnapshotProcessor {
           && Objects.equals(sql, cqEntry.sql)
           && Objects.equals(md5, cqEntry.md5)
           && Objects.equals(zoneId, cqEntry.zoneId)
+          && Objects.equals(username, cqEntry.username)
           && state == cqEntry.state;
     }
 
@@ -476,6 +493,7 @@ public class CQInfo implements SnapshotProcessor {
           sql,
           md5,
           zoneId,
+          username,
           state,
           lastExecutionTime);
     }

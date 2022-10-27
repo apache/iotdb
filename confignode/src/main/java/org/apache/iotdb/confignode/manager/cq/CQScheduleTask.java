@@ -54,6 +54,9 @@ public class CQScheduleTask implements Runnable {
   private final String md5;
 
   private final String zoneId;
+
+  private final String username;
+
   private final ScheduledExecutorService executor;
 
   private final ConfigManager configManager;
@@ -77,6 +80,7 @@ public class CQScheduleTask implements Runnable {
         req.queryBody,
         md5,
         req.zoneId,
+        req.username,
         executor,
         configManager,
         firstExecutionTime);
@@ -93,6 +97,7 @@ public class CQScheduleTask implements Runnable {
         entry.getQueryBody(),
         entry.getMd5(),
         entry.getZoneId(),
+        entry.getUsername(),
         executor,
         configManager,
         entry.getLastExecutionTime() + entry.getEveryInterval());
@@ -107,6 +112,7 @@ public class CQScheduleTask implements Runnable {
       String queryBody,
       String md5,
       String zoneId,
+      String username,
       ScheduledExecutorService executor,
       ConfigManager configManager,
       long executionTime) {
@@ -118,6 +124,7 @@ public class CQScheduleTask implements Runnable {
     this.queryBody = queryBody;
     this.md5 = md5;
     this.zoneId = zoneId;
+    this.username = username;
     this.executor = executor;
     this.configManager = configManager;
     this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval);
@@ -160,7 +167,7 @@ public class CQScheduleTask implements Runnable {
           endTime,
           System.currentTimeMillis());
       TExecuteCQ executeCQReq =
-          new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId);
+          new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId, username);
       try {
         AsyncDataNodeInternalServiceClient client =
             AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());

@@ -430,60 +430,6 @@ public class IoTDBCQIT {
             + "    GROUP BY(10m)\n"
             + "END"
       };
-      String[] formattedCqSQLs = {
-        "CREATE CQ show_cq_1\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms, 600000ms\n"
-            + "TIMEOUT POLICY BLOCKED\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (1800000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ show_cq_2\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY BLOCKED\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (1800000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ show_cq_3\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 600000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY DISCARD\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (600000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ show_cq_4\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY DISCARD\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (600000ms)\n"
-            + "END\n"
-            + ";"
-      };
 
       for (String sql : cqSQLs) {
         statement.execute(sql);
@@ -495,7 +441,7 @@ public class IoTDBCQIT {
         while (resultSet.next()) {
           // No need to add time column for aggregation query
           assertEquals(cqIds[cnt], resultSet.getString(1));
-          assertEquals(formattedCqSQLs[cnt], resultSet.getString(2));
+          assertEquals(cqSQLs[cnt], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }
@@ -558,60 +504,6 @@ public class IoTDBCQIT {
             + "    GROUP BY(10m)\n"
             + "END"
       };
-      String[] formattedCqSQLs = {
-        "CREATE CQ drop_cq_1\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms, 600000ms\n"
-            + "TIMEOUT POLICY BLOCKED\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (1800000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ drop_cq_2\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY BLOCKED\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (1800000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ drop_cq_3\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 600000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY DISCARD\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (600000ms)\n"
-            + "END\n"
-            + ";",
-        "CREATE CQ drop_cq_4\n"
-            + "RESAMPLE\n"
-            + "\tEVERY 1800000ms\n"
-            + "\tBOUNDARY 0\n"
-            + "\tRANGE 1800000ms\n"
-            + "TIMEOUT POLICY DISCARD\n"
-            + "BEGIN\n"
-            + "\tSELECT count(s1)\n"
-            + "\t\tINTO root.sg_count.d(count_s1)\n"
-            + "\t\tFROM root.sg.d\n"
-            + "\t\tGROUP BY TIME (600000ms)\n"
-            + "END\n"
-            + ";"
-      };
 
       for (String sql : cqSQLs) {
         statement.execute(sql);
@@ -623,7 +515,7 @@ public class IoTDBCQIT {
         while (resultSet.next()) {
           // No need to add time column for aggregation query
           assertEquals(cqIds[cnt], resultSet.getString(1));
-          assertEquals(formattedCqSQLs[cnt], resultSet.getString(2));
+          assertEquals(cqSQLs[cnt], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }
@@ -641,7 +533,7 @@ public class IoTDBCQIT {
         while (resultSet.next()) {
           // No need to add time column for aggregation query
           assertEquals(cqIds[resultIndex[cnt]], resultSet.getString(1));
-          assertEquals(formattedCqSQLs[resultIndex[cnt]], resultSet.getString(2));
+          assertEquals(cqSQLs[resultIndex[cnt]], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));
           cnt++;
         }

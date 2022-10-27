@@ -302,7 +302,8 @@ public class IoTDBConfigNodeSnapshotIT {
             (byte) 0,
             "select s1 into root.backup.d1(s1) from root.sg.d1",
             sql1,
-            "Asia");
+            "Asia",
+            "root");
     TCreateCQReq req2 =
         new TCreateCQReq(
             "testCq2",
@@ -313,7 +314,8 @@ public class IoTDBConfigNodeSnapshotIT {
             (byte) 1,
             "select s1 into root.backup.d2(s1) from root.sg.d2",
             sql2,
-            "Asia");
+            "Asia",
+            "root");
 
     assertEquals(client.createCQ(req1).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
     assertEquals(client.createCQ(req2).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());

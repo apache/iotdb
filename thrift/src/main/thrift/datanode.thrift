@@ -331,6 +331,7 @@ struct TExecuteCQ {
   4: required i64 timeout
   5: required string zoneId
   6: required string cqId
+  7: required string username
 }
 
 service IDataNodeRPCService {

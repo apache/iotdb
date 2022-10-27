@@ -84,10 +84,11 @@ import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -714,7 +715,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) throws TException {
+  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) {
     try {
       PipeInfo pipeInfo = PipeInfo.deserializePipeInfo(req.pipeInfo);
       SyncService.getInstance().addPipe(pipeInfo);
@@ -725,7 +726,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) throws TException {
+  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) {
     try {
       switch (SyncOperation.values()[req.getOperation()]) {
         case START_PIPE:
@@ -748,10 +749,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus executeCQ(TExecuteCQ req) throws TException {
+  public TSStatus executeCQ(TExecuteCQ req) {
 
     long sessionId =
-        SESSION_MANAGER.requestSessionId(req.cqId, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
+        SESSION_MANAGER.requestSessionId(
+            req.username, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
     String executedSQL = req.queryBody;
 
     try {
@@ -766,10 +768,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       // 1. add time filter in where
       Expression timeFilter =
-          new BetweenExpression(
-              new TimestampOperand(),
-              new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime)),
-              new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime)));
+          new LogicAndExpression(
+              new GreaterEqualExpression(
+                  new TimestampOperand(),
+                  new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime))),
+              new LessThanExpression(
+                  new TimestampOperand(),
+                  new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime))));
       if (s.getWhereCondition() != null) {
         s.getWhereCondition()
             .setPredicate(new LogicAndExpression(timeFilter, s.getWhereCondition().getPredicate()));
@@ -781,6 +786,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (s.getGroupByTimeComponent() != null) {
         s.getGroupByTimeComponent().setStartTime(req.startTime);
         s.getGroupByTimeComponent().setEndTime(req.endTime);
+        s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
 

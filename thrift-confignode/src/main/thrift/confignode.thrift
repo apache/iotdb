@@ -568,6 +568,7 @@ struct TCreateCQReq {
   7: required string queryBody
   8: required string sql
   9: required string zoneId
+  10: required string username
 }
 
 struct TDropCQReq {
