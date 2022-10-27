@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends MultiChildNode {
+public class GroupByLevelNode extends MultiChildProcessNode {
 
   // The list of aggregate descriptors
   // each GroupByLevelDescriptor will be output as one or two column of result TsBlock
@@ -85,21 +85,6 @@ public class GroupByLevelNode extends MultiChildNode {
     this.groupByLevelDescriptors = groupByLevelDescriptors;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -191,9 +176,15 @@ public class GroupByLevelNode extends MultiChildNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     GroupByLevelNode that = (GroupByLevelNode) o;
     return Objects.equals(groupByLevelDescriptors, that.groupByLevelDescriptors)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
