@@ -67,20 +67,6 @@ public class MPPQueryContext {
     this.initResultNodeContext();
   }
 
-  public MPPQueryContext(
-      String sql,
-      QueryId queryId,
-      SessionInfo session,
-      TEndPoint localDataBlockEndpoint,
-      TEndPoint localInternalEndpoint,
-      long timeOut,
-      long startTime) {
-    this(sql, queryId, session, localDataBlockEndpoint, localInternalEndpoint);
-    this.timeOut = timeOut;
-    this.startTime = startTime;
-    this.initResultNodeContext();
-  }
-
   public void prepareForRetry() {
     this.initResultNodeContext();
   }
