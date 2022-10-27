@@ -204,6 +204,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
+      case GetFunctionTable:
+        return udfInfo.getUDFTable();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -274,7 +276,7 @@ public class ConfigPlanExecutor {
       case RemoveConfigNode:
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
       case CreateFunction:
-        return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
+        return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
       case AddTriggerInTable:

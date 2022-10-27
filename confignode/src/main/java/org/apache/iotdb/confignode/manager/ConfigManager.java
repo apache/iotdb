@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -110,6 +111,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -494,8 +496,7 @@ public class ConfigManager implements IManager {
         (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
+    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
 
     return resp;
   }
@@ -535,8 +536,7 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
         devicePaths,
         resp);
@@ -559,7 +559,6 @@ public class ConfigManager implements IManager {
           resp.convertToRpcSchemaNodeManagementPartitionResp(
               getLoadManager().getLatestRegionRouteMap());
 
-      // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
           "getNodePathsPartition receive devicePaths: {}, level: {}, return TSchemaNodeManagementResp: {}",
           partialPath,
@@ -586,8 +585,7 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}",
         getDataPartitionPlan.getPartitionSlotsMap(),
         resp);
@@ -611,8 +609,7 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    // TODO: Delete or hide this LOGGER before officially release.
-    LOGGER.info(
+    LOGGER.debug(
         "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
         getOrCreateDataPartitionReq.getPartitionSlotsMap(),
         resp);
@@ -798,10 +795,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus createFunction(String udfName, String className, List<String> uris) {
+  public TSStatus createFunction(TCreateFunctionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.createFunction(udfName, className, uris)
+        ? udfManager.createFunction(req)
         : status;
   }
 
@@ -811,6 +808,14 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? udfManager.dropFunction(udfName)
         : status;
+  }
+
+  @Override
+  public TGetUDFTableResp getUDFTable() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.getUDFTable()
+        : new TGetUDFTableResp(status, Collections.emptyList());
   }
 
   @Override

@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
@@ -1196,5 +1197,13 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getTransferringTriggerPlan0.serializeToByteBuffer())
             instanceof GetTransferringTriggersPlan);
+  }
+
+  @Test
+  public void GetUDFTablePlanTest() throws IOException {
+    GetFunctionTablePlan getUDFTablePlan0 = new GetFunctionTablePlan();
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getUDFTablePlan0.serializeToByteBuffer())
+            instanceof GetFunctionTablePlan);
   }
 }

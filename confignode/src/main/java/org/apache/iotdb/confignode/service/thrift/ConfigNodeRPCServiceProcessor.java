@@ -109,6 +109,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
@@ -502,12 +505,23 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
-    return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
+    return configManager.createFunction(req);
   }
 
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) {
     return configManager.dropFunction(req.getUdfName());
+  }
+
+  @Override
+  public TGetUDFTableResp getUDFTable() {
+    return configManager.getUDFTable();
+  }
+
+  @Override
+  public TGetUDFJarResp getUDFJar(TGetUDFJarReq req) {
+    // todo: implementation
+    return null;
   }
 
   @Override
@@ -535,6 +549,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.getLocationOfStatefulTrigger(triggerName);
   }
 
+  @Override
   public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
     return configManager.getTriggerJar(req);
   }
