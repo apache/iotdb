@@ -31,7 +31,7 @@ public enum CreateRegionGroupsState {
   // 3. Delete redundant RegionReplicas in contrast to case 2.
   SHUNT_REGION_REPLICAS,
 
-  // Build RegionGroupCache for those RegionGroups that built successfully.
+  // Mark RegionGroupCache as available for those RegionGroups that created successfully.
   // For DataRegionGroups that use multi-leader consensus protocol, select leader by the way
   ACTIVATE_REGION_GROUPS,
 

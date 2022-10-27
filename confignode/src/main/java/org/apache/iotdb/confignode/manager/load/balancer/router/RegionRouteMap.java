@@ -23,8 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
+
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
@@ -74,21 +78,26 @@ public class RegionRouteMap {
     this.regionPriorityMap = regionPriorityMap;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(regionLeaderMap.size(), stream);
-    for (Map.Entry<TConsensusGroupId, Integer> leaderEntry : regionLeaderMap.entrySet()) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(leaderEntry.getKey(), stream);
-      ReadWriteIOUtils.write(leaderEntry.getValue(), stream);
-    }
+  public void serialize(OutputStream stream, TProtocol protocol) throws IOException {
+    try {
+      ReadWriteIOUtils.write(regionLeaderMap.size(), stream);
+      for (Map.Entry<TConsensusGroupId, Integer> leaderEntry : regionLeaderMap.entrySet()) {
+        leaderEntry.getKey().write(protocol);
+        ReadWriteIOUtils.write(leaderEntry.getValue(), stream);
+      }
 
-    ReadWriteIOUtils.write(regionPriorityMap.size(), stream);
-    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> priorityEntry :
-        regionPriorityMap.entrySet()) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(priorityEntry.getKey(), stream);
-      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(priorityEntry.getValue(), stream);
+      ReadWriteIOUtils.write(regionPriorityMap.size(), stream);
+      for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> priorityEntry :
+          regionPriorityMap.entrySet()) {
+        priorityEntry.getKey().write(protocol);
+        priorityEntry.getValue().write(protocol);
+      }
+    } catch (TException e) {
+      throw new IOException(e);
     }
   }
 
+  // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
     this.regionLeaderMap = new ConcurrentHashMap<>();
     int leaderEntryNum = buffer.getInt();
@@ -106,6 +115,28 @@ public class RegionRouteMap {
           ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
       TRegionReplicaSet regionReplicaSet =
           ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
+      regionPriorityMap.put(regionGroupId, regionReplicaSet);
+    }
+  }
+
+  // Deserializer for snapshot
+  public void deserialize(InputStream stream, TProtocol protocol) throws IOException, TException {
+    this.regionLeaderMap = new ConcurrentHashMap<>();
+    int leaderEntryNum = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < leaderEntryNum; i++) {
+      TConsensusGroupId regionGroupId = new TConsensusGroupId();
+      regionGroupId.read(protocol);
+      int leaderId = ReadWriteIOUtils.readInt(stream);
+      regionLeaderMap.put(regionGroupId, leaderId);
+    }
+
+    this.regionPriorityMap = new ConcurrentHashMap<>();
+    int priorityEntryNum = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < priorityEntryNum; i++) {
+      TConsensusGroupId regionGroupId = new TConsensusGroupId();
+      regionGroupId.read(protocol);
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      regionReplicaSet.read(protocol);
       regionPriorityMap.put(regionGroupId, regionReplicaSet);
     }
   }

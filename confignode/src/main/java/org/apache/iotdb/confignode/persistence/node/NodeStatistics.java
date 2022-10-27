@@ -82,6 +82,7 @@ public class NodeStatistics {
     }
   }
 
+  // Deserializer for snapshot
   public void deserialize(InputStream inputStream) throws IOException {
     loadScore = ReadWriteIOUtils.readLong(inputStream);
     status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));

@@ -155,8 +155,15 @@ public class RouteBalancer {
     }
   }
 
-  public void greedyPickLeader(TConsensusGroupId regionGroupId, List<Integer> dataNodeIds) {
+  /**
+   * Select leader for the specified RegionGroup greedily. The selected leader will be the DataNode that currently has the fewest leaders
+   *
+   * @param regionGroupId The specified RegionGroup
+   * @param dataNodeIds The indices of DataNodes where the RegionReplicas reside
+   */
+  public void greedySelectLeader(TConsensusGroupId regionGroupId, List<Integer> dataNodeIds) {
     synchronized (regionRouteMap) {
+      // Map<DataNodeId, The number of leaders>
       Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
       regionRouteMap
           .getRegionLeaderMap()
@@ -212,6 +219,7 @@ public class RouteBalancer {
     // TODO: IOTDB-4768
   }
 
+  /** Recover the regionRouteMap when the ConfigNode-Leader is switched */
   public void recoverRegionRouteMap() {
     synchronized (regionRouteMap) {
       RegionRouteMap inheritRegionRouteMap = getPartitionManager().getRegionRouteMap();
@@ -219,6 +227,8 @@ public class RouteBalancer {
           new ConcurrentHashMap<>(inheritRegionRouteMap.getRegionLeaderMap()));
       regionRouteMap.setRegionPriorityMap(
           new ConcurrentHashMap<>(inheritRegionRouteMap.getRegionPriorityMap()));
+
+      LOGGER.info("Inherit RegionRouteMap: {}", regionRouteMap);
     }
   }
 

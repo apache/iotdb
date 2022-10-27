@@ -717,50 +717,55 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
    */
-  public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
-      // Update regionGroupStatisticsMap
-      regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
-      // Log current RegionGroupStatistics
-      LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
-      for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-          regionGroupStatisticsMap.entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t {}={}",
-            regionGroupStatisticsEntry.getKey(),
-            regionGroupStatisticsEntry.getValue());
+  public TSStatus updateRegionGroupStatisticsAndRegionRouteMap(
+      UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
+    synchronized (regionGroupStatisticsMap) {
+      if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
+        // Update regionGroupStatisticsMap
+        regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+        // Log current RegionGroupStatistics
+        LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
+        for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+            regionGroupStatisticsMap.entrySet()) {
+          LOGGER.info(
+              "[UpdateLoadStatistics]\t {}={}",
+              regionGroupStatisticsEntry.getKey(),
+              regionGroupStatisticsEntry.getValue());
+        }
       }
     }
 
-    if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap().isEmpty()) {
-      // Update regionLeaderMap
-      regionRouteMap
-          .getRegionLeaderMap()
-          .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap());
-      // Log current regionLeaderMap
-      LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
-      for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
-          regionRouteMap.getRegionLeaderMap().entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t {}={}",
-            regionLeaderEntry.getKey(),
-            regionLeaderEntry.getValue());
+    synchronized (regionRouteMap) {
+      if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap().isEmpty()) {
+        // Update regionLeaderMap
+        regionRouteMap
+            .getRegionLeaderMap()
+            .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap());
+        // Log current regionLeaderMap
+        LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
+        for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
+            regionRouteMap.getRegionLeaderMap().entrySet()) {
+          LOGGER.info(
+              "[UpdateLoadStatistics]\t {}={}",
+              regionLeaderEntry.getKey(),
+              regionLeaderEntry.getValue());
+        }
       }
-    }
 
-    if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap().isEmpty()) {
-      // Update regionPriorityMap
-      regionRouteMap
-          .getRegionPriorityMap()
-          .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap());
-      // Log current regionPriorityMap
-      LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
-      for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
-          regionRouteMap.getRegionPriorityMap().entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t {}={}",
-            regionPriorityEntry.getKey(),
-            regionPriorityEntry.getValue());
+      if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap().isEmpty()) {
+        // Update regionPriorityMap
+        regionRouteMap
+            .getRegionPriorityMap()
+            .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap());
+        // Log current regionPriorityMap
+        LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
+        for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
+            regionRouteMap.getRegionPriorityMap().entrySet()) {
+          LOGGER.info(
+              "[UpdateLoadStatistics]\t {}={}",
+              regionPriorityEntry.getKey(),
+              regionPriorityEntry.getValue());
+        }
       }
     }
 
@@ -819,6 +824,9 @@ public class PartitionInfo implements SnapshotProcessor {
         regionGroupStatisticsEntry.getKey().write(protocol);
         regionGroupStatisticsEntry.getValue().serialize(fileOutputStream);
       }
+
+      // serialize RegionRouteMap
+      regionRouteMap.serialize(fileOutputStream, protocol);
 
       // write to file
       fileOutputStream.flush();
@@ -886,6 +894,9 @@ public class PartitionInfo implements SnapshotProcessor {
         regionGroupStatistics.deserialize(fileInputStream);
         regionGroupStatisticsMap.put(groupId, regionGroupStatistics);
       }
+
+      // restore RegionRouteMap
+      regionRouteMap.deserialize(fileInputStream, protocol);
     }
   }
 
@@ -944,7 +955,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
-    return nextRegionGroupId.equals(that.nextRegionGroupId)
+    return nextRegionGroupId.get() == that.nextRegionGroupId.get()
         && storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
         && regionMaintainTaskList.equals(that.regionMaintainTaskList)
         && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)

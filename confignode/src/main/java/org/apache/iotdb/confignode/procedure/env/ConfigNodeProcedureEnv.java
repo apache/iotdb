@@ -47,9 +47,10 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -61,6 +62,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
@@ -78,7 +80,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -257,12 +258,14 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Stop Config Node
+   * Stop ConfigNode and remove heartbeatCache
    *
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
    */
   public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+    getNodeManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
+
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
@@ -270,7 +273,7 @@ public class ConfigNodeProcedureEnv {
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
                     ConfigNodeRequestType.STOP_CONFIG_NODE);
-    getNodeManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
+
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
@@ -314,13 +317,12 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Mark the given datanode as removing status, and broadcast the region map, to avoid read or
+   * Mark the given datanode as removing status to avoid read or
    * write request routing to this node.
    *
    * @param dataNodeLocation the datanode to be marked as removing status
    */
-  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation)
-      throws ProcedureException {
+  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
     // Send request to update NodeStatus on the DataNode to be removed
     SyncDataNodeClientPool.getInstance()
         .sendSyncRequestToDataNodeWithRetry(
@@ -328,26 +330,12 @@ public class ConfigNodeProcedureEnv {
             NodeStatus.Removing.getStatus(),
             DataNodeRequestType.SET_SYSTEM_STATUS);
 
-    // Waiting for heartbeat update
-    for (int retry = 0; retry < 10; retry++) {
-      DataNodeHeartbeatCache cache =
-          (DataNodeHeartbeatCache)
-              configManager
-                  .getNodeManager()
-                  .getNodeCacheMap()
-                  .get(dataNodeLocation.getDataNodeId());
-      if (NodeStatus.Removing.equals(cache.getNodeStatus())) {
-        // The specified DataNode's status has been successfully updated to Removing
-        return;
-      }
-
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        LOG.warn("Wait for updating DataNode status been interrupted.");
-      }
-    }
-    throw new ProcedureException("Change DataNode status failed.");
+    // Force updating NodeStatus
+    long currentTime = System.currentTimeMillis();
+    NodeHeartbeatSample removingSample = new NodeHeartbeatSample(new THeartbeatResp(
+            currentTime, NodeStatus.Removing.getStatus()
+    ).setStatusReason(null), currentTime);
+    getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId()).forceUpdate(removingSample);
   }
 
   /**
@@ -491,15 +479,16 @@ public class ConfigNodeProcedureEnv {
 
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
+    // Force activating RegionGroup
     long currentTime = System.currentTimeMillis();
+    Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
-        (dataNodeId, regionStatus) ->
-            getPartitionManager()
-                .cacheActivateHeartbeatSample(
-                    dataNodeId,
-                    regionGroupId,
+            (dataNodeId, regionStatus) -> heartbeatSampleMap.put(dataNodeId,
                     new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
+    getPartitionManager().getRegionGroupCacheMap()
+            .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId)).forceUpdate(heartbeatSampleMap);
 
+    // Select leader greedily for multi-leader consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
         && ConsensusFactory.MultiLeaderConsensus.equals(
             ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
@@ -509,7 +498,7 @@ public class ConfigNodeProcedureEnv {
           availableDataNodes.add(statusEntry.getKey());
         }
       }
-      getLoadManager().getRouteBalancer().greedyPickLeader(regionGroupId, availableDataNodes);
+      getLoadManager().getRouteBalancer().greedySelectLeader(regionGroupId, availableDataNodes);
     }
   }
 

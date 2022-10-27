@@ -27,6 +27,11 @@ import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -88,23 +93,30 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(ConfigPhysicalPlanType.UpdateLoadStatistics.ordinal(), stream);
+    try {
+      TTransport transport = new TIOStreamTransport(stream);
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-    ReadWriteIOUtils.write(nodeStatisticsMap.size(), stream);
-    for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
-      ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), stream);
-      nodeStatisticsEntry.getValue().serialize(stream);
+      ReadWriteIOUtils.write(ConfigPhysicalPlanType.UpdateLoadStatistics.ordinal(), stream);
+
+      ReadWriteIOUtils.write(nodeStatisticsMap.size(), stream);
+      for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
+        ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), stream);
+        nodeStatisticsEntry.getValue().serialize(stream);
+      }
+
+      ReadWriteIOUtils.write(regionGroupStatisticsMap.size(), stream);
+      for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+          regionGroupStatisticsMap.entrySet()) {
+        ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
+            regionGroupStatisticsEntry.getKey(), stream);
+        regionGroupStatisticsEntry.getValue().serialize(stream);
+      }
+
+      regionRouteMap.serialize(stream, protocol);
+    } catch (TException e) {
+      throw new IOException(e);
     }
-
-    ReadWriteIOUtils.write(regionGroupStatisticsMap.size(), stream);
-    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-        regionGroupStatisticsMap.entrySet()) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
-          regionGroupStatisticsEntry.getKey(), stream);
-      regionGroupStatisticsEntry.getValue().serialize(stream);
-    }
-
-    regionRouteMap.serialize(stream);
   }
 
   @Override

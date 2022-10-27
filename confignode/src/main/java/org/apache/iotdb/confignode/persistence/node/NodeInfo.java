@@ -360,15 +360,17 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
     if (!updateLoadStatisticsPlan.getNodeStatisticsMap().isEmpty()) {
-      // Update nodeStatisticsMap
-      nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
-      // Log current NodeStatistics
-      LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-      for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t {}={}",
-            "nodeId{" + nodeCacheEntry.getKey() + "}",
-            nodeCacheEntry.getValue());
+      synchronized (nodeStatisticsMap) {
+        // Update nodeStatisticsMap
+        nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
+        // Log current NodeStatistics
+        LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
+        for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
+          LOGGER.info(
+              "[UpdateLoadStatistics]\t {}={}",
+              "nodeId{" + nodeCacheEntry.getKey() + "}",
+              nodeCacheEntry.getValue());
+        }
       }
     }
   }

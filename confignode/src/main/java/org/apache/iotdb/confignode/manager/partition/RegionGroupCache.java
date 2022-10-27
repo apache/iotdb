@@ -111,10 +111,24 @@ public class RegionGroupCache {
     }
   }
 
+  /**
+   * Actively append custom NodeHeartbeatSamples to force a change in the RegionGroupStatistics.
+   *
+   * <p> For example, this interface can be invoked in RegionGroup creating process to
+   * forcibly activate the corresponding RegionGroup's status to Available without waiting for heartbeat sampling
+   *
+   * @param newHeartbeatSamples Custom RegionHeartbeatSamples that will lead to needed RegionGroupStatistics
+   */
+  public void forceUpdate(Map<Integer, RegionHeartbeatSample> newHeartbeatSamples) {
+    newHeartbeatSamples.forEach(this::cacheHeartbeatSample);
+    updateRegionGroupStatistics();
+  }
+
   public void removeCacheIfExists(int dataNodeId) {
     regionCacheMap.remove(dataNodeId);
   }
 
+  /** @return The latest RegionGroupStatistics of the current RegionGroup */
   public RegionGroupStatistics getStatistics() {
     return statistics;
   }

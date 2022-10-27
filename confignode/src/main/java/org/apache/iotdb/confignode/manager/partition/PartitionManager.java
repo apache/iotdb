@@ -795,16 +795,6 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  public void cacheActivateHeartbeatSample(
-      int belongedDataNodeId,
-      TConsensusGroupId regionGroupId,
-      RegionHeartbeatSample regionHeartbeatSample) {
-    regionGroupCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-        .cacheHeartbeatSample(belongedDataNodeId, regionHeartbeatSample);
-    regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
-  }
-
   /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
   public void recoverRegionGroupCacheMap() {
     Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
@@ -826,6 +816,11 @@ public class PartitionManager {
     LOGGER.info("Inherit RegionGroupStatistics: {}", regionGroupStatisticsMap);
   }
 
+  /**
+   * @param regionGroupId The specified RegionGroup's index
+   * @param isLatest Is the RegionGroupStatistics latest
+   * @return RegionGroupStatistics in RegionGroupCache if the isLatest is set to True, RegionGroupStatistics in PartitionInfo otherwise
+   */
   public RegionGroupStatistics getRegionGroupStatistics(
       TConsensusGroupId regionGroupId, boolean isLatest) {
     RegionGroupStatistics result =
