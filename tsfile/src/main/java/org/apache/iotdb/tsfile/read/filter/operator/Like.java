@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -132,6 +133,14 @@ public class Like<T extends Comparable<T>> implements Filter {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
     not = ReadWriteIOUtils.readBool(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof Like
+        && Objects.equals(((Like<?>) o).value, value)
+        && ((Like<?>) o).filterType == filterType
+        && ((Like<?>) o).not == not;
   }
 
   @Override

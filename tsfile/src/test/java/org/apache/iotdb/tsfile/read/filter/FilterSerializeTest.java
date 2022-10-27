@@ -48,7 +48,7 @@ public class FilterSerializeTest {
           ValueFilter.notEq(false),
           ValueFilter.in(new HashSet<>(Arrays.asList("a", "b")), false),
           ValueFilter.in(new HashSet<>(Arrays.asList("c", "d")), true),
-          ValueFilter.regexp("s.*"),
+          ValueFilter.regexp("s.*", false),
         };
     for (Filter filter : filters) {
       validateSerialization(filter);
