@@ -41,8 +41,7 @@ public class RegionGroupStatistics {
   }
 
   public RegionGroupStatistics(
-      RegionGroupStatus regionGroupStatus,
-      Map<Integer, RegionStatistics> regionStatisticsMap) {
+      RegionGroupStatus regionGroupStatus, Map<Integer, RegionStatistics> regionStatisticsMap) {
     this.regionGroupStatus = regionGroupStatus;
     this.regionStatisticsMap = regionStatisticsMap;
   }
@@ -109,7 +108,8 @@ public class RegionGroupStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroupStatistics that = (RegionGroupStatistics) o;
-    return regionGroupStatus == that.regionGroupStatus && regionStatisticsMap.equals(that.regionStatisticsMap);
+    return regionGroupStatus == that.regionGroupStatus
+        && regionStatisticsMap.equals(that.regionStatisticsMap);
   }
 
   @Override
@@ -119,9 +119,11 @@ public class RegionGroupStatistics {
 
   @Override
   public String toString() {
-    return "RegionGroupStatistics{" +
-            "regionGroupStatus=" + regionGroupStatus +
-            ", regionStatisticsMap=" + regionStatisticsMap +
-            '}';
+    return "RegionGroupStatistics{"
+        + "regionGroupStatus="
+        + regionGroupStatus
+        + ", regionStatisticsMap="
+        + regionStatisticsMap
+        + '}';
   }
 }

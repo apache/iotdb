@@ -281,11 +281,11 @@ public class PartitionInfoTest {
     for (int i = 0; i < 10; i++) {
       Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
       for (int j = 0; j < 3; j++) {
-        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
+        regionStatisticsMap.put(j, new RegionStatistics(RegionStatus.Unknown));
       }
       updateLoadStatisticsPlan.putRegionGroupStatistics(
           new TConsensusGroupId(DataRegion, i),
-          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
+          new RegionGroupStatistics(RegionGroupStatus.Available, regionStatisticsMap));
     }
     return updateLoadStatisticsPlan;
   }

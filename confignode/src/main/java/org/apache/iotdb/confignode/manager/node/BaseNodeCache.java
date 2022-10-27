@@ -62,12 +62,8 @@ public abstract class BaseNodeCache {
     }
   }
 
-  /**
-   * Invoking periodically to update Nodes' current load statistics
-   *
-   * @return NodeStatistics if some fields of statistics changed, null otherwise
-   */
-  public abstract NodeStatistics updateNodeStatistics();
+  /** Invoking periodically to update Nodes' current load statistics */
+  public abstract void updateNodeStatistics();
 
   /**
    * TODO: The loadScore of each Node will be changed to Double
@@ -90,5 +86,9 @@ public abstract class BaseNodeCache {
     } else {
       return statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
     }
+  }
+
+  public NodeStatistics getStatistics() {
+    return statistics;
   }
 }

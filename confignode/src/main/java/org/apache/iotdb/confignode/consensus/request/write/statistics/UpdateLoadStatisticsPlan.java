@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -29,9 +30,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
 
@@ -41,15 +42,23 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
   // Map<TConsensusGroupId, newRegionGroupStatistics>
   private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
 
+  private RegionRouteMap regionRouteMap;
+
   public UpdateLoadStatisticsPlan() {
     super(ConfigPhysicalPlanType.UpdateLoadStatistics);
-    this.nodeStatisticsMap = new HashMap<>();
-    this.regionGroupStatisticsMap = new HashMap<>();
+    this.nodeStatisticsMap = new ConcurrentHashMap<>();
+    this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
   }
 
-  /** We should update and consensus the newer statistics information if exists */
-  public boolean isNeedUpdate() {
-    return !nodeStatisticsMap.isEmpty() || !regionGroupStatisticsMap.isEmpty();
+  /**
+   * Check if the current UpdateLoadStatisticsPlan is empty
+   *
+   * @return True if nodeStatisticsMap, regionGroupStatisticsMap or RegionRouteMap is empty
+   */
+  public boolean isEmpty() {
+    return nodeStatisticsMap.isEmpty()
+        && regionGroupStatisticsMap.isEmpty()
+        && regionRouteMap.isEmpty();
   }
 
   public void putNodeStatistics(int nodeId, NodeStatistics nodeStatistics) {
@@ -69,6 +78,14 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
     return regionGroupStatisticsMap;
   }
 
+  public RegionRouteMap getRegionRouteMap() {
+    return regionRouteMap;
+  }
+
+  public void setRegionRouteMap(RegionRouteMap regionRouteMap) {
+    this.regionRouteMap = regionRouteMap;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(ConfigPhysicalPlanType.UpdateLoadStatistics.ordinal(), stream);
@@ -86,6 +103,8 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
           regionGroupStatisticsEntry.getKey(), stream);
       regionGroupStatisticsEntry.getValue().serialize(stream);
     }
+
+    regionRouteMap.serialize(stream);
   }
 
   @Override
@@ -106,6 +125,9 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
       regionGroupStatistics.deserialize(buffer);
       regionGroupStatisticsMap.put(consensusGroupId, regionGroupStatistics);
     }
+
+    regionRouteMap = new RegionRouteMap();
+    regionRouteMap.deserialize(buffer);
   }
 
   @Override
@@ -115,11 +137,13 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) return false;
     UpdateLoadStatisticsPlan that = (UpdateLoadStatisticsPlan) o;
     return nodeStatisticsMap.equals(that.nodeStatisticsMap)
-        && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap);
+        && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)
+        && regionRouteMap.equals(that.regionRouteMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), nodeStatisticsMap, regionGroupStatisticsMap);
+    return Objects.hash(
+        super.hashCode(), nodeStatisticsMap, regionGroupStatisticsMap, regionRouteMap);
   }
 }

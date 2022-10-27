@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -55,6 +54,7 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -422,6 +422,10 @@ public class NodeManager {
     return dataNodeInfoList;
   }
 
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
+    return nodeInfo.getRegisteredConfigNodes();
+  }
+
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
@@ -637,7 +641,8 @@ public class NodeManager {
                   nodeCacheMap.computeIfAbsent(
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
-              getPartitionManager().getRegionGroupCacheMap());
+              getPartitionManager().getRegionGroupCacheMap(),
+              getLoadManager().getRouteBalancer());
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
@@ -805,6 +810,29 @@ public class NodeManager {
   }
 
   /**
+   * Get the DataNodeLocation of the DataNode which has the lowest load
+   *
+   * @return TDataNodeLocation
+   */
+  public TDataNodeLocation getLowestLoadDataNode() {
+    AtomicInteger result = new AtomicInteger();
+    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+
+    nodeCacheMap.forEach(
+        (dataNodeId, heartbeatCache) -> {
+          long score = heartbeatCache.getLoadScore();
+          if (score < lowestLoadScore.get()) {
+            result.set(dataNodeId);
+            lowestLoadScore.set(score);
+          }
+        });
+
+    LOGGER.info(
+        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+  }
+
+  /**
    * Get the loadScore of each DataNode
    *
    * @return Map<DataNodeId, loadScore>
@@ -819,19 +847,20 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation of the DataNode which has the lowest load
+   * Get the DataNodeLocation of the lowest load DataNode in input
    *
    * @return TDataNodeLocation
    */
-  public TDataNodeLocation getLowestLoadDataNode() {
+  public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
     AtomicInteger result = new AtomicInteger();
     AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
 
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          long score = heartbeatCache.getLoadScore();
+    nodes.forEach(
+        nodeID -> {
+          BaseNodeCache cache = nodeCacheMap.get(nodeID);
+          long score = (cache == null) ? Long.MAX_VALUE : cache.getLoadScore();
           if (score < lowestLoadScore.get()) {
-            result.set(dataNodeId);
+            result.set(nodeID);
             lowestLoadScore.set(score);
           }
         });
@@ -872,31 +901,16 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation of the lowest load DataNode in input
-   *
-   * @return TDataNodeLocation
+   * @param nodeId
+   * @param isLatest
+   * @return
    */
-  public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
-    AtomicInteger result = new AtomicInteger();
-    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
-
-    nodes.forEach(
-        nodeID -> {
-          BaseNodeCache cache = nodeCacheMap.get(nodeID);
-          long score = (cache == null) ? Long.MAX_VALUE : cache.getLoadScore();
-          if (score < lowestLoadScore.get()) {
-            result.set(nodeID);
-            lowestLoadScore.set(score);
-          }
-        });
-
-    LOGGER.info(
-        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
-  }
-
-  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
-    return nodeInfo.getRegisteredConfigNodes();
+  public NodeStatistics getNodeStatistics(int nodeId, boolean isLatest) {
+    NodeStatistics result =
+        isLatest
+            ? nodeCacheMap.get(nodeId).getStatistics()
+            : nodeInfo.getNodeStatisticsMap().get(nodeId);
+    return result == null ? NodeStatistics.generateDefaultNodeStatistics() : result;
   }
 
   private ConsensusManager getConsensusManager() {
@@ -909,5 +923,9 @@ public class NodeManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

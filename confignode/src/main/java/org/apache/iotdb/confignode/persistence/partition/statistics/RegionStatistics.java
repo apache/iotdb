@@ -72,8 +72,6 @@ public class RegionStatistics {
 
   @Override
   public String toString() {
-    return "RegionStatistics{" +
-            "regionStatus=" + regionStatus +
-            '}';
+    return "RegionStatistics{" + "regionStatus=" + regionStatus + '}';
   }
 }

@@ -66,13 +66,13 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -453,6 +453,16 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * @param storageGroup The specified StorageGroup
    * @return All Regions' RegionReplicaSet of the specified StorageGroup
    */
@@ -555,7 +565,7 @@ public class PartitionManager {
     // Get static result
     RegionInfoListResp regionInfoListResp =
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
-    Map<TConsensusGroupId, Integer> allLeadership = getAllLeadership();
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
 
     // Get cached result
     regionInfoListResp
@@ -735,55 +745,6 @@ public class PartitionManager {
   }
 
   /**
-   * Get the leadership of each RegionGroup.
-   *
-   * @return Map<RegionGroupId, DataNodeId where the leader located>
-   *     <p>Some RegionGroups that supposed to be occurred in the result map might be nonexistent
-   *     and some leaderId might be -1(leader unknown yet) due to heartbeat latency
-   */
-  public Map<TConsensusGroupId, Integer> getAllLeadership() {
-
-    // TODO: Will be optimized by IOTDB-4341
-
-    Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
-    if (ConfigNodeDescriptor.getInstance()
-        .getConf()
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
-      regionGroupCacheMap.forEach(
-          (consensusGroupId, regionGroupCache) -> {
-            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-              int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
-              if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
-                result.put(consensusGroupId, -1);
-              } else {
-                result.put(consensusGroupId, leaderDataNodeId);
-              }
-            }
-          });
-      getLoadManager()
-          .getRouteBalancer()
-          .getRouteMap()
-          .forEach(
-              (consensusGroupId, regionReplicaSet) ->
-                  result.put(
-                      consensusGroupId,
-                      regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId()));
-    } else {
-      regionGroupCacheMap.forEach(
-          (consensusGroupId, regionGroupCache) -> {
-            int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
-            if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
-              result.put(consensusGroupId, -1);
-            } else {
-              result.put(consensusGroupId, leaderDataNodeId);
-            }
-          });
-    }
-    return result;
-  }
-
-  /**
    * Filter the RegionGroups in the specified StorageGroup through the RegionGroupStatus
    *
    * @param storageGroup The specified StorageGroup
@@ -834,7 +795,7 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  public void cacheHeartbeatSample(
+  public void cacheActivateHeartbeatSample(
       int belongedDataNodeId,
       TConsensusGroupId regionGroupId,
       RegionHeartbeatSample regionHeartbeatSample) {
@@ -863,6 +824,19 @@ public class PartitionManager {
             });
 
     LOGGER.info("Inherit RegionGroupStatistics: {}", regionGroupStatisticsMap);
+  }
+
+  public RegionGroupStatistics getRegionGroupStatistics(
+      TConsensusGroupId regionGroupId, boolean isLatest) {
+    RegionGroupStatistics result =
+        isLatest
+            ? regionGroupCacheMap.get(regionGroupId).getStatistics()
+            : partitionInfo.getRegionGroupStatisticsMap().get(regionGroupId);
+    return result == null ? RegionGroupStatistics.generateDefaultRegionGroupStatistics() : result;
+  }
+
+  public RegionRouteMap getRegionRouteMap() {
+    return partitionInfo.getRegionRouteMap();
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

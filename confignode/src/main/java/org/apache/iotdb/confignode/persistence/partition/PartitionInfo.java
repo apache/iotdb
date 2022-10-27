@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
@@ -102,24 +103,32 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
 
+  /** For Cluster Partition */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
-
   // Map<StorageGroupName, StorageGroupPartitionInfo>
   private final Map<String, StorageGroupPartitionTable> storageGroupPartitionTables;
 
-  private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
-
+  /** For Region-Maintainer */
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
+
+  /** For Load-Balancing */
+  // Map<RegionGroupId, RegionGroupStatistics>
+  private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
+
+  private final RegionRouteMap regionRouteMap;
 
   private final String snapshotFileName = "partition_info.bin";
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
-    this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
+
     this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
+
+    this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
+    this.regionRouteMap = new RegionRouteMap();
   }
 
   public int generateNextRegionGroupId() {
@@ -581,6 +590,22 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+    storageGroupPartitionTables
+        .values()
+        .forEach(
+            storageGroupPartitionTable ->
+                result.addAll(storageGroupPartitionTable.getAllReplicaSets(type)));
+    return result;
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * @param storageGroup The specified StorageGroup
    * @return All Regions' RegionReplicaSet of the specified StorageGroup
    */
@@ -693,16 +718,50 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
    */
   public TSStatus updateRegionGroupStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+    if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
+      // Update regionGroupStatisticsMap
+      regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
+      // Log current RegionGroupStatistics
+      LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
+      for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
+          regionGroupStatisticsMap.entrySet()) {
+        LOGGER.info(
+            "[UpdateLoadStatistics]\t {}={}",
+            regionGroupStatisticsEntry.getKey(),
+            regionGroupStatisticsEntry.getValue());
+      }
+    }
 
-    // Log current RegionGroupStatistics
-    LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
-    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-        regionGroupStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionGroupStatisticsEntry.getKey(),
-          regionGroupStatisticsEntry.getValue());
+    if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap().isEmpty()) {
+      // Update regionLeaderMap
+      regionRouteMap
+          .getRegionLeaderMap()
+          .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap());
+      // Log current regionLeaderMap
+      LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
+      for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
+          regionRouteMap.getRegionLeaderMap().entrySet()) {
+        LOGGER.info(
+            "[UpdateLoadStatistics]\t {}={}",
+            regionLeaderEntry.getKey(),
+            regionLeaderEntry.getValue());
+      }
+    }
+
+    if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap().isEmpty()) {
+      // Update regionPriorityMap
+      regionRouteMap
+          .getRegionPriorityMap()
+          .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap());
+      // Log current regionPriorityMap
+      LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
+      for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
+          regionRouteMap.getRegionPriorityMap().entrySet()) {
+        LOGGER.info(
+            "[UpdateLoadStatistics]\t {}={}",
+            regionPriorityEntry.getKey(),
+            regionPriorityEntry.getValue());
+      }
     }
 
     return RpcUtils.SUCCESS_STATUS;
@@ -711,6 +770,10 @@ public class PartitionInfo implements SnapshotProcessor {
   /** Only used when the ConfigNode-Leader is switched */
   public Map<TConsensusGroupId, RegionGroupStatistics> getRegionGroupStatisticsMap() {
     return regionGroupStatisticsMap;
+  }
+
+  public RegionRouteMap getRegionRouteMap() {
+    return regionRouteMap;
   }
 
   @Override
@@ -873,6 +936,7 @@ public class PartitionInfo implements SnapshotProcessor {
     storageGroupPartitionTables.clear();
     regionMaintainTaskList.clear();
     regionGroupStatisticsMap.clear();
+    regionRouteMap.clear();
   }
 
   @Override
@@ -880,10 +944,11 @@ public class PartitionInfo implements SnapshotProcessor {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
-    return nextRegionGroupId.get() == that.nextRegionGroupId.get()
+    return nextRegionGroupId.equals(that.nextRegionGroupId)
         && storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
+        && regionMaintainTaskList.equals(that.regionMaintainTaskList)
         && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)
-        && regionMaintainTaskList.equals(that.regionMaintainTaskList);
+        && regionRouteMap.equals(that.regionRouteMap);
   }
 
   @Override
@@ -891,7 +956,8 @@ public class PartitionInfo implements SnapshotProcessor {
     return Objects.hash(
         nextRegionGroupId,
         storageGroupPartitionTables,
+        regionMaintainTaskList,
         regionGroupStatisticsMap,
-        regionMaintainTaskList);
+        regionRouteMap);
   }
 }

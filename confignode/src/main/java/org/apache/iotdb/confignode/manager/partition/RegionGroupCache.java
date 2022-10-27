@@ -19,16 +19,9 @@
 package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
-import org.apache.iotdb.consensus.ConsensusFactory;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -71,10 +64,8 @@ public class RegionGroupCache {
    * <p>1. RegionGroupStatus
    *
    * <p>2. RegionStatus
-   *
-   * @return RegionGroupStatistics if some fields of statistics changed, null otherwise
    */
-  public RegionGroupStatistics updateRegionGroupStatistics() {
+  public void updateRegionGroupStatistics() {
     Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
       // Update RegionStatistics
@@ -87,9 +78,10 @@ public class RegionGroupCache {
 
     RegionGroupStatistics newRegionGroupStatistics =
         new RegionGroupStatistics(status, regionStatisticsMap);
-    return newRegionGroupStatistics.equals(statistics)
-        ? null
-        : (statistics = newRegionGroupStatistics);
+    if (!statistics.equals(newRegionGroupStatistics)) {
+      // Update RegionGroupStatistics if necessary
+      statistics = newRegionGroupStatistics;
+    }
   }
 
   private RegionGroupStatus updateRegionGroupStatus(

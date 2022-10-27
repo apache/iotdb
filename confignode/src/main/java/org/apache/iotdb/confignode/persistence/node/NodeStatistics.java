@@ -101,7 +101,9 @@ public class NodeStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     NodeStatistics that = (NodeStatistics) o;
-    return loadScore == that.loadScore && status == that.status && Objects.equals(statusReason, that.statusReason);
+    return loadScore == that.loadScore
+        && status == that.status
+        && Objects.equals(statusReason, that.statusReason);
   }
 
   @Override

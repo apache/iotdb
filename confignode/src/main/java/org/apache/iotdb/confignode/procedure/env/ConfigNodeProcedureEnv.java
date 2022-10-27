@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
@@ -54,6 +55,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -317,23 +319,26 @@ public class ConfigNodeProcedureEnv {
    *
    * @param dataNodeLocation the datanode to be marked as removing status
    */
-  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) throws ProcedureException {
+  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation)
+      throws ProcedureException {
     // Send request to update NodeStatus on the DataNode to be removed
     SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                    dataNodeLocation.getInternalEndPoint(),
-                    NodeStatus.Removing.getStatus(),
-                    DataNodeRequestType.SET_SYSTEM_STATUS);
+        .sendSyncRequestToDataNodeWithRetry(
+            dataNodeLocation.getInternalEndPoint(),
+            NodeStatus.Removing.getStatus(),
+            DataNodeRequestType.SET_SYSTEM_STATUS);
 
     // Waiting for heartbeat update
-    boolean isSuccess = false;
     for (int retry = 0; retry < 10; retry++) {
       DataNodeHeartbeatCache cache =
-              (DataNodeHeartbeatCache)
-                      configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
+          (DataNodeHeartbeatCache)
+              configManager
+                  .getNodeManager()
+                  .getNodeCacheMap()
+                  .get(dataNodeLocation.getDataNodeId());
       if (NodeStatus.Removing.equals(cache.getNodeStatus())) {
-        isSuccess = true;
-        break;
+        // The specified DataNode's status has been successfully updated to Removing
+        return;
       }
 
       try {
@@ -342,12 +347,7 @@ public class ConfigNodeProcedureEnv {
         LOG.warn("Wait for updating DataNode status been interrupted.");
       }
     }
-    if (!isSuccess) {
-      throw new ProcedureException("Change DataNode status failed.");
-    }
-
-    // Broadcast the latest RegionRouteMap
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+    throw new ProcedureException("Change DataNode status failed.");
   }
 
   /**
@@ -489,17 +489,28 @@ public class ConfigNodeProcedureEnv {
     getLoadManager().broadcastLatestRegionRouteMap();
   }
 
-  public void buildRegionGroupCache(
+  public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
     long currentTime = System.currentTimeMillis();
     regionStatusMap.forEach(
         (dataNodeId, regionStatus) ->
             getPartitionManager()
-                .cacheHeartbeatSample(
+                .cacheActivateHeartbeatSample(
                     dataNodeId,
                     regionGroupId,
-                    new RegionHeartbeatSample(currentTime, currentTime, false, regionStatus)));
-    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionGroupStatistics();
+                    new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
+
+    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+        && ConsensusFactory.MultiLeaderConsensus.equals(
+            ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
+      List<Integer> availableDataNodes = new ArrayList<>();
+      for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
+        if (RegionStatus.isNormalStatus(statusEntry.getValue())) {
+          availableDataNodes.add(statusEntry.getKey());
+        }
+      }
+      getLoadManager().getRouteBalancer().greedyPickLeader(regionGroupId, availableDataNodes);
+    }
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
