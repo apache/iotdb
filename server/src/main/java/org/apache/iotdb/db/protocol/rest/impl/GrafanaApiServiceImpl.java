@@ -20,6 +20,7 @@ package org.apache.iotdb.db.protocol.rest.impl;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
 import org.apache.iotdb.db.protocol.rest.NotFoundException;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
@@ -46,6 +47,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.List;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
@@ -180,5 +182,44 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                 .message(TSStatusCode.SUCCESS_STATUS.name()))
         .build();
+  }
+
+  @Override
+  public Response node(List<String> requestBody, SecurityContext securityContext)
+      throws NotFoundException {
+    try {
+      if (requestBody != null && requestBody.size() > 0) {
+        PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
+        String sql = "show child paths " + path;
+        PhysicalPlan physicalPlan =
+            serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
+
+        Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
+        if (response != null) {
+          return response;
+        }
+
+        final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+        try {
+          QueryContext queryContext =
+              serviceProvider.genQueryContext(
+                  queryId,
+                  physicalPlan.isDebug(),
+                  System.currentTimeMillis(),
+                  sql,
+                  IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+          QueryDataSet queryDataSet =
+              serviceProvider.createQueryDataSet(
+                  queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+          return QueryDataSetHandler.fillGrafanaNodesResult(queryDataSet);
+        } finally {
+          ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        }
+      } else {
+        return QueryDataSetHandler.fillGrafanaNodesResult(null);
+      }
+    } catch (Exception e) {
+      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    }
   }
 }
