@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.OperatePipeRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
 import java.util.ArrayList;
@@ -173,6 +174,16 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
             countDownLatch);
+      case PRE_CREATE_PIPE:
+      case OPERATE_PIPE:
+      case ROLLBACK_OPERATE_PIPE:
+        return new OperatePipeRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -192,9 +203,6 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_REGION_ROUTE_MAP:
       case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
-      case PRE_CREATE_PIPE:
-      case OPERATE_PIPE:
-      case ROLLBACK_OPERATE_PIPE:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

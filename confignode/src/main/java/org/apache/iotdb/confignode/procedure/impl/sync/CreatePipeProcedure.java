@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,8 +94,14 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to create PIPE [%s] on Data Nodes because %s",
-              pipeInfo.getPipeName(), status.getMessage()));
+              "Fail to create PIPE [%s] because %s.",
+              pipeInfo.getPipeName(),
+              StringUtils.join(
+                  responseMap.values().stream()
+                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .map(TSStatus::getMessage)
+                      .toArray(),
+                  ", ")));
     }
   }
 

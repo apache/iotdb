@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +89,14 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to drop PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
+              "Fail to drop PIPE [%s] because %s.",
+              pipeName,
+              StringUtils.join(
+                  responseMap.values().stream()
+                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .map(TSStatus::getMessage)
+                      .toArray(),
+                  ", ")));
     }
   }
 
