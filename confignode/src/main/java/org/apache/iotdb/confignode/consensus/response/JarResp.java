@@ -20,20 +20,20 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TriggerJarResp implements DataSet {
+public class JarResp implements DataSet {
 
   private TSStatus status;
 
   private final List<ByteBuffer> jarList;
 
-  public TriggerJarResp(TSStatus status, List<ByteBuffer> jarList) {
+  public JarResp(TSStatus status, List<ByteBuffer> jarList) {
     this.status = status;
     this.jarList = jarList;
   }
@@ -46,7 +46,7 @@ public class TriggerJarResp implements DataSet {
     this.status = status;
   }
 
-  public TGetTriggerJarResp convertToThriftResponse() throws IOException {
-    return new TGetTriggerJarResp(status, jarList);
+  public TGetJarInListResp convertToThriftResponse() throws IOException {
+    return new TGetJarInListResp(status, jarList);
   }
 }
