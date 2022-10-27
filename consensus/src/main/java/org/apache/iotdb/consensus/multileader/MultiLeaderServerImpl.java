@@ -491,6 +491,11 @@ public class MultiLeaderServerImpl {
             client.waitSyncLogComplete(
                 new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.complete) {
+          logger.info(
+              "{} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
+              targetPeer,
+              res.searchIndex,
+              res.safeIndex);
           return;
         }
         logger.info(
