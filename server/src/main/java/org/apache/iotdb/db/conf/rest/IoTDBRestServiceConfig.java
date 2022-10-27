@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf.rest;
 public class IoTDBRestServiceConfig {
   static final String CONFIG_NAME = "iotdb-rest.properties";
   /** if the enableRestService is true, we will start REST Service */
-  private boolean enableRestService = true;
+  private boolean enableRestService = false;
 
   /** set the REST Service port. */
   private int restServicePort = 18080;
