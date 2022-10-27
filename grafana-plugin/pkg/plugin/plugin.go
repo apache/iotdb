@@ -242,7 +242,11 @@ func recoverType(m []interface{}) interface{} {
         case float64:
             tmp := make([]float64, len(m))
             for i := range m {
-                tmp[i] = m[i].(float64)
+				if m[i] == nil {
+					tmp[i] = 0
+				}else{
+					tmp[i] = m[i].(float64)
+				}
             }
             return tmp
         case string:
@@ -264,7 +268,11 @@ func recoverType(m []interface{}) interface{} {
         default:
             tmp := make([]float64, len(m))
             for i := range m {
-                tmp[i] = 0
+				if m[i] == nil {
+					tmp[i] = 0
+				}else{
+					tmp[i] = m[i].(float64)
+				}
             }
             return tmp
         }
