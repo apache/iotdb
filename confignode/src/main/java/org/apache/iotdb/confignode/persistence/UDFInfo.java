@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -90,6 +92,15 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
+  /** Validate whether the UDF can be dropped */
+  public void validate(String udfName) {
+    if (udfTable.containsUDF(udfName)) {
+      return;
+    }
+    throw new UDFManagementException(
+        String.format("Failed to drop UDF [%s], this UDF has not been created", udfName));
+  }
+
   public boolean needToSaveJar(String jarName) {
     return !existedJarToMD5.containsKey(jarName);
   }
@@ -115,9 +126,19 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
+  public DataSet getUDFTable() {
+    return new FunctionTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        udfTable.getAllNonBuiltInUDFInformation());
+  }
+
   public TSStatus dropFunction(DropFunctionPlan req) {
-    // TODO
-    return null;
+    String udfName = req.getFunctionName();
+    if (udfTable.containsUDF(udfName)) {
+      existedJarToMD5.remove(udfTable.getUDFInformation(udfName).getJarName());
+      udfTable.removeUDFInformation(udfName);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
