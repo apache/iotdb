@@ -33,8 +33,6 @@ import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
-import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteReq;
-import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -48,9 +46,9 @@ import java.util.List;
 public class TestRPCClient {
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
-          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-              .createClientManager(
-                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+      new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+          .createClientManager(
+              new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
@@ -64,27 +62,14 @@ public class TestRPCClient {
 
   public static void main(String args[]) {
     TestRPCClient client = new TestRPCClient();
-    client.removeRegionPeer();
-//    client.testWaitSyncLog();
+    //    client.removeRegionPeer();
+    client.addPeer();
     //    client.loadSnapshot();
-  }
-
-  private void testWaitSyncLog() {
-    try (SyncMultiLeaderServiceClient client =
-             syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
-      TWaitSyncLogCompleteRes res =
-          client.waitSyncLogComplete(
-              new TWaitSyncLogCompleteReq(new DataRegionId(1).convertToTConsensusGroupId()));
-      System.out.printf("%s, %d, %d",res.complete, res.searchIndex, res.safeIndex);
-    } catch (IOException | TException e) {
-      System.out.println("Error: " + e.getMessage());
-      throw new RuntimeException(e);
-    }
   }
 
   private void loadSnapshot() {
     try (SyncMultiLeaderServiceClient client =
-        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40011))) {
+             syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40011))) {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
@@ -97,7 +82,7 @@ public class TestRPCClient {
 
   private void testAddPeer() {
     try (SyncMultiLeaderServiceClient client =
-        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
+             syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
       TInactivatePeerRes res =
           client.inactivatePeer(
               new TInactivatePeerReq(new DataRegionId(1).convertToTConsensusGroupId()));
@@ -109,9 +94,9 @@ public class TestRPCClient {
 
   private void removeRegionPeer() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
+             INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.removeRegionPeer(
-          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation3(3)));
+          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (IOException | TException e) {
       throw new RuntimeException(e);
     }
@@ -119,7 +104,7 @@ public class TestRPCClient {
 
   private void addPeer() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
+             INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.addRegionPeer(
           new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (IOException | TException e) {
@@ -149,7 +134,7 @@ public class TestRPCClient {
 
   private void createDataRegion() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9005))) {
+             INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9005))) {
       TCreateDataRegionReq req = new TCreateDataRegionReq();
       req.setStorageGroup("root.test.g_0");
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
