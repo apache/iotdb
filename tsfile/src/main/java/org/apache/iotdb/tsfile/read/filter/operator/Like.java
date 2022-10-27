@@ -45,15 +45,18 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected Pattern pattern;
 
+  protected boolean not;
+
   private Like() {}
 
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
    */
-  public Like(String value, FilterType filterType) {
+  public Like(String value, FilterType filterType, boolean not) {
     this.value = value;
     this.filterType = filterType;
+    this.not = not;
     try {
       String unescapeValue = unescapeString(value);
       String specialRegexStr = ".^$*+?{}[]|()";
@@ -94,7 +97,7 @@ public class Like<T extends Comparable<T>> implements Filter {
     if (filterType != FilterType.VALUE_FILTER) {
       return false;
     }
-    return pattern.matcher(value.toString()).find();
+    return pattern.matcher(value.toString()).find() != not;
   }
 
   @Override
@@ -109,7 +112,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public Filter copy() {
-    return new Like(value, filterType);
+    return new Like(value, filterType, not);
   }
 
   @Override
@@ -118,6 +121,7 @@ public class Like<T extends Comparable<T>> implements Filter {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.writeObject(value, outputStream);
+      ReadWriteIOUtils.write(not, outputStream);
     } catch (IOException ex) {
       throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
     }
@@ -127,11 +131,12 @@ public class Like<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
+    not = ReadWriteIOUtils.readBool(buffer);
   }
 
   @Override
   public String toString() {
-    return filterType + " is " + value;
+    return filterType + (not ? " not like " : " like ") + value;
   }
 
   @Override

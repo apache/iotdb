@@ -74,8 +74,8 @@ public class ValueFilter {
     return new ValueRegexp(value);
   }
 
-  public static <T extends Comparable<T>> ValueLike<T> like(String value) {
-    return new ValueLike(value);
+  public static <T extends Comparable<T>> ValueLike<T> like(String value, boolean not) {
+    return new ValueLike(value, not);
   }
 
   public static class ValueIn<T extends Comparable<T>> extends In<T> {
@@ -268,8 +268,8 @@ public class ValueFilter {
 
   public static class ValueLike<T extends Comparable<T>> extends Like<T> {
 
-    private ValueLike(String value) {
-      super(value, FilterType.VALUE_FILTER);
+    private ValueLike(String value, boolean not) {
+      super(value, FilterType.VALUE_FILTER, not);
     }
   }
 
@@ -277,14 +277,17 @@ public class ValueFilter {
 
     private final int index;
 
-    private VectorValueLike(String value, int index) {
-      super(value);
+    private VectorValueLike(String value, int index, boolean not) {
+      super(value, not);
       this.index = index;
     }
 
     public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.equals(v);
+      if (filterType != FilterType.VALUE_FILTER) {
+        return false;
+      }
+      Object value = values[index].getValue();
+      return pattern.matcher(value.toString()).find() != not;
     }
   }
 }
