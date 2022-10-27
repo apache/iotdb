@@ -548,6 +548,7 @@ public class BufferedPipeDataQueueTest {
       Assert.fail();
     }
   }
+
   @Ignore
   @Test
   public void testOfferWhileTakingWithDiscontinuousSerialNumber() {
