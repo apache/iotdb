@@ -25,8 +25,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,11 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class ProjectNode extends ProcessNode {
+public class ProjectNode extends SingleChildProcessNode {
 
   private final List<String> outputColumnNames;
-
-  private PlanNode child;
 
   public ProjectNode(PlanNodeId id, List<String> outputColumnNames) {
     super(id);
@@ -46,24 +42,8 @@ public class ProjectNode extends ProcessNode {
   }
 
   public ProjectNode(PlanNodeId id, PlanNode child, List<String> outputColumnNames) {
-    super(id);
-    this.child = child;
+    super(id, child);
     this.outputColumnNames = outputColumnNames;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
   }
 
   @Override
@@ -112,15 +92,21 @@ public class ProjectNode extends ProcessNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     ProjectNode that = (ProjectNode) o;
-    return outputColumnNames.equals(that.outputColumnNames) && child.equals(that.child);
+    return outputColumnNames.equals(that.outputColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), outputColumnNames, child);
+    return Objects.hash(super.hashCode(), outputColumnNames);
   }
 }

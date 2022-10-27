@@ -314,17 +314,26 @@ public class QueryStatement extends Statement {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
       }
       if (isGroupByLevel() && isAlignByDevice()) {
-        throw new SemanticException("group by level does not support align by device now.");
+        throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
       }
       if (isGroupByTag() && isAlignByDevice()) {
-        throw new SemanticException("group by tag does not support align by device now.");
+        throw new SemanticException("GROUP BY TAGS does not support align by device now.");
       }
-      if (isGroupByTag() && isGroupByLevel()) {
-        throw new SemanticException("group by level cannot be used togather with group by tag");
-      }
+      Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+        }
+        outputColumn.add(
+            resultColumn.getAlias() != null
+                ? resultColumn.getAlias()
+                : resultColumn.getExpression().getExpressionString());
+      }
+      if (isGroupByTag()) {
+        for (String s : getGroupByTagComponent().getTagKeys()) {
+          if (outputColumn.contains(s)) {
+            throw new SemanticException("Output column is duplicated with the tag key: " + s);
+          }
         }
       }
     } else {

@@ -22,6 +22,9 @@ package org.apache.iotdb.consensus.multileader.logdispatcher;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -34,6 +37,7 @@ import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -198,6 +202,8 @@ public class LogDispatcher {
 
     private ConsensusReqReader.ReqIterator walEntryIterator;
 
+    private final LogDispatcherThreadMetrics metrics;
+
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
@@ -210,6 +216,7 @@ public class LogDispatcher {
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
+      this.metrics = new LogDispatcherThreadMetrics(this);
     }
 
     public IndexController getController() {
@@ -230,6 +237,10 @@ public class LogDispatcher {
 
     public int getPendingRequestSize() {
       return pendingRequest.size();
+    }
+
+    public int getBufferRequestSize() {
+      return bufferedRequest.size();
     }
 
     /** try to offer a request into queue with memory control */
@@ -265,6 +276,7 @@ public class LogDispatcher {
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
         multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
       }
+      MetricService.getInstance().removeMetricSet(metrics);
     }
 
     public void cleanup() throws IOException {
@@ -278,9 +290,11 @@ public class LogDispatcher {
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
+      MetricService.getInstance().addMetricSet(metrics);
       try {
         PendingBatch batch;
         while (!Thread.interrupted() && !stopped) {
+          long startTime = System.currentTimeMillis();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
@@ -293,6 +307,15 @@ public class LogDispatcher {
               }
             }
           }
+          MetricService.getInstance()
+              .getOrCreateHistogram(
+                  Metric.STAGE.toString(),
+                  MetricLevel.CORE,
+                  Tag.TYPE.toString(),
+                  "constructBatch",
+                  Tag.REGION.toString(),
+                  peer.getGroupId().toString())
+              .update((System.currentTimeMillis() - startTime) / batch.getBatches().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           // sends batch asynchronously and migrates the retry logic into the callback handler

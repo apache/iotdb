@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -115,6 +116,29 @@ public interface IConsensus {
    * @param newPeers the new member configuration of this group
    */
   ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
+
+  /**
+   * Tell the group to [create a new Peer on new node] and [add this member to join the group].
+   *
+   * <p>The underlying implementation should <br>
+   * 1. first call createPeer on the new member <br>
+   * 2. then call addPeer for configuration change <br>
+   * Call this method on any node of the <em>original group</em>. <br>
+   * NOTICE: Currently only RatisConsensus implements this method.
+   *
+   * @param groupId the consensus group
+   * @param newNode the new member
+   * @param originalGroup the original members of the existed group
+   */
+  default ConsensusGenericResponse addNewNodeToExistedGroup(
+      ConsensusGroupId groupId, Peer newNode, List<Peer> originalGroup) {
+    return ConsensusGenericResponse.newBuilder()
+        .setSuccess(false)
+        .setException(
+            new ConsensusException(
+                "addNewNodeToExistedGroup method is not implemented by " + this + " class"))
+        .build();
+  }
 
   // management API
   ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);

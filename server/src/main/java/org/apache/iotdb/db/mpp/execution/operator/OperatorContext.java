@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
@@ -68,6 +69,10 @@ public class OperatorContext {
 
   public void setMaxRunTime(Duration maxRunTime) {
     this.maxRunTime = maxRunTime;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return instanceContext.getSessionInfo();
   }
 
   @Override

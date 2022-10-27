@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics.enums;
+package org.apache.iotdb.commons.service.metric.enums;
 
 public enum Metric {
   ENTRY,
@@ -28,15 +28,12 @@ public enum Metric {
   MEM,
   CACHE,
   CACHE_HIT,
-  ERROR_LOG,
   QUANTITY,
   DATA_WRITTEN,
   DATA_READ,
   COMPACTION_TASK_COUNT,
   CLUSTER_NODE_STATUS,
   CLUSTER_NODE_LEADER_COUNT,
-  CLUSTER_ELECT,
-  CLUSTER_UNCOMMITTED_LOG,
   PROCESS_CPU_LOAD,
   PROCESS_CPU_TIME,
   PROCESS_MAX_MEM,
@@ -61,7 +58,9 @@ public enum Metric {
   REGION,
   SLOT,
   THRIFT_CONNECTIONS,
-  THRIFT_ACTIVE_THREADS;
+  THRIFT_ACTIVE_THREADS,
+  MULTI_LEADER,
+  STAGE;
 
   @Override
   public String toString() {

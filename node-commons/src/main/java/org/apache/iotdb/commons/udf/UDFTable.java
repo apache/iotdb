@@ -19,29 +19,74 @@
 
 package org.apache.iotdb.commons.udf;
 
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UDFTable {
   private final Map<String, UDFInformation> udfInformationMap;
 
+  /** maintain a map for creating instance */
+  private final Map<String, Class<?>> functionToClassMap;
+
   public UDFTable() {
     udfInformationMap = new ConcurrentHashMap<>();
+    functionToClassMap = new ConcurrentHashMap<>();
+    registerBuiltinTimeSeriesGeneratingFunctions();
+  }
+
+  private void registerBuiltinTimeSeriesGeneratingFunctions() {
+    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
+        BuiltinTimeSeriesGeneratingFunction.values()) {
+      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
+      udfInformationMap.put(
+          functionName,
+          new UDFInformation(
+              functionName.toUpperCase(),
+              builtinTimeSeriesGeneratingFunction.getClassName(),
+              true));
+      functionToClassMap.put(
+          functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
+    }
   }
 
   public void addUDFInformation(String functionName, UDFInformation udfInformation) {
     udfInformationMap.put(functionName.toUpperCase(), udfInformation);
   }
 
-  public UDFInformation removeUDFInformation(String functionName) {
-    return udfInformationMap.remove(functionName.toUpperCase());
+  public void removeUDFInformation(String functionName) {
+    udfInformationMap.remove(functionName.toUpperCase());
   }
 
   public UDFInformation getUDFInformation(String functionName) {
     return udfInformationMap.get(functionName.toUpperCase());
   }
 
+  public void addFunctionAndClass(String functionName, Class<?> clazz) {
+    functionToClassMap.put(functionName.toUpperCase(), clazz);
+  }
+
+  public Class<?> getFunctionClass(String functionName) {
+    return functionToClassMap.get(functionName.toUpperCase());
+  }
+
+  public void removeFunctionClass(String functionName) {
+    functionToClassMap.remove(functionName.toUpperCase());
+  }
+
+  public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
+      throws ClassNotFoundException {
+    Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);
+    functionToClassMap.put(udfInformation.getClassName(), functionClass);
+  }
+
   public UDFInformation[] getAllUDFInformation() {
     return udfInformationMap.values().toArray(new UDFInformation[0]);
+  }
+
+  public boolean containsUDF(String udfName) {
+    return udfInformationMap.containsKey(udfName);
   }
 }
