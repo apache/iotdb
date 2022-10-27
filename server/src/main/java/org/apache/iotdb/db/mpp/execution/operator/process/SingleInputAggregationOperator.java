@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,7 +55,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       List<Aggregator> aggregators,
       Operator child,
       boolean ascending,
-      ITimeRangeIterator timeRangeIterator,
       long maxReturnSize) {
     this.operatorContext = operatorContext;
     this.ascending = ascending;

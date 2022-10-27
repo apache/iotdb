@@ -70,6 +70,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -304,6 +305,8 @@ public interface IManager {
   TSStatus createFunction(TCreateFunctionReq req);
 
   TSStatus dropFunction(String udfName);
+
+  TGetUDFTableResp getUDFTable();
 
   /** Create trigger */
   TSStatus createTrigger(TCreateTriggerReq req);

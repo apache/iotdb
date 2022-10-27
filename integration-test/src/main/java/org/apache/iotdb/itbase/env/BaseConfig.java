@@ -334,4 +334,12 @@ public interface BaseConfig {
   default String getSchemaEngineMode() {
     return "Memory";
   }
+
+  default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    return this;
+  }
+
+  default int getSelectIntoInsertTabletPlanRowLimit() {
+    return 10000;
+  }
 }

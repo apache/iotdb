@@ -22,26 +22,52 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-import java.util.ArrayList;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
 import java.util.Objects;
 
-public abstract class MultiChildNode extends ProcessNode {
+public abstract class SingleChildProcessNode extends ProcessNode {
 
-  protected List<PlanNode> children;
+  protected PlanNode child;
 
-  public MultiChildNode(PlanNodeId id, List<PlanNode> children) {
+  public SingleChildProcessNode(PlanNodeId id) {
     super(id);
-    this.children = children;
   }
 
-  public MultiChildNode(PlanNodeId id) {
+  public SingleChildProcessNode(PlanNodeId id, PlanNode child) {
     super(id);
-    this.children = new ArrayList<>();
+    this.child = child;
   }
 
-  public void setChildren(List<PlanNode> children) {
-    this.children = children;
+  public PlanNode getChild() {
+    return child;
+  }
+
+  public void setChild(PlanNode child) {
+    this.child = child;
+  }
+
+  public void cleanChildren() {
+    this.child = null;
+  }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    if (this.child == null) {
+      return ImmutableList.of();
+    }
+    return ImmutableList.of(child);
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return ONE_CHILD;
   }
 
   @Override
@@ -55,12 +81,12 @@ public abstract class MultiChildNode extends ProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    MultiChildNode that = (MultiChildNode) o;
-    return children.equals(that.children);
+    SingleChildProcessNode that = (SingleChildProcessNode) o;
+    return Objects.equals(child, that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), children);
+    return Objects.hash(super.hashCode(), child);
   }
 }
