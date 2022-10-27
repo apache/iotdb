@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -70,8 +71,8 @@ public class OperatePipeProcedureRollbackProcessor {
     }
     if (promise == null || promise.isDone()) {
       promise =
-          executorService.scheduleWithFixedDelay(
-              this::rollback, TIME_INTERVAL, TIME_INTERVAL, TimeUnit.MILLISECONDS);
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              executorService, this::rollback, TIME_INTERVAL, TIME_INTERVAL, TimeUnit.MILLISECONDS);
     }
     canceller =
         executorService.schedule(

@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
