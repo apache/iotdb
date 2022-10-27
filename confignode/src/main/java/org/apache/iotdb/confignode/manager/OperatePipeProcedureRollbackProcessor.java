@@ -46,11 +46,12 @@ import java.util.concurrent.TimeUnit;
 public class OperatePipeProcedureRollbackProcessor {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(OperatePipeProcedureRollbackProcessor.class);
-  private static final int TIME_INTERVAL = 5000;
+  private static final int TIME_INTERVAL = 5_000;
 
   private final NodeManager nodeManager;
 
-  private final Map<Integer, Queue<TOperatePipeOnDataNodeReq>> messageMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Queue<TOperatePipeOnDataNodeReq>> messageMap =
+      new ConcurrentHashMap<>();
   private volatile ScheduledFuture<?> promise;
   private ScheduledFuture<?> canceller;
   private final ScheduledExecutorService executorService =
@@ -64,17 +65,18 @@ public class OperatePipeProcedureRollbackProcessor {
     for (int id : dataNodeIds) {
       messageMap.computeIfAbsent(id, i -> new LinkedList<>()).add(req);
     }
-    if (canceller == null || canceller.isDone()) {
+    if (canceller != null && !canceller.isDone()) {
+      canceller.cancel(true);
+    }
+    if (promise == null || promise.isDone()) {
       promise =
           executorService.scheduleWithFixedDelay(
               this::rollback, TIME_INTERVAL, TIME_INTERVAL, TimeUnit.MILLISECONDS);
-    } else {
-      canceller.cancel(true);
     }
     canceller =
         executorService.schedule(
             () -> {
-              LOGGER.info("Cancel rollback thread.");
+              LOGGER.info("Cancel rollback retry thread.");
               promise.cancel(false);
             },
             BaseNodeCache.HEARTBEAT_TIMEOUT_TIME,
@@ -82,7 +84,7 @@ public class OperatePipeProcedureRollbackProcessor {
   }
 
   private void rollback() {
-    LOGGER.info("Try rollback.");
+    LOGGER.info("Scheduled OperatePipeProcedureRollbackProcessor.");
     for (Map.Entry<Integer, Queue<TOperatePipeOnDataNodeReq>> entry : messageMap.entrySet()) {
       int dataNodeId = entry.getKey();
       if (NodeStatus.Running.equals(nodeManager.getNodeStatusByNodeId(dataNodeId))) {
@@ -93,17 +95,23 @@ public class OperatePipeProcedureRollbackProcessor {
         while ((request = entry.getValue().peek()) != null) {
           AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
               new AsyncClientHandler<>(
-                  DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+                  DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
           AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-          if (clientHandler.getResponseList().get(0).getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          TSStatus tsStatus = clientHandler.getResponseList().get(0);
+          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             entry.getValue().poll();
-          } else if (clientHandler.getResponseList().get(0).getCode()
-              == TSStatusCode.PIPE_ERROR.getStatusCode()) {
+          } else if (tsStatus.getCode() == TSStatusCode.PIPE_ERROR.getStatusCode()) {
             // skip
+            LOGGER.warn(
+                String.format(
+                    "Roll back failed because %s. Skip this roll back request [%s].",
+                    tsStatus.getMessage(), request));
           } else {
-            LOGGER.info("Roll back failed " + clientHandler.getResponseList().get(0));
-            // connection failure
+            // connection failure, keep and retry.
+            LOGGER.error(
+                String.format(
+                    "Roll back failed because %s. This roll back request [%s] will be retried later.",
+                    tsStatus.getMessage(), request));
             break;
           }
         }

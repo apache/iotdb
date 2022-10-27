@@ -686,25 +686,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       switch (SyncOperation.values()[req.getOperation()]) {
         case START_PIPE:
-          if (req.isSetCreateTime()) {
-            SyncService.getInstance().startPipe(req.getPipeName(), req.getCreateTime());
-          } else {
-            SyncService.getInstance().startPipe(req.getPipeName());
-          }
+          SyncService.getInstance().startPipe(req.getPipeName());
           break;
         case STOP_PIPE:
-          if (req.isSetCreateTime()) {
-            SyncService.getInstance().stopPipe(req.getPipeName(), req.getCreateTime());
-          } else {
-            SyncService.getInstance().stopPipe(req.getPipeName());
-          }
+          SyncService.getInstance().stopPipe(req.getPipeName());
           break;
         case DROP_PIPE:
-          if (req.isSetCreateTime()) {
-            SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
-          } else {
-            SyncService.getInstance().dropPipe(req.getPipeName());
-          }
+          SyncService.getInstance().dropPipe(req.getPipeName());
           break;
         default:
           return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
@@ -714,6 +702,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (PipeException e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
+      throws TException {
+    // Operate PIPE on DataNode for rollback, createTime in req is required.
+    switch (SyncOperation.values()[req.getOperation()]) {
+      case START_PIPE:
+        SyncService.getInstance().startPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case STOP_PIPE:
+        SyncService.getInstance().stopPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case DROP_PIPE:
+        SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      default:
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+            .setMessage("Unsupported operation.");
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

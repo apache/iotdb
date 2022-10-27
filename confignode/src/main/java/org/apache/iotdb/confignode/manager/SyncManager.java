@@ -234,7 +234,8 @@ public class SyncManager {
             .setCreateTime(createTime);
 
     AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     List<Integer> failedRollbackDataNodeId = new ArrayList<>();

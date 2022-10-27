@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
@@ -32,6 +33,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +51,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedure.class);
 
   private PipeInfo pipeInfo;
-  private final Set<Integer> executedDataNodeIds = new HashSet<>();
+  private Set<Integer> executedDataNodeIds = new HashSet<>();
 
   public CreatePipeProcedure() {
     super();
@@ -58,6 +60,11 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   public CreatePipeProcedure(TCreatePipeReq req) throws PipeException {
     super();
     this.pipeInfo = SyncPipeUtil.parseTCreatePipeReqAsPipeInfo(req, System.currentTimeMillis());
+  }
+
+  @TestOnly
+  public void setExecutedDataNodeIds(Set<Integer> executedDataNodeIds) {
+    this.executedDataNodeIds = executedDataNodeIds;
   }
 
   @Override
@@ -162,12 +169,14 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     stream.writeInt(ProcedureFactory.ProcedureType.CREATE_PIPE_PROCEDURE.ordinal());
     super.serialize(stream);
     pipeInfo.serialize(stream);
+    ReadWriteIOUtils.writeIntegerSet(executedDataNodeIds, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+    executedDataNodeIds = ReadWriteIOUtils.readIntegerSet(byteBuffer);
   }
 
   @Override
@@ -175,11 +184,12 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreatePipeProcedure that = (CreatePipeProcedure) o;
-    return Objects.equals(pipeInfo, that.pipeInfo);
+    return Objects.equals(pipeInfo, that.pipeInfo)
+        && Objects.equals(executedDataNodeIds, that.executedDataNodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeInfo);
+    return Objects.hash(pipeInfo, executedDataNodeIds);
   }
 }

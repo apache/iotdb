@@ -601,6 +601,11 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode for rollback
+  */
+  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
 }
 
 service MPPDataExchangeService {

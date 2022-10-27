@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
@@ -48,7 +49,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
 
   private String pipeName;
   private PipeInfo pipeInfo;
-  private final Set<Integer> executedDataNodeIds = new HashSet<>();
+  private Set<Integer> executedDataNodeIds = new HashSet<>();
 
   public StopPipeProcedure() {
     super();
@@ -57,6 +58,16 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   public StopPipeProcedure(String pipeName) throws PipeException {
     super();
     this.pipeName = pipeName;
+  }
+
+  @TestOnly
+  public void setPipeInfo(PipeInfo pipeInfo) {
+    this.pipeInfo = pipeInfo;
+  }
+
+  @TestOnly
+  public void setExecutedDataNodeIds(Set<Integer> executedDataNodeIds) {
+    this.executedDataNodeIds = executedDataNodeIds;
   }
 
   @Override
@@ -152,12 +163,21 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     stream.writeInt(ProcedureFactory.ProcedureType.STOP_PIPE_PROCEDURE.ordinal());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(pipeInfo != null, stream);
+    if (pipeInfo != null) {
+      pipeInfo.serialize(stream);
+    }
+    ReadWriteIOUtils.writeIntegerSet(executedDataNodeIds, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+    }
+    executedDataNodeIds = ReadWriteIOUtils.readIntegerSet(byteBuffer);
   }
 
   @Override
@@ -165,11 +185,13 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StopPipeProcedure that = (StopPipeProcedure) o;
-    return Objects.equals(pipeName, that.pipeName);
+    return Objects.equals(pipeName, that.pipeName)
+        && Objects.equals(pipeInfo, that.pipeInfo)
+        && Objects.equals(executedDataNodeIds, that.executedDataNodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName);
+    return Objects.hash(pipeName, pipeInfo, executedDataNodeIds);
   }
 }
