@@ -174,10 +174,6 @@ public class UDFInfo implements SnapshotProcessor {
 
       udfTable.serializeUDFTable(fileOutputStream);
 
-      fileOutputStream.flush();
-
-      fileOutputStream.close();
-
       return true;
     } finally {
       releaseUDFTableLock();
