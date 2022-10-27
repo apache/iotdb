@@ -29,11 +29,6 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     super();
   }
 
-  /** Constructor that only used when ConfigNode-leader switched */
-  public DataNodeHeartbeatCache(NodeStatistics nodeStatistics) {
-    this.statistics = nodeStatistics;
-  }
-
   @Override
   public void updateNodeStatistics() {
     NodeHeartbeatSample lastSample = null;

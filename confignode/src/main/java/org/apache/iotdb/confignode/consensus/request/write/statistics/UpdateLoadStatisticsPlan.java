@@ -47,12 +47,13 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
   // Map<TConsensusGroupId, newRegionGroupStatistics>
   private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
 
-  private RegionRouteMap regionRouteMap;
+  private final RegionRouteMap regionRouteMap;
 
   public UpdateLoadStatisticsPlan() {
     super(ConfigPhysicalPlanType.UpdateLoadStatistics);
     this.nodeStatisticsMap = new ConcurrentHashMap<>();
     this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
+    this.regionRouteMap = new RegionRouteMap();
   }
 
   /**
@@ -88,7 +89,8 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
   }
 
   public void setRegionRouteMap(RegionRouteMap regionRouteMap) {
-    this.regionRouteMap = regionRouteMap;
+    this.regionRouteMap.setRegionLeaderMap(regionRouteMap.getRegionLeaderMap());
+    this.regionRouteMap.setRegionPriorityMap(regionRouteMap.getRegionPriorityMap());
   }
 
   @Override
@@ -138,7 +140,6 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
       regionGroupStatisticsMap.put(consensusGroupId, regionGroupStatistics);
     }
 
-    regionRouteMap = new RegionRouteMap();
     regionRouteMap.deserialize(buffer);
   }
 

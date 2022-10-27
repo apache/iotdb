@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -95,6 +97,13 @@ public class NodeStatistics {
 
   public static NodeStatistics generateDefaultNodeStatistics() {
     return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
+  }
+
+  public NodeHeartbeatSample convertToNodeHeartbeatSample() {
+    long currentTime = System.currentTimeMillis();
+    return new NodeHeartbeatSample(
+        new THeartbeatResp(currentTime, status.getStatus()).setStatusReason(statusReason),
+        currentTime);
   }
 
   @Override

@@ -91,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
 
     // Init 3C3D cluster environment
-    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+    EnvFactory.getEnv().initClusterEnvironment(2, 2);
   }
 
   @After

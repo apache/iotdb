@@ -44,14 +44,6 @@ public class RegionGroupCache {
     this.statistics = RegionGroupStatistics.generateDefaultRegionGroupStatistics();
   }
 
-  public RegionGroupCache(
-      TConsensusGroupId consensusGroupId, RegionGroupStatistics regionGroupStatistics) {
-    this.consensusGroupId = consensusGroupId;
-    this.regionCacheMap = new ConcurrentHashMap<>();
-
-    this.statistics = regionGroupStatistics;
-  }
-
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
     regionCacheMap
         .computeIfAbsent(dataNodeId, empty -> new RegionCache())

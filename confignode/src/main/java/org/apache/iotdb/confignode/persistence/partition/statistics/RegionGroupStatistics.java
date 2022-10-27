@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupStatistics {
 
@@ -64,6 +66,14 @@ public class RegionGroupStatistics {
 
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
     return new RegionGroupStatistics(RegionGroupStatus.Disabled, new HashMap<>());
+  }
+
+  public Map<Integer, RegionHeartbeatSample> convertToRegionHeartbeatSampleMap() {
+    Map<Integer, RegionHeartbeatSample> result = new ConcurrentHashMap<>();
+    regionStatisticsMap.forEach(
+        (dataNodeId, regionStatistics) ->
+            result.put(dataNodeId, regionStatistics.convertToRegionHeartbeatSample()));
+    return result;
   }
 
   public void serialize(OutputStream stream) throws IOException {

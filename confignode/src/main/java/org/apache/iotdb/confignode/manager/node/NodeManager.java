@@ -660,8 +660,6 @@ public class NodeManager {
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)) {
         // Skip itself
-        nodeCacheMap.putIfAbsent(
-            configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation));
         continue;
       }
 
@@ -810,29 +808,6 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation of the DataNode which has the lowest load
-   *
-   * @return TDataNodeLocation
-   */
-  public TDataNodeLocation getLowestLoadDataNode() {
-    AtomicInteger result = new AtomicInteger();
-    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
-
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          long score = heartbeatCache.getLoadScore();
-          if (score < lowestLoadScore.get()) {
-            result.set(dataNodeId);
-            lowestLoadScore.set(score);
-          }
-        });
-
-    LOGGER.info(
-        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
-  }
-
-  /**
    * Get the loadScore of each DataNode
    *
    * @return Map<DataNodeId, loadScore>
@@ -847,9 +822,34 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation of the lowest load DataNode in input
+   * Get the DataNodeLocation of the DataNode which has the lowest loadScore
    *
-   * @return TDataNodeLocation
+   * @return TDataNodeLocation with the lowest loadScore
+   */
+  public TDataNodeLocation getLowestLoadDataNode() {
+    AtomicInteger result = new AtomicInteger();
+    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+
+    nodeCacheMap.forEach(
+        (nodeId, heartbeatCache) -> {
+          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
+            long score = heartbeatCache.getLoadScore();
+            if (score < lowestLoadScore.get()) {
+              result.set(nodeId);
+              lowestLoadScore.set(score);
+            }
+          }
+        });
+
+    LOGGER.info(
+        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+  }
+
+  /**
+   * Get the DataNodeLocation which has the lowest loadScore within input
+   *
+   * @return TDataNodeLocation with the lowest loadScore
    */
   public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
     AtomicInteger result = new AtomicInteger();
@@ -874,30 +874,57 @@ public class NodeManager {
   public void recoverNodeCacheMap() {
     Map<Integer, NodeStatistics> nodeStatisticsMap = nodeInfo.getNodeStatisticsMap();
     nodeCacheMap.clear();
+    LOGGER.info("[InheritLoadStatistics] Start to inherit NodeStatistics...");
 
+    // Force update ConfigNode-leader
+    nodeCacheMap.put(
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+        new ConfigNodeHeartbeatCache(
+            new TConfigNodeLocation(
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+                CURRENT_NODE,
+                new TEndPoint(
+                    ConfigNodeDescriptor.getInstance().getConf().getInternalAddress(),
+                    ConfigNodeDescriptor.getInstance().getConf().getConsensusPort())),
+            ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS));
+
+    // Inherit ConfigNodeStatistics
     getRegisteredConfigNodes()
         .forEach(
             configNodeLocation -> {
               int configNodeId = configNodeLocation.getConfigNodeId();
-              nodeCacheMap.put(
-                  configNodeId,
-                  new ConfigNodeHeartbeatCache(
-                      configNodeLocation,
-                      nodeStatisticsMap.getOrDefault(
-                          configNodeId, NodeStatistics.generateDefaultNodeStatistics())));
+              if (!configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
+                  && nodeStatisticsMap.containsKey(configNodeId)) {
+                nodeCacheMap.put(configNodeId, new ConfigNodeHeartbeatCache(configNodeLocation));
+                nodeCacheMap
+                    .get(configNodeId)
+                    .forceUpdate(
+                        nodeStatisticsMap.get(configNodeId).convertToNodeHeartbeatSample());
+                LOGGER.info(
+                    "[InheritLoadStatistics]\t {}={}",
+                    "nodeId{" + configNodeId + "}",
+                    nodeCacheMap.get(configNodeId).getStatistics());
+              }
             });
+
+    // Inherit DataNodeStatistics
     getRegisteredDataNodes()
         .forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-              nodeCacheMap.put(
-                  dataNodeId,
-                  new DataNodeHeartbeatCache(
-                      nodeStatisticsMap.getOrDefault(
-                          dataNodeId, NodeStatistics.generateDefaultNodeStatistics())));
+              if (nodeStatisticsMap.containsKey(dataNodeId)) {
+                nodeCacheMap.put(dataNodeId, new DataNodeHeartbeatCache());
+                nodeCacheMap
+                    .get(dataNodeId)
+                    .forceUpdate(nodeStatisticsMap.get(dataNodeId).convertToNodeHeartbeatSample());
+                LOGGER.info(
+                    "[InheritLoadStatistics]\t {}={}",
+                    "nodeId{" + dataNodeId + "}",
+                    nodeCacheMap.get(dataNodeId).getStatistics());
+              }
             });
 
-    LOGGER.info("Inherit NodeStatistics: {}", nodeStatisticsMap);
+    LOGGER.info("[InheritLoadStatistics] Inherit NodeStatistics finish");
   }
 
   /**
@@ -907,11 +934,15 @@ public class NodeManager {
    *     otherwise
    */
   public NodeStatistics getNodeStatistics(int nodeId, boolean isLatest) {
-    NodeStatistics result =
-        isLatest
-            ? nodeCacheMap.get(nodeId).getStatistics()
-            : nodeInfo.getNodeStatisticsMap().get(nodeId);
-    return result == null ? NodeStatistics.generateDefaultNodeStatistics() : result;
+    if (isLatest) {
+      return nodeCacheMap.containsKey(nodeId)
+          ? nodeCacheMap.get(nodeId).getStatistics()
+          : NodeStatistics.generateDefaultNodeStatistics();
+    } else {
+      return nodeInfo.getNodeStatisticsMap().containsKey(nodeId)
+          ? nodeInfo.getNodeStatisticsMap().get(nodeId)
+          : NodeStatistics.generateDefaultNodeStatistics();
+    }
   }
 
   private ConsensusManager getConsensusManager() {

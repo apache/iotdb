@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -41,6 +42,11 @@ public class RegionStatistics {
 
   public RegionStatus getRegionStatus() {
     return regionStatus;
+  }
+
+  public RegionHeartbeatSample convertToRegionHeartbeatSample() {
+    long currentTime = System.currentTimeMillis();
+    return new RegionHeartbeatSample(currentTime, currentTime, regionStatus);
   }
 
   public void serialize(OutputStream stream) throws IOException {

@@ -187,10 +187,12 @@ public class RouteBalancer {
 
       int newLeaderId = -1;
       int minCount = Integer.MAX_VALUE;
+      AtomicInteger zero = new AtomicInteger(0);
       for (int dataNodeId : dataNodeIds) {
-        if (leaderCounter.get(dataNodeId).get() < minCount) {
+        int leaderCount = leaderCounter.getOrDefault(dataNodeId, zero).get();
+        if (leaderCount < minCount) {
           newLeaderId = dataNodeId;
-          minCount = leaderCounter.get(dataNodeId).get();
+          minCount = leaderCount;
         }
       }
       regionRouteMap.setLeader(regionGroupId, newLeaderId);
@@ -239,7 +241,7 @@ public class RouteBalancer {
       regionRouteMap.setRegionPriorityMap(
           new ConcurrentHashMap<>(inheritRegionRouteMap.getRegionPriorityMap()));
 
-      LOGGER.info("Inherit RegionRouteMap: {}", regionRouteMap);
+      LOGGER.info("[InheritLoadStatistics] RegionRouteMap: {}", regionRouteMap);
     }
   }
 

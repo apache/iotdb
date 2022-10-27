@@ -22,11 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -88,7 +86,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
     ConfigFactory.getConfig()
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.MultiLeaderConsensus);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
@@ -151,8 +150,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     TSStatus status;
     TSchemaPartitionTableResp schemaPartitionTableResp0;
     TDataPartitionTableResp dataPartitionTableResp0;
-    TShowDataNodesResp showDataNodesResp0 = null;
-    TShowRegionResp showRegionResp0 = null;
+    TShowDataNodesResp showDataNodesResp0;
+    TShowRegionResp showRegionResp0;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -162,7 +161,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // Create SchemaRegionGroups through getOrCreateSchemaPartition
+      // Create SchemaRegionGroups through getOrCreateSchemaPartition and record
+      // SchemaPartitionTable
       ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
       schemaPartitionTableResp0 =
           client.getOrCreateSchemaPartitionTable(
@@ -171,7 +171,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           schemaPartitionTableResp0.getStatus().getCode());
 
-      // Create DataRegionGroups through getOrCreateDataPartition
+      // Create DataRegionGroups through getOrCreateDataPartition and record DataPartitionTable
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
       seriesSlotMap.put(
           new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
@@ -184,27 +184,11 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
 
-      // Shutdown a DataNode
-      EnvFactory.getEnv().shutdownDataNode(0);
-      // Waiting for DataNode shutdown
-      TimeUnit.SECONDS.sleep(1);
+      // Record showDataNodesResp
+      showDataNodesResp0 = client.showDataNodes();
 
-      boolean isDetectedUnknown = false;
-      for (int retry = 0; retry < 30; retry++) {
-        showDataNodesResp0 = client.showDataNodes();
-        showRegionResp0 = client.showRegion(new TShowRegionReq());
-
-        for (TDataNodeInfo dataNodeInfo : showDataNodesResp0.getDataNodesInfoList()) {
-          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-            isDetectedUnknown = true;
-            break;
-          }
-        }
-
-        // Sleep 1s before next check
-        TimeUnit.SECONDS.sleep(1);
-      }
-      Assert.assertTrue(isDetectedUnknown);
+      // Record showRegionResp
+      showRegionResp0 = client.showRegion(new TShowRegionReq());
     }
 
     // Switch the current ConfigNode-Leader
@@ -228,9 +212,11 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
 
-      // TODO: Check RegionGroup leadership after the leader allocation policy is optimized
+      // Check DataNodes' statuses
+      Assert.assertEquals(showDataNodesResp0, client.showDataNodes());
 
-      // TODO: Check NodeStatus after the heartbeat check is optimized
+      // Check Regions' statuses
+      Assert.assertEquals(showRegionResp0, client.showRegion(new TShowRegionReq()));
     }
   }
 }

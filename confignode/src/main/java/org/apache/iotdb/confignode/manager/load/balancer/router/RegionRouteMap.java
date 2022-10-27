@@ -159,4 +159,14 @@ public class RegionRouteMap {
   public int hashCode() {
     return Objects.hash(regionLeaderMap, regionPriorityMap);
   }
+
+  @Override
+  public String toString() {
+    return "RegionRouteMap{"
+        + "regionLeaderMap="
+        + regionLeaderMap
+        + ", regionPriorityMap="
+        + regionPriorityMap
+        + '}';
+  }
 }
