@@ -315,4 +315,18 @@ public class QueryDataSetHandler {
     }
     return Response.ok().entity(results).build();
   }
+
+  public static Response fillGrafanaNodesResult(QueryDataSet queryDataSet) throws IOException {
+    List<String> nodes = new ArrayList<>();
+    while (queryDataSet.hasNext()) {
+      RowRecord rowRecord = queryDataSet.next();
+      List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
+      for (Field field : fields) {
+        String nodePaths = field.getObjectValue(field.getDataType()).toString();
+        String[] nodeSubPath = nodePaths.split("\\.");
+        nodes.add(nodeSubPath[nodeSubPath.length - 1]);
+      }
+    }
+    return Response.ok().entity(nodes).build();
+  }
 }
