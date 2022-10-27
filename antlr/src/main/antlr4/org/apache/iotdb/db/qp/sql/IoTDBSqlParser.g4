@@ -187,7 +187,8 @@ aliasClause
     ;
 
 alias
-    : identifier
+    : constant
+    | identifier
     ;
 
 // Delete Storage Group

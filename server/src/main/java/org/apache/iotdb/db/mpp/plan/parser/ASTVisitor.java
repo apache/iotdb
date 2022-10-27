@@ -1801,15 +1801,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   /** function for parsing Alias. */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
-    String alias = ctx.getText();
-    if (alias.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-        && alias.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = alias.substring(1, alias.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return alias;
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseStringLiteral(ctx.constant().getText());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
       }
-      return unWrapped;
+    } else {
+      alias = ctx.identifier().getText();
+      if (alias.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+          && alias.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+        String unWrapped =
+            alias
+                .substring(1, alias.length() - 1)
+                .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
+        ;
+        if (!PathUtils.isRealNumber(unWrapped)
+            && TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+          alias = unWrapped;
+        }
+      }
     }
     return alias;
   }

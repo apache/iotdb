@@ -2713,7 +2713,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** function for parsing Alias. */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
-    String alias = parseIdentifier(ctx.identifier().getText());
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseStringLiteral(ctx.constant().getText());
+    } else {
+      alias = parseIdentifier(ctx.identifier().getText());
+    }
     return alias;
   }
 
