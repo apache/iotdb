@@ -91,7 +91,9 @@ public class ClusterServiceProvider extends ServiceProvider {
   @Override
   public boolean executeNonQuery(PhysicalPlan plan) {
     AuditLogUtils.writeAuditLog(
-        plan.getOperatorName(), String.format("measurements size:%s", plan.getPaths().size()));
+        plan.getOperatorName(),
+        String.format(
+            "measurements size:%s", plan.getPaths() == null ? 0 : plan.getPaths().size()));
     TSStatus tsStatus = executeNonQueryPlan(plan);
     return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
