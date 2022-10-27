@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.db.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.time.ZoneId;
 import java.util.Set;
@@ -27,22 +29,29 @@ import java.util.TimeZone;
 public abstract class IClientSession {
 
   /** id is just used for keep compatible with v0.13 */
-  @Deprecated long id;
+  @Deprecated private long id;
 
-  ClientVersion clientVersion;
+  private ClientVersion clientVersion;
 
-  ZoneId zoneId;
+  private ZoneId zoneId;
 
   // TODO: why some Statement Plans use timeZone while others use ZoneId?
-  TimeZone timeZone;
+  private TimeZone timeZone;
 
-  String username;
+  private String username;
 
-  boolean login = false;
+  private boolean login = false;
+
+  private long logInTime;
 
   abstract String getClientAddress();
 
   abstract int getClientPort();
+
+  abstract TSConnectionType getConnectionType();
+
+  /** ip:port for thrift-based service and client id for mqtt-based service */
+  abstract String getConnectionId();
 
   public void setClientVersion(ClientVersion clientVersion) {
     this.clientVersion = clientVersion;
@@ -86,6 +95,14 @@ public abstract class IClientSession {
     this.login = login;
   }
 
+  public void setLogInTime(long logInTime) {
+    this.logInTime = logInTime;
+  }
+
+  public long getLogInTime() {
+    return logInTime;
+  }
+
   @Deprecated
   public long getId() {
     return id;
@@ -99,6 +116,11 @@ public abstract class IClientSession {
   public String toString() {
     return String.format(
         "%d-%s:%s:%d", getId(), getUsername(), getClientAddress(), getClientPort());
+  }
+
+  public TSConnectionInfo convertToTSConnectionInfo() {
+    return new TSConnectionInfo(
+        getUsername(), getLogInTime(), getConnectionId(), getConnectionType());
   }
 
   /**

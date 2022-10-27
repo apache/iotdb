@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.query.control.clientsession;
 
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
+
 import java.util.Collections;
 import java.util.Set;
 
 public class MqttClientSession extends IClientSession {
 
-  String clientID;
+  private final String clientID;
 
   public MqttClientSession(String clientID) {
     this.clientID = clientID;
@@ -41,6 +43,16 @@ public class MqttClientSession extends IClientSession {
   @Override
   public int getClientPort() {
     return 0;
+  }
+
+  @Override
+  TSConnectionType getConnectionType() {
+    return TSConnectionType.MQTT_BASED;
+  }
+
+  @Override
+  String getConnectionId() {
+    return clientID;
   }
 
   public String toString() {

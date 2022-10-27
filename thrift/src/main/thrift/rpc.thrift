@@ -439,6 +439,22 @@ struct TSBackupConfigurationResp {
   4: optional i32 secondaryPort
 }
 
+enum TSConnectionType {
+  THRIFT_BASED
+  MQTT_BASED
+}
+
+struct TSConnectionInfo {
+  1: required string userName
+  2: required i64 logInTime
+  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
+  4: required TSConnectionType type
+}
+
+struct TSConnectionInfoResp {
+  1: required list<TSConnectionInfo> connectionInfoList
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -539,4 +555,6 @@ service TSIService {
   TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
 
   TSBackupConfigurationResp getBackupConfiguration();
+
+  TSConnectionInfoResp fetchAllConnectionsInfo();
 }
