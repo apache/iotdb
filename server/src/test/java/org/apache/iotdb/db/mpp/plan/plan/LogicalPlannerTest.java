@@ -446,7 +446,7 @@ public class LogicalPlannerTest {
     }
 
     sql =
-        "ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=`newAlias` "
+        "ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS='newAlias' "
             + "TAGS('tag2'='newV2', 'tag3'='v3') ATTRIBUTES('attr3'='v3', 'attr4'='v4')";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
