@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -216,18 +217,21 @@ public class SystemInfo {
   }
 
   /**
-   * Order all working memtables in system by memory cost of actual data points in memtable. Mark
-   * the top K TSPs as to be flushed, so that after flushing the K TSPs, the memory cost should be
-   * less than FLUSH_THRESHOLD
+   * Order all working memtables in system by time partition and memory cost of actual data points
+   * in memtable. Mark the top K TSPs as to be flushed, so that after flushing the K TSPs, the
+   * memory cost should be less than FLUSH_THRESHOLD
    */
   private boolean chooseMemTablesToMarkFlush(TsFileProcessor currentTsFileProcessor) {
     // If invoke flush by replaying logs, do not flush now!
     if (reportedStorageGroupMemCostMap.size() == 0) {
       return false;
     }
+    // first compare time partition id, then compare memory cost
     PriorityQueue<TsFileProcessor> allTsFileProcessors =
         new PriorityQueue<>(
-            (o1, o2) -> Long.compare(o2.getWorkMemTableRamCost(), o1.getWorkMemTableRamCost()));
+            Comparator.comparingLong(TsFileProcessor::getTimeRangeId)
+                .thenComparing(
+                    Comparator.comparingLong(TsFileProcessor::getTimeRangeId).reversed()));
     for (DataRegionInfo dataRegionInfo : reportedStorageGroupMemCostMap.keySet()) {
       allTsFileProcessors.addAll(dataRegionInfo.getAllReportedTsp());
     }
