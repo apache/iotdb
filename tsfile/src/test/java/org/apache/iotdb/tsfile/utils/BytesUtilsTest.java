@@ -143,6 +143,20 @@ public class BytesUtilsTest {
   }
 
   @Test
+  public void bytesToIntOffsetTest1() {
+    int l1 = 123;
+    int width1 = 64 - Integer.numberOfLeadingZeros(l1);
+    int l2 = -124;
+    int width2 = 64 - Integer.numberOfLeadingZeros(l2);
+    byte[] bs = new byte[1000];
+    BytesUtils.intToBytes(l1, bs, 0, width1);
+    int res_val1_1 = BytesUtils.bytesToInt(bs, 0, width1);
+    BytesUtils.intToBytes(l2, bs, width1, width2);
+    int res_val1_2 = BytesUtils.bytesToInt(bs, 0, width1);
+    Assert.assertEquals(res_val1_1, res_val1_2);
+  }
+
+  @Test
   public void bytesToLongOffsetTest1() {
     long l1 = 1600650710304L;
     int width1 = 64 - Long.numberOfLeadingZeros(l1);
