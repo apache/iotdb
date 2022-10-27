@@ -86,7 +86,7 @@ session =
         .password(String password)
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
-        .enableCacheLeader(boolean enableCacheLeader)
+        .enableRedirection(boolean enableRedirection)
         .version(Version version)
         .build();
 ```

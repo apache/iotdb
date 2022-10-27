@@ -27,8 +27,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,9 +36,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-public class TransformNode extends ProcessNode {
-
-  protected PlanNode childPlanNode;
+public class TransformNode extends SingleChildProcessNode {
 
   protected final Expression[] outputExpressions;
   protected final boolean keepNull;
@@ -52,13 +48,12 @@ public class TransformNode extends ProcessNode {
 
   public TransformNode(
       PlanNodeId id,
-      PlanNode childPlanNode,
+      PlanNode child,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
       Ordering scanOrder) {
-    super(id);
-    this.childPlanNode = childPlanNode;
+    super(id, child);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
     this.zoneId = zoneId;
@@ -76,21 +71,6 @@ public class TransformNode extends ProcessNode {
     this.keepNull = keepNull;
     this.zoneId = zoneId;
     this.scanOrder = scanOrder;
-  }
-
-  @Override
-  public final List<PlanNode> getChildren() {
-    return ImmutableList.of(childPlanNode);
-  }
-
-  @Override
-  public final void addChild(PlanNode childPlanNode) {
-    this.childPlanNode = childPlanNode;
-  }
-
-  @Override
-  public final int allowedChildCount() {
-    return ONE_CHILD;
   }
 
   @Override
@@ -185,7 +165,6 @@ public class TransformNode extends ProcessNode {
     }
     TransformNode that = (TransformNode) o;
     return keepNull == that.keepNull
-        && childPlanNode.equals(that.childPlanNode)
         && Arrays.equals(outputExpressions, that.outputExpressions)
         && zoneId.equals(that.zoneId)
         && scanOrder == that.scanOrder;
@@ -193,7 +172,7 @@ public class TransformNode extends ProcessNode {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId, scanOrder);
+    int result = Objects.hash(super.hashCode(), keepNull, zoneId, scanOrder);
     result = 31 * result + Arrays.hashCode(outputExpressions);
     return result;
   }

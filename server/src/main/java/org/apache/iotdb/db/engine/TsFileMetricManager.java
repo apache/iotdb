@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.db.service.metrics.FileMetrics;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * This class collect the number and size of tsfile, and send it to the {@link
- * org.apache.iotdb.db.service.metrics.predefined.FileMetrics}
- */
+/** This class collect the number and size of tsfile, and send it to the {@link FileMetrics} */
 public class TsFileMetricManager {
   private static final TsFileMetricManager INSTANCE = new TsFileMetricManager();
   private AtomicLong seqFileSize = new AtomicLong(0);

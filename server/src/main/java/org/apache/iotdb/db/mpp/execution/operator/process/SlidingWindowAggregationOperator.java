@@ -50,7 +50,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
-    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
