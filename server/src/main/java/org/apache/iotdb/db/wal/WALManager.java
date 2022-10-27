@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
 import org.apache.iotdb.db.wal.allocation.NodeAllocationStrategy;
 import org.apache.iotdb.db.wal.allocation.RoundRobinStrategy;
@@ -53,10 +55,6 @@ public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static final int MAX_WAL_NODE_NUM =
-      config.getMaxWalNodesNum() > 0
-          ? config.getMaxWalNodesNum()
-          : commonConfig.getWalDirs().length * 2;
 
   /** manage all wal nodes and decide how to allocate them */
   private final NodeAllocationStrategy walNodesManager;
@@ -71,9 +69,21 @@ public class WALManager implements IService {
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
+    } else if (config.getMaxWalNodesNum() == 0) {
+      walNodesManager = new ElasticStrategy();
     } else {
-      walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
+      walNodesManager = new RoundRobinStrategy(config.getMaxWalNodesNum());
     }
+  }
+
+  public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
+    return config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)
+        ? storageGroupName
+        : storageGroupName
+            + IoTDBConstant.FILE_NAME_SEPARATOR
+            + (sequence ? "sequence" : "unsequence");
   }
 
   /** Apply for a wal node */
@@ -88,7 +98,6 @@ public class WALManager implements IService {
   /** WAL node will be registered only when using multi-leader consensus protocol */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
-    String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()
         || !config

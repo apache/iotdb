@@ -22,69 +22,66 @@ import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALNode;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * This strategy creates n wal nodes and allocate them by round-robin strategy. In other words,
- * several identifiers (like data regions) can share one wal node.
+ * This strategy creates wal nodes according to the number of memTables. Each wal node manages fixed
+ * number of memTables.
  */
-public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
-  /** max wal nodes number */
-  private final int maxWalNodeNum;
+public class ElasticStrategy extends AbstractNodeAllocationStrategy {
+  /** each wal node manages fixed number of memTables */
+  private static final int APPLICATION_NODE_RATIO = 5;
+
   /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
   private final Lock nodesLock = new ReentrantLock();
   // region these variables should be protected by nodesLock
   /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
   private final List<WALNode> walNodes;
   /** help allocate node for users */
-  private int nodeCursor = -1;
-  /** each wal node has a unique int value identifier */
+  private final Map<String, WALNode> uniqueId2Nodes = new HashMap<>();
+  /** each wal node has a unique long value identifier */
   private int nodeIdCounter = -1;
   // endregion
 
-  public RoundRobinStrategy(int maxWalNodeNum) {
-    this.maxWalNodeNum = maxWalNodeNum;
-    this.walNodes = new ArrayList<>(maxWalNodeNum);
+  public ElasticStrategy() {
+    this.walNodes = new ArrayList<>();
   }
 
   @Override
   public IWALNode applyForWALNode(String applicantUniqueId) {
-    WALNode selectedNode;
     nodesLock.lock();
     try {
-      if (walNodes.size() < maxWalNodeNum) {
-        nodeIdCounter++;
-        IWALNode node = createWALNode(String.valueOf(nodeIdCounter));
-        if (!(node instanceof WALNode)) {
-          return node;
+      if (!uniqueId2Nodes.containsKey(applicantUniqueId)) {
+        // add 1 node when reaching threshold
+        if (uniqueId2Nodes.size() == walNodes.size() * APPLICATION_NODE_RATIO) {
+          nodeIdCounter++;
+          IWALNode node = createWALNode(String.valueOf(nodeIdCounter));
+          if (!(node instanceof WALNode)) {
+            return node;
+          }
+          walNodes.add((WALNode) node);
         }
-        selectedNode = (WALNode) node;
-        walNodes.add(selectedNode);
-      } else {
-        // select next wal node by sequence order
-        nodeCursor = (nodeCursor + 1) % maxWalNodeNum;
-        selectedNode = walNodes.get(nodeCursor);
+        uniqueId2Nodes.put(applicantUniqueId, walNodes.get(nodeIdCounter));
       }
+
+      return uniqueId2Nodes.get(applicantUniqueId);
     } finally {
       nodesLock.unlock();
     }
-    return selectedNode;
   }
 
   @Override
   public List<WALNode> getNodesSnapshot() {
     List<WALNode> snapshot;
-    if (walNodes.size() < maxWalNodeNum) {
-      nodesLock.lock();
-      try {
-        snapshot = new ArrayList<>(walNodes);
-      } finally {
-        nodesLock.unlock();
-      }
-    } else {
-      snapshot = walNodes;
+    nodesLock.lock();
+    try {
+      snapshot = new ArrayList<>(walNodes);
+    } finally {
+      nodesLock.unlock();
     }
     return snapshot;
   }
@@ -93,8 +90,8 @@ public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
   public void clear() {
     nodesLock.lock();
     try {
-      nodeCursor = -1;
       nodeIdCounter = -1;
+      uniqueId2Nodes.clear();
       for (WALNode walNode : walNodes) {
         walNode.close();
       }

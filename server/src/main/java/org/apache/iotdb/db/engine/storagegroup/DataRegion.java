@@ -3767,6 +3767,10 @@ public class DataRegion {
     return new ArrayList<>(partitionMaxFileVersions.keySet());
   }
 
+  public Long getLatestTimePartition() {
+    return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
+  }
+
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
   }
