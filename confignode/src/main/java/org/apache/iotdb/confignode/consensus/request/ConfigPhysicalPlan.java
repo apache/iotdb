@@ -332,6 +332,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTransferringTriggers:
           req = new GetTransferringTriggersPlan();
+          break;
         case ACTIVE_CQ:
           req = new ActiveCQPlan();
           break;
