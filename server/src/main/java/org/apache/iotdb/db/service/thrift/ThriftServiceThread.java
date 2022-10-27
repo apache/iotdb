@@ -155,7 +155,6 @@ public class ThriftServiceThread extends Thread {
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       poolServer = new TThreadPoolServer(poolArgs);
-      logger.warn("注册EventHandler");
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
       catchFailedInitialization(e);
