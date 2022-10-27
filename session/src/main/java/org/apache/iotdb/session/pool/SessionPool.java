@@ -2449,7 +2449,6 @@ public class SessionPool {
       try {
         session.setTimeZone(zoneId);
         putBack(session);
-        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(String.format("setTimeZone to [%s] failed", zoneId), e);
