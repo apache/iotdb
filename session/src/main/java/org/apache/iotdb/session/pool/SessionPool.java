@@ -86,6 +86,7 @@ public class SessionPool {
   private int fetchSize;
   private ZoneId zoneId;
   private boolean enableRedirection;
+  private boolean enableQueryRedirection = false;
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
@@ -362,7 +363,7 @@ public class SessionPool {
               .version(version)
               .build();
     }
-    session.setEnableQueryRedirection(enableRedirection);
+    session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
   }
 
@@ -2491,6 +2492,20 @@ public class SessionPool {
 
   public boolean isEnableRedirection() {
     return enableRedirection;
+  }
+
+  public void setEnableQueryRedirection(boolean enableQueryRedirection) {
+    this.enableQueryRedirection = enableQueryRedirection;
+    for (Session session : queue) {
+      session.setEnableQueryRedirection(enableQueryRedirection);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setEnableQueryRedirection(enableQueryRedirection);
+    }
+  }
+
+  public boolean isEnableQueryRedirection() {
+    return enableQueryRedirection;
   }
 
   public int getConnectionTimeoutInMs() {
