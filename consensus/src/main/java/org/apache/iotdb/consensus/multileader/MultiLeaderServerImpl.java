@@ -22,6 +22,9 @@ package org.apache.iotdb.consensus.multileader;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -37,6 +40,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotReq;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelReq;
@@ -49,6 +54,7 @@ import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.multileader.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -96,6 +102,9 @@ public class MultiLeaderServerImpl {
   private boolean active;
   private String latestSnapshotId;
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
+  private final MultiLeaderServerMetrics metrics;
+
+  private final String consensusGroupId;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -125,6 +134,8 @@ public class MultiLeaderServerImpl {
       reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     }
     this.index = new AtomicLong(currentSearchIndex);
+    this.consensusGroupId = thisNode.getGroupId().toString();
+    this.metrics = new MultiLeaderServerMetrics(this);
   }
 
   public IStateMachine getStateMachine() {
@@ -132,6 +143,7 @@ public class MultiLeaderServerImpl {
   }
 
   public void start() {
+    MetricService.getInstance().addMetricSet(this.metrics);
     stateMachine.start();
     logDispatcher.start();
   }
@@ -139,14 +151,27 @@ public class MultiLeaderServerImpl {
   public void stop() {
     logDispatcher.stop();
     stateMachine.stop();
+    MetricService.getInstance().removeMetricSet(this.metrics);
   }
 
   /**
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
+    long consensusWriteStartTime = System.currentTimeMillis();
     stateMachineLock.lock();
     try {
+      long getStateMachineLockTime = System.currentTimeMillis();
+      // statistic the time of acquiring stateMachine lock
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "getStateMachineLock",
+              Tag.REGION.toString(),
+              this.consensusGroupId)
+          .update(getStateMachineLockTime - consensusWriteStartTime);
       if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
@@ -166,8 +191,19 @@ public class MultiLeaderServerImpl {
           Thread.currentThread().interrupt();
         }
       }
+      long writeToStateMachineStartTime = System.currentTimeMillis();
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      // statistic the time of checking write block
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "checkingBeforeWrite",
+              Tag.REGION.toString(),
+              this.consensusGroupId)
+          .update(writeToStateMachineStartTime - getStateMachineLockTime);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
@@ -177,6 +213,17 @@ public class MultiLeaderServerImpl {
       }
       // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
+      long writeToStateMachineEndTime = System.currentTimeMillis();
+      // statistic the time of writing request into stateMachine
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "writeStateMachine",
+              Tag.REGION.toString(),
+              this.consensusGroupId)
+          .update(writeToStateMachineEndTime - writeToStateMachineStartTime);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
@@ -188,6 +235,16 @@ public class MultiLeaderServerImpl {
           logDispatcher.offer(indexedConsensusRequest);
           index.incrementAndGet();
         }
+        // statistic the time of offering request into queue
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.STAGE.toString(),
+                MetricLevel.CORE,
+                Tag.TYPE.toString(),
+                "offerRequestToQueue",
+                Tag.REGION.toString(),
+                this.consensusGroupId)
+            .update(System.currentTimeMillis() - writeToStateMachineEndTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -195,6 +252,16 @@ public class MultiLeaderServerImpl {
             indexedConsensusRequest.getSearchIndex(),
             result.getCode());
       }
+      // statistic the time of total write process
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.STAGE.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "consensusWrite",
+              Tag.REGION.toString(),
+              this.consensusGroupId)
+          .update(System.currentTimeMillis() - consensusWriteStartTime);
       return result;
     } finally {
       stateMachineLock.unlock();
@@ -624,5 +691,34 @@ public class MultiLeaderServerImpl {
   public void setActive(boolean active) {
     logger.info("set {} active status to {}", this.thisNode, active);
     this.active = active;
+  }
+
+  public void cleanupRemoteSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      TCleanupTransferredSnapshotReq req =
+          new TCleanupTransferredSnapshotReq(
+              targetPeer.getGroupId().convertToTConsensusGroupId(), latestSnapshotId);
+      TCleanupTransferredSnapshotRes res = client.cleanupTransferredSnapshot(req);
+      if (!isSuccess(res.getStatus())) {
+        throw new ConsensusGroupAddPeerException(
+            String.format(
+                "cleanup remote snapshot failed of %s ,status is %s", targetPeer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("cleanup remote snapshot failed of %s", targetPeer), e);
+    }
+  }
+
+  public void cleanupTransferredSnapshot(String snapshotId) throws ConsensusGroupAddPeerException {
+    File snapshotDir = new File(storageDir, snapshotId);
+    if (snapshotDir.exists()) {
+      try {
+        FileUtils.deleteDirectory(snapshotDir);
+      } catch (IOException e) {
+        throw new ConsensusGroupAddPeerException(e);
+      }
+    }
   }
 }

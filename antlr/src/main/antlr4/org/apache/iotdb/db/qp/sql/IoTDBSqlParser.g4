@@ -118,7 +118,7 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL (USING uri (COMMA uri)*)?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL jarLocation
     ;
 
 uri
@@ -428,7 +428,7 @@ specialClause
     | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
     | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
     | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
-    | groupByTagClause orderByClause? #groupByTagStatement
+    | groupByTagClause havingClause? orderByClause? specialLimit? #groupByTagStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 

@@ -104,6 +104,15 @@ struct TTriggerSnapshotLoadRes {
   1: required common.TSStatus status
 }
 
+struct TCleanupTransferredSnapshotReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string snapshotId
+}
+
+struct TCleanupTransferredSnapshotRes {
+  1: required common.TSStatus status
+}
+
 service MultiLeaderConsensusIService {
   TSyncLogRes syncLog(TSyncLogReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
@@ -113,4 +122,5 @@ service MultiLeaderConsensusIService {
   TWaitSyncLogCompleteRes waitSyncLogComplete(TWaitSyncLogCompleteReq req)
   TSendSnapshotFragmentRes sendSnapshotFragment(TSendSnapshotFragmentReq req)
   TTriggerSnapshotLoadRes triggerSnapshotLoad(TTriggerSnapshotLoadReq req)
+  TCleanupTransferredSnapshotRes cleanupTransferredSnapshot(TCleanupTransferredSnapshotReq req)
 }

@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics.enums;
+package org.apache.iotdb.db.exception;
 
-public enum Tag {
-  TYPE,
-  NAME,
-  STATUS;
+public class IntoProcessException extends RuntimeException {
 
-  @Override
-  public String toString() {
-    return super.toString().toLowerCase();
+  public IntoProcessException(String message) {
+    super(message);
   }
 }

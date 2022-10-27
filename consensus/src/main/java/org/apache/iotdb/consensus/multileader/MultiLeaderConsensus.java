@@ -278,6 +278,10 @@ public class MultiLeaderConsensus implements IConsensus {
       logger.info("[MultiLeaderConsensus] activate new peer...");
       impl.activePeer(peer);
 
+      // step 7: spot clean
+      logger.info("[MultiLeaderConsensus] do spot clean...");
+      doSpotClean(peer, impl);
+
     } catch (ConsensusGroupAddPeerException e) {
       logger.error("cannot execute addPeer() for {}", peer, e);
       return ConsensusGenericResponse.newBuilder()
@@ -287,6 +291,14 @@ public class MultiLeaderConsensus implements IConsensus {
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  private void doSpotClean(Peer peer, MultiLeaderServerImpl impl) {
+    try {
+      impl.cleanupRemoteSnapshot(peer);
+    } catch (ConsensusGroupAddPeerException e) {
+      logger.warn("[MultiLeaderConsensus] failed to cleanup remote snapshot", e);
+    }
   }
 
   @Override
