@@ -142,6 +142,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/VariablesResult'
 
+  /grafana/v1/node:
+    post:
+      summary: node
+      description: node
+      operationId: node
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              description: node name (e.g., "root.a.b.c")
+              items:
+                type: string
+      responses:
+        "200":
+          description: NodesResult
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
 components:
   schemas:
     SQL:
@@ -152,6 +175,7 @@ components:
           type: string
         rowLimit:
           type: Integer
+          format: int32
 
     InsertTabletRequest:
       title: InsertTabletRequest
@@ -160,7 +184,8 @@ components:
         timestamps:
           type: array
           items:
-            type: long
+            type: integer
+            format: int64
         measurements:
           type: array
           items:
@@ -185,6 +210,7 @@ components:
       properties:
         code:
           type: integer
+          format: int32
         message:
           type: string
 
@@ -202,7 +228,8 @@ components:
         timestamps:
           type: array
           items:
-            type: long
+            type: integer
+            format: int64
         values:
           type: array
           items:
