@@ -219,6 +219,7 @@ public abstract class ServiceProvider {
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
     SessionTimeoutManager.getInstance().register(session);
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGIN, "user login");
     return openSessionResp.sessionId(session == null ? -1 : session.getId());
   }
 
@@ -235,6 +236,7 @@ public abstract class ServiceProvider {
 
   public boolean closeSession(IClientSession session) {
     AUDIT_LOGGER.info("Session-{} is closing", session);
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGOUT, "user logout");
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 

@@ -53,7 +53,7 @@ public class AuditLogUtils {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     String auditLogStorage = config.getAuditLogStorage();
     SessionManager instance = SessionManager.getInstance();
-    String username = instance.getUsername(instance.getCurrSessionId());
+    String username = instance.getCurrSession().getUsername();
     if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
       try {
         InsertRowPlan insertRowPlan =
