@@ -43,7 +43,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class GroupByTagNode extends MultiChildNode {
+public class GroupByTagNode extends MultiChildProcessNode {
 
   private final List<String> tagKeys;
   private final Map<List<String>, List<CrossSeriesAggregationDescriptor>>
@@ -88,16 +88,6 @@ public class GroupByTagNode extends MultiChildNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
   public PlanNode clone() {
     // TODO: better do deep copy
     return new GroupByTagNode(
@@ -107,11 +97,6 @@ public class GroupByTagNode extends MultiChildNode {
         this.tagKeys,
         this.tagValuesToAggregationDescriptors,
         this.outputColumnNames);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,87 +16,75 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * This node is responsible for join two or more TsBlock. The join algorithm is like outer join by
- * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
- * TimeJoinOperator is sorted by timestamp
- */
-public class TimeJoinNode extends MultiChildProcessNode {
+public class IntoNode extends SingleChildProcessNode {
 
-  // This parameter indicates the order when executing multiway merge sort.
-  private final Ordering mergeOrder;
+  private final IntoPathDescriptor intoPathDescriptor;
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
-    super(id, new ArrayList<>());
-    this.mergeOrder = mergeOrder;
+  public IntoNode(PlanNodeId id, IntoPathDescriptor intoPathDescriptor) {
+    super(id);
+    this.intoPathDescriptor = intoPathDescriptor;
   }
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
-    super(id, children);
-    this.mergeOrder = mergeOrder;
+  public IntoNode(PlanNodeId id, PlanNode child, IntoPathDescriptor intoPathDescriptor) {
+    super(id, child);
+    this.intoPathDescriptor = intoPathDescriptor;
   }
 
-  public Ordering getMergeOrder() {
-    return mergeOrder;
+  public IntoPathDescriptor getIntoPathDescriptor() {
+    return intoPathDescriptor;
   }
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getPlanNodeId(), getMergeOrder());
+    return new IntoNode(getPlanNodeId(), this.intoPathDescriptor);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream()
-        .map(PlanNode::getOutputColumnNames)
-        .flatMap(List::stream)
-        .distinct()
+    return ColumnHeaderConstant.selectIntoColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
         .collect(Collectors.toList());
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeJoin(this, context);
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TIME_JOIN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+    PlanNodeType.INTO.serialize(byteBuffer);
+    this.intoPathDescriptor.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TIME_JOIN.serialize(stream);
-    ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
+    PlanNodeType.INTO.serialize(stream);
+    this.intoPathDescriptor.serialize(stream);
   }
 
-  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
-    Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+  public static IntoNode deserialize(ByteBuffer byteBuffer) {
+    IntoPathDescriptor intoPathDescriptor = IntoPathDescriptor.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TimeJoinNode(planNodeId, mergeOrder);
+    return new IntoNode(planNodeId, intoPathDescriptor);
   }
 
   @Override
-  public String toString() {
-    return "TimeJoinNode-" + this.getPlanNodeId();
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInto(this, context);
   }
 
   @Override
@@ -110,12 +98,17 @@ public class TimeJoinNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    TimeJoinNode that = (TimeJoinNode) o;
-    return mergeOrder == that.mergeOrder && children.equals(that.children);
+    IntoNode intoNode = (IntoNode) o;
+    return intoPathDescriptor.equals(intoNode.intoPathDescriptor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrder, children);
+    return Objects.hash(super.hashCode(), intoPathDescriptor);
+  }
+
+  @Override
+  public String toString() {
+    return "IntoNode-" + getPlanNodeId();
   }
 }
