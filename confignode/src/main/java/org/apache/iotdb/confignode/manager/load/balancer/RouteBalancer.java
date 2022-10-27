@@ -47,8 +47,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * The RouteBalancer plays the role of load information collector since different routing policy
- * need different load information.
+ * The RouteBalancer will maintain cluster RegionRouteMap, which contains:
+ *
+ * <p>1. regionLeaderMap, record the leader for each RegionGroup
+ *
+ * <p>2. regionPriorityMap, record the priority for read/write requests in each RegionGroup
  */
 public class RouteBalancer {
 
@@ -97,6 +100,12 @@ public class RouteBalancer {
     }
   }
 
+  /**
+   * Cache the newest leaderHeartbeatSample
+   *
+   * @param regionGroupId Corresponding RegionGroup's index
+   * @param leaderSample <Sample timestamp, leaderDataNodeId>, The newest HeartbeatSample
+   */
   public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType()) && isMultiLeader) {
       // The leadership of multi-leader consensus protocol is decided by ConfigNode-leader
@@ -111,6 +120,7 @@ public class RouteBalancer {
     }
   }
 
+  /** Invoking periodically to update the latest RegionRouteMap */
   public void updateRegionRouteMap() {
     synchronized (regionRouteMap) {
       updateRegionLeaderMap();
@@ -156,7 +166,8 @@ public class RouteBalancer {
   }
 
   /**
-   * Select leader for the specified RegionGroup greedily. The selected leader will be the DataNode that currently has the fewest leaders
+   * Select leader for the specified RegionGroup greedily. The selected leader will be the DataNode
+   * that currently has the fewest leaders
    *
    * @param regionGroupId The specified RegionGroup
    * @param dataNodeIds The indices of DataNodes where the RegionReplicas reside

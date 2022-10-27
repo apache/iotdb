@@ -68,8 +68,8 @@ public abstract class BaseNodeCache {
   /**
    * Actively append a custom NodeHeartbeatSample to force a change in the NodeStatistics.
    *
-   * <p> For example, this interface can be invoked in Node removing process to
-   * forcibly change the corresponding Node's status to Removing without waiting for heartbeat sampling
+   * <p>For example, this interface can be invoked in Node removing process to forcibly change the
+   * corresponding Node's status to Removing without waiting for heartbeat sampling
    *
    * @param newHeartbeatSample A custom NodeHeartbeatSample that will lead to needed NodeStatistics
    */

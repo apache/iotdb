@@ -903,7 +903,8 @@ public class NodeManager {
   /**
    * @param nodeId The specified Node's index
    * @param isLatest Is the NodeStatistics latest
-   * @return NodeStatistics in NodeCache if the isLatest is set to True, NodeStatistics in NodeInfo otherwise
+   * @return NodeStatistics in NodeCache if the isLatest is set to True, NodeStatistics in NodeInfo
+   *     otherwise
    */
   public NodeStatistics getNodeStatistics(int nodeId, boolean isLatest) {
     NodeStatistics result =

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,13 +37,17 @@ public class NodeCacheTest {
 
     // Test force update to RunningStatus
     long currentTime = System.currentTimeMillis() - 2000;
-    dataNodeHeartbeatCache.forceUpdate(new NodeHeartbeatSample(new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+    dataNodeHeartbeatCache.forceUpdate(
+        new NodeHeartbeatSample(
+            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
     // Test force update to ReadOnlyStatus
     currentTime += 2000;
-    dataNodeHeartbeatCache.forceUpdate(new NodeHeartbeatSample(new THeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
+    dataNodeHeartbeatCache.forceUpdate(
+        new NodeHeartbeatSample(
+            new THeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
     Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
   }

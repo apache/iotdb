@@ -719,8 +719,8 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus updateRegionGroupStatisticsAndRegionRouteMap(
       UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    synchronized (regionGroupStatisticsMap) {
-      if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
+    if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
+      synchronized (regionGroupStatisticsMap) {
         // Update regionGroupStatisticsMap
         regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
         // Log current RegionGroupStatistics
@@ -735,8 +735,8 @@ public class PartitionInfo implements SnapshotProcessor {
       }
     }
 
-    synchronized (regionRouteMap) {
-      if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap().isEmpty()) {
+    if (!updateLoadStatisticsPlan.getRegionRouteMap().isEmpty()) {
+      synchronized (regionRouteMap) {
         // Update regionLeaderMap
         regionRouteMap
             .getRegionLeaderMap()
@@ -750,9 +750,7 @@ public class PartitionInfo implements SnapshotProcessor {
               regionLeaderEntry.getKey(),
               regionLeaderEntry.getValue());
         }
-      }
 
-      if (!updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap().isEmpty()) {
         // Update regionPriorityMap
         regionRouteMap
             .getRegionPriorityMap()

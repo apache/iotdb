@@ -317,8 +317,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Mark the given datanode as removing status to avoid read or
-   * write request routing to this node.
+   * Mark the given datanode as removing status to avoid read or write request routing to this node.
    *
    * @param dataNodeLocation the datanode to be marked as removing status
    */
@@ -332,10 +331,14 @@ public class ConfigNodeProcedureEnv {
 
     // Force updating NodeStatus
     long currentTime = System.currentTimeMillis();
-    NodeHeartbeatSample removingSample = new NodeHeartbeatSample(new THeartbeatResp(
-            currentTime, NodeStatus.Removing.getStatus()
-    ).setStatusReason(null), currentTime);
-    getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId()).forceUpdate(removingSample);
+    NodeHeartbeatSample removingSample =
+        new NodeHeartbeatSample(
+            new THeartbeatResp(currentTime, NodeStatus.Removing.getStatus()).setStatusReason(null),
+            currentTime);
+    getNodeManager()
+        .getNodeCacheMap()
+        .get(dataNodeLocation.getDataNodeId())
+        .forceUpdate(removingSample);
   }
 
   /**
@@ -483,10 +486,13 @@ public class ConfigNodeProcedureEnv {
     long currentTime = System.currentTimeMillis();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
-            (dataNodeId, regionStatus) -> heartbeatSampleMap.put(dataNodeId,
-                    new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
-    getPartitionManager().getRegionGroupCacheMap()
-            .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId)).forceUpdate(heartbeatSampleMap);
+        (dataNodeId, regionStatus) ->
+            heartbeatSampleMap.put(
+                dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
+    getPartitionManager()
+        .getRegionGroupCacheMap()
+        .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
+        .forceUpdate(heartbeatSampleMap);
 
     // Select leader greedily for multi-leader consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())

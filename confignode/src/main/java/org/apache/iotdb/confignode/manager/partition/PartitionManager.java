@@ -819,7 +819,8 @@ public class PartitionManager {
   /**
    * @param regionGroupId The specified RegionGroup's index
    * @param isLatest Is the RegionGroupStatistics latest
-   * @return RegionGroupStatistics in RegionGroupCache if the isLatest is set to True, RegionGroupStatistics in PartitionInfo otherwise
+   * @return RegionGroupStatistics in RegionGroupCache if the isLatest is set to True,
+   *     RegionGroupStatistics in PartitionInfo otherwise
    */
   public RegionGroupStatistics getRegionGroupStatistics(
       TConsensusGroupId regionGroupId, boolean isLatest) {
