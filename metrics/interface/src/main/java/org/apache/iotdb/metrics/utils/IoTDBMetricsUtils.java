@@ -36,7 +36,7 @@ public class IoTDBMetricsUtils {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final String STORAGE_GROUP =
-      "root." + metricConfig.getIoTDBReporterConfig().getDatabase();
+      "root.system" + metricConfig.getIoTDBReporterConfig().getDatabase();
 
   public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
