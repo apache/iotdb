@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -311,7 +312,7 @@ public interface IManager {
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
-  TSStatus createFunction(String udfName, String className, List<String> uris);
+  TSStatus createFunction(TCreateFunctionReq req);
 
   TSStatus dropFunction(String udfName);
 

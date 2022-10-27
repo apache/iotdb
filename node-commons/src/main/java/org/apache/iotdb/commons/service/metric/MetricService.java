@@ -17,22 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.commons.service.metric;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.predefined.FileMetrics;
-import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
-import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.metricsets.predefined.jvm.JvmMetrics;
-import org.apache.iotdb.metrics.metricsets.predefined.logback.LogbackMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,32 +67,6 @@ public class MetricService extends AbstractMetricService implements MetricServic
       JMXService.deregisterMBean(mbeanName);
       logger.info("Finish stop metric Service");
     }
-  }
-
-  @Override
-  public void enablePredefinedMetrics(PredefinedMetric metric) {
-    IMetricSet metricSet;
-    switch (metric) {
-      case JVM:
-        metricSet = new JvmMetrics();
-        break;
-      case LOGBACK:
-        metricSet = new LogbackMetrics();
-        break;
-      case FILE:
-        metricSet = new FileMetrics();
-        break;
-      case PROCESS:
-        metricSet = new ProcessMetrics();
-        break;
-      case SYSTEM:
-        metricSet = new SystemMetrics();
-        break;
-      default:
-        logger.error("Unknown predefined metrics: {}", metric);
-        return;
-    }
-    metricSet.bindTo(this);
   }
 
   @Override

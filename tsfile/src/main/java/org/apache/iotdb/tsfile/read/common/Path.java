@@ -193,28 +193,76 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(measurement, byteBuffer);
-    ReadWriteIOUtils.write(device, byteBuffer);
-    ReadWriteIOUtils.write(fullPath, byteBuffer);
+    if (measurement == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      ReadWriteIOUtils.write(measurement, byteBuffer);
+    }
+    if (device == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      ReadWriteIOUtils.write(device, byteBuffer);
+    }
+    if (fullPath == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      ReadWriteIOUtils.write(fullPath, byteBuffer);
+    }
   }
 
   protected void serializeWithoutType(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(measurement, stream);
-    ReadWriteIOUtils.write(device, stream);
-    ReadWriteIOUtils.write(fullPath, stream);
+    if (measurement == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+    if (device == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(device, stream);
+    }
+    if (fullPath == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(fullPath, stream);
+    }
   }
 
   protected void serializeWithoutType(PublicBAOS stream) throws IOException {
-    ReadWriteIOUtils.write(measurement, stream);
-    ReadWriteIOUtils.write(device, stream);
-    ReadWriteIOUtils.write(fullPath, stream);
+    if (measurement == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+    if (device == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(device, stream);
+    }
+    if (fullPath == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(fullPath, stream);
+    }
   }
 
   public static Path deserialize(ByteBuffer byteBuffer) {
     Path path = new Path();
-    path.measurement = ReadWriteIOUtils.readString(byteBuffer);
-    path.device = ReadWriteIOUtils.readString(byteBuffer);
-    path.fullPath = ReadWriteIOUtils.readString(byteBuffer);
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    path.measurement = isNull == 0 ? null : ReadWriteIOUtils.readString(byteBuffer);
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    path.device = isNull == 0 ? null : ReadWriteIOUtils.readString(byteBuffer);
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    path.fullPath = isNull == 0 ? null : ReadWriteIOUtils.readString(byteBuffer);
     return path;
   }
 
