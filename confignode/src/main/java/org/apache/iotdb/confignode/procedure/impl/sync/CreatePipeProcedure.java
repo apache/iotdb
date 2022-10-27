@@ -151,13 +151,6 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
                 pipeInfo.getCreateTime(),
                 SyncOperation.DROP_PIPE,
                 executedDataNodeIds);
-        //        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        //          throw new ProcedureException(
-        //              String.format(
-        //                  "Failed to create pipe and failed to roll back because %s. Please
-        // execute [DROP PIPE %s] manually.",
-        //                  status.getMessage(), pipeInfo.getPipeName()));
-        //        }
         break;
       default:
         LOGGER.error("Unsupported roll back STATE [{}]", state);

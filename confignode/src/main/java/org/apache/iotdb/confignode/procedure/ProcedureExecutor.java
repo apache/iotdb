@@ -908,7 +908,6 @@ public class ProcedureExecutor<Env> {
     store.update(procedure);
     LOG.debug("{} is stored.", procedure);
     // Add the procedure to the executor
-    System.out.println("Submit procedure");
     return pushProcedure(procedure);
   }
 
