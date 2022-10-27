@@ -23,29 +23,45 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
 
 /** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
+  private LogWriter logWriter;
+  private File logFile;
+  private int logFileId;
+  private static final String fileDir = CONF.getConsensusDir();
+  private static final String filePath = fileDir + File.separator + "log_inprogress_";
+  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -99,6 +115,46 @@ public class PartitionRegionStateMachine
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      if (logFile.length() > FILE_MAX_SIZE) {
+        try {
+          logWriter.force();
+        } catch (IOException e) {
+          LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
+        }
+        for (int retry = 0; retry < 5; retry++) {
+          try {
+            logWriter.close();
+          } catch (IOException e) {
+            LOGGER.warn(
+                "Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
+                logFile.getAbsolutePath(),
+                retry);
+            try {
+              // Sleep 1s and retry
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e2) {
+              Thread.currentThread().interrupt();
+              LOGGER.warn("Unexpected interruption during the close method of logWriter");
+            }
+            continue;
+          }
+          break;
+        }
+        createLogFile(logFileId + 1);
+      }
+
+      try {
+        ByteBuffer buffer = plan.serializeToByteBuffer();
+        // The method logWriter.write will execute flip() firstly, so we must make position==limit
+        buffer.position(buffer.limit());
+        logWriter.write(buffer);
+      } catch (IOException e) {
+        LOGGER.error(
+            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+      }
     }
     return result;
   }
@@ -177,7 +233,9 @@ public class PartitionRegionStateMachine
 
   @Override
   public void start() {
-    // do nothing
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      initStandAloneConfigNode();
+    }
   }
 
   @Override
@@ -206,5 +264,59 @@ public class PartitionRegionStateMachine
   public long getSleepTime() {
     // TODO implement this
     return RetryPolicy.super.getSleepTime();
+  }
+
+  private void initStandAloneConfigNode() {
+    String[] list = new File(fileDir).list();
+    if (list != null && list.length != 0) {
+      for (String logFileName : list) {
+        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+        SingleFileLogReader logReader;
+        try {
+          logReader = new SingleFileLogReader(logFile);
+        } catch (FileNotFoundException e) {
+          LOGGER.error(
+              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              logFile.getAbsolutePath(),
+              e);
+          continue;
+        }
+        while (logReader.hasNext()) {
+          // read and re-serialize the PhysicalPlan
+          ConfigPhysicalPlan nextPlan = logReader.next();
+          try {
+            executor.executeNonQueryPlan(nextPlan);
+          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+            LOGGER.error(e.getMessage());
+          }
+        }
+        logReader.close();
+      }
+    }
+    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
+      File file = SystemFileFactory.INSTANCE.getFile(filePath);
+      if (!file.exists()) {
+        logFileId = ID;
+        break;
+      }
+    }
+    createLogFile(logFileId);
+  }
+
+  private void createLogFile(int logFileId) {
+    logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
+    try {
+      if (logFile.createNewFile()) {
+        logWriter = new LogWriter(logFile, false);
+        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException ignored) {
+        // Ignore and retry
+      }
+    }
   }
 }
