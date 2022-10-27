@@ -103,5 +103,6 @@ public enum ConfigPhysicalPlanType {
   ADD_CQ,
   UPDATE_CQ_LAST_EXEC_TIME,
   SHOW_CQ,
-  GetTemplateSetInfo
+  GetTemplateSetInfo,
+  GetFunctionTable
 }

@@ -215,6 +215,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       case SHOW_CQ:
         return cqInfo.showCQ((ShowCQPlan) req);
+      case GetFunctionTable:
+        return udfInfo.getUDFTable();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
@@ -345,6 +346,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SHOW_CQ:
           req = new ShowCQPlan();
+          break;
+        case GetFunctionTable:
+          req = new GetFunctionTablePlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

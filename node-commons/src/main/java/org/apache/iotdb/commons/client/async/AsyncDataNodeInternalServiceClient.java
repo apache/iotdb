@@ -109,7 +109,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info("Unexpected exception occurs in {} :", this, e);
+      logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
       return false;
     }
   }
