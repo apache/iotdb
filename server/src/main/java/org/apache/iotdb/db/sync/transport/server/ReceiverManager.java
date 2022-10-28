@@ -140,7 +140,7 @@ public class ReceiverManager {
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
   public TSStatus handshake(TSyncIdentityInfo identityInfo) {
-    logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
+    logger.info("Invoke handshake method from client ip = {}", identityInfo.address);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
       return RpcUtils.getStatus(
@@ -384,6 +384,7 @@ public class ReceiverManager {
   }
 
   private void createConnection(TSyncIdentityInfo identityInfo) {
+    logger.info("create connection {}", identityInfo);
     long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);

@@ -150,6 +150,7 @@ public class SyncService implements IService {
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
       throws PipeSinkException {
+    logger.info("Add PIPESINK {}", createPipeSinkStatement);
     TSStatus status = syncInfoFetcher.addPipeSink(createPipeSinkStatement);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
@@ -157,6 +158,7 @@ public class SyncService implements IService {
   }
 
   public void dropPipeSink(String name) throws PipeSinkException {
+    logger.info("Execute DROP PIPESINK {}", name);
     TSStatus status = syncInfoFetcher.dropPipeSink(name);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
@@ -172,7 +174,7 @@ public class SyncService implements IService {
   // region Interfaces and Implementation of Pipe
 
   public synchronized void addPipe(PipeInfo pipeInfo) throws PipeException {
-    logger.info("Execute CREATE PIPE {}", pipeInfo.getPipeName());
+    logger.info("Execute CREATE PIPE {}", pipeInfo);
     long currentTime = DateTimeUtils.currentTime();
     if (pipeInfo instanceof TsFilePipeInfo) {
       // TODO(sync): move check logic to PipeInfo#validate()
