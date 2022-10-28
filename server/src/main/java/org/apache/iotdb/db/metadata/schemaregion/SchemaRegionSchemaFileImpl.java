@@ -727,7 +727,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    throw new UnsupportedOperationException();
+    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   /**
@@ -922,7 +922,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
   @Override
@@ -1112,7 +1112,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
   @Override

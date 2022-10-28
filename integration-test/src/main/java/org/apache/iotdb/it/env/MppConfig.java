@@ -311,4 +311,18 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
     return this;
   }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    engineProperties.setProperty(
+        "select_into_insert_tablet_plan_row_limit",
+        String.valueOf(selectIntoInsertTabletPlanRowLimit));
+    return this;
+  }
 }

@@ -65,6 +65,16 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     }
     try {
       switch (state) {
+        case REGION_REPLICA_CHECK:
+          if (env.doubleCheckReplica()) {
+            setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
+          } else {
+            LOG.error(
+                "{}, Can not remove DataNode {} because the number of DataNodes is less or equal than region replica number",
+                REMOVE_DATANODE_PROCESS,
+                disableDataNodeLocation);
+            return Flow.NO_MORE_STATE;
+          }
         case REMOVE_DATA_NODE_PREPARE:
           // mark the datanode as removing status and broadcast region route map
           env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
@@ -137,7 +147,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
 
   @Override
   protected RemoveDataNodeState getInitialState() {
-    return RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE;
+    return RemoveDataNodeState.REGION_REPLICA_CHECK;
   }
 
   @Override

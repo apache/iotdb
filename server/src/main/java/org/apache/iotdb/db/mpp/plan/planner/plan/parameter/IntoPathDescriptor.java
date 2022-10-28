@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG;
 import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 
 public class IntoPathDescriptor {
@@ -64,8 +66,7 @@ public class IntoPathDescriptor {
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {
     if (targetDeviceToAlignedMap.containsKey(targetDevice)
         && targetDeviceToAlignedMap.get(targetDevice) != isAligned) {
-      throw new SemanticException(
-          "select into: alignment property must be the same for the same device.");
+      throw new SemanticException(DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG);
     }
     targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
@@ -134,8 +135,9 @@ public class IntoPathDescriptor {
     int listSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Pair<String, PartialPath>> sourceTargetPathPairList = new ArrayList<>(listSize);
     for (int i = 0; i < listSize; i++) {
-      sourceTargetPathPairList.add(
-          new Pair<>(ReadWriteIOUtils.readString(byteBuffer), PartialPath.deserialize(byteBuffer)));
+      String sourceColumn = ReadWriteIOUtils.readString(byteBuffer);
+      PartialPath targetPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+      sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
     }
 
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);

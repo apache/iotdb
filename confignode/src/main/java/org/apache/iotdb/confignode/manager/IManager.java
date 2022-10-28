@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -56,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -68,6 +70,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -299,9 +302,11 @@ public interface IManager {
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
-  TSStatus createFunction(String udfName, String className, List<String> uris);
+  TSStatus createFunction(TCreateFunctionReq req);
 
   TSStatus dropFunction(String udfName);
+
+  TGetUDFTableResp getUDFTable();
 
   /** Create trigger */
   TSStatus createTrigger(TCreateTriggerReq req);
@@ -473,6 +478,13 @@ public interface IManager {
    * @return TShowPipeResp contains the TShowPipeInfo
    */
   TShowPipeResp showPipe(TShowPipeReq req);
+
+  /**
+   * Get all pipe information. It is used for DataNode registration and restart.
+   *
+   * @return All pipe information.
+   */
+  TGetAllPipeInfoResp getAllPipeInfo();
 
   TGetRegionIdResp getRegionId(GetRegionIdPlan plan);
 

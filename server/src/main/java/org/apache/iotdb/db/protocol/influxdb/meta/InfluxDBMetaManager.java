@@ -25,7 +25,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -46,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** InfluxDBMetaManager for IoTDB When schema region is memory or schema file */
 public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
   protected final Planner planner;
@@ -114,6 +118,12 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * set storage group
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   @Override
   public void setStorageGroup(String database, long sessionID) {
     try {
@@ -130,6 +140,12 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     }
   }
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   @Override
   public void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID) {
     List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
@@ -140,6 +156,61 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
         throw new InfluxDBException(e.getMessage());
       }
     }
+  }
+
+  /**
+   * get field orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of field orders
+   */
+  @Override
+  public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
+    Map<String, Integer> fieldOrders = new HashMap<>();
+    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+    try {
+      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
+      QueryContext queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              showTimeseriesSql,
+              InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      QueryDataSet queryDataSet =
+          serviceProvider.createQueryDataSet(
+              queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
+      int fieldNums = 0;
+      Map<String, Integer> tagOrders =
+          InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, sessionID);
+      int tagOrderNums = tagOrders.size();
+      while (queryDataSet.hasNext()) {
+        List<Field> fields = queryDataSet.next().getFields();
+        String filed = StringUtils.getFieldByPath(fields.get(0).getStringValue());
+        if (!fieldOrders.containsKey(filed)) {
+          // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
+          // and finally all fields)
+          fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
+          fieldNums++;
+        }
+      }
+    } catch (QueryProcessException
+        | TException
+        | StorageEngineException
+        | SQLException
+        | IOException
+        | InterruptedException
+        | QueryFilterOptimizationException
+        | MetadataException e) {
+      throw new InfluxDBException(e.getMessage());
+    } finally {
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+    }
+    return fieldOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

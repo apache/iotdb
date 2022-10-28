@@ -203,17 +203,22 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(path.getDevicePath());
-    IMNode device = pair.left;
+    PartialPath devicePath = path.getDevicePath();
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
+    IMNode deviceParent = pair.left;
     Template upperTemplate = pair.right;
-
-    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
-
-    String leafName = path.getMeasurement();
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent, upperTemplate);
+      IMNode device = pair.left;
+      upperTemplate = pair.right;
+
+      MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
+
+      String leafName = path.getMeasurement();
+
       if (alias != null && device.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
@@ -291,12 +296,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     List<IMeasurementMNode> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
-    IMNode device = pair.left;
+    IMNode deviceParent = pair.left;
     Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild operation be atomic.
     // only write operations on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent, upperTemplate);
+      IMNode device = pair.left;
+      upperTemplate = pair.right;
+
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
           IMNode node = device.getChild(measurements.get(i));
@@ -318,61 +327,64 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
         }
       }
-    }
 
-    if (upperTemplate != null) {
-      for (String measurement : measurements) {
-        if (upperTemplate.getDirectNode(measurement) != null) {
-          throw new TemplateImcompatibeException(
-              devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+      if (upperTemplate != null) {
+        for (String measurement : measurements) {
+          if (upperTemplate.getDirectNode(measurement) != null) {
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+          }
         }
       }
-    }
 
-    if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
-      throw new AlignedTimeseriesException(
-          "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
-          devicePath.getFullPath());
-    }
-
-    IEntityMNode entityMNode;
-    if (device.isEntity()) {
-      entityMNode = device.getAsEntityMNode();
-    } else {
-      entityMNode = store.setToEntity(device);
-      entityMNode.setAligned(true);
-      if (entityMNode.isStorageGroup()) {
-        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
       }
-    }
 
-    for (int i = 0; i < measurements.size(); i++) {
-      IMeasurementMNode measurementMNode =
-          MeasurementMNode.getMeasurementMNode(
-              entityMNode,
-              measurements.get(i),
-              new MeasurementSchema(
-                  measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
-              aliasList == null ? null : aliasList.get(i));
-      store.addChild(entityMNode, measurements.get(i), measurementMNode);
-      if (aliasList != null && aliasList.get(i) != null) {
-        entityMNode.addAlias(aliasList.get(i), measurementMNode);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = store.setToEntity(device);
+        entityMNode.setAligned(true);
+        if (entityMNode.isStorageGroup()) {
+          this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+        }
       }
-      measurementMNodeList.add(measurementMNode);
+
+      for (int i = 0; i < measurements.size(); i++) {
+        IMeasurementMNode measurementMNode =
+            MeasurementMNode.getMeasurementMNode(
+                entityMNode,
+                measurements.get(i),
+                new MeasurementSchema(
+                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
+                aliasList == null ? null : aliasList.get(i));
+        store.addChild(entityMNode, measurements.get(i), measurementMNode);
+        if (aliasList != null && aliasList.get(i) != null) {
+          entityMNode.addAlias(aliasList.get(i), measurementMNode);
+        }
+        measurementMNodeList.add(measurementMNode);
+      }
+      return measurementMNodeList;
     }
-    return measurementMNodeList;
   }
 
   private Pair<IMNode, Template> checkAndAutoCreateInternalPath(PartialPath devicePath)
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
+    if (nodeNames.length == levelOfSG + 1) {
+      return new Pair<>(null, null);
+    }
     IMNode cur = storageGroupMNode;
     IMNode child;
     String childName;
     Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+    for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
       if (child == null) {
@@ -395,6 +407,37 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(cur, upperTemplate);
   }
 
+  private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
+      String deviceName, IMNode deviceParent, Template upperTemplate)
+      throws PathAlreadyExistException, TemplateImcompatibeException {
+    if (deviceParent == null) {
+      // device is sg
+      return new Pair<>(storageGroupMNode, null);
+    }
+    IMNode device = store.getChild(deviceParent, deviceName);
+    if (device == null) {
+      if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {
+        throw new TemplateImcompatibeException(
+            deviceParent.getPartialPath().concatNode(deviceName).getFullPath(),
+            upperTemplate.getName(),
+            deviceName);
+      }
+      device =
+          store.addChild(deviceParent, deviceName, new InternalMNode(deviceParent, deviceName));
+    }
+
+    if (device.isMeasurement()) {
+      throw new PathAlreadyExistException(device.getFullPath());
+    }
+
+    if (device.getSchemaTemplate() != null) {
+      upperTemplate = device.getSchemaTemplate();
+    }
+
+    return new Pair<>(device, upperTemplate);
+  }
+
+  @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     IMNode device = null;
@@ -780,6 +823,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
+  @Override
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
@@ -979,6 +1023,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  @Override
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
