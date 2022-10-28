@@ -25,7 +25,7 @@
     <property name="severity" value="error"/>
     <property name="fileExtensions" value="java"/>
     <module name="BeforeExecutionExclusionFileFilter">
-        <property name="fileNamePattern" value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]db[\\/]it[\\/](env|utils))[\\/].*$"/>
+        <property name="fileNamePattern" value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/](db|confignode)[\\/]it[\\/](env|utils))[\\/].*$"/>
     </module>
     <module name="TreeWalker">
         <module name="ImportControl">
