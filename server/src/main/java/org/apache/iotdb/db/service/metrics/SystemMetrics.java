@@ -51,21 +51,25 @@ public class SystemMetrics implements IMetricSet {
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Set<FileStore> fileStores = new HashSet<>();
+  private boolean isDataNode = false;
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
-  public SystemMetrics() {
-    osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  public SystemMetrics(boolean isDataNode) {
+    this.isDataNode = isDataNode;
+    this.osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     collectSystemCpuInfo(metricService);
-    collectSystemDiskInfo(metricService);
+    if (isDataNode) {
+      collectSystemDiskInfo(metricService);
+    }
     collectSystemMemInfo(metricService);
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture) {
+    if (metricService.isEnable() && null == currentServiceFuture && isDataNode) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -81,13 +85,15 @@ public class SystemMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
-    if (currentServiceFuture != null) {
+    if (currentServiceFuture != null && isDataNode) {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
 
     removeSystemCpuInfo(metricService);
-    removeSystemDiskInfo(metricService);
+    if (isDataNode) {
+      removeSystemDiskInfo(metricService);
+    }
     removeSystemMemInfo(metricService);
   }
 

@@ -200,7 +200,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
 
     LOGGER.info("Successfully setup internal services.");
   }
