@@ -37,176 +37,207 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBFuzzyQueryIT {
-  private static List<String> sqls = new ArrayList<>();
+
+  private static final List<String> sqls =
+      Arrays.asList(
+          "SET STORAGE GROUP TO root.t1",
+          "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.t1.wf01.wt02.status WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465600000,'1',12.1)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465660000,'14',13.1)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465720000,'616',5.5)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465780000,'626',8.1)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465840000,'6116',4.3)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465900000,'6%16',10.3)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465960000,'8[sS]*',11.3)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466020000,'%123',18.3)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)",
+          "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\\\',10.3)",
+          "insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
+
   private static Connection connection;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    close();
+    connection.close();
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void close() {
-    if (Objects.nonNull(connection)) {
-      try {
-        connection.close();
-      } catch (Exception e) {
-        e.printStackTrace();
+  private static void insertData() {
+    try (Statement statement = connection.createStatement(); ) {
+      for (String sql : sqls) {
+        statement.execute(sql);
       }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
-  }
-
-  private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.t1");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=TEXT, ENCODING=PLAIN");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt02.status WITH DATATYPE=TEXT, ENCODING=PLAIN");
-
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465600000,'1',12.1)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465660000,'14',13.1)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465720000,'616',5.5)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465780000,'626',8.1)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465840000,'6116',4.3)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465900000,'6%16',10.3)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465960000,'8[sS]*',11.3)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466020000,'%123',18.3)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)");
-    sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\\\',10.3)");
-    sqls.add("insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
-  }
-
-  private static void insertData() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement statement = connection.createStatement();
-
-    for (String sql : sqls) {
-      statement.execute(sql);
-    }
-    statement.close();
   }
 
   @Test
-  public void testLike() throws SQLException {
-    Statement st0 = connection.createStatement();
-    boolean hasResultSet =
-        st0.execute("select status from root.t1.wf01.wt01 where status like '1'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1", outputResultStr(st0.getResultSet()));
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals(
-        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(st0.getResultSet()));
+  public void testLike() {
+    try (Statement statement = connection.createStatement(); ) {
+      boolean hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '1'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("1", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1,14,123%", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1,14,616,6116,6%16,%123,123%", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '1%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("1,14,123%", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6%6'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("616,626,6116,6%16", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '%1%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,6116,6%16,%123,123%", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1_'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("14", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '6%6'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("616,626,6116,6%16", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6_1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("6116,6%16", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '1_'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("14", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6\\%%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("6%16", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '6_1%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("6116,6%16", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '\\%%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("%123", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '6\\%%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("6%16", outputResultStr(statement.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%\\%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("123%", outputResultStr(st0.getResultSet()));
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '\\%%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("%123", outputResultStr(statement.getResultSet()));
 
-    hasResultSet =
-        st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("\\", outputResultStr(st0.getResultSet()));
-  }
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '%\\%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("123%", outputResultStr(statement.getResultSet()));
 
-  @Test(expected = Exception.class)
-  public void testLikeNonTextCloumn() throws SQLException {
-    Statement st1 = connection.createStatement();
-    st1.execute("select * from root.t1.wf01.wt01 where temperature like '1'");
-  }
-
-  private String outputResultStr(ResultSet resultSet) throws SQLException {
-    StringBuilder resultBuilder = new StringBuilder();
-    while (resultSet.next()) {
-      resultBuilder.append(resultSet.getString(2)).append(",");
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("\\", outputResultStr(statement.getResultSet()));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
-    String result = resultBuilder.toString();
-    return result.substring(0, result.length() - 1);
-  }
-
-  private List<Integer> checkHeader(
-      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
-      throws SQLException {
-    String[] expectedHeaders = expectedHeaderStrings.split(",");
-    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
-    for (int i = 0; i < expectedHeaders.length; ++i) {
-      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
-    }
-
-    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
-      Assert.assertNotNull(typeIndex);
-      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
-      actualIndexToExpectedIndexList.add(typeIndex);
-    }
-    return actualIndexToExpectedIndexList;
   }
 
   @Test
-  public void selectLikeAlignByDevice() throws ClassNotFoundException {
+  public void testNotLike() {
+    try (Statement statement = connection.createStatement(); ) {
+      boolean hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '1')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "14,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '1%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "616,626,6116,6%16,8[sS]*,%123,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '%1%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("626,8[sS]*,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '6%6')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals("1,14,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '1_')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '6_1%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '6\\%%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,6116,8[sS]*,%123,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '\\%%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,6116,6%16,8[sS]*,123%,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute("select status from root.t1.wf01.wt01 where not (status like '%\\%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,6116,6%16,8[sS]*,%123,\\", outputResultStr(statement.getResultSet()));
+
+      hasResultSet =
+          statement.execute(
+              "select status from root.t1.wf01.wt01 where not (status like '%\\\\\\\\%')");
+      Assert.assertTrue(hasResultSet);
+      Assert.assertEquals(
+          "1,14,616,626,6116,6%16,8[sS]*,%123,123%", outputResultStr(statement.getResultSet()));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectLikeAlignByDevice() {
     String[] retArray =
         new String[] {"1509465660000,root.t1.wf01.wt01,14,", "1509465600000,root.t1.wf01.wt02,14"};
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select status from root.t1.wf01.wt0* where status like '14%' align by device");
@@ -236,14 +267,14 @@ public class IoTDBFuzzyQueryIT {
         }
         Assert.assertEquals(2, cnt);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   @Test
-  public void selectRegexpAlignByDevice() throws ClassNotFoundException {
+  public void selectRegexpAlignByDevice() {
     String[] retArray =
         new String[] {
           "1509465600000,root.t1.wf01.wt01,1,",
@@ -252,11 +283,7 @@ public class IoTDBFuzzyQueryIT {
           "1509465600000,root.t1.wf01.wt02,14,"
         };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select status from root.t1.wf01.wt0* where status regexp '^1.*' align by device");
@@ -286,9 +313,64 @@ public class IoTDBFuzzyQueryIT {
         }
         Assert.assertEquals(4, cnt);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testLikeNonTextColumn() {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("select * from root.t1.wf01.wt01 where temperature like '1'");
+      fail("no exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("Unsupported type: [FLOAT]. Only TEXT is supported in 'Like'"));
+    }
+  }
+
+  @Test
+  public void testRegexpNonTextColumn() {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("select * from root.t1.wf01.wt01 where temperature regexp '1'");
+      fail("no exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("Unsupported type: [FLOAT]. Only TEXT is supported in 'Regexp'"));
+    }
+  }
+
+  private String outputResultStr(ResultSet resultSet) throws SQLException {
+    StringBuilder resultBuilder = new StringBuilder();
+    while (resultSet.next()) {
+      resultBuilder.append(resultSet.getString(2)).append(",");
+    }
+    String result = resultBuilder.toString();
+    if (result.isEmpty()) {
+      return result;
+    }
+    return result.substring(0, result.length() - 1);
+  }
+
+  private List<Integer> checkHeader(
+      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
+      throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
   }
 }

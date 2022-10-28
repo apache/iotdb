@@ -2620,8 +2620,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         throw new SQLParserException("Path is null, please check the sql.");
       }
       return ctx.REGEXP() != null
-          ? new RegexpOperator(FilterType.REGEXP, path, ctx.STRING_LITERAL().getText())
-          : new LikeOperator(FilterType.LIKE, path, ctx.STRING_LITERAL().getText());
+          ? new RegexpOperator(FilterType.REGEXP, path, ctx.STRING_LITERAL().getText(), false)
+          : new LikeOperator(FilterType.LIKE, path, ctx.STRING_LITERAL().getText(), false);
     } else {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
