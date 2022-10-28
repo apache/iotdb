@@ -1288,7 +1288,7 @@ public class ConfigManager implements IManager {
     newUnknownDataList.forEach(
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
-    LOGGER.info("start Transfer of {}", newUnknownDataList);
+    LOGGER.info("Start transfer of {}", newUnknownDataList);
     // transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
