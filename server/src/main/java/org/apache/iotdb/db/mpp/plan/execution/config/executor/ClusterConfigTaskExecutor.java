@@ -140,6 +140,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -274,52 +275,64 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     String className = createFunctionStatement.getClassName();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TCreateFunctionReq tCreateFunctionReq = new TCreateFunctionReq(udfName, className, false);
       String libRoot = UDFExecutableManager.getInstance().getLibRoot();
       String jarFileName;
       ByteBuffer jarFile;
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
-        try {
-          // download executable
-          ExecutableResource resource =
-              UDFExecutableManager.getInstance()
-                  .request(Collections.singletonList(createFunctionStatement.getJarPath()));
-          String uriString = createFunctionStatement.getJarPath();
-          jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
-          // move to ext
-          UDFExecutableManager.getInstance()
-              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
-          // jarFilePath after moving to ext lib
-          String jarFilePathUnderLib =
-              UDFExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
-          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderLib);
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib)));
+        String uriString = createFunctionStatement.getUriString();
+        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        if (!new URI(uriString).getScheme().equals("file")) {
+          try {
+            // download executable
+            ExecutableResource resource =
+                UDFExecutableManager.getInstance().request(Collections.singletonList(uriString));
+            String jarFilePathUnderTempDir =
+                UDFExecutableManager.getInstance()
+                        .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                    + File.separator
+                    + jarFileName;
+            // libRoot should be the path of the specified jar
+            libRoot = jarFilePathUnderTempDir;
+            jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
 
-        } catch (IOException | URISyntaxException e) {
-          LOGGER.warn(
-              "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
-              createFunctionStatement.getUdfName(),
-              createFunctionStatement.getJarPath(),
-              e);
-          future.setException(
-              new IoTDBException(
-                  "Failed to download executable for UDF '"
-                      + createFunctionStatement.getUdfName()
-                      + "'",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
+          } catch (IOException | URISyntaxException e) {
+            LOGGER.warn(
+                "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
+                createFunctionStatement.getUdfName(),
+                createFunctionStatement.getUriString(),
+                e);
+            future.setException(
+                new IoTDBException(
+                    "Failed to download executable for UDF '"
+                        + createFunctionStatement.getUdfName()
+                        + "'",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+        } else {
+          // libRoot should be the path of the specified jar
+          libRoot = new URI(uriString).getPath();
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // ConfigNode.
+          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+          // set md5 of the jar file
+          jarMd5 =
+              DigestUtils.md5Hex(
+                  Files.newInputStream(Paths.get(createFunctionStatement.getUriString())));
         }
-      } else {
-        // change libRoot
-        libRoot = createFunctionStatement.getJarPath();
-
-        jarFileName = new File(createFunctionStatement.getJarPath()).getName();
-        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        jarFile = ExecutableManager.transferToBytebuffer(createFunctionStatement.getJarPath());
-        // set md5 of the jar file
-        jarMd5 =
-            DigestUtils.md5Hex(
-                Files.newInputStream(Paths.get(createFunctionStatement.getJarPath())));
+        // modify req
+        tCreateFunctionReq.setJarFile(jarFile);
+        tCreateFunctionReq.setJarMD5(jarMd5);
+        tCreateFunctionReq.setIsUsingURI(true);
+        tCreateFunctionReq.setJarName(
+            String.format(
+                "%s-%s.%s",
+                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                jarMd5,
+                jarFileName.substring(jarFileName.lastIndexOf("." + 1))));
       }
 
       // try to create instance, this request will fail if creation is not successful
@@ -336,19 +349,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to load class '"
                     + createFunctionStatement.getClassName()
                     + "', because it's not found in jar file: "
-                    + createFunctionStatement.getJarPath(),
+                    + createFunctionStatement.getUriString(),
                 TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
 
-      final TSStatus executionStatus =
-          client.createFunction(
-              new TCreateFunctionReq(
-                  createFunctionStatement.getUdfName(),
-                  createFunctionStatement.getClassName(),
-                  jarFileName,
-                  jarFile,
-                  jarMd5));
+      final TSStatus executionStatus = client.createFunction(tCreateFunctionReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.error(
             "Failed to create function {}({}) because {}",
@@ -359,7 +365,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (TException | IOException | URISyntaxException e) {
       future.setException(e);
     }
     return future;

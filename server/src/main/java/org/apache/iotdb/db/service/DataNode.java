@@ -476,7 +476,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < udfInformationList.size(); i++) {
         UDFExecutableManager.getInstance()
-            .writeToLibDir(jarList.get(i), udfInformationList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), udfInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -487,17 +487,21 @@ public class DataNode implements DataNodeMBean {
   private List<UDFInformation> getJarListForUDF() {
     List<UDFInformation> res = new ArrayList<>();
     for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-      // jar does not exist, add current triggerInformation to list
-      if (!UDFExecutableManager.getInstance().hasFileUnderLibRoot(udfInformation.getJarName())) {
-        res.add(udfInformation);
-      } else {
-        try {
-          // local jar has conflicts with jar on config node, add current triggerInformation to list
-          if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
+      if (udfInformation.isUsingURI()) {
+        // jar does not exist, add current triggerInformation to list
+        if (!UDFExecutableManager.getInstance()
+            .hasFileUnderInstallDir(udfInformation.getJarName())) {
+          res.add(udfInformation);
+        } else {
+          try {
+            // local jar has conflicts with jar on config node, add current triggerInformation to
+            // list
+            if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
+              res.add(udfInformation);
+            }
+          } catch (UDFManagementException e) {
             res.add(udfInformation);
           }
-        } catch (UDFManagementException e) {
-          res.add(udfInformation);
         }
       }
     }
@@ -583,7 +587,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);

@@ -311,9 +311,10 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required string jarName
-  4: required binary jarFile
-  5: required string jarMD5
+  3: required bool isUsingURI
+  4: optional string jarName
+  5: optional binary jarFile
+  6: optional string jarMD5
 }
 
 struct TDropFunctionReq {

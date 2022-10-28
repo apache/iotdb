@@ -45,6 +45,8 @@ public class ExecutableManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutableManager.class);
 
+  protected static final String INSTALL_DIR = "install";
+
   protected final String temporaryLibRoot;
   protected final String libRoot;
 
@@ -93,11 +95,6 @@ public class ExecutableManager {
     }
   }
 
-  public void moveTempDirToExtLibDir(ExecutableResource resource, String name) throws IOException {
-    FileUtils.moveDirectory(
-        getDirUnderTempRootByRequestId(resource.getRequestId()), getDirUnderLibRootByName(name));
-  }
-
   public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
       throws IOException {
     FileUtils.moveFileToDirectory(
@@ -127,6 +124,11 @@ public class ExecutableManager {
     return Files.exists(Paths.get(this.libRoot + File.separator + fileName));
   }
 
+  public boolean hasFileUnderInstallDir(String fileName) {
+    return Files.exists(
+        Paths.get(this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName));
+  }
+
   // endregion
 
   // ======================================================
@@ -135,10 +137,6 @@ public class ExecutableManager {
 
   public boolean hasFileUnderTemporaryRoot(String fileName) {
     return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
-  }
-
-  public void removeFromTemporaryLibRoot(ExecutableResource resource) {
-    removeFromTemporaryLibRoot(resource.getRequestId());
   }
 
   private void removeFromTemporaryLibRoot(long requestId) {
@@ -221,12 +219,7 @@ public class ExecutableManager {
     }
   }
 
-  /**
-   * @param byteBuffer jar data
-   * @param fileName The name of the file. Absolute Path will be libRoot + File_Separator + fileName
-   */
-  public void writeToLibDir(ByteBuffer byteBuffer, String fileName) throws IOException {
-    String destination = this.libRoot + File.separator + fileName;
+  protected void saveToDir(ByteBuffer byteBuffer, String destination) throws IOException {
     Path path = Paths.get(destination);
     Files.deleteIfExists(path);
     Files.createFile(path);
@@ -238,6 +231,25 @@ public class ExecutableManager {
       throw e;
     }
   }
+
+  /**
+   * @param byteBuffer jar data
+   * @param fileName The name of the file. Absolute Path will be libRoot + File_Separator + fileName
+   */
+  public void saveToLibDir(ByteBuffer byteBuffer, String fileName) throws IOException {
+    String destination = this.libRoot + File.separator + fileName;
+    saveToDir(byteBuffer, destination);
+  }
+
+  /**
+   * @param byteBuffer jar data
+   * @param fileName The name of the file. Absolute Path will be libRoot + File_Separator + fileName
+   */
+  public void saveToInstallDir(ByteBuffer byteBuffer, String fileName) throws IOException {
+    String destination = this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
+    saveToDir(byteBuffer, destination);
+  }
+
   // endregion
 
   public String getTemporaryLibRoot() {

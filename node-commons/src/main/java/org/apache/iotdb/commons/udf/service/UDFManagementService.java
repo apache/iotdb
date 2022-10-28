@@ -128,11 +128,11 @@ public class UDFManagementService {
       LOGGER.warn(errorMessage);
       throw new UDFManagementException(errorMessage);
     } else {
-      if (UDFExecutableManager.getInstance().hasFileUnderLibRoot(udfInformation.getJarName())
+      if (UDFExecutableManager.getInstance().hasFileUnderInstallDir(udfInformation.getJarName())
           && isLocalJarConflicted(udfInformation)) {
         String errorMessage =
             String.format(
-                "Failed to registered function %s, "
+                "Failed to register function %s, "
                     + "because existed md5 of jar file for function %s is different from the new jar file. ",
                 functionName, functionName);
         LOGGER.warn(errorMessage);
@@ -186,7 +186,7 @@ public class UDFManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      UDFExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+      UDFExecutableManager.getInstance().saveToLibDir(byteBuffer, jarName);
     }
   }
 

@@ -160,8 +160,8 @@ struct TDisableDataNodeReq {
 }
 
 struct TCreateFunctionInstanceReq {
-  1: binary udfInformation
-  2: binary jarFile
+  1: required binary udfInformation
+  2: optional binary jarFile
 }
 
 struct TDropFunctionInstanceReq {
