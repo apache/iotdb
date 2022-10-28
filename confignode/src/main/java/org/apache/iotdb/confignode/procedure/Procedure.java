@@ -732,7 +732,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return state;
   }
 
-  protected void setFailure(final String source, final Throwable cause) {
+  protected synchronized void setFailure(final String source, final Throwable cause) {
     setFailure(new ProcedureException(source, cause));
   }
 

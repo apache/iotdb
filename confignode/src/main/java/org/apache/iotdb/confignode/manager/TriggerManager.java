@@ -61,6 +61,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class TriggerManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
@@ -93,8 +94,16 @@ public class TriggerManager {
    */
   public TSStatus createTrigger(TCreateTriggerReq req) {
     boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
-    TDataNodeLocation dataNodeLocation =
-        isStateful ? configManager.getNodeManager().getLowestLoadDataNode() : null;
+    TDataNodeLocation dataNodeLocation = null;
+    if (isStateful) {
+      Optional<TDataNodeLocation> targetDataNode =
+          configManager.getNodeManager().getLowestLoadDataNode();
+      if (targetDataNode.isPresent()) {
+        dataNodeLocation = targetDataNode.get();
+      } else {
+        return new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
+      }
+    }
     TriggerInformation triggerInformation =
         new TriggerInformation(
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
