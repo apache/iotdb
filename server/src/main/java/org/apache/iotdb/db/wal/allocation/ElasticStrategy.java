@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ElasticStrategy extends AbstractNodeAllocationStrategy {
   /** each wal node manages fixed number of memTables */
-  private static final int APPLICATION_NODE_RATIO = 4;
+  public static final int APPLICATION_NODE_RATIO = 4;
 
   /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
   private final Lock nodesLock = new ReentrantLock();
