@@ -291,6 +291,10 @@ public class ConfigNode implements ConfigNodeMBean {
     System.exit(-1);
   }
 
+  public ConfigManager getConfigManager() {
+    return configManager;
+  }
+
   private static class ConfigNodeHolder {
 
     private static final ConfigNode INSTANCE = new ConfigNode();
