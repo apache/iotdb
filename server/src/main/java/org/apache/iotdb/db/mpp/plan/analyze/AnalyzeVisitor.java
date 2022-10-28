@@ -381,7 +381,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
             queryStatement.isLastQuery() || isGroupByLevel);
-    int columnIndex = 0;
+    int columnIndex = -1;
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       columnIndex++;
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
