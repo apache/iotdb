@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -787,6 +788,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TGetUDFTableResp getUDFTable() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.getUDFTable()
+        : new TGetUDFTableResp(status, Collections.emptyList());
+  }
+
+  @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1279,7 +1288,7 @@ public class ConfigManager implements IManager {
     newUnknownDataList.forEach(
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
-    LOGGER.info("start Transfer of {}", newUnknownDataList);
+    LOGGER.info("Start transfer of {}", newUnknownDataList);
     // transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);

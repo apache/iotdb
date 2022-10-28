@@ -40,6 +40,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotReq;
+import org.apache.iotdb.consensus.multileader.thrift.TCleanupTransferredSnapshotRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelReq;
@@ -662,5 +664,34 @@ public class MultiLeaderServerImpl {
   public void setActive(boolean active) {
     logger.info("set {} active status to {}", this.thisNode, active);
     this.active = active;
+  }
+
+  public void cleanupRemoteSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      TCleanupTransferredSnapshotReq req =
+          new TCleanupTransferredSnapshotReq(
+              targetPeer.getGroupId().convertToTConsensusGroupId(), latestSnapshotId);
+      TCleanupTransferredSnapshotRes res = client.cleanupTransferredSnapshot(req);
+      if (!isSuccess(res.getStatus())) {
+        throw new ConsensusGroupAddPeerException(
+            String.format(
+                "cleanup remote snapshot failed of %s ,status is %s", targetPeer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("cleanup remote snapshot failed of %s", targetPeer), e);
+    }
+  }
+
+  public void cleanupTransferredSnapshot(String snapshotId) throws ConsensusGroupAddPeerException {
+    File snapshotDir = new File(storageDir, snapshotId);
+    if (snapshotDir.exists()) {
+      try {
+        FileUtils.deleteDirectory(snapshotDir);
+      } catch (IOException e) {
+        throw new ConsensusGroupAddPeerException(e);
+      }
+    }
   }
 }

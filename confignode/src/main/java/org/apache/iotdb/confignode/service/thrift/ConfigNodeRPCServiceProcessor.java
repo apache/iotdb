@@ -340,8 +340,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
-      throws TException {
+  public TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req) {
     GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq =
         GetOrCreateDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
     return configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
@@ -410,7 +409,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
@@ -501,9 +500,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetUDFTableResp getUDFTable() {
-    // get all non-builtin function information
-    // todo: implementation
-    return null;
+    return configManager.getUDFTable();
   }
 
   @Override
@@ -613,8 +610,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
-      throws TException {
+  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern) {
     return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
   }
 
@@ -644,7 +640,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
     return configManager.deactivateSchemaTemplate(req);
   }
 
@@ -694,7 +690,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
+  public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
   }
 

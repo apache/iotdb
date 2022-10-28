@@ -141,10 +141,6 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
-    // if client ip is the default address, set it same with internal ip
-    if (config.getRpcAddress().equals("0.0.0.0")) {
-      config.setRpcAddress(config.getInternalAddress());
-    }
     thisNode.setIp(config.getInternalAddress());
     thisNode.setPort(config.getInternalPort());
   }
