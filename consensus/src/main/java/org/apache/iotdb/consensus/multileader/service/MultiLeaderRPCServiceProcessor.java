@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
-import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
@@ -199,7 +199,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     try {
       impl.buildSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }
@@ -226,7 +226,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     try {
       impl.removeSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }
@@ -275,7 +275,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     try {
       impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }
@@ -324,7 +324,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     try {
       impl.cleanupTransferredSnapshot(req.snapshotId);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       logger.error(String.format("failed to cleanup transferred snapshot %s", req.snapshotId), e);
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
