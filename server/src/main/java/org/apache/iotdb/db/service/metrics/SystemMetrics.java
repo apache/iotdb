@@ -63,17 +63,15 @@ public class SystemMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     collectSystemCpuInfo(metricService);
-    if (isDataNode) {
-      collectSystemDiskInfo(metricService);
-    }
     collectSystemMemInfo(metricService);
 
-    // finally start to update the value of some metrics in async way
+    // register disk related metrics and start to collect the value of metrics in async way
     if (metricService.isEnable() && null == currentServiceFuture && isDataNode) {
+      collectSystemDiskInfo(metricService);
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
-              this::collect,
+              this::collectDiskMetrics,
               1,
               MetricConfigDescriptor.getInstance()
                   .getMetricConfig()
@@ -228,7 +226,7 @@ public class SystemMetrics implements IMetricSet {
         MetricType.GAUGE, Metric.SYS_DISK_FREE_SPACE.toString(), Tag.NAME.toString(), "system");
   }
 
-  private void collect() {
+  private void collectDiskMetrics() {
     long sysTotalSpace = 0L;
     long sysFreeSpace = 0L;
 
