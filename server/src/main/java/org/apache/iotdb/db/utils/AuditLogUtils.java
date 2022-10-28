@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -52,8 +53,11 @@ public class AuditLogUtils {
   public static void writeAuditLog(String type, String log) {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     String auditLogStorage = config.getAuditLogStorage();
-    SessionManager instance = SessionManager.getInstance();
-    String username = instance.getCurrSession().getUsername();
+    IClientSession currSession = SessionManager.getInstance().getCurrSession();
+    if (currSession == null) {
+      return;
+    }
+    String username = currSession.getUsername();
     if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
       try {
         InsertRowPlan insertRowPlan =
