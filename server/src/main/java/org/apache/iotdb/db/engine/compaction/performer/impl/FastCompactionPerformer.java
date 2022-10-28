@@ -72,6 +72,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   private List<TsFileResource> targetFiles;
 
+  private FastCompactionPerformerSubTask.Summary subTaskSummary;
+
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
   public FastCompactionPerformer(
@@ -196,11 +198,11 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     }
 
     // construct sub tasks and start compacting measurements in parallel
-    List<Future<Void>> futures = new ArrayList<>();
+    List<Future<FastCompactionPerformerSubTask.Summary>> futures = new ArrayList<>();
     for (int i = 0; i < subTaskNums; i++) {
       futures.add(
           CompactionTaskManager.getInstance()
-              .submitSubTask(
+              .submitFastSubTask(
                   new FastCompactionPerformerSubTask(
                       fastCrossCompactionWriter,
                       timeseriesMetadataOffsetMap,
@@ -215,6 +217,11 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     // wait for all sub tasks to finish
     for (int i = 0; i < subTaskNums; i++) {
       try {
+        if (subTaskSummary == null) {
+          subTaskSummary = futures.get(i).get();
+        } else {
+          subTaskSummary.increase(futures.get(i).get());
+        }
         futures.get(i).get();
       } catch (ExecutionException e) {
         LOGGER.error("[Compaction] SubCompactionTask meet errors ", e);
@@ -245,6 +252,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));
     }
+  }
+
+  public FastCompactionPerformerSubTask.Summary getSubTaskSummary() {
+    return subTaskSummary;
   }
 
   public List<TsFileResource> getUnseqFiles() {

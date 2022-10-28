@@ -35,7 +35,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-public class FastCompactionPerformerSubTask implements Callable<Void> {
+public class FastCompactionPerformerSubTask
+    implements Callable<FastCompactionPerformerSubTask.Summary> {
+  public class Summary {
+    public int CHUNK_NONE_OVERLAP;
+    public int CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
+    public int CHUNK_OVERLAP;
+
+    public int PAGE_NONE_OVERLAP;
+    public int PAGE_OVERLAP;
+    public int PAGE_FAKE_OVERLAP;
+    public int PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+
+    public void increase(Summary summary) {
+      this.CHUNK_NONE_OVERLAP += summary.CHUNK_NONE_OVERLAP;
+      this.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
+      this.CHUNK_OVERLAP += summary.CHUNK_OVERLAP;
+      this.PAGE_NONE_OVERLAP += summary.PAGE_NONE_OVERLAP;
+      this.PAGE_OVERLAP += summary.PAGE_OVERLAP;
+      this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
+      this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+    }
+  }
+
+  private final Summary summary = new Summary();
 
   private FastCrossCompactionWriter compactionWriter;
 
@@ -104,7 +127,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   @Override
-  public Void call()
+  public Summary call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (!isAligned) {
       NonAlignedSeriesCompactionExecutor seriesCompactionExecutor =
@@ -114,7 +137,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               modificationCacheMap,
               sortedSourceFiles,
               deviceId,
-              subTaskId);
+              subTaskId,
+              summary);
       for (String measurement : measurements) {
         seriesCompactionExecutor.startNewtMeasurement(timeseriesMetadataOffsetMap.get(measurement));
         seriesCompactionExecutor.excute();
@@ -129,9 +153,10 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               sortedSourceFiles,
               deviceId,
               subTaskId,
-              measurementSchemas);
+              measurementSchemas,
+              summary);
       seriesCompactionExecutor.excute();
     }
-    return null;
+    return summary;
   }
 }

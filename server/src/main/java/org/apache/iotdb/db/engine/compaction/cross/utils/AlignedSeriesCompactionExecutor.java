@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -61,8 +62,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
       int subTaskId,
-      List<IMeasurementSchema> measurementSchemas) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId);
+      List<IMeasurementSchema> measurementSchemas,
+      FastCompactionPerformerSubTask.Summary summary) {
+    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     // get source files which are sorted by the startTime of current device from old to new,

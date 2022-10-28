@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -51,6 +52,8 @@ public abstract class SeriesCompactionExecutor {
     void call(PageElement pageElement)
         throws WriteProcessException, IOException, IllegalPathException;
   }
+
+  private FastCompactionPerformerSubTask.Summary summary;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
@@ -84,12 +87,14 @@ public abstract class SeriesCompactionExecutor {
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
-      int subTaskId) {
+      int subTaskId,
+      FastCompactionPerformerSubTask.Summary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.deviceId = deviceId;
     this.readerCacheMap = readerCacheMap;
     this.modificationCacheMap = modificationCacheMap;
+    this.summary = summary;
 
     chunkMetadataQueue =
         new PriorityQueue<>(
@@ -129,9 +134,11 @@ public abstract class SeriesCompactionExecutor {
 
       if (isChunkOverlap || isModified) {
         // has overlap or modified chunk, then deserialize it
+        summary.CHUNK_OVERLAP += overlappedChunkMetadatas.size();
         compactWithOverlapChunks(overlappedChunkMetadatas);
       } else {
         // has none overlap or modified chunk, flush it to file writer directly
+        summary.CHUNK_NONE_OVERLAP += 1;
         compactWithNonOverlapChunk(firstChunkMetadataElement);
       }
     }
@@ -165,6 +172,7 @@ public abstract class SeriesCompactionExecutor {
       removeChunk(chunkMetadataQueue.peek());
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
+      summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += 1;
       deserializeChunkIntoQueue(chunkMetadataElement);
       compactPages();
     }
@@ -195,11 +203,13 @@ public abstract class SeriesCompactionExecutor {
 
       if (isPageOverlap || modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // has overlap or modified pages, then deserialize it
+        summary.PAGE_OVERLAP += 1;
         pointPriorityReader.addNewPage(overlapPages.remove(0));
         addOverlappedPagesIntoList(overlapPages);
         compactWithOverlapPages();
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
+        summary.PAGE_NONE_OVERLAP += 1;
         compactWithNonOverlapPage(firstPageElement);
       }
     }
@@ -226,6 +236,7 @@ public abstract class SeriesCompactionExecutor {
       removePage(pageElement);
     } else {
       // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
+      summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += 1;
       pointPriorityReader.addNewPage(pageElement);
 
       // write data points of the current page into chunk writer
@@ -291,6 +302,7 @@ public abstract class SeriesCompactionExecutor {
           pointPriorityReader.addNewPage(nextPageElement);
         } else {
           // has none overlap or modified pages, flush it to chunk writer directly
+          summary.PAGE_FAKE_OVERLAP += 1;
           compactWithNonOverlapPage(nextPageElement);
         }
       }
@@ -322,6 +334,7 @@ public abstract class SeriesCompactionExecutor {
    * deleted completely, we remove it.
    */
   private void addOverlappedPagesIntoList(List<PageElement> newOverlappedPages) {
+    summary.PAGE_OVERLAP += newOverlappedPages.size();
     int oldSize = candidateOverlappedPages.size();
     candidateOverlappedPages.addAll(newOverlappedPages);
     if (oldSize != 0 && candidateOverlappedPages.size() > oldSize) {
