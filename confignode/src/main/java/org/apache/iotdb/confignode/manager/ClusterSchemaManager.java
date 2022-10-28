@@ -584,8 +584,9 @@ public class ClusterSchemaManager {
       return pathInfoResp.getStatus();
     } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
-          String.format("Template is in use on %s", pathInfoResp.getPathList()));
+          TSStatusCode.METADATA_ERROR.getStatusCode(),
+          String.format(
+              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
     }
 
     // execute drop template
