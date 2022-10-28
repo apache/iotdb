@@ -219,6 +219,7 @@ public class DataNode implements DataNodeMBean {
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
+          IoTDBDescriptor.getInstance().loadCQConfig(dataNodeRegisterResp.cqConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);

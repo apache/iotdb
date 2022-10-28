@@ -46,6 +46,11 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -332,6 +337,21 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTransferringTriggers:
           req = new GetTransferringTriggersPlan();
+          break;
+        case ACTIVE_CQ:
+          req = new ActiveCQPlan();
+          break;
+        case ADD_CQ:
+          req = new AddCQPlan();
+          break;
+        case DROP_CQ:
+          req = new DropCQPlan();
+          break;
+        case UPDATE_CQ_LAST_EXEC_TIME:
+          req = new UpdateCQLastExecTimePlan();
+          break;
+        case SHOW_CQ:
+          req = new ShowCQPlan();
           break;
         case GetFunctionTable:
           req = new GetFunctionTablePlan();

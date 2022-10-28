@@ -257,7 +257,6 @@ public class TriggerInfo implements SnapshotProcessor {
       triggerTable.serializeTriggerTable(fileOutputStream);
 
       fileOutputStream.flush();
-
       fileOutputStream.close();
 
       return tmpFile.renameTo(snapshotFile);

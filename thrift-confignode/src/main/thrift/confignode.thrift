@@ -37,7 +37,8 @@ struct TDataNodeRegisterResp {
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
   7: optional list<binary> allTriggerInformation
-  8: optional list<binary> allUDFInformation
+  8: optional TCQConfig cqConfig
+  9: optional list<binary> allUDFInformation
 }
 
 struct TGlobalConfig {
@@ -89,10 +90,13 @@ struct TRatisConfig {
   26: required i64 firstElectionTimeoutMax
 }
 
+struct TCQConfig {
+  1: required i64 cqMinEveryIntervalInMs
+}
+
 struct TDataNodeUpdateReq{
   1: required common.TDataNodeLocation dataNodeLocation
 }
-
 
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
@@ -545,6 +549,38 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+// ====================================================
+// CQ
+// ====================================================
+struct TCreateCQReq {
+  1: required string cqId,
+  2: required i64 everyInterval
+  3: required i64 boundaryTime
+  4: required i64 startTimeOffset
+  5: required i64 endTimeOffset
+  6: required byte timeoutPolicy
+  7: required string queryBody
+  8: required string sql
+  9: required string zoneId
+  10: required string username
+}
+
+struct TDropCQReq {
+  1: required string cqId
+}
+
+struct TCQEntry {
+  1: required string cqId
+  2: required string sql
+  3: required byte state
+}
+
+struct TShowCQResp {
+  1: required common.TSStatus status
+  2: required list<TCQEntry> cqList
+}
+
+
 struct TDeactivateSchemaTemplateReq{
   1: required string queryId
   2: required binary pathPatternTree
@@ -968,5 +1004,28 @@ service IConfigNodeRPCService {
   /** Get the given storage group's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
+
+  // ====================================================
+  // CQ
+  // ====================================================
+
+  /**
+   * Create a CQ
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   */
+  common.TSStatus createCQ(TCreateCQReq req)
+
+  /**
+   * Drop a CQ
+   *
+   * @return SUCCESS_STATUS if the CQ was removed successfully
+   */
+  common.TSStatus dropCQ(TDropCQReq req)
+
+  /**
+   * Return the trigger table of config leader
+   */
+  TShowCQResp showCQ()
 }
 

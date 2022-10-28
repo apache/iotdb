@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTas
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
@@ -64,10 +67,12 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
@@ -77,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
@@ -352,16 +358,49 @@ public class ConfigTaskVisitor
     return new GetTimeSlotListTask(getTimeSlotListStatement);
   }
 
+  @Override
+  public IConfigTask visitCreateContinuousQuery(
+      CreateContinuousQueryStatement createContinuousQueryStatement, TaskContext context) {
+    return new CreateContinuousQueryTask(
+        createContinuousQueryStatement, context.sql, context.username);
+  }
+
+  @Override
+  public IConfigTask visitDropContinuousQuery(
+      DropContinuousQueryStatement dropContinuousQueryStatement, TaskContext context) {
+    return new DropContinuousQueryTask(dropContinuousQueryStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowContinuousQueries(
+      ShowContinuousQueriesStatement showContinuousQueriesStatement, TaskContext context) {
+    return new ShowContinuousQueriesTask();
+  }
+
   public static class TaskContext {
 
     private final String queryId;
 
-    public TaskContext(String queryId) {
+    private final String sql;
+
+    private final String username;
+
+    public TaskContext(String queryId, String sql, String username) {
       this.queryId = queryId;
+      this.sql = sql;
+      this.username = username;
     }
 
     public String getQueryId() {
       return queryId;
+    }
+
+    public String getSql() {
+      return sql;
+    }
+
+    public String getUsername() {
+      return username;
     }
   }
 }
