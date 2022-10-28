@@ -16,73 +16,55 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.datanode;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Objects;
 
-public class CountStorageGroupPlan extends ConfigPhysicalPlan {
+/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
+public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
 
-  private String[] storageGroupPattern;
+  private int dataNodeId;
 
-  public CountStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.CountStorageGroup);
+  public GetDataNodeConfigurationPlan() {
+    super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
   }
 
-  public CountStorageGroupPlan(ConfigPhysicalPlanType type) {
-    super(type);
-  }
-
-  public CountStorageGroupPlan(List<String> storageGroupPattern) {
+  public GetDataNodeConfigurationPlan(int dataNodeId) {
     this();
-    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+    this.dataNodeId = dataNodeId;
   }
 
-  public CountStorageGroupPlan(ConfigPhysicalPlanType type, List<String> storageGroupPattern) {
-    super(type);
-    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
-  }
-
-  public String[] getStorageGroupPattern() {
-    return storageGroupPattern;
+  public Integer getDataNodeId() {
+    return dataNodeId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
-
-    stream.writeInt(storageGroupPattern.length);
-    for (String node : storageGroupPattern) {
-      BasicStructureSerDeUtil.write(node, stream);
-    }
+    stream.writeShort(getType().getPlanType());
+    stream.writeInt(dataNodeId);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    storageGroupPattern = new String[length];
-    for (int i = 0; i < length; i++) {
-      storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
-    }
+    this.dataNodeId = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CountStorageGroupPlan that = (CountStorageGroupPlan) o;
-    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
+    GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
+    return dataNodeId == that.dataNodeId;
   }
 
   @Override
   public int hashCode() {
-    return Arrays.hashCode(storageGroupPattern);
+    return Objects.hash(dataNodeId);
   }
 }

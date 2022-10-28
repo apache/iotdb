@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -218,8 +218,8 @@ public class CreateRegionGroupsProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    // must serialize CREATE_REGION_GROUPS.ordinal() firstly
-    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
+    // must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
+    stream.writeShort(ProcedureType.CREATE_REGION_GROUPS.getTypeCode());
     super.serialize(stream);
     stream.writeInt(consensusGroupType.getValue());
     createRegionGroupsPlan.serializeForProcedure(stream);

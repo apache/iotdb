@@ -16,27 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.read.partition;
 
-package org.apache.iotdb.confignode.consensus.request.read;
-
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 
-public class GetFunctionTablePlan extends ConfigPhysicalPlan {
+public class GetOrCreateSchemaPartitionPlan extends GetSchemaPartitionPlan {
 
-  public GetFunctionTablePlan() {
-    super(ConfigPhysicalPlanType.GetFunctionTable);
+  public GetOrCreateSchemaPartitionPlan() {
+    super(ConfigPhysicalPlanType.GetOrCreateSchemaPartition);
   }
 
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetFunctionTable.ordinal());
+  public GetOrCreateSchemaPartitionPlan(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    this();
+    this.partitionSlotsMap = partitionSlotsMap;
   }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

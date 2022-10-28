@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -122,7 +122,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_PIPE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     pipeInfo.serialize(stream);
   }

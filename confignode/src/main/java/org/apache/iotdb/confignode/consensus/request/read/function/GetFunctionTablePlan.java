@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+
+package org.apache.iotdb.confignode.consensus.request.read.function;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -24,47 +25,18 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-/** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
+public class GetFunctionTablePlan extends ConfigPhysicalPlan {
 
-  private int dataNodeId;
-
-  public GetDataNodeConfigurationPlan() {
-    super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
-  }
-
-  public GetDataNodeConfigurationPlan(int dataNodeId) {
-    this();
-    this.dataNodeId = dataNodeId;
-  }
-
-  public Integer getDataNodeId() {
-    return dataNodeId;
+  public GetFunctionTablePlan() {
+    super(ConfigPhysicalPlanType.GetFunctionTable);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetDataNodeConfiguration.ordinal());
-    stream.writeInt(dataNodeId);
+    stream.writeShort(getType().getPlanType());
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    this.dataNodeId = buffer.getInt();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
-    return dataNodeId == that.dataNodeId;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(dataNodeId);
-  }
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

@@ -25,25 +25,25 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
@@ -120,6 +120,12 @@ public class ConfigPlanExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigPlanExecutor.class);
 
+  /**
+   * Every Info class that implement SnapshotProcessor in ConfigNode should be registered in
+   * snapshotProcessorList
+   */
+  private final List<SnapshotProcessor> snapshotProcessorList;
+
   private final NodeInfo nodeInfo;
 
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -147,15 +153,34 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo,
       CQInfo cqInfo) {
+
+    this.snapshotProcessorList = new ArrayList<>();
+
     this.nodeInfo = nodeInfo;
+    this.snapshotProcessorList.add(nodeInfo);
+
     this.clusterSchemaInfo = clusterSchemaInfo;
+    this.snapshotProcessorList.add(clusterSchemaInfo);
+
     this.partitionInfo = partitionInfo;
+    this.snapshotProcessorList.add(partitionInfo);
+
     this.authorInfo = authorInfo;
-    this.procedureInfo = procedureInfo;
+    this.snapshotProcessorList.add(authorInfo);
+
     this.udfInfo = udfInfo;
+    this.snapshotProcessorList.add(udfInfo);
+
     this.triggerInfo = triggerInfo;
+    this.snapshotProcessorList.add(triggerInfo);
+
     this.syncInfo = syncInfo;
+    this.snapshotProcessorList.add(triggerInfo);
+
     this.cqInfo = cqInfo;
+    this.snapshotProcessorList.add(cqInfo);
+
+    this.procedureInfo = procedureInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -364,7 +389,7 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    getAllAttributes()
+    snapshotProcessorList
         .parallelStream()
         .forEach(
             x -> {
@@ -393,7 +418,7 @@ public class ConfigPlanExecutor {
       return;
     }
 
-    getAllAttributes()
+    snapshotProcessorList
         .parallelStream()
         .forEach(
             x -> {
@@ -457,14 +482,5 @@ public class ConfigPlanExecutor {
       }
     }
     return partitionInfo.getRegionInfoList(getRegionInfoListPlan);
-  }
-
-  private List<SnapshotProcessor> getAllAttributes() {
-    List<SnapshotProcessor> allAttributes = new ArrayList<>();
-    allAttributes.add(clusterSchemaInfo);
-    allAttributes.add(partitionInfo);
-    allAttributes.add(nodeInfo);
-    allAttributes.add(udfInfo);
-    return allAttributes;
   }
 }

@@ -39,8 +39,6 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -54,12 +52,15 @@ import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -163,12 +164,11 @@ public class ProcedureManager {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
-      ProcedureFactory.ProcedureType type;
+      ProcedureType type;
       DeleteTimeSeriesProcedure deleteTimeSeriesProcedure;
       for (Procedure<?> procedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null
-            || !type.equals(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
+        if (type == null || !type.equals(ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
           continue;
         }
         deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) procedure);
@@ -207,12 +207,11 @@ public class ProcedureManager {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
-      ProcedureFactory.ProcedureType type;
+      ProcedureType type;
       DeactivateTemplateProcedure deactivateTemplateProcedure;
       for (Procedure<?> procedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null
-            || !type.equals(ProcedureFactory.ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
+        if (type == null || !type.equals(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
           continue;
         }
         deactivateTemplateProcedure = (DeactivateTemplateProcedure) procedure;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -71,7 +71,7 @@ public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(storageGroup, stream);
     ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
     stream.writeLong(startTime);
