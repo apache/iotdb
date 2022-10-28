@@ -111,7 +111,6 @@ public class TsFileIOWriter implements AutoCloseable {
   protected File chunkMetadataTempFile;
   protected LocalTsFileOutput tempOutput;
   protected volatile boolean hasChunkMetadataInDisk = false;
-  protected String currentSeries = null;
   // record the total num of path in order to make bloom filter
   protected int pathCount = 0;
   protected boolean enableMemoryControl = false;
@@ -349,6 +348,7 @@ public class TsFileIOWriter implements AutoCloseable {
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
     String currentDevice = null;
     String prevDevice = null;
+    Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
@@ -361,25 +361,16 @@ public class TsFileIOWriter implements AutoCloseable {
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
-      Pair<String, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
+      Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
-      currentSeries = timeseriesMetadataPair.left;
+      currentPath = timeseriesMetadataPair.left;
 
       indexCount++;
       // build bloom filter
-      filter.add(currentSeries);
+      filter.add(currentPath.getFullPath());
       // construct the index tree node for the series
-      Path currentPath = null;
-      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        // this series is the time column of the aligned device
-        // the full series path will be like "root.sg.d."
-        // we remove the last . in the series id here
-        currentPath = new Path(currentSeries);
-        currentDevice = currentSeries.substring(0, currentSeries.length() - 1);
-      } else {
-        currentPath = new Path(currentSeries, true);
-        currentDevice = currentPath.getDevice();
-      }
+
+      currentDevice = currentPath.getDevice();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);

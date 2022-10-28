@@ -70,10 +70,10 @@ public class TSMIterator {
     return iterator.hasNext();
   }
 
-  public Pair<String, TimeseriesMetadata> next() throws IOException {
+  public Pair<Path, TimeseriesMetadata> next() throws IOException {
     Pair<Path, List<IChunkMetadata>> nextPair = iterator.next();
     return new Pair<>(
-        nextPair.left.getFullPath(),
+        nextPair.left,
         constructOneTimeseriesMetadata(nextPair.left.getMeasurement(), nextPair.right));
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -75,7 +76,7 @@ public class DiskTSMIterator extends TSMIterator {
   }
 
   @Override
-  public Pair<String, TimeseriesMetadata> next() {
+  public Pair<Path, TimeseriesMetadata> next() {
     try {
       if (remainsInFile) {
         // deserialize from file
@@ -90,7 +91,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
   }
 
-  private Pair<String, TimeseriesMetadata> getTimeSerisMetadataFromFile() throws IOException {
+  private Pair<Path, TimeseriesMetadata> getTimeSerisMetadataFromFile() throws IOException {
     if (currentPos == nextEndPosForDevice) {
       // deserialize the current device name
       currentDevice = ReadWriteIOUtils.readString(input.wrapAsInputStream());
@@ -118,7 +119,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
     updateCurrentPos();
     return new Pair<>(
-        currentDevice + "." + measurementUid,
+        new Path(currentDevice, measurementUid),
         constructOneTimeseriesMetadata(measurementUid, chunkMetadataList));
   }
 
