@@ -127,6 +127,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = timestamp;
   }
 
   /** Write data in batch, only used for aligned device. */
@@ -177,6 +178,14 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
+    if (timestamp <= lastTime[subTaskId]) {
+      throw new RuntimeException(
+          "Timestamp of the current point is "
+              + timestamp
+              + ", which should be later than the last time "
+              + lastTime);
+    }
+
     int fileIndex = seqFileIndexArray[subTaskId];
     boolean hasFlushedCurrentChunk = false;
     // if timestamp is later than the current source seq tsfile, then flush chunk writer and move to

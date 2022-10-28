@@ -41,6 +41,9 @@ import java.util.List;
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
+  // check if there is unseq error point during writing
+  protected long[] lastTime = new long[subTaskNum];
+
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
   protected IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
@@ -93,6 +96,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
     chunkPointNumArray[subTaskId] = 0;
     lastCheckIndex = 0;
+    lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {

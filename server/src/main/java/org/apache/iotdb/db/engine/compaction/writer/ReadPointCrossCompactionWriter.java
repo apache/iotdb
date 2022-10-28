@@ -53,5 +53,6 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId, true);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+    lastTime[subTaskId] = timestamps.getEndTime();
   }
 }

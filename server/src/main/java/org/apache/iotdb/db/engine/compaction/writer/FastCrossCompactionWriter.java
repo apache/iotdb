@@ -107,6 +107,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = iChunkMetadata.getEndTime();
     return true;
   }
 
@@ -154,6 +155,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         targetFileWriters.get(fileIndex), alignedChunkWriter, subTaskId, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = timePageHeader.getEndTime();
     return true;
   }
 
@@ -185,6 +187,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         targetFileWriters.get(fileIndex), chunkWriter, subTaskId, true);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = pageHeader.getEndTime();
     return true;
   }
 
