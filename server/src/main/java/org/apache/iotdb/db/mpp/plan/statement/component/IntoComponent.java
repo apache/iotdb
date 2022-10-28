@@ -41,6 +41,8 @@ public class IntoComponent extends StatementNode {
       "select into: the number of source columns and the number of target paths should be the same.";
   public static String DUPLICATE_TARGET_PATH_ERROR_MSG =
       "select into: target paths in into clause should be different.";
+  public static String DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG =
+      "select into: alignment property must be the same for the same device.";
 
   private final List<IntoItem> intoItems;
 
@@ -91,8 +93,8 @@ public class IntoComponent extends StatementNode {
           throw new SemanticException(PLACEHOLDER_MISMATCH_ERROR_MSG);
         }
       } else {
-        if (intoItems.size() != sourceColumns.size()) {
-          throw new SemanticException(PATH_NUM_MISMATCH_ERROR_MSG);
+        if (intoItems.size() != 1 && intoItems.size() != sourceColumns.size()) {
+          throw new SemanticException(PLACEHOLDER_MISMATCH_ERROR_MSG);
         }
       }
     } else {
@@ -120,7 +122,7 @@ public class IntoComponent extends StatementNode {
 
     public void next() {
       if (isMeasurementsExistPlaceholder) {
-        if (!isDeviceExistPlaceholder) {
+        if (!isDeviceExistPlaceholder && intoItems.size() > 1) {
           deviceIndex++;
         }
       } else {

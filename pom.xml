@@ -121,6 +121,7 @@
         <module>trigger-api</module>
         <module>rewrite-tsfile-tool</module>
         <module>external-api</module>
+        <module>schema-engine-tag</module>
     </modules>
     <!-- Properties Management -->
     <properties>

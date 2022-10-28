@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -69,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -168,6 +171,14 @@ public interface IManager {
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
+
+  /**
+   * Update DataNode
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return DataNodeConfigurationDataSet
+   */
+  DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
    * DataNode report region migrate result to ConfigNode when remove DataNode
@@ -300,9 +311,11 @@ public interface IManager {
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
-  TSStatus createFunction(String udfName, String className, List<String> uris);
+  TSStatus createFunction(TCreateFunctionReq req);
 
   TSStatus dropFunction(String udfName);
+
+  TGetUDFTableResp getUDFTable();
 
   /** Create trigger */
   TSStatus createTrigger(TCreateTriggerReq req);

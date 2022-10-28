@@ -102,7 +102,7 @@ public class InfluxDBExample {
 
     query =
         new Query(
-            "select count(temperature),first(temperature),last(temperature),max(temperature),mean(temperature),median(temperature),min(temperature),mode(temperature),spread(temperature),stddev(temperature),sum(temperature) from student where ((workshop=\"A1\" and production=\"B1\" and cell =\"C1\" ) or temperature< 15 )",
+            "select count(temperature),first(temperature),last(temperature),max(temperature),mean(temperature),median(temperature),min(temperature),mode(temperature),spread(temperature),stddev(temperature),sum(temperature) from factory where ((workshop=\"A1\" and production=\"B1\" and cell =\"C1\" ) or temperature< 15 )",
             database);
     result = influxDB.query(query);
     System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());

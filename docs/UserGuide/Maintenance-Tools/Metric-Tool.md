@@ -137,7 +137,6 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ### 1.3.4. IoTDB PreDefined Metrics Set
-Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics，now support `JVM`, `LOGBACK`, `FILE`, `PROCESS`, `SYSYTEM`.
 
 #### 1.3.4.1. JVM
 
@@ -259,11 +258,6 @@ monitorType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
-
-# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - FILE
 
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091

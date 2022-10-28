@@ -52,11 +52,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryO
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -73,8 +75,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -145,6 +149,10 @@ public class LogicalPlanBuilder {
       return;
     }
     keys.forEach(k -> context.getTypeProvider().setType(k, dataType));
+  }
+
+  private void updateTypeProviderWithConstantType(String columnName, TSDataType dataType) {
+    context.getTypeProvider().setType(columnName, dataType);
   }
 
   public LogicalPlanBuilder planRawDataSource(
@@ -842,6 +850,38 @@ public class LogicalPlanBuilder {
     } else {
       return planTransform(sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
     }
+  }
+
+  public LogicalPlanBuilder planDeviceViewInto(
+      DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor) {
+    if (deviceViewIntoPathDescriptor == null) {
+      return this;
+    }
+
+    ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.forEach(
+        columnHeader -> {
+          updateTypeProviderWithConstantType(
+              columnHeader.getColumnName(), columnHeader.getColumnType());
+        });
+    this.root =
+        new DeviceViewIntoNode(
+            context.getQueryId().genPlanNodeId(), this.getRoot(), deviceViewIntoPathDescriptor);
+    return this;
+  }
+
+  public LogicalPlanBuilder planInto(IntoPathDescriptor intoPathDescriptor) {
+    if (intoPathDescriptor == null) {
+      return this;
+    }
+
+    ColumnHeaderConstant.selectIntoColumnHeaders.forEach(
+        columnHeader -> {
+          updateTypeProviderWithConstantType(
+              columnHeader.getColumnName(), columnHeader.getColumnType());
+        });
+    this.root =
+        new IntoNode(context.getQueryId().genPlanNodeId(), this.getRoot(), intoPathDescriptor);
+    return this;
   }
 
   /** Meta Query* */

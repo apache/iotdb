@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
@@ -46,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -133,6 +135,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       switch (type) {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
+          break;
+        case UpdateDataNodeConfiguration:
+          req = new UpdateDataNodePlan();
           break;
         case RemoveDataNode:
           req = new RemoveDataNodePlan();
@@ -326,6 +331,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTransferringTriggers:
           req = new GetTransferringTriggersPlan();
+          break;
+        case GetFunctionTable:
+          req = new GetFunctionTablePlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

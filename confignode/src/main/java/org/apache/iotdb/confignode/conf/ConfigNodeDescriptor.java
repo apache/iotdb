@@ -306,7 +306,7 @@ public class ConfigNodeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_snapshot_trigger_threshold",
-                String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
+                String.valueOf(conf.getDataRegionRatisSnapshotTriggerThreshold()))));
 
     conf.setPartitionRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
@@ -355,6 +355,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_log_segment_size_max",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
+
+    conf.setPartitionRegionStandAloneLogSegmentSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_standalone_log_segment_size_max",
+                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(

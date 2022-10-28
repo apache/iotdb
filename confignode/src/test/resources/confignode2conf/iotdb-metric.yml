@@ -34,11 +34,6 @@ monitorType: MICROMETER
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
-# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - FILE
-
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9093
 
