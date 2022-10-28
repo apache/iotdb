@@ -1444,7 +1444,7 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*", false));
+            new Path("root.vehicle.d5", "s1"), ValueFilter.regexp("string*", false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
