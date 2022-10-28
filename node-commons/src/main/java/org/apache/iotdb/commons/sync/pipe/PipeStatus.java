@@ -22,9 +22,9 @@ public enum PipeStatus {
   // a new pipe should be stop status
   RUNNING,
   STOP,
-  // internal status
+  DROP,
+  // intermediate states that are not visible to the user
   PARTIAL_CREATE,
   PARTIAL_START,
   PARTIAL_STOP,
-  PARTIAL_DROP
 }
