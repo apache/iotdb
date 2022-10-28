@@ -42,10 +42,8 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -221,6 +219,7 @@ public class DataNode implements DataNodeMBean {
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
+          IoTDBDescriptor.getInstance().loadCQConfig(dataNodeRegisterResp.cqConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
@@ -422,6 +421,7 @@ public class DataNode implements DataNodeMBean {
   private void initUDFRelatedInstance() throws StartupException {
     try {
       UDFExecutableManager.setupAndGetInstance(config.getUdfTemporaryLibDir(), config.getUdfDir());
+      UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir());
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -469,7 +469,7 @@ public class DataNode implements DataNodeMBean {
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
-      TGetUDFJarResp resp = configNodeClient.getUDFJar(new TGetUDFJarReq(jarNameList));
+      TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
         throw new StartupException("Failed to get UDF jar from config node.");
       }
@@ -576,7 +576,7 @@ public class DataNode implements DataNodeMBean {
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)
               .collect(Collectors.toList());
-      TGetTriggerJarResp resp = configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList));
+      TGetJarInListResp resp = configNodeClient.getTriggerJar(new TGetJarInListReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
         throw new StartupException("Failed to get trigger jar from config node.");
       }

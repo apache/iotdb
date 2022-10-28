@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -50,7 +51,9 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -71,7 +74,22 @@ import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -85,6 +103,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -115,6 +136,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
@@ -151,6 +173,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
@@ -167,15 +191,29 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
+
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final Coordinator COORDINATOR = Coordinator.getInstance();
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private final IPartitionFetcher PARTITION_FETCHER;
+
+  private final ISchemaFetcher SCHEMA_FETCHER;
+
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
@@ -183,6 +221,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   public DataNodeInternalRPCServiceImpl() {
     super();
+    if (config.isClusterMode()) {
+      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    } else {
+      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
+      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
+    }
   }
 
   @Override
@@ -670,7 +715,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) throws TException {
+  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) {
     try {
       PipeInfo pipeInfo = PipeInfo.deserializePipeInfo(req.pipeInfo);
       SyncService.getInstance().addPipe(pipeInfo);
@@ -681,7 +726,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) throws TException {
+  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) {
     try {
       switch (SyncOperation.values()[req.getOperation()]) {
         case START_PIPE:
@@ -700,6 +745,102 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.SUCCESS_STATUS;
     } catch (PipeException e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus executeCQ(TExecuteCQ req) {
+
+    long sessionId =
+        SESSION_MANAGER.requestSessionId(
+            req.username, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
+    String executedSQL = req.queryBody;
+
+    try {
+      QueryStatement s =
+          (QueryStatement)
+              StatementGenerator.createStatement(
+                  req.queryBody, SESSION_MANAGER.getZoneId(sessionId));
+      if (s == null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+      }
+
+      // 1. add time filter in where
+      Expression timeFilter =
+          new LogicAndExpression(
+              new GreaterEqualExpression(
+                  new TimestampOperand(),
+                  new ConstantOperand(TSDataType.INT64, String.valueOf(req.startTime))),
+              new LessThanExpression(
+                  new TimestampOperand(),
+                  new ConstantOperand(TSDataType.INT64, String.valueOf(req.endTime))));
+      if (s.getWhereCondition() != null) {
+        s.getWhereCondition()
+            .setPredicate(new LogicAndExpression(timeFilter, s.getWhereCondition().getPredicate()));
+      } else {
+        s.setWhereCondition(new WhereCondition(timeFilter));
+      }
+
+      // 2. add time rage in group by time
+      if (s.getGroupByTimeComponent() != null) {
+        s.getGroupByTimeComponent().setStartTime(req.startTime);
+        s.getGroupByTimeComponent().setEndTime(req.endTime);
+        s.getGroupByTimeComponent().setLeftCRightO(true);
+      }
+      executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(sessionId), true);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              executedSQL,
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        return result.status;
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        if (queryExecution != null) {
+          // consume up all the result
+          while (true) {
+            Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+            if (!optionalTsBlock.isPresent()) {
+              break;
+            }
+          }
+        }
+        return result.status;
+      }
+    } catch (Exception e) {
+      // TODO call the coordinator to release query resource
+      return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
+    } finally {
+      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(sessionId);
+    }
+  }
+
+  private void cleanupQueryExecution(Long queryId) {
+    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+    if (queryExecution != null) {
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.info("[CleanUpQuery]]");
+        queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
+      }
     }
   }
 

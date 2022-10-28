@@ -33,6 +33,8 @@ import static java.util.Objects.requireNonNull;
 
 public class QueryId {
 
+  public static QueryId mockQueryId = QueryId.valueOf("mock_query_id");
+
   private final String id;
 
   private int nextPlanNodeIndex;

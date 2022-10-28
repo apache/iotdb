@@ -16,37 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.cq;
 
-package org.apache.iotdb.confignode.consensus.response;
+public enum CQState {
+  INACTIVE((byte) 0),
+  ACTIVE((byte) 1);
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
-import org.apache.iotdb.consensus.common.DataSet;
+  private final byte type;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-
-public class TriggerJarResp implements DataSet {
-
-  private TSStatus status;
-
-  private final List<ByteBuffer> jarList;
-
-  public TriggerJarResp(TSStatus status, List<ByteBuffer> jarList) {
-    this.status = status;
-    this.jarList = jarList;
+  CQState(byte type) {
+    this.type = type;
   }
 
-  public TSStatus getStatus() {
-    return status;
+  public byte getType() {
+    return type;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
-  public TGetTriggerJarResp convertToThriftResponse() throws IOException {
-    return new TGetTriggerJarResp(status, jarList);
+  public static CQState deserialize(byte t) {
+    switch (t) {
+      case 0:
+        return INACTIVE;
+      case 1:
+        return ACTIVE;
+      default:
+        throw new IllegalArgumentException("Unknown CQState: " + t);
+    }
   }
 }

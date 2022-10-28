@@ -98,7 +98,13 @@ public enum ConfigPhysicalPlanType {
   UpdateTriggerLocation,
   GetTransferringTriggers,
   GetTriggerLocation,
+  DROP_CQ,
+  ACTIVE_CQ,
+  ADD_CQ,
+  UPDATE_CQ_LAST_EXEC_TIME,
+  SHOW_CQ,
   GetTemplateSetInfo,
   UpdateDataNodeConfiguration,
-  GetFunctionTable
+  GetFunctionTable,
+  GetFunctionJar
 }
