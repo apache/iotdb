@@ -151,8 +151,7 @@ public class InfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
   public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
     queryHandler.checkInfluxDBQueryOperator(operator);
-    return queryHandler.queryInfluxDB(
-        req.database, (InfluxQueryOperator) operator, req.sessionId, IoTDB.serviceProvider);
+    return queryHandler.queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
   }
 
   @Override

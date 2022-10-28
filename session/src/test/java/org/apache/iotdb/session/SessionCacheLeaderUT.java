@@ -960,7 +960,7 @@ public class SessionCacheLeaderUT {
 
     private MockSessionConnection lastConstructedSessionConnection;
 
-    public MockSession(String host, int rpcPort, boolean enableCacheLeader) {
+    public MockSession(String host, int rpcPort, boolean enableRedirection) {
       super(
           host,
           rpcPort,
@@ -970,7 +970,7 @@ public class SessionCacheLeaderUT {
           null,
           SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
           SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-          enableCacheLeader,
+          enableRedirection,
           SessionConfig.DEFAULT_VERSION);
     }
 

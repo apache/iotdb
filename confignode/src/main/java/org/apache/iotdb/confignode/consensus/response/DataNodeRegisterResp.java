@@ -91,7 +91,8 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setConfigNodeList(configNodeList);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()
+        || status.getCode() == TSStatusCode.DATANODE_NOT_EXIST.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
       resp.setTemplateInfo(templateInfo);

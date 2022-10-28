@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -135,6 +136,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       switch (type) {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
+          break;
+        case UpdateDataNodeConfiguration:
+          req = new UpdateDataNodePlan();
           break;
         case RemoveDataNode:
           req = new RemoveDataNodePlan();

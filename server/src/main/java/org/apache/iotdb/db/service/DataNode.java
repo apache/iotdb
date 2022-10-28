@@ -139,10 +139,6 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
-    // if client ip is the default address, set it same with internal ip
-    if (config.getRpcAddress().equals("0.0.0.0")) {
-      config.setRpcAddress(config.getInternalAddress());
-    }
     thisNode.setIp(config.getInternalAddress());
     thisNode.setPort(config.getInternalPort());
   }
@@ -190,8 +186,8 @@ public class DataNode implements DataNodeMBean {
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
-      logger.info("Start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+        logger.info("Start registering to the cluster.");
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
@@ -384,13 +380,7 @@ public class DataNode implements DataNodeMBean {
     initProtocols();
   }
 
-  /**
-   * generate dataNodeConfiguration
-   *
-   * @return TDataNodeConfiguration
-   */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
-    // Set DataNodeLocation
+  private TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -402,6 +392,17 @@ public class DataNode implements DataNodeMBean {
         new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
         new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
+    return location;
+  }
+
+  /**
+   * generate dataNodeConfiguration
+   *
+   * @return TDataNodeConfiguration
+   */
+  private TDataNodeConfiguration generateDataNodeConfiguration() {
+    // Set DataNodeLocation
+    TDataNodeLocation location = generateDataNodeLocation();
 
     // Set NodeResource
     TNodeResource resource = new TNodeResource();

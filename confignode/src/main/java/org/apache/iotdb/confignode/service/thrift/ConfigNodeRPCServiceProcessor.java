@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -82,6 +83,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
@@ -191,6 +193,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
     LOGGER.info(
         "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
+    return resp;
+  }
+
+  @Override
+  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) {
+    LOGGER.info("ConfigNode RPC Service start to update DataNode, req: {}", req);
+    UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(req.getDataNodeLocation());
+    TDataNodeRegisterResp resp =
+        ((DataNodeRegisterResp) configManager.updateDataNode(updateDataNodePlan))
+            .convertToRpcDataNodeRegisterResp();
+    LOGGER.info(
+        "ConfigNode RPC Service finished to update DataNode, req: {}, result: {}", req, resp);
     return resp;
   }
 
@@ -338,8 +352,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
-      throws TException {
+  public TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req) {
     GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq =
         GetOrCreateDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
     return configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
@@ -408,7 +421,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
@@ -608,8 +621,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
-      throws TException {
+  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern) {
     return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
   }
 
@@ -639,7 +651,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
     return configManager.deactivateSchemaTemplate(req);
   }
 
@@ -689,7 +701,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
+  public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
   }
 
