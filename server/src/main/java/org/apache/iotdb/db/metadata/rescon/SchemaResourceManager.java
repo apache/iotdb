@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.metadata.rescon;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
-import org.apache.iotdb.db.service.metrics.MetricService;
 
 public class SchemaResourceManager {
 

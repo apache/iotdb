@@ -158,7 +158,7 @@ public class StandaloneEnv implements BaseEnv {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version)
       throws IoTDBConnectionException {
     Session session =
@@ -171,7 +171,7 @@ public class StandaloneEnv implements BaseEnv {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader,
+            enableRedirection,
             version);
 
     session.open();
