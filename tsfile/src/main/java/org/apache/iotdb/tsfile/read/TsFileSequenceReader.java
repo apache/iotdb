@@ -1172,6 +1172,11 @@ public class TsFileSequenceReader implements AutoCloseable {
         header, buffer, chunkCacheKey.getDeleteIntervalList(), chunkCacheKey.getStatistics());
   }
 
+  public Pair<CompressionType, TSEncoding> readTimeseriesCompressionTypeAndEncoding(
+      TimeseriesMetadata timeseriesMetadata) throws IOException {
+    return null;
+  }
+
   /** Get measurement schema by chunkMetadatas. */
   public MeasurementSchema getMeasurementSchema(List<IChunkMetadata> chunkMetadataList)
       throws IOException {

@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -189,6 +190,13 @@ public class ChunkHeader {
         chunkHeaderSize - Integer.BYTES - 1 + ReadWriteForEncodingUtils.uVarIntSize(dataSize);
     return new ChunkHeader(
         chunkType, measurementID, dataSize, chunkHeaderSize, dataType, type, encoding);
+  }
+
+  public static Pair<CompressionType, TSEncoding> deserializeCompressionTypeAndEncoding(
+      InputStream inputStream) throws IOException {
+    CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
+    TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
+    return new Pair<>(type, encoding);
   }
 
   public int getSerializedSize() {
