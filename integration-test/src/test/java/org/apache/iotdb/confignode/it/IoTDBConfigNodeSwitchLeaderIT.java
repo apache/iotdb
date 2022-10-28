@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.it;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -27,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -120,7 +123,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     // The ConfigNode-Group will elect a new leader after the current ConfigNode-Leader is shutdown
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
     // Waiting for leader election
-    TimeUnit.MILLISECONDS.sleep(2L * partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
+    TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */
@@ -151,7 +154,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     TSchemaPartitionTableResp schemaPartitionTableResp0;
     TDataPartitionTableResp dataPartitionTableResp0;
     TShowDataNodesResp showDataNodesResp0;
-    TShowRegionResp showRegionResp0;
+    Map<TConsensusGroupId, TRegionInfo> dataRegionInfoMap = new HashMap<>();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -184,11 +187,23 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
 
+      // Sleep to wait for UpdateLoadStatistics
+      TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
+
       // Record showDataNodesResp
       showDataNodesResp0 = client.showDataNodes();
 
-      // Record showRegionResp
-      showRegionResp0 = client.showRegion(new TShowRegionReq());
+      // Record RegionInfo of DataRegions
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      showRegionResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                if (TConsensusGroupType.DataRegion.equals(
+                    regionInfo.getConsensusGroupId().getType())) {
+                  dataRegionInfoMap.put(regionInfo.getConsensusGroupId(), regionInfo);
+                }
+              });
     }
 
     // Switch the current ConfigNode-Leader
@@ -215,8 +230,19 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       // Check DataNodes' statuses
       Assert.assertEquals(showDataNodesResp0, client.showDataNodes());
 
-      // Check Regions' statuses
-      Assert.assertEquals(showRegionResp0, client.showRegion(new TShowRegionReq()));
+      // Check DataRegions' RegionInfo
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      Map<TConsensusGroupId, TRegionInfo> dataRegionInfoMap1 = new HashMap<>();
+      showRegionResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                if (TConsensusGroupType.DataRegion.equals(
+                    regionInfo.getConsensusGroupId().getType())) {
+                  dataRegionInfoMap1.put(regionInfo.getConsensusGroupId(), regionInfo);
+                }
+              });
+      Assert.assertEquals(dataRegionInfoMap, dataRegionInfoMap1);
     }
   }
 }
