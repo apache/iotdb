@@ -1808,7 +1808,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
       throw new SQLParserException(
           String.format(
-              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              "%s is illegal, identifier not enclosed with backticks can only consist of digits, characters and underscore.",
               src));
     }
   }
