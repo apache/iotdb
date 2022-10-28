@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -262,6 +263,28 @@ public class ConfigManager implements IManager {
       dataSet.setStatus(status);
       return dataSet;
     }
+  }
+
+  @Override
+  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    TSStatus status = confirmLeader();
+    DataNodeRegisterResp dataSet;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      try {
+        dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
+        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+        dataSet.setTriggerInformation(
+            triggerManager.getTriggerTable(false).getAllTriggerInformation());
+      } finally {
+        triggerManager.getTriggerInfo().releaseTriggerTableLock();
+      }
+    } else {
+      dataSet = new DataNodeRegisterResp();
+      dataSet.setStatus(status);
+      dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
+    }
+    return dataSet;
   }
 
   @Override
@@ -1288,7 +1311,7 @@ public class ConfigManager implements IManager {
     newUnknownDataList.forEach(
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
-    LOGGER.info("start Transfer of {}", newUnknownDataList);
+    LOGGER.info("Start transfer of {}", newUnknownDataList);
     // transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
