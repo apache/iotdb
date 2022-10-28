@@ -43,10 +43,16 @@ public class MCFLeaderBalancer {
   private final Map<TConsensusGroupId, Integer> regionLeaderMap;
   private final Set<Integer> disabledDataNodeSet;
 
+  /** Graph nodes */
+  // Super source node
   private static final int sNode = 0;
+  // Super terminal node
   private static final int tNode = 1;
+  // Maximum index of graph nodes
   private int maxNode = tNode + 1;
+  // Map<RegionGroupId, rNode>
   private final Map<TConsensusGroupId, Integer> rNodeMap;
+  // Map<DataNodeId, >
   private final Map<Integer, Integer> dNodeMap;
   private final Map<Integer, Integer> dNodeReflect;
 
