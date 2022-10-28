@@ -37,8 +37,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.AssertFalse;
-import javax.validation.constraints.AssertTrue;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -527,7 +525,7 @@ public class SessionPoolTest {
             null,
             false,
             SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-            null,
+            SessionConfig.DEFAULT_VERSION,
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     try {
