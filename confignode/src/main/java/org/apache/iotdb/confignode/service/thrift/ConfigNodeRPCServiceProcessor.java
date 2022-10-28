@@ -660,7 +660,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus dropSchemaTemplate(String req) throws TException {
-    return null;
+    return configManager.dropSchemaTemplate(req);
   }
 
   @Override

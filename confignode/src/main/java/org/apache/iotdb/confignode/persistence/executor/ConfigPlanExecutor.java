@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
@@ -296,6 +297,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
+      case DropSchemaTemplate:
+        return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
       case CreatePipeSink:
         return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
       case DropPipeSink:

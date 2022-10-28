@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
@@ -558,6 +559,37 @@ public class ClusterSchemaManager {
   public TemplateSetInfoResp getTemplateSetInfo(List<PartialPath> patternList) {
     return (TemplateSetInfoResp)
         getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
+  }
+
+  public synchronized TSStatus dropSchemaTemplate(String templateName) {
+
+    // check template existence
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateInfoResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateInfoResp.getStatus();
+    } else if (templateInfoResp.getTemplateList() == null
+        || templateInfoResp.getTemplateList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+          String.format("Undefined template name: %s", templateName));
+    }
+
+    // check is template set on some path, block all template set operation
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return pathInfoResp.getStatus();
+    } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
+          String.format("Template is in use on %s", pathInfoResp.getPathList()));
+    }
+
+    // execute drop template
+    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
   private NodeManager getNodeManager() {

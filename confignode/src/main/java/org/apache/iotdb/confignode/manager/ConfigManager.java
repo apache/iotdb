@@ -1093,6 +1093,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus dropSchemaTemplate(String templateName) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.dropSchemaTemplate(templateName);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

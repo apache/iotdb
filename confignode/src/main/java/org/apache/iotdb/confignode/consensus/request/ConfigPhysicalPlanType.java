@@ -100,5 +100,6 @@ public enum ConfigPhysicalPlanType {
   GetTriggerLocation,
   GetTemplateSetInfo,
   UpdateDataNodeConfiguration,
-  GetFunctionTable
+  GetFunctionTable,
+  DropSchemaTemplate
 }
