@@ -384,7 +384,8 @@ public class MultiLeaderServerImpl {
             String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
       }
     } catch (IOException | TException e) {
-      throw new ConsensusGroupModifyPeerException(String.format("error when activating %s", peer), e);
+      throw new ConsensusGroupModifyPeerException(
+          String.format("error when activating %s", peer), e);
     }
   }
 
@@ -397,7 +398,8 @@ public class MultiLeaderServerImpl {
             String.format("error when activating %s. %s", peer, res.getStatus()));
       }
     } catch (IOException | TException e) {
-      throw new ConsensusGroupModifyPeerException(String.format("error when activating %s", peer), e);
+      throw new ConsensusGroupModifyPeerException(
+          String.format("error when activating %s", peer), e);
     }
   }
 
@@ -716,7 +718,8 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public void cleanupTransferredSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
+  public void cleanupTransferredSnapshot(String snapshotId)
+      throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, snapshotId);
     if (snapshotDir.exists()) {
       try {
