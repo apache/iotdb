@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -104,25 +105,24 @@ public class IoTDBDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl() {
+  public URL getPropsUrl(String configFileName) {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (urlString != null) {
-        urlString =
-            urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configFileName;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
+        URL uri = IoTDBConfig.class.getResource("/" + configFileName);
         if (uri != null) {
           return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
-            IoTDBConfig.CONFIG_NAME);
+            configFileName);
         // update all data seriesPath
         conf.updatePath();
         return null;
@@ -131,7 +131,7 @@ public class IoTDBDescriptor {
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
     else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+      urlString += (File.separatorChar + configFileName);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
@@ -149,12 +149,28 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl();
+    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
+    try (InputStream inputStream = url.openStream()) {
 
+      logger.info("Start to read config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+
+      loadProperties(properties);
+
+    } catch (FileNotFoundException e) {
+      logger.warn("Fail to find config file {}", url, e);
+    } catch (IOException e) {
+      logger.warn("Cannot load config file, use default configuration", e);
+    } catch (Exception e) {
+      logger.warn("Incorrect format in config file, use default configuration", e);
+    }
+
+    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
     try (InputStream inputStream = url.openStream()) {
 
       logger.info("Start to read config file {}", url);
@@ -1500,12 +1516,28 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    URL url = getPropsUrl();
+    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
 
+    try (InputStream inputStream = url.openStream()) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties);
+    } catch (Exception e) {
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+    }
+
+    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    if (url == null) {
+      logger.warn("Couldn't load the configuration from any of the known sources.");
+      return;
+    }
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
