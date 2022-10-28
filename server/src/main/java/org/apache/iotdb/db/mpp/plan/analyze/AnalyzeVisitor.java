@@ -381,9 +381,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
             queryStatement.isLastQuery() || isGroupByLevel);
-    int columnIndex = -1;
+    int columnIndex = 0;
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-      columnIndex++;
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
@@ -424,7 +423,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           break;
         }
       }
-      outputExpressionMap.put(columnIndex, outputExpressions);
+      outputExpressionMap.put(columnIndex++, outputExpressions);
     }
     return outputExpressionMap;
   }
