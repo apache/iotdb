@@ -527,7 +527,7 @@ public class SessionPoolTest {
             null,
             false,
             SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-            SessionConfig.DEFAULT_VERSION,
+            null,
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     try {
