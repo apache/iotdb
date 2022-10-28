@@ -203,6 +203,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
+      case GetFunctionTable:
+        return udfInfo.getUDFTable();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

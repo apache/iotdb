@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -44,12 +45,15 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
 
   @Test
   public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
@@ -68,7 +72,8 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            config.getQueryTimeoutThreshold(),
+            sessionInfo);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
@@ -101,7 +106,8 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             null,
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            config.getQueryTimeoutThreshold(),
+            sessionInfo);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),

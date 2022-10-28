@@ -17,15 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics.enums;
+package org.apache.iotdb.confignode.consensus.request.read;
 
-public enum Tag {
-  TYPE,
-  NAME,
-  STATUS;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public class GetFunctionTablePlan extends ConfigPhysicalPlan {
+
+  public GetFunctionTablePlan() {
+    super(ConfigPhysicalPlanType.GetFunctionTable);
+  }
 
   @Override
-  public String toString() {
-    return super.toString().toLowerCase();
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.GetFunctionTable.ordinal());
   }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }
