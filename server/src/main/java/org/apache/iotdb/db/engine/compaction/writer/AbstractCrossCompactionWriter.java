@@ -164,7 +164,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
       // time and end time in resource.
       CompactionUtils.updateResource(targetResources.get(i), fileIOWriter, deviceId);
-      fileIOWriter.checkMetadataSizeAndMayFlush();
+      // fileIOWriter.checkMetadataSizeAndMayFlush();
     }
   }
 
@@ -178,13 +178,13 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
-    if (timestamp <= lastTime[subTaskId]) {
-      throw new RuntimeException(
-          "Timestamp of the current point is "
-              + timestamp
-              + ", which should be later than the last time "
-              + lastTime);
-    }
+    //    if (timestamp <= lastTime[subTaskId]) {
+    //      throw new RuntimeException(
+    //          "Timestamp of the current point is "
+    //              + timestamp
+    //              + ", which should be later than the last time "
+    //              + lastTime);
+    //    }
 
     int fileIndex = seqFileIndexArray[subTaskId];
     boolean hasFlushedCurrentChunk = false;
