@@ -108,11 +108,15 @@ public class IoTDBInsertWithoutTimeIT {
   @Test
   public void testInsertHaveNotTime() throws SQLException, InterruptedException {
     Statement st0 = connection.createStatement();
-    st0.execute("insert into root.t1.wf01.wt01(status, temperature) values (1, 11)");
+    st0.execute("SET STORAGE GROUP TO root.t2");
+    st0.execute("CREATE TIMESERIES root.t2.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+    st0.execute("CREATE TIMESERIES root.t2.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    st0.execute("insert into root.t2.wf01.wt01(status, temperature) values (1, 11)");
 
-    ResultSet rs1 = st0.executeQuery("select count(status) from root.t1.wf01.wt01");
+    ResultSet rs1 = st0.executeQuery("select count(status) from root.t2.wf01.wt01");
     rs1.next();
     long countStatus = rs1.getLong(1);
+    System.out.println(countStatus);
     Assert.assertEquals(countStatus, 1L);
   }
 
