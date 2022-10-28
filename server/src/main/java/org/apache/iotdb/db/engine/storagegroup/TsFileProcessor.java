@@ -837,11 +837,6 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      for (ISyncManager syncManager :
-          SyncService.getInstance()
-              .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
-        syncManager.syncRealTimeDeletion(deletion);
-      }
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {

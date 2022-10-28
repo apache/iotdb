@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.sync.sender.pipe;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
@@ -210,20 +208,9 @@ public class TsFilePipe implements Pipe {
       if (!pipeInfo.isSyncDelOp()) {
         return;
       }
-
-      for (PartialPath deletePath : LocalSyncManager.splitPathPatternByDevice(deletion.getPath())) {
-        Deletion splitDeletion =
-            new Deletion(
-                deletePath,
-                deletion.getFileOffset(),
-                deletion.getStartTime(),
-                deletion.getEndTime());
-        PipeData deletionData =
-            new DeletionPipeData(sgName, splitDeletion, maxSerialNumber.incrementAndGet());
-        realTimeQueueMap.get(dataRegionId).offer(deletionData);
-      }
-    } catch (MetadataException e) {
-      logger.warn(logFormat("Collect deletion %s error.", deletion), e);
+      PipeData deletionData =
+          new DeletionPipeData(sgName, deletion, maxSerialNumber.incrementAndGet());
+      realTimeQueueMap.get(dataRegionId).offer(deletionData);
     } finally {
       collectRealTimeDataLock.unlock();
     }

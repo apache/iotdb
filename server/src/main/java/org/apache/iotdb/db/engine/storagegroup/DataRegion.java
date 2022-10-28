@@ -2245,12 +2245,17 @@ public class DataRegion {
 
       deleteDataInFiles(
           unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      for (ISyncManager syncManager :
+          SyncService.getInstance()
+              .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
+        syncManager.syncRealTimeDeletion(deletion, unsealedTsFileResource, sealedTsFileResource);
+      }
+
       writeUnlock();
       hasReleasedLock = true;
 
       deleteDataInFiles(
           sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
-
     } catch (Exception e) {
       // roll back
       for (ModificationFile modFile : updatedModFiles) {
@@ -2424,11 +2429,6 @@ public class DataRegion {
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
-      }
-
-      for (ISyncManager syncManager :
-          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        syncManager.syncRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.sender.manager;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import java.io.File;
@@ -30,7 +31,10 @@ import java.util.List;
  */
 public interface ISyncManager {
   /** tsfile */
-  void syncRealTimeDeletion(Deletion deletion);
+  void syncRealTimeDeletion(
+      Deletion deletion,
+      List<TsFileResource> unsealedResources,
+      List<TsFileResource> sealedResources);
 
   void syncRealTimeTsFile(File tsFile);
 
