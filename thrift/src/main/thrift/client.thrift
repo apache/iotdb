@@ -434,7 +434,6 @@ struct TSyncTransportMetaInfo{
 
 service IClientRPCService {
 
-  //ycy new method
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
 
   TSExecuteStatementResp executeUpdateStatementV2(1:TSExecuteStatementReq req);
