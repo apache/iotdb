@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.cq.CQState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
@@ -49,7 +48,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
@@ -71,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(IoTDBTestRunner.class)
@@ -113,17 +112,6 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
   }
 
-  private ByteBuffer generatePatternTreeBuffer(String path)
-      throws IllegalPathException, IOException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath(path));
-    patternTree.constructTree();
-
-    PublicBAOS baos = new PublicBAOS();
-    patternTree.serialize(baos);
-    return ByteBuffer.wrap(baos.toByteArray());
-  }
-
   @Test
   public void testPartitionInfoSnapshot()
       throws IOException, IllegalPathException, TException, InterruptedException {
@@ -150,7 +138,8 @@ public class IoTDBConfigNodeSnapshotIT {
           TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
 
           // Create SchemaPartition
-          ByteBuffer patternTree = generatePatternTreeBuffer(storageGroup + ".d" + j + ".s");
+          ByteBuffer patternTree =
+              generatePatternTreeBuffer(new String[] {storageGroup + ".d" + j + ".s"});
           TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(patternTree);
           TSchemaPartitionTableResp schemaPartitionTableResp =
               client.getOrCreateSchemaPartitionTable(schemaPartitionReq);

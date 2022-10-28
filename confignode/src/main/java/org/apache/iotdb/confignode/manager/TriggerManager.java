@@ -174,8 +174,8 @@ public class TriggerManager {
    *
    * <p>Step2: Get all Transferring Triggers marked in Step1.
    *
-   * <p>Step3: For each trigger get in Step2, find the DataNode with the lowest load, then transfer
-   * the Stateful Trigger to it and update this information on all DataNodes.
+   * <p>Step3: For each trigger gotten in Step2, find the DataNode with the lowest load, then
+   * transfer the Stateful Trigger to it and update this information on all DataNodes.
    *
    * <p>Step4: Update the newest location on ConfigNodes.
    *

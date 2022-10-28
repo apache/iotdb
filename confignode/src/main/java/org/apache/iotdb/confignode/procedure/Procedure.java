@@ -262,11 +262,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return clazz;
   }
 
-  public static Procedure newInstance(ByteBuffer byteBuffer) {
+  public static Procedure<?> newInstance(ByteBuffer byteBuffer) {
     Class<?> procedureClass = deserializeTypeInfo(byteBuffer);
-    Procedure procedure;
+    Procedure<?> procedure;
     try {
-      procedure = (Procedure) procedureClass.newInstance();
+      procedure = (Procedure<?>) procedureClass.newInstance();
     } catch (InstantiationException | IllegalAccessException e) {
       throw new RuntimeException("Instantiation failed", e);
     }
