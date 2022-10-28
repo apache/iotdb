@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
@@ -61,6 +62,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -79,6 +81,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ProcedureManager {
@@ -400,6 +403,13 @@ public class ProcedureManager {
       return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
+  }
+
+  public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
+    long procedureId = executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
+    List<TSStatus> statusList = new ArrayList<>();
+    waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    return statusList.get(0);
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {

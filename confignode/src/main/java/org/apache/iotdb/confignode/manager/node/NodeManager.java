@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -85,6 +86,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -133,12 +135,15 @@ public class NodeManager {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Unknown-DataNode-Detector");
   private final Set<TDataNodeLocation> oldUnknownNodes;
 
+  private final Random random;
+
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.oldUnknownNodes = new HashSet<>();
+    this.random = new Random(System.currentTimeMillis());
   }
 
   private void setGlobalConfig(DataNodeRegisterResp dataSet) {
@@ -207,6 +212,14 @@ public class NodeManager {
     dataSet.setRatisConfig(ratisConfig);
   }
 
+  private void setCQConfig(DataNodeRegisterResp dataSet) {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    TCQConfig cqConfig = new TCQConfig();
+    cqConfig.setCqMinEveryIntervalInMs(conf.getCqMinEveryIntervalInMs());
+
+    dataSet.setCqConfig(cqConfig);
+  }
+
   /**
    * Register DataNode
    *
@@ -243,6 +256,7 @@ public class NodeManager {
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     setRatisConfig(dataSet);
+    setCQConfig(dataSet);
     return dataSet;
   }
 
@@ -868,22 +882,17 @@ public class NodeManager {
    *
    * @return TDataNodeLocation
    */
-  public TDataNodeLocation getLowestLoadDataNode() {
-    AtomicInteger result = new AtomicInteger();
-    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
+  public Optional<TDataNodeLocation> getLowestLoadDataNode() {
+    // TODO get real lowest load data node after scoring algorithm being implemented
+    List<TDataNodeConfiguration> targetDataNodeList =
+        filterDataNodeThroughStatus(NodeStatus.Running);
 
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          long score = heartbeatCache.getLoadScore();
-          if (score < lowestLoadScore.get()) {
-            result.set(dataNodeId);
-            lowestLoadScore.set(score);
-          }
-        });
-
-    LOGGER.info(
-        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
+    if (targetDataNodeList == null || targetDataNodeList.isEmpty()) {
+      return Optional.empty();
+    } else {
+      int index = random.nextInt(targetDataNodeList.size());
+      return Optional.of(targetDataNodeList.get(index).location);
+    }
   }
 
   /** Recover the nodeCacheMap when the ConfigNode-Leader is switched */
