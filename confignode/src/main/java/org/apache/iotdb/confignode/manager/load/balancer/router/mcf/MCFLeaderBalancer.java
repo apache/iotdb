@@ -127,13 +127,18 @@ public class MCFLeaderBalancer {
 
     // Count the possible maximum number of leader in each DataNode
     Map<Integer, AtomicInteger> maxLeaderCounter = new ConcurrentHashMap<>();
-    regionLeaderMap
+    regionReplicaSetMap
         .values()
         .forEach(
-            leaderId ->
-                maxLeaderCounter
-                    .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
-                    .getAndIncrement());
+            regionReplicaSet ->
+                regionReplicaSet
+                    .getDataNodeLocations()
+                    .forEach(
+                        dataNodeLocation ->
+                            maxLeaderCounter
+                                .computeIfAbsent(
+                                    dataNodeLocation.getDataNodeId(), empty -> new AtomicInteger(0))
+                                .getAndIncrement()));
 
     for (Map.Entry<Integer, Integer> dNodeEntry : dNodeMap.entrySet()) {
       int dataNodeId = dNodeEntry.getKey();
@@ -222,7 +227,7 @@ public class MCFLeaderBalancer {
         }
       }
     }
-    nodeCurrentEdge[currentEdge] = currentEdge;
+    nodeCurrentEdge[currentNode] = currentEdge;
 
     if (outputFlow > 0) {
       isNodeVisited[currentNode] = false;
