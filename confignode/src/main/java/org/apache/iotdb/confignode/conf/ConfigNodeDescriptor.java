@@ -306,7 +306,7 @@ public class ConfigNodeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_snapshot_trigger_threshold",
-                String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
+                String.valueOf(conf.getDataRegionRatisSnapshotTriggerThreshold()))));
 
     conf.setPartitionRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(

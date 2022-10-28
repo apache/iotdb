@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -176,6 +177,14 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public boolean doubleCheckReplica() {
+    return configManager
+            .getNodeManager()
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+            .size()
+        > NodeInfo.getMinimumDataNode();
+  }
+
   /**
    * Let the remotely new ConfigNode build the ConsensusGroup
    *
@@ -216,7 +225,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation)
       throws ProcedureException {
-    removeConfigNodeLock.tryLock();
+    removeConfigNodeLock.lock();
     TSStatus tsStatus;
     try {
       // Execute removePeer

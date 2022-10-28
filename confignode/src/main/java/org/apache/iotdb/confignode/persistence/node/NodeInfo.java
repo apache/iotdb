@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -165,7 +166,7 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Persist Information about remove dataNode
    *
-   * @param req RemoveDataNodeReq
+   * @param req RemoveDataNodePlan
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
@@ -188,6 +189,25 @@ public class NodeInfo implements SnapshotProcessor {
         "{}, There are {} data node in cluster after executed remove-datanode.sh",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Update the specified DataNode‘s location
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return SUCCESS_STATUS if update DataNode info successfully, otherwise return
+   *     UPDATE_DATA_NODE_ERROR
+   */
+  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    dataNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      registeredDataNodes
+          .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
+          .setLocation(updateDataNodePlan.getDataNodeLocation());
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

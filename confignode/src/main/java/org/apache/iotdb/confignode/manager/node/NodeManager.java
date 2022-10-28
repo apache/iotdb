@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -248,9 +249,9 @@ public class NodeManager {
   /**
    * Remove DataNodes
    *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return DataNodeToStatusResp, The TSStatue will be SUCCEED_STATUS when request is accept,
-   *     DATANODE_NOT_EXIST when some datanode not exist.
+   * @param removeDataNodePlan removeDataNodePlan
+   * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
+   *     DATANODE_NOT_EXIST when some datanode does not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
@@ -261,7 +262,7 @@ public class NodeManager {
         dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
-          "the remove Data Node request check failed.  req: {}, check result: {}",
+          "The remove DataNode request check failed.  req: {}, check result: {}",
           removeDataNodePlan,
           preCheckStatus.getStatus());
       return preCheckStatus;
@@ -282,14 +283,58 @@ public class NodeManager {
     TSStatus status;
     if (registerSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accept the request");
+      status.setMessage("Server accepted the request");
     } else {
       status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
-      status.setMessage("Server reject the request, maybe request is too much");
+      status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);
 
     LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
+    return dataSet;
+  }
+
+  /**
+   * Update the specified DataNode‘s location
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
+   *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
+   *     failed.
+   */
+  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
+
+    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
+    TSStatus status;
+    // check if node is already exist
+    boolean found = false;
+    List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
+    for (TDataNodeConfiguration configuration : configurationList) {
+      if (configuration.getLocation().getDataNodeId()
+          == updateDataNodePlan.getDataNodeLocation().getDataNodeId()) {
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      getConsensusManager().write(updateDataNodePlan);
+      status =
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .setMessage("updateDataNode(nodeId=%d) success.");
+    } else {
+      status =
+          new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  String.format(
+                      "The specified DataNode(nodeId=%d) doesn't exist",
+                      updateDataNodePlan.getDataNodeLocation().getDataNodeId()));
+    }
+    dataSet.setStatus(status);
+    dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
+    dataSet.setConfigNodeList(getRegisteredConfigNodes());
+    setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
     return dataSet;
   }
 
@@ -469,7 +514,7 @@ public class NodeManager {
    * @param removeConfigNodePlan RemoveConfigNodePlan
    */
   public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
-    removeConfigNodeLock.tryLock();
+    removeConfigNodeLock.lock();
     try {
       // Check OnlineConfigNodes number
       if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
@@ -504,7 +549,7 @@ public class NodeManager {
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Success remove confignode.");
+        .setMessage("Successfully remove confignode.");
   }
 
   private TSStatus transferLeader(
