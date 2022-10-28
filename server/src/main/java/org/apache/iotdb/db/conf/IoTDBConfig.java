@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -872,6 +873,12 @@ public class IoTDBConfig {
 
   /** number of threads given to archiving tasks */
   private int archivingThreadNum = 2;
+
+  // determines whether audit logs are written to log files or IoTDB
+  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_NONE;
+
+  // determines whether audit logs record IoTDB write operation
+  private boolean enableAuditLogWrite = false;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -2805,5 +2812,21 @@ public class IoTDBConfig {
 
   public void setPatternMatchingThreshold(int patternMatchingThreshold) {
     this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public String getAuditLogStorage() {
+    return auditLogStorage;
+  }
+
+  public void setAuditLogStorage(String auditLogStorage) {
+    this.auditLogStorage = auditLogStorage;
+  }
+
+  public boolean isEnableAuditLogWrite() {
+    return enableAuditLogWrite;
+  }
+
+  public void setEnableAuditLogWrite(boolean enableAuditLogWrite) {
+    this.enableAuditLogWrite = enableAuditLogWrite;
   }
 }

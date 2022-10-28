@@ -745,6 +745,7 @@ nodeName
     | wildcard? INTEGER_LITERAL wildcard?
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
+    | SYSTEM
     ;
 
 nodeNameWithoutWildcard

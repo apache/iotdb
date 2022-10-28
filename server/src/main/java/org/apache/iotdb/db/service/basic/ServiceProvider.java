@@ -43,6 +43,7 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -219,6 +220,7 @@ public abstract class ServiceProvider {
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
     SessionTimeoutManager.getInstance().register(session);
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGIN, "user login");
     return openSessionResp.sessionId(session == null ? -1 : session.getId());
   }
 
@@ -235,6 +237,7 @@ public abstract class ServiceProvider {
 
   public boolean closeSession(IClientSession session) {
     AUDIT_LOGGER.info("Session-{} is closing", session);
+    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGOUT, "user logout");
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 
