@@ -175,11 +175,6 @@ public class IoTDBConfig {
   /** Write mode of wal */
   private volatile WALMode walMode = WALMode.ASYNC;
 
-  /** WAL directories */
-  private String[] walDirs = {
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
-  };
-
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
 
@@ -1030,6 +1025,9 @@ public class IoTDBConfig {
 
   private long dataRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
+
+  /** CQ related */
+  private long cqMinEveryIntervalInMs = 1_000;
 
   private long dataRatisConsensusRequestTimeoutMs = 10000L;
   private long schemaRatisConsensusRequestTimeoutMs = 10000L;
@@ -3429,6 +3427,14 @@ public class IoTDBConfig {
       long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
         schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
 
   public double getUsableCompactionMemoryProportion() {

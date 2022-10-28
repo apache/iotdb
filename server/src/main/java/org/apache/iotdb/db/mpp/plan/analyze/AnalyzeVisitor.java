@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -157,15 +156,11 @@ import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTarg
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
   private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
-  private final MPPQueryContext context;
 
-  public AnalyzeVisitor(
-      IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher, MPPQueryContext context) {
-    this.context = context;
+  public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
   }
@@ -381,7 +376,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-      if (hasAlias && !queryStatement.isGroupByLevel() && resultExpressions.size() > 1) {
+      if (hasAlias
+          && !queryStatement.isGroupByLevel()
+          && !queryStatement.isGroupByTag()
+          && resultExpressions.size() > 1) {
         throw new SemanticException(
             String.format(
                 "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
@@ -699,6 +697,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     if (analysis.hasValueFilter()) {
       throw new SemanticException("Only time filters are supported in GROUP BY TAGS query");
+    }
+    if (queryStatement.hasHaving()) {
+      throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
     }
     Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
         tagValuesToGroupedTimeseriesOperands = new HashMap<>();
@@ -1051,6 +1052,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if ((groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
       throw new SemanticException("Group by month doesn't support order by time desc now.");
+    }
+    if (!queryStatement.isCqQueryBody()
+        && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
+      throw new SemanticException(
+          "The query time range should be specified in the GROUP BY TIME clause.");
     }
     analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
   }

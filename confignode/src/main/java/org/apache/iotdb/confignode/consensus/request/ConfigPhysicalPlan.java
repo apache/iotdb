@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTrigger
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -44,8 +46,14 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -133,6 +141,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       switch (type) {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
+          break;
+        case UpdateDataNodeConfiguration:
+          req = new UpdateDataNodePlan();
           break;
         case RemoveDataNode:
           req = new RemoveDataNodePlan();
@@ -326,6 +337,27 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTransferringTriggers:
           req = new GetTransferringTriggersPlan();
+          break;
+        case ACTIVE_CQ:
+          req = new ActiveCQPlan();
+          break;
+        case ADD_CQ:
+          req = new AddCQPlan();
+          break;
+        case DROP_CQ:
+          req = new DropCQPlan();
+          break;
+        case UPDATE_CQ_LAST_EXEC_TIME:
+          req = new UpdateCQLastExecTimePlan();
+          break;
+        case SHOW_CQ:
+          req = new ShowCQPlan();
+          break;
+        case GetFunctionTable:
+          req = new GetFunctionTablePlan();
+          break;
+        case GetFunctionJar:
+          req = new GetUDFJarPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

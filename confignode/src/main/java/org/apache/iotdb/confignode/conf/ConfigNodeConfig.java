@@ -169,6 +169,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -187,6 +188,11 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
+  /** CQ related */
+  private int cqSubmitThread = 2;
+
+  private long cqMinEveryIntervalInMs = 1_000;
 
   /** RatisConsensus protocol, request timeout for ratis client */
   private long dataRegionRatisRequestTimeoutMs = 10000L;
@@ -695,6 +701,15 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
+  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
+    return partitionRegionStandAloneLogSegmentSizeMax;
+  }
+
+  public void setPartitionRegionStandAloneLogSegmentSizeMax(
+      long partitionRegionStandAloneLogSegmentSizeMax) {
+    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
+  }
+
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
     return schemaRegionRatisGrpcFlowControlWindow;
   }
@@ -722,6 +737,22 @@ public class ConfigNodeConfig {
       long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
     this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
         schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public int getCqSubmitThread() {
+    return cqSubmitThread;
+  }
+
+  public void setCqSubmitThread(int cqSubmitThread) {
+    this.cqSubmitThread = cqSubmitThread;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
 
   public long getDataRegionRatisRequestTimeoutMs() {

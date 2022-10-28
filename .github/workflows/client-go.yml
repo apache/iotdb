@@ -53,7 +53,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile IoTDB Server
-        run: mvn -B package -Dmaven.test.skip=true  -am -pl server
+        run: mvn clean package -pl distribution -am -DskipTests
       - name: Integration test
         shell: bash
         run: |

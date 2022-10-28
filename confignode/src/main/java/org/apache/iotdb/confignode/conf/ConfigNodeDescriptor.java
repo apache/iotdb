@@ -270,6 +270,8 @@ public class ConfigNodeDescriptor {
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
       loadRatisConsensusConfig(properties);
+
+      loadCQConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -306,7 +308,7 @@ public class ConfigNodeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "data_region_ratis_snapshot_trigger_threshold",
-                String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
+                String.valueOf(conf.getDataRegionRatisSnapshotTriggerThreshold()))));
 
     conf.setPartitionRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
@@ -355,6 +357,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_log_segment_size_max",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
+
+    conf.setPartitionRegionStandAloneLogSegmentSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_standalone_log_segment_size_max",
+                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
@@ -503,6 +511,36 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "ratis_first_election_timeout_max_ms",
                 String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))));
+  }
+
+  private void loadCQConfig(Properties properties) {
+    int cqSubmitThread =
+        Integer.parseInt(
+            properties.getProperty(
+                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread())));
+    if (cqSubmitThread <= 0) {
+      LOGGER.warn(
+          "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqSubmitThread,
+          conf.getCqSubmitThread());
+      cqSubmitThread = conf.getCqSubmitThread();
+    }
+    conf.setCqSubmitThread(cqSubmitThread);
+
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      LOGGER.warn(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqMinEveryIntervalInMs,
+          conf.getCqMinEveryIntervalInMs());
+      cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();
+    }
+
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
   }
 
   /**
