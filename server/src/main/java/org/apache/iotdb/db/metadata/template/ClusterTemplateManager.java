@@ -344,6 +344,11 @@ public class ClusterTemplateManager implements ITemplateManager {
         pathSetTemplateMap.remove(path);
         if (templateSetOnPathsMap.containsKey(templateId)) {
           templateSetOnPathsMap.get(templateId).remove(path);
+          if (templateSetOnPathsMap.get(templateId).isEmpty()) {
+            templateSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
         }
       } catch (IllegalPathException ignored) {
 
