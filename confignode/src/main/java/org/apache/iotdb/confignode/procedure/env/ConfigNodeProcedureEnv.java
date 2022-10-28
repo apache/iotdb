@@ -506,6 +506,9 @@ public class ConfigNodeProcedureEnv {
       }
       getLoadManager().getRouteBalancer().greedySelectLeader(regionGroupId, availableDataNodes);
     }
+
+    // Force update RegionRouteMap
+    getLoadManager().getRouteBalancer().updateRegionRouteMap();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

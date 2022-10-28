@@ -189,10 +189,6 @@ public class LoadManager {
             (nodeId, nodeCache) -> {
               // Update and check if NodeStatistics needs consensus
               nodeCache.updateNodeStatistics();
-              if (nodeId == 0) {
-                LOGGER.info(nodeCache.getStatistics().toString());
-                LOGGER.info(getNodeManager().getNodeStatistics(nodeId, false).toString());
-              }
               if (!nodeCache
                   .getStatistics()
                   .equals(getNodeManager().getNodeStatistics(nodeId, false))) {
