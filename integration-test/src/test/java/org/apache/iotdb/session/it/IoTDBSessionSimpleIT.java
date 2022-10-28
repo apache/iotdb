@@ -989,7 +989,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertIlligalPathTest() {
+  public void insertIllegalPathTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String msg = "[%s] Exception occurred: %s failed. %s is not a legal path";
       String deviceId = "root.sg..d1";

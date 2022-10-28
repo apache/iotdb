@@ -53,9 +53,9 @@ import static org.junit.Assert.fail;
 
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
 @RunWith(IoTDBTestRunner.class)
-public class SessionPoolTest {
+public class SessionPoolIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolIT.class);
   private static final long DEFAULT_QUERY_TIMEOUT = -1;
 
   @Before
