@@ -38,8 +38,8 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
-import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
@@ -193,7 +193,7 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
-  public TriggerJarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
+  public JarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
     List<ByteBuffer> jarList = new ArrayList<>();
     try {
       for (String jarName : physicalPlan.getJarNames()) {
@@ -203,12 +203,12 @@ public class TriggerInfo implements SnapshotProcessor {
       }
     } catch (Exception e) {
       LOGGER.error("Get TriggerJar failed", e);
-      return new TriggerJarResp(
+      return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage("Get TriggerJar failed, because " + e.getMessage()),
           Collections.emptyList());
     }
-    return new TriggerJarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
   public TransferringTriggersResp getTransferringTriggers(GetTransferringTriggersPlan req) {

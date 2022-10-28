@@ -326,16 +326,6 @@ struct TGetUDFTableResp {
   2: required list<binary> allUDFInformation
 }
 
-// Get jars of the corresponding trigger
-struct TGetUDFJarReq {
-  1: required list<string> jarNameList
-}
-
-struct TGetUDFJarResp {
-  1: required common.TSStatus status
-  2: required list<binary> jarList
-}
-
 // Trigger
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
@@ -377,12 +367,12 @@ struct TGetTriggerTableResp {
   2: required list<binary> allTriggerInformation
 }
 
-// Get jars of the corresponding trigger
-struct TGetTriggerJarReq {
+// Get jars of the corresponding jarName
+struct TGetJarInListReq {
   1: required list<string> jarNameList
 }
 
-struct TGetTriggerJarResp {
+struct TGetJarInListResp {
   1: required common.TSStatus status
   2: required list<binary> jarList
 }
@@ -820,7 +810,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF jar list of the jar name list
    */
-  TGetUDFJarResp getUDFJar(TGetUDFJarReq req)
+  TGetJarInListResp getUDFJar(TGetJarInListReq req)
 
   // ======================================================
   // Trigger
@@ -859,7 +849,7 @@ service IConfigNodeRPCService {
   /**
      * Return the trigger jar list of the trigger name list
      */
-  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
+  TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
   // Maintenance Tools

@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTrigger
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -206,6 +207,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       case GetFunctionTable:
         return udfInfo.getUDFTable();
+      case GetFunctionJar:
+        return udfInfo.getUDFJar((GetUDFJarPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

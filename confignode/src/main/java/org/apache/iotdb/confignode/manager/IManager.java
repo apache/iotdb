@@ -60,6 +60,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -68,8 +70,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -317,6 +317,8 @@ public interface IManager {
 
   TGetUDFTableResp getUDFTable();
 
+  TGetJarInListResp getUDFJar(TGetJarInListReq req);
+
   /** Create trigger */
   TSStatus createTrigger(TCreateTriggerReq req);
 
@@ -333,7 +335,7 @@ public interface IManager {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName);
 
   /** Get Trigger jar */
-  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);
+  TGetJarInListResp getTriggerJar(TGetJarInListReq req);
 
   /** Merge on all DataNodes */
   TSStatus merge();

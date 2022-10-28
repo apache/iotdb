@@ -38,6 +38,7 @@ public class DataNodeRegisterResp implements DataSet {
   private TRatisConfig ratisConfig;
   private byte[] templateInfo;
   private List<ByteBuffer> allTriggerInformation;
+  private List<ByteBuffer> allUDFInformation;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -80,6 +81,10 @@ public class DataNodeRegisterResp implements DataSet {
     this.allTriggerInformation = triggerInformation;
   }
 
+  public void setAllUDFInformation(List<ByteBuffer> allUDFInformation) {
+    this.allUDFInformation = allUDFInformation;
+  }
+
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
@@ -93,6 +98,7 @@ public class DataNodeRegisterResp implements DataSet {
       resp.setTemplateInfo(templateInfo);
       resp.setRatisConfig(ratisConfig);
       resp.setAllTriggerInformation(allTriggerInformation);
+      resp.setAllUDFInformation(allUDFInformation);
     }
 
     return resp;

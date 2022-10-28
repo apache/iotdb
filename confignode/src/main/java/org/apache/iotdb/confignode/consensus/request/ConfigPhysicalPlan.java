@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTrigger
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -334,6 +335,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetFunctionTable:
           req = new GetFunctionTablePlan();
+          break;
+        case GetFunctionJar:
+          req = new GetUDFJarPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
