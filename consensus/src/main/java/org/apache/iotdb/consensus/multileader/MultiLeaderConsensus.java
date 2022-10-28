@@ -40,6 +40,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupPersistUpdateException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
@@ -282,7 +283,7 @@ public class MultiLeaderConsensus implements IConsensus {
       logger.info("[MultiLeaderConsensus] do spot clean...");
       doSpotClean(peer, impl);
 
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupAddPeerException | ConsensusGroupPersistUpdateException e) {
       logger.error("cannot execute addPeer() for {}", peer, e);
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
@@ -311,7 +312,7 @@ public class MultiLeaderConsensus implements IConsensus {
     }
     try {
       impl.notifyPeersToRemoveSyncLogChannel(peer);
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupAddPeerException | ConsensusGroupPersistUpdateException e) {
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
           .setException(new ConsensusException(e.getMessage()))
@@ -329,7 +330,14 @@ public class MultiLeaderConsensus implements IConsensus {
           .build();
     }
 
-    impl.updatePeer(oldPeer, newPeer);
+    try {
+      impl.updatePeer(oldPeer, newPeer);
+    } catch (ConsensusGroupPersistUpdateException e) {
+      return ConsensusGenericResponse.newBuilder()
+          .setSuccess(false)
+          .setException(new ConsensusException(e.getMessage()))
+          .build();
+    }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }

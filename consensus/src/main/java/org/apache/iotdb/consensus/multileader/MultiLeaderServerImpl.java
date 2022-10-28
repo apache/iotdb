@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupPersistUpdateException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
@@ -400,7 +401,7 @@ public class MultiLeaderServerImpl {
   }
 
   public void notifyPeersToBuildSyncLogChannel(Peer targetPeer)
-      throws ConsensusGroupAddPeerException {
+      throws ConsensusGroupAddPeerException, ConsensusGroupPersistUpdateException {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     List<Peer> currentMembers = new ArrayList<>(this.configuration);
@@ -446,7 +447,7 @@ public class MultiLeaderServerImpl {
   }
 
   public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer)
-      throws ConsensusGroupAddPeerException {
+      throws ConsensusGroupAddPeerException, ConsensusGroupPersistUpdateException {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     List<Peer> currentMembers = new ArrayList<>(this.configuration);
@@ -479,13 +480,14 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public void updatePeer(Peer oldPeer, Peer newPeer) {
+  public void updatePeer(Peer oldPeer, Peer newPeer) throws ConsensusGroupPersistUpdateException {
     if (thisNode.equals(oldPeer)) {
       thisNode = newPeer;
       logDispatcher.setSelfPeerId(newPeer.getEndpoint().toString());
     } else {
       logDispatcher.updatePeer(oldPeer, newPeer);
     }
+    persistConfigurationUpdate();
   }
 
   private boolean isSuccess(TSStatus status) {
@@ -493,12 +495,12 @@ public class MultiLeaderServerImpl {
   }
 
   /** build SyncLog channel with safeIndex as the default initial sync index */
-  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupPersistUpdateException {
     buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
-      throws ConsensusGroupAddPeerException {
+      throws ConsensusGroupPersistUpdateException {
     // step 1, build sync channel in LogDispatcher
     logger.info(
         "[MultiLeaderConsensus] build sync log channel to {} with initialSyncIndex {}",
@@ -512,7 +514,8 @@ public class MultiLeaderServerImpl {
     persistConfigurationUpdate();
   }
 
-  public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+  public void removeSyncLogChannel(Peer targetPeer)
+      throws ConsensusGroupAddPeerException, ConsensusGroupPersistUpdateException {
     try {
       // step 1, remove sync channel in LogDispatcher
       logDispatcher.removeLogDispatcherThread(targetPeer);
@@ -542,7 +545,7 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public void persistConfigurationUpdate() throws ConsensusGroupAddPeerException {
+  public void persistConfigurationUpdate() throws ConsensusGroupPersistUpdateException {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       serializeConfigurationTo(outputStream);
@@ -554,7 +557,7 @@ public class MultiLeaderServerImpl {
       Files.delete(configurationPath);
       Files.move(tmpConfigurationPath, configurationPath);
     } catch (IOException e) {
-      throw new ConsensusGroupAddPeerException(
+      throw new ConsensusGroupPersistUpdateException(
           "Unexpected error occurs when update configuration", e);
     }
   }
