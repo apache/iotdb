@@ -93,6 +93,26 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
             "-s"));
   }
 
+  @Override
+  protected void renameFile() {
+    String configNodeName = isSeed ? "SeedConfigNode" : "ConfigNode";
+    // rename log file
+    File oldLogFile =
+        new File(getLogDirPath() + File.separator + configNodeName + portList[0] + ".log");
+    oldLogFile.renameTo(new File(getLogDirPath() + File.separator + getId() + ".log"));
+
+    // rename node dir
+    File oldNodeDir =
+        new File(
+            System.getProperty("user.dir")
+                + File.separator
+                + "target"
+                + File.separator
+                + configNodeName
+                + portList[0]);
+    oldNodeDir.renameTo(new File(getNodePath()));
+  }
+
   public int getConsensusPort() {
     return consensusPort;
   }

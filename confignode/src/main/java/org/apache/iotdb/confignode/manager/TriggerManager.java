@@ -33,17 +33,17 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
-import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -143,9 +143,9 @@ public class TriggerManager {
         .convertToThriftResponse();
   }
 
-  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
     try {
-      return ((TriggerJarResp)
+      return ((JarResp)
               configManager
                   .getConsensusManager()
                   .read(new GetTriggerJarPlan(req.getJarNameList()))
@@ -153,7 +153,7 @@ public class TriggerManager {
           .convertToThriftResponse();
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetTriggerJarResp(
+      return new TGetJarInListResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());

@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -99,6 +100,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -107,8 +110,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -236,13 +237,16 @@ public class ConfigManager implements IManager {
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      udfManager.getUdfInfo().acquireUDFTableLock();
       try {
         dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
         dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
+        dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
+        udfManager.getUdfInfo().releaseUDFTableLock();
       }
     } else {
       dataSet = new DataNodeRegisterResp();
@@ -262,6 +266,28 @@ public class ConfigManager implements IManager {
       dataSet.setStatus(status);
       return dataSet;
     }
+  }
+
+  @Override
+  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    TSStatus status = confirmLeader();
+    DataNodeRegisterResp dataSet;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      triggerManager.getTriggerInfo().acquireTriggerTableLock();
+      try {
+        dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
+        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+        dataSet.setTriggerInformation(
+            triggerManager.getTriggerTable(false).getAllTriggerInformation());
+      } finally {
+        triggerManager.getTriggerInfo().releaseTriggerTableLock();
+      }
+    } else {
+      dataSet = new DataNodeRegisterResp();
+      dataSet.setStatus(status);
+      dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
+    }
+    return dataSet;
   }
 
   @Override
@@ -796,6 +822,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.getUDFJar(req)
+        : new TGetJarInListResp(status, Collections.emptyList());
+  }
+
+  @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -836,11 +870,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerJar(req)
-        : new TGetTriggerJarResp(status, Collections.emptyList());
+        : new TGetJarInListResp(status, Collections.emptyList());
   }
 
   @Override

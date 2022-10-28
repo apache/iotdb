@@ -26,11 +26,15 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -57,6 +61,10 @@ public class UDFManager {
   public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {
     this.configManager = configManager;
     this.udfInfo = udfInfo;
+  }
+
+  public UDFInfo getUdfInfo() {
+    return udfInfo;
   }
 
   public TSStatus createFunction(TCreateFunctionReq req) {
@@ -156,6 +164,23 @@ public class UDFManager {
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetUDFTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
+  }
+
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
+    try {
+      return ((JarResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new GetUDFJarPlan(req.getJarNameList()))
+                  .getDataset())
+          .convertToThriftResponse();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get TriggerJar", e);
+      return new TGetJarInListResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());
