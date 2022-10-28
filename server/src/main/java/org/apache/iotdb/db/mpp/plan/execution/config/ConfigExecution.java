@@ -78,7 +78,7 @@ public class ConfigExecution implements IQueryExecution {
             new ConfigTaskVisitor.TaskContext(
                 context.getQueryId().getId(),
                 context.getSql(),
-                context.getSession().getUserName()));
+                context.getSession() == null ? null : context.getSession().getUserName()));
     this.resultSetConsumed = false;
     if (config.isClusterMode()) {
       configTaskExecutor = ClusterConfigTaskExecutor.getInstance();

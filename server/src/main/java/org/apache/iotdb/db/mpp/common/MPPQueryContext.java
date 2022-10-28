@@ -53,6 +53,7 @@ public class MPPQueryContext {
     this.endPointBlackList = new LinkedList<>();
   }
 
+  // TODO too many callers just pass a null SessionInfo which should be forbidden
   public MPPQueryContext(
       String sql,
       QueryId queryId,

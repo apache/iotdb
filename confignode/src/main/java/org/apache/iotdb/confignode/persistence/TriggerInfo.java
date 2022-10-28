@@ -255,6 +255,10 @@ public class TriggerInfo implements SnapshotProcessor {
 
       triggerTable.serializeTriggerTable(fileOutputStream);
 
+      fileOutputStream.flush();
+      fileOutputStream.close();
+
+      return tmpFile.renameTo(snapshotFile);
     } finally {
       releaseTriggerTableLock();
       for (int retry = 0; retry < 5; retry++) {
@@ -266,7 +270,6 @@ public class TriggerInfo implements SnapshotProcessor {
         }
       }
     }
-    return tmpFile.renameTo(snapshotFile);
   }
 
   @Override
