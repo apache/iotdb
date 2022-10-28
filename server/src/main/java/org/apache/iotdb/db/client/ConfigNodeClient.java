@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
@@ -60,6 +61,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -71,11 +74,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -324,6 +323,22 @@ public class ConfigNodeClient
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TDataNodeRegisterResp resp = client.updateDataNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
         configLeader = null;
       }
       reconnect();
@@ -1086,10 +1101,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetUDFJarResp getUDFJar(TGetUDFJarReq req) throws TException {
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetUDFJarResp resp = client.getUDFJar(req);
+        TGetJarInListResp resp = client.getUDFJar(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
@@ -1207,10 +1222,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) throws TException {
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetTriggerJarResp resp = client.getTriggerJar(req);
+        TGetJarInListResp resp = client.getTriggerJar(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

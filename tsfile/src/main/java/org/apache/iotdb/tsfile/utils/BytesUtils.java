@@ -93,7 +93,7 @@ public class BytesUtils {
         width -= m;
         int mask = 1 << (8 - cnt);
         cnt += m;
-        byte y = (byte) (srcNum >> width);
+        byte y = (byte) (srcNum >>> width);
         y = (byte) (y << (8 - cnt));
         mask = ~(mask - (1 << (8 - cnt)));
         result[index] = (byte) (result[index] & mask | y);
@@ -523,7 +523,7 @@ public class BytesUtils {
         width -= m;
         int mask = 1 << (8 - cnt);
         cnt += m;
-        byte y = (byte) (srcNum >> width);
+        byte y = (byte) (srcNum >>> width);
         y = (byte) (y << (8 - cnt));
         mask = ~(mask - (1 << (8 - cnt)));
         result[index] = (byte) (result[index] & mask | y);

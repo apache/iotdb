@@ -16,37 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.lsm.wal;
 
-package org.apache.iotdb.confignode.consensus.response;
-
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
-import org.apache.iotdb.consensus.common.DataSet;
-
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TriggerJarResp implements DataSet {
+/** represents a wal record, which can be extended to implement more complex wal records */
+public interface IWALRecord<K, V> extends Cloneable {
 
-  private TSStatus status;
+  /**
+   * serialize the wal record
+   *
+   * @param buffer byte buffer
+   */
+  void serialize(ByteBuffer buffer);
 
-  private final List<ByteBuffer> jarList;
+  /**
+   * deserialize via input stream
+   *
+   * @param stream data input stream
+   * @throws IOException
+   */
+  void deserialize(DataInputStream stream) throws IOException;
 
-  public TriggerJarResp(TSStatus status, List<ByteBuffer> jarList) {
-    this.status = status;
-    this.jarList = jarList;
-  }
+  // generate wal record using prototyping pattern
+  IWALRecord clone();
 
-  public TSStatus getStatus() {
-    return status;
-  }
+  List<K> getKeys();
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
-  public TGetTriggerJarResp convertToThriftResponse() throws IOException {
-    return new TGetTriggerJarResp(status, jarList);
-  }
+  V getValue();
 }

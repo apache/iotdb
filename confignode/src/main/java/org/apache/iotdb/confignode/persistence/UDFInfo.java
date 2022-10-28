@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
@@ -27,9 +28,11 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -45,7 +48,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -136,6 +142,24 @@ public class UDFInfo implements SnapshotProcessor {
     return new FunctionTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         udfTable.getAllNonBuiltInUDFInformation());
+  }
+
+  public JarResp getUDFJar(GetUDFJarPlan physicalPlan) {
+    List<ByteBuffer> jarList = new ArrayList<>();
+    try {
+      for (String jarName : physicalPlan.getJarNames()) {
+        jarList.add(
+            ExecutableManager.transferToBytebuffer(
+                UDFExecutableManager.getInstance().getFileStringUnderLibRootByName(jarName)));
+      }
+    } catch (Exception e) {
+      LOGGER.error("Get UDF_Jar failed", e);
+      return new JarResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
+          Collections.emptyList());
+    }
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
   public TSStatus dropFunction(DropFunctionPlan req) {
