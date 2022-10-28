@@ -466,7 +466,9 @@ public class QueryHandler extends AbstractQueryHandler {
     try {
       QueryPlan queryPlan =
           (QueryPlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(querySql);
-      TSStatus tsStatus = SessionManager.getInstance().checkAuthority(queryPlan, sessionId);
+      TSStatus tsStatus =
+          SessionManager.getInstance()
+              .checkAuthority(queryPlan, SessionManager.getInstance().getCurrSession());
       if (tsStatus != null) {
         throw new AuthException(tsStatus.getMessage());
       }

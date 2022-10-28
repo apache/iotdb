@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Operation;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -59,14 +58,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.control.SessionTimeoutManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -74,6 +72,7 @@ import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -129,6 +128,7 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
+import static org.apache.iotdb.db.service.basic.ServiceProvider.SESSION_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
@@ -161,51 +161,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    TSStatus loginStatus;
-    try {
-      loginStatus = AuthorizerManager.getInstance().checkUser(req.username, req.password);
-    } catch (ConfigNodeConnectionException e) {
-      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
-      return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    }
-    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
-    long sessionId = -1;
-    if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // check the version compatibility
-      boolean compatible = req.client_protocol.equals(SessionManager.CURRENT_RPC_VERSION);
-      if (!compatible) {
-        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
-        openSessionResp.setMessage(
-            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        openSessionResp = openSessionResp.sessionId(sessionId);
-      } else {
-        openSessionResp.setCode(loginStatus.getCode());
-        openSessionResp.setMessage(loginStatus.getMessage());
-
-        sessionId = SESSION_MANAGER.requestSessionId(req.username, req.zoneId, clientVersion);
-
-        LOGGER.info(
-            "{}: Login status: {}. User : {}, opens Session-{}",
-            IoTDBConstant.GLOBAL_DB_NAME,
-            openSessionResp.getMessage(),
+    BasicOpenSessionResp openSessionResp =
+        SESSION_MANAGER.login(
+            SESSION_MANAGER.getCurrSession(),
             req.username,
-            sessionId);
-
-        SessionTimeoutManager.getInstance().register(sessionId);
-        openSessionResp = openSessionResp.sessionId(sessionId);
-      }
-    } else {
-      openSessionResp.setMessage(loginStatus.getMessage());
-      openSessionResp.setCode(loginStatus.getCode());
-
-      sessionId = SESSION_MANAGER.requestSessionId(req.username, req.zoneId, clientVersion);
-      SessionManager.AUDIT_LOGGER.info(
-          "User {} opens Session failed with an incorrect password", req.username);
-
-      SessionTimeoutManager.getInstance().register(sessionId);
-      openSessionResp = openSessionResp.sessionId(sessionId);
-    }
-
+            req.password,
+            req.zoneId,
+            req.client_protocol,
+            clientVersion);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -221,9 +184,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    SESSION_MANAGER.releaseSessionResource(req.sessionId, this::cleanupQueryExecution);
+    SESSION_MANAGER.releaseSessionResource(
+        SESSION_MANAGER.getCurrSession(), this::cleanupQueryExecution);
     return new TSStatus(
-        !SESSION_MANAGER.closeSession(req.sessionId)
+        !SESSION_MANAGER.closeSession(SESSION_MANAGER.getCurrSession())
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -237,7 +201,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     return SESSION_MANAGER.closeOperation(
-        req.sessionId,
+        SESSION_MANAGER.getCurrSession(),
         req.queryId,
         req.statementId,
         req.isSetStatementId(),
@@ -248,7 +212,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSGetTimeZoneResp getTimeZone(long sessionId) {
     try {
-      ZoneId zoneId = SESSION_MANAGER.getZoneId(sessionId);
+      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
       return new TSGetTimeZoneResp(
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
           zoneId != null ? zoneId.toString() : "Unknown time zone");
@@ -263,7 +227,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus setTimeZone(TSSetTimeZoneReq req) {
     try {
-      SESSION_MANAGER.setTimezone(req.sessionId, req.timeZone);
+      SESSION_MANAGER.getCurrSession().setZoneId(ZoneId.of(req.timeZone));
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
@@ -301,20 +265,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create storage group {}", SESSION_MANAGER.getCurrSessionId(), storageGroup);
+            "Session-{} create storage group {}", SESSION_MANAGER.getCurrSession(), storageGroup);
       }
 
       // Step 1: Create SetStorageGroupStatement
       SetStorageGroupStatement statement =
           (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -325,7 +290,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -342,13 +307,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
+            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSession(), req.getPath());
       }
 
       // measurementAlias is also a nodeName
@@ -358,7 +323,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -369,7 +335,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -386,14 +352,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.getPrefixPath(),
             req.getMeasurements());
       }
@@ -408,7 +374,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -419,7 +386,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -436,14 +403,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create {} timeseries, the first is {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.getPaths().size(),
             req.getPaths().get(0));
       }
@@ -456,7 +423,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -467,7 +435,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -484,7 +452,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> path) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
@@ -493,7 +461,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createDeleteTimeSeriesStatement(path);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -504,7 +473,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -521,14 +490,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} delete {} storage groups, the first is {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             storageGroups.size(),
             storageGroups.get(0));
       }
@@ -538,7 +507,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -549,7 +519,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -571,7 +541,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
 
@@ -579,7 +549,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       Statement s =
           StatementGenerator.createStatement(
-              statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+              statement, SESSION_MANAGER.getCurrSession().getZoneId());
 
       if (s == null) {
         return RpcUtils.getTSExecuteStatementResp(
@@ -587,7 +557,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
       }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -595,13 +565,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               statement,
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -645,7 +615,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long t1 = System.currentTimeMillis();
     List<TSStatus> results = new ArrayList<>();
     boolean isAllSuccessful = true;
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
       return getNotLoggedInStatus();
     }
 
@@ -654,13 +624,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       try {
         Statement s =
             StatementGenerator.createStatement(
-                statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+                statement, SESSION_MANAGER.getCurrSession().getZoneId());
         if (s == null) {
           return RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
         }
         // permission check
-        TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+        TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
@@ -675,7 +645,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             COORDINATOR.execute(
                 s,
                 queryId,
-                SESSION_MANAGER.getSessionInfo(req.sessionId),
+                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
                 statement,
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
@@ -712,7 +682,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
@@ -744,14 +714,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertRecords(TSInsertRecordsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.prefixPaths.get(0),
             req.getTimestamps().get(0));
       }
@@ -767,7 +737,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -778,7 +749,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -798,14 +769,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.prefixPath,
             req.getTimestamps().get(0));
       }
@@ -822,7 +793,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -833,7 +805,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -853,14 +825,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.prefixPath,
             req.getTimestamps().get(0));
       }
@@ -877,7 +849,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -888,7 +861,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -911,13 +884,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertRecord(TSInsertRecordReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          SESSION_MANAGER.getCurrSession(),
           req.getPrefixPath(),
           req.getTimestamp());
 
@@ -931,7 +904,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -942,7 +916,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -962,7 +936,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertTablets(TSInsertTabletsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
@@ -977,7 +951,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -988,7 +963,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1008,7 +983,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertTablet(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
@@ -1023,7 +998,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1034,7 +1010,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1054,14 +1030,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.prefixPaths.get(0),
             req.getTimestamps().get(0));
       }
@@ -1076,7 +1052,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1086,7 +1063,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1147,14 +1124,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       DeleteDataStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1164,7 +1142,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1180,29 +1158,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
     long startTime = System.currentTimeMillis();
     try {
       Statement s =
-          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
+          StatementGenerator.createStatement(req, SESSION_MANAGER.getCurrSession().getZoneId());
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -1241,29 +1219,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
     long startTime = System.currentTimeMillis();
     try {
       Statement s =
-          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
+          StatementGenerator.createStatement(req, SESSION_MANAGER.getCurrSession().getZoneId());
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -1303,20 +1281,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public long requestStatementId(long sessionId) {
-    return SESSION_MANAGER.requestStatementId(sessionId);
+    return SESSION_MANAGER.requestStatementId(SESSION_MANAGER.getCurrSession());
   }
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create schema template {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.getName());
       }
 
@@ -1324,7 +1302,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1335,7 +1314,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1364,7 +1343,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
@@ -1405,7 +1384,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.currentTimeMillis();
     try {
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         resp.setStatus(status);
         return resp;
@@ -1420,7 +1400,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               null,
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -1471,14 +1451,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} set schema template {}.{}",
-            SESSION_MANAGER.getCurrSessionId(),
+            SESSION_MANAGER.getCurrSession(),
             req.getTemplateName(),
             req.getPrefixPath());
       }
@@ -1488,7 +1468,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1499,7 +1480,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1540,16 +1521,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSConnectionInfoResp fetchAllConnectionsInfo() throws TException {
+    return SESSION_MANAGER.getAllConnectionInfo();
+  }
+
+  @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          SESSION_MANAGER.getCurrSession(),
           req.getPrefixPath(),
           req.getTimestamp());
 
@@ -1559,7 +1545,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1570,7 +1557,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -1622,9 +1609,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public void handleClientExit() {
-    Long sessionId = SESSION_MANAGER.getCurrSessionId();
-    if (sessionId != null) {
-      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+    IClientSession session = SESSION_MANAGER.getCurrSession();
+    if (session != null) {
+      TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
     SyncService.getInstance().handleClientExit();
