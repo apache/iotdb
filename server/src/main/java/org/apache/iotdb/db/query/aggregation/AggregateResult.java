@@ -67,6 +67,7 @@ public abstract class AggregateResult {
    *
    * @param statistics chunkStatistics or pageStatistics
    */
+  // update data by headers
   public abstract void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException;
 
@@ -76,6 +77,7 @@ public abstract class AggregateResult {
    *
    * @param batchIterator the data in Page
    */
+  // update by original data
   public abstract void updateResultFromPageData(IBatchDataIterator batchIterator)
       throws IOException, QueryProcessException;
 

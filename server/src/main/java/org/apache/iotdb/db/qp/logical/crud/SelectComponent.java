@@ -128,6 +128,7 @@ public final class SelectComponent {
             expression instanceof FunctionExpression
                 ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
                 : null);
+        // TODO: resultColumn.getExpression().getFunctionAttributes()(
       }
     }
     return aggregationFunctionsCache;

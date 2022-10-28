@@ -802,8 +802,36 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
+  private int c = 100;
+  private double smin = -999;
+  private double smax = 999;
+
   public IoTDBConfig() {
     // empty constructor
+  }
+
+  public int getParamC() {
+    return c;
+  }
+
+  public void setParamC(int c) {
+    this.c = c;
+  }
+
+  public double getsmin() {
+    return smin;
+  }
+
+  public void setsmin(double smin) {
+    this.smin = smin;
+  }
+
+  public double getsmax() {
+    return smax;
+  }
+
+  public void setsmax(double smax) {
+    this.smax = smax;
   }
 
   public float getUdfMemoryBudgetInMB() {

@@ -34,6 +34,9 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.ValidityAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.ValidityAllAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -47,6 +50,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -59,14 +64,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
@@ -78,6 +77,7 @@ public class AggregationExecutor {
   protected List<String> aggregations;
   protected IExpression expression;
   protected boolean ascending;
+  private final TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   protected QueryContext context;
   protected AggregateResult[] aggregateResultList;
 
@@ -101,6 +101,7 @@ public class AggregationExecutor {
   /** execute aggregate function with only time filter or no filter. */
   public QueryDataSet executeWithoutValueFilter(AggregationPlan aggregationPlan)
       throws StorageEngineException, IOException, QueryProcessException {
+    // TODO: store the params of aggregationPlan
 
     Filter timeFilter = null;
     if (expression != null) {
@@ -155,13 +156,27 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> ascAggregateResultList = new ArrayList<>();
     List<AggregateResult> descAggregateResultList = new ArrayList<>();
+    ValidityAggrResult validityAggrResult = null;
+    ValidityAllAggrResult validityAggrALLResult = null;
     boolean[] isAsc = new boolean[aggregateResultList.length];
+    boolean[] isValidity = new boolean[aggregateResultList.length];
 
     TSDataType tsDataType = dataTypes.get(indexes.get(0));
     for (int i : indexes) {
       // construct AggregateResult
       AggregateResult aggregateResult =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
+      // TODO: revise AAggregateResultFactory, Type
+      // TODO: if (getAggregationType() == ...) {}
+      if (aggregateResult.getAggregationType() == AggregationType.VALIDITY) {
+        validityAggrResult = (ValidityAggrResult) aggregateResult;
+        isValidity[i] = true;
+        continue;
+      } else if (aggregateResult.getAggregationType() == AggregationType.VALIDITYALL) {
+        validityAggrALLResult = (ValidityAllAggrResult) aggregateResult;
+        isValidity[i] = true;
+        continue;
+      }
       if (aggregateResult.isAscending()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
@@ -178,15 +193,529 @@ public class AggregationExecutor {
         ascAggregateResultList,
         descAggregateResultList,
         null);
-
+    if (validityAggrResult != null) {
+      aggregateValidity(
+          seriesPath,
+          allMeasurementsInDevice,
+          context,
+          timeFilter,
+          tsDataType,
+          validityAggrResult,
+          null);
+    } else if (validityAggrALLResult != null) {
+      aggregateValidityALL(
+          seriesPath,
+          allMeasurementsInDevice,
+          context,
+          timeFilter,
+          tsDataType,
+          validityAggrALLResult,
+          null);
+    }
     int ascIndex = 0;
     int descIndex = 0;
     for (int i : indexes) {
-      aggregateResultList[i] =
-          isAsc[i]
-              ? ascAggregateResultList.get(ascIndex++)
-              : descAggregateResultList.get(descIndex++);
+      if (isValidity[i]) {
+        if (validityAggrResult != null) {
+          aggregateResultList[i] = validityAggrResult;
+        } else {
+          aggregateResultList[i] = validityAggrALLResult;
+        }
+      } else {
+        aggregateResultList[i] =
+            (isAsc[i]
+                ? ascAggregateResultList.get(ascIndex++)
+                : descAggregateResultList.get(descIndex++));
+      }
     }
+  }
+
+  // 所有都查
+  private void aggregateValidityALL(
+      PartialPath seriesPath,
+      Set<String> measurements,
+      QueryContext context,
+      Filter timeFilter,
+      TSDataType tsDataType,
+      ValidityAllAggrResult validityAllAggrResult,
+      TsFileFilter fileFilter)
+      throws QueryProcessException, StorageEngineException, IOException {
+    // construct series reader without value filter
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+    IAggregateReader seriesReader =
+        new SeriesAggregateReader(
+            seriesPath,
+            measurements,
+            tsDataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            null,
+            null,
+            true);
+    int res = 0;
+    int len = 0;
+    while (seriesReader.hasNextFile()) {
+      while (seriesReader.hasNextChunk()) {
+        while (seriesReader.hasNextPage()) {
+          if (seriesReader.canUseCurrentPageStatistics()) {
+            Statistics pageStatistic = seriesReader.currentPageStatistics();
+            res += pageStatistic.getValidityErrors();
+            len += pageStatistic.getCount();
+          }
+        }
+      }
+    }
+    System.out.println(1 - (double) res / len);
+  }
+
+  // validity
+  private void aggregateValidity(
+      PartialPath seriesPath,
+      Set<String> measurements,
+      QueryContext context,
+      Filter timeFilter,
+      TSDataType tsDataType,
+      ValidityAggrResult validityAggrResult,
+      TsFileFilter fileFilter)
+      throws QueryProcessException, StorageEngineException, IOException {
+    // construct series reader without value filter
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+
+    IAggregateReader seriesReader =
+        new SeriesAggregateReader(
+            seriesPath,
+            measurements,
+            tsDataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            null,
+            null,
+            true);
+
+    // unseq or seq
+    int nowPageIndex = 0;
+    List<Statistics> statisticsList = new ArrayList<>();
+    List<Integer> indexUsed = new ArrayList<>();
+    List<Integer> unseqIndex = new ArrayList<>();
+    List<Integer> unseqStartIndex = new ArrayList<>();
+    int cnt = 0;
+
+    boolean unseqMerge = true;
+    while (seriesReader.hasNextFile()) {
+      while (seriesReader.hasNextChunk()) {
+        while (seriesReader.hasNextPage()) {
+          cnt += 1;
+          // seq
+          if (seriesReader.canUseCurrentPageStatistics()) {
+            unseqMerge = false;
+            if (unseqIndex.size() > 0) {
+              indexUsed.add(unseqIndex.get(0));
+              unseqStartIndex.add(unseqIndex.get(0));
+              unseqIndex.clear();
+            }
+            indexUsed.add(nowPageIndex);
+            Statistics pageStatistic = seriesReader.currentPageStatistics();
+            if (nowPageIndex == 0) {
+              //              if (!pageStatistic.sameConstraints(
+              //                  tsFileConfig.getsMax(),
+              //                  tsFileConfig.getSmin(),
+              //                  tsFileConfig.getXMax(),
+              //                  tsFileConfig.getXMin())) {
+              //                System.out.println("constraints inconsistent with TsFile");
+              //                return;
+              //              }
+              validityAggrResult.setStatisticsInstance(pageStatistic);
+              nowPageIndex++;
+              seriesReader.skipCurrentPage();
+              continue;
+            }
+            //                        validityAggrResult.updateDPAndReverseDPAll();
+            statisticsList.add(validityAggrResult.getStatisticsInstance());
+            validityAggrResult.setStatisticsInstance(pageStatistic);
+            seriesReader.skipCurrentPage();
+            nowPageIndex++;
+            continue;
+          } else {
+            System.out.println("unSeq");
+            if (!unseqMerge && nowPageIndex > 0) {
+              statisticsList.add(validityAggrResult.getStatisticsInstance());
+              validityAggrResult.reset();
+            }
+            unseqMerge = true;
+          }
+          IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
+          validityAggrResult.updateResultFromPageData(batchDataIterator);
+          unseqIndex.add(nowPageIndex);
+          nowPageIndex++;
+          batchDataIterator.reset();
+        }
+      }
+    }
+    if (unseqIndex.size() > 0) {
+      indexUsed.add(unseqIndex.get(0));
+      unseqStartIndex.add(unseqIndex.get(0));
+      unseqIndex.clear();
+      //      validityAggrResult.updateDPAndReverseDPAll();
+    }
+    statisticsList.add(validityAggrResult.getStatisticsInstance());
+
+    // can merge or not merge
+    boolean[] indexBoolean = new boolean[nowPageIndex];
+    for (int j = nowPageIndex - 1; j > 0; j--) {
+      indexBoolean[j] = indexUsed.contains(j);
+    }
+
+    System.out.println("page num:" + cnt);
+    System.out.println("indexUsed-length:" + indexUsed.size());
+    System.out.println("unseq-length:" + unseqStartIndex.size());
+    System.out.println("statisticList-length:" + statisticsList.size());
+
+    List<Statistics> splitStatisticsList = new ArrayList<>();
+
+    int p = 0, index = 0;
+    int c = IoTDBDescriptor.getInstance().getConfig().getParamC();
+    System.out.println("c=" + c);
+    List<Integer> newIndexList = new ArrayList<>();
+    Map<Integer, Integer> newIndexToIndexUsed = new HashMap<>();
+    while (true) {
+      // only re-split overlapping segments
+      if (p >= statisticsList.size() || p >= indexUsed.size()) break;
+      Statistics pageStatistic = statisticsList.get(p);
+      if (!unseqStartIndex.contains(indexUsed.get(p))) {
+        splitStatisticsList.add(pageStatistic);
+        newIndexToIndexUsed.put(index, indexUsed.get(p));
+        p++;
+        index++;
+        continue;
+      }
+      System.out.println("Splitting one overlapping page.");
+
+      List<Long> timeWindow = pageStatistic.getTimeWindow();
+      List<Double> valueWindow = pageStatistic.getValueWindow();
+      boolean[] ifValueViolation = new boolean[timeWindow.size()];
+      boolean[] ifSpeedViolation = new boolean[timeWindow.size()];
+
+      double speedAVG = pageStatistic.getSpeedAVG(), speedSTD = pageStatistic.getSpeedSTD();
+      double smax = speedAVG + 3 * speedSTD;
+      double smin = speedAVG - 3 * speedSTD;
+      double xmin = pageStatistic.getxMin(), xmax = pageStatistic.getxMax();
+      if (Math.abs(smax) > Math.abs(smin)) {
+        smin = -(speedAVG + 3 * speedSTD);
+      } else {
+        smax = -(speedAVG - 3 * speedSTD);
+      }
+
+      int vioCnt = 0;
+      List<Double> speeds = new ArrayList<>();
+      // determine value violation points
+      for (int j = 0; j < timeWindow.size(); j++) {
+        if (valueWindow.get(j) >= xmin && valueWindow.get(j) <= xmax) ifValueViolation[j] = false;
+        else ifValueViolation[j] = true;
+        if (j > 0)
+          speeds.add(
+              (valueWindow.get(j) - valueWindow.get(j - 1))
+                  / (timeWindow.get(j) - timeWindow.get(j - 1)));
+      }
+
+      // determine speed violation points
+      if (speeds.get(0) >= smin && speeds.get(0) <= smax) ifSpeedViolation[0] = false;
+      else ifSpeedViolation[0] = true;
+      for (int j = 1; j < timeWindow.size() - 1; j++) {
+        if (speeds.get(j - 1) >= smin
+            && speeds.get(j - 1) <= smax
+            && speeds.get(j) >= smin
+            && speeds.get(j) <= smax) ifSpeedViolation[j] = false;
+        else ifSpeedViolation[j] = true;
+      }
+      if (speeds.get(speeds.size() - 1) >= smin && speeds.get(speeds.size() - 1) <= smax)
+        ifSpeedViolation[timeWindow.size() - 1] = false;
+      else ifSpeedViolation[timeWindow.size() - 1] = true;
+      System.out.println("speed violation points:" + vioCnt);
+
+      // optimistic split
+      int s = 0, e = 0; // double pointers
+      int consecCnt = 0, violationCnt = 0;
+      List<Integer> violationIndexList = new ArrayList<>();
+
+      while (e < ifValueViolation.length) {
+        if (!ifValueViolation[e] && !ifSpeedViolation[e]) consecCnt += 1;
+        else {
+          consecCnt = 0;
+          violationIndexList.add(e);
+          violationCnt += 1;
+        }
+        if (consecCnt == c) {
+          ValueIterator valueIterator =
+              new ValueIterator(valueWindow.subList(s, e - c / 2 + 1).toArray());
+          long[] timestamps = new long[e - c / 2 - s + 1];
+          for (int k = 0; k < e - c / 2 - s + 1; k++) {
+            timestamps[k] = timeWindow.get(s + k);
+          }
+          validityAggrResult.reset();
+          validityAggrResult.updateResultUsingValues(timestamps, e - c / 2 - s + 1, valueIterator);
+
+          if (violationCnt < 2) validityAggrResult.setValidityErrors(violationCnt);
+          else validityAggrResult.updateDPAndReverseDPAll();
+          splitStatisticsList.add(validityAggrResult.getStatisticsInstance());
+          newIndexList.add(index);
+          index++;
+
+          s = e - c / 2 + 1;
+          consecCnt = 0;
+          violationCnt = 0;
+          violationIndexList.clear();
+        }
+        e++;
+      }
+      if (e == ifValueViolation.length && s < e) {
+        ValueIterator valueIterator = new ValueIterator(valueWindow.subList(s, e).toArray());
+        long[] timestamps = new long[e - s + 1];
+        for (int k = 0; k < e - s; k++) {
+          timestamps[k] = timeWindow.get(s + k);
+        }
+        validityAggrResult.reset();
+        validityAggrResult.updateResultUsingValues(timestamps, e - s, valueIterator);
+        if (violationCnt < 2) validityAggrResult.setValidityErrors(violationCnt);
+        else validityAggrResult.updateDPAndReverseDPAll();
+        splitStatisticsList.add(validityAggrResult.getStatisticsInstance());
+        newIndexList.add(index);
+        index++;
+      }
+      p++;
+    }
+    System.out.println("splitStatisticsList:" + splitStatisticsList.size());
+
+    int i = 0;
+    List<Statistics> finalStatisticsList = new ArrayList<>();
+    finalStatisticsList = statisticsList;
+    boolean[] canMerge = new boolean[splitStatisticsList.size()];
+    for (int k = 0; k < splitStatisticsList.size(); k++) {
+      canMerge[k] = true;
+    }
+    validityAggrResult.reset();
+    int pagesize = 0;
+    while (i < splitStatisticsList.size()) {
+      // TODO: check merge code
+      Statistics pageStatistic = splitStatisticsList.get(i);
+      if (validityAggrResult.checkMergeable(pageStatistic)) {
+        finalStatisticsList.add(pageStatistic);
+        validityAggrResult.setStatisticsInstance(pageStatistic);
+        pagesize++;
+        System.out.println("can merge");
+        i++;
+      } else {
+        System.out.println("can not Merge");
+        canMerge[i] = false;
+
+        for (int j = i - 1; j >= 0; j--) {
+          if (!canMerge[j] && j > 0) {
+            continue;
+          }
+          System.out.println("Merging from " + j + "-th sub-page to " + i + "-th sub-page");
+
+          validityAggrResult.reset();
+          if (finalStatisticsList.size() > 0) {
+            finalStatisticsList.remove(finalStatisticsList.size() - 1);
+          }
+          for (int pageIndex = j; pageIndex <= i; pageIndex++) {
+            if (newIndexList.contains(pageIndex)) {
+              Statistics curStatistics = splitStatisticsList.get(pageIndex);
+              validityAggrResult.updateResultFromStatistics(curStatistics);
+            } else {
+              int originPageIndex = newIndexToIndexUsed.get(pageIndex);
+              IAggregateReader seriesReaderTemp =
+                  new SeriesAggregateReader(
+                      seriesPath,
+                      measurements,
+                      tsDataType,
+                      context,
+                      queryDataSource,
+                      timeFilter,
+                      null,
+                      null,
+                      true);
+              int curIndex = 0;
+              while (seriesReaderTemp.hasNextFile()) {
+                while (seriesReaderTemp.hasNextChunk()) {
+                  while (seriesReaderTemp.hasNextPage()) {
+                    if (curIndex < originPageIndex) {
+                      seriesReaderTemp.nextPage();
+                      curIndex++;
+                    } else if (curIndex > originPageIndex) break;
+                    else {
+                      IBatchDataIterator batchDataIterator =
+                          seriesReaderTemp.nextPage().getBatchDataIterator();
+                      validityAggrResult.updateResultFromPageData(batchDataIterator);
+                      batchDataIterator.reset();
+                      curIndex++;
+                    }
+                  }
+                  if (curIndex > originPageIndex) break;
+                }
+                if (curIndex > originPageIndex) break;
+              }
+            }
+          }
+          if (validityAggrResult.getStatisticsInstance().getCount() > c) {
+            int errors =
+                optimisticSplit(validityAggrResult.getStatisticsInstance(), validityAggrResult, c);
+            validityAggrResult.reset();
+            validityAggrResult.setValidityErrors(errors);
+          } else {
+            validityAggrResult.updateDPAndReverseDPAll();
+          }
+          if (finalStatisticsList.size() == 0) {
+            break;
+          }
+          if (finalStatisticsList
+              .get(finalStatisticsList.size() - 1)
+              .checkMergeable(validityAggrResult.getStatisticsInstance())) {
+            break;
+          } else {
+            canMerge[j] = false;
+          }
+        }
+        finalStatisticsList.add(validityAggrResult.getStatisticsInstance());
+        i++;
+      }
+    }
+
+    validityAggrResult.reset();
+    i = 0;
+    while (i < finalStatisticsList.size()) {
+      //      System.out.println("merge process");
+      validityAggrResult.updateResultFromStatistics(finalStatisticsList.get(i));
+      i++;
+    }
+    //    System.out.println(validityAggrResult.getStatisticsInstance().getRepairSelfLast());
+    //    double smax =
+    //        validityAggrResult.getStatisticsInstance().getSpeedAVG()
+    //            + 3 * validityAggrResult.getStatisticsInstance().getSpeedSTD();
+    //    double smin =
+    //        validityAggrResult.getStatisticsInstance().getSpeedAVG()
+    //            - 3 * validityAggrResult.getStatisticsInstance().getSpeedSTD();
+    //    if (tsFileConfig.isUsePreSpeed()) {
+    //      System.out.println("smax:" + tsFileConfig.getsMax() + "smin:" + tsFileConfig.getSmin());
+    //    } else {
+    //      System.out.println("smax:" + smax + "smin:" + smin);
+    //    }
+    //    System.out.println(finalStatisticsList.size());
+  }
+
+  private int optimisticSplit(
+      Statistics pageStatistic, ValidityAggrResult validityAggrResult, int c) {
+    List<Long> timeWindow = pageStatistic.getTimeWindow();
+    List<Double> valueWindow = pageStatistic.getValueWindow();
+    boolean[] ifValueViolation = new boolean[timeWindow.size()];
+    boolean[] ifSpeedViolation = new boolean[timeWindow.size()];
+
+    double preSpeed,
+        succSpeed,
+        speedAVG = pageStatistic.getSpeedAVG(),
+        speedSTD = pageStatistic.getSpeedSTD();
+    double smax = speedAVG + 3 * speedSTD;
+    double smin = speedAVG - 3 * speedSTD;
+    double xmin = pageStatistic.getxMin(), xmax = pageStatistic.getxMax();
+    if (Math.abs(smax) > Math.abs(smin)) {
+      smin = -(speedAVG + 3 * speedSTD);
+    } else {
+      smax = -(speedAVG - 3 * speedSTD);
+    }
+
+    int vioCnt = 0;
+    List<Double> speeds = new ArrayList<>();
+    // determine value violation points
+    for (int j = 0; j < timeWindow.size(); j++) {
+      if (valueWindow.get(j) >= xmin && valueWindow.get(j) <= xmax) ifValueViolation[j] = false;
+      else ifValueViolation[j] = true;
+      if (j > 0)
+        speeds.add(
+            (valueWindow.get(j) - valueWindow.get(j - 1))
+                / (timeWindow.get(j) - timeWindow.get(j - 1)));
+    }
+
+    // determine speed violation points
+    if (speeds.get(0) >= smin && speeds.get(0) <= smax) ifSpeedViolation[0] = false;
+    else ifSpeedViolation[0] = true;
+    for (int j = 1; j < timeWindow.size() - 1; j++) {
+      if (speeds.get(j - 1) >= smin
+          && speeds.get(j - 1) <= smax
+          && speeds.get(j) >= smin
+          && speeds.get(j) <= smax) ifSpeedViolation[j] = false;
+      else ifSpeedViolation[j] = true;
+    }
+    if (speeds.get(speeds.size() - 1) >= smin && speeds.get(speeds.size() - 1) <= smax)
+      ifSpeedViolation[timeWindow.size() - 1] = false;
+    else ifSpeedViolation[timeWindow.size() - 1] = true;
+    System.out.println("speed violation points:" + vioCnt);
+
+    // optimistic split
+    int s = 0, e = 0; // double pointers
+    int consecCnt = 0, violationCnt = 0;
+    List<Integer> violationIndexList = new ArrayList<>();
+    List<Statistics> resStatisticsList = new ArrayList<>();
+
+    while (e < ifValueViolation.length) {
+      if (!ifValueViolation[e] && !ifSpeedViolation[e]) consecCnt += 1;
+      else {
+        consecCnt = 0;
+        violationIndexList.add(e);
+        violationCnt += 1;
+      }
+      if (consecCnt == c) {
+        ValueIterator valueIterator =
+            new ValueIterator(valueWindow.subList(s, e - c / 2 + 1).toArray());
+        long[] timestamps = new long[e - c / 2 - s + 1];
+        for (int k = 0; k < e - c / 2 - s + 1; k++) {
+          timestamps[k] = timeWindow.get(s + k);
+        }
+        validityAggrResult.reset();
+        validityAggrResult.updateResultUsingValues(timestamps, e - c / 2 - s + 1, valueIterator);
+
+        if (violationCnt < 2) validityAggrResult.setValidityErrors(violationCnt);
+        else validityAggrResult.updateDPAndReverseDPAll();
+        resStatisticsList.add(validityAggrResult.getStatisticsInstance());
+
+        s = e - c / 2 + 1;
+        consecCnt = 0;
+        violationCnt = 0;
+        violationIndexList.clear();
+      }
+      e++;
+    }
+    if (e == ifValueViolation.length && s < e) {
+      ValueIterator valueIterator = new ValueIterator(valueWindow.subList(s, e).toArray());
+      long[] timestamps = new long[e - s + 1];
+      for (int k = 0; k < e - s; k++) {
+        timestamps[k] = timeWindow.get(s + k);
+      }
+      validityAggrResult.reset();
+      validityAggrResult.updateResultUsingValues(timestamps, e - s, valueIterator);
+      if (violationCnt < 2) validityAggrResult.setValidityErrors(violationCnt);
+      else validityAggrResult.updateDPAndReverseDPAll();
+      resStatisticsList.add(validityAggrResult.getStatisticsInstance());
+    }
+    int cnt = 0, errors = 0;
+    for (int k = 0; k < resStatisticsList.size(); k++) {
+      cnt += resStatisticsList.get(k).getCount();
+      errors += resStatisticsList.get(k).getValidityErrors();
+    }
+    return errors;
   }
 
   protected void aggregateOneAlignedSeries(
