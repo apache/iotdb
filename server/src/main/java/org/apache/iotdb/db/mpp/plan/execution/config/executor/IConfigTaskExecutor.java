@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -118,6 +119,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
       String queryId, DeactivateTemplateStatement deactivateTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> dropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 

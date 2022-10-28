@@ -126,6 +126,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -2893,6 +2894,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     statement.setPathPatternList(pathPatternList);
     return statement;
+  }
+
+  @Override
+  public Statement visitDropSchemaTemplate(IoTDBSqlParser.DropSchemaTemplateContext ctx) {
+    return new DropSchemaTemplateStatement(parseIdentifier(ctx.templateName.getText()));
   }
 
   public Map<String, String> parseSyncAttributeClauses(

@@ -659,6 +659,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dropSchemaTemplate(String req) throws TException {
+    return null;
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     return configManager.deleteTimeSeries(req);
   }

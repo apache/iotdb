@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DropSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.SetSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -271,6 +273,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitDeactivateTemplate(
       DeactivateTemplateStatement deactivateTemplateStatement, TaskContext context) {
     return new DeactivateSchemaTemplateTask(context.getQueryId(), deactivateTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement, TaskContext context) {
+    return new DropSchemaTemplateTask(dropSchemaTemplateStatement);
   }
 
   @Override
