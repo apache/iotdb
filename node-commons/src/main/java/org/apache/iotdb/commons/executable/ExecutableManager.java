@@ -243,7 +243,8 @@ public class ExecutableManager {
 
   /**
    * @param byteBuffer jar data
-   * @param fileName The name of the file. Absolute Path will be libRoot + File_Separator + fileName
+   * @param fileName Absolute Path will be libRoot + File_Separator + INSTALL_DIR + File.separator +
+   *     fileName
    */
   public void saveToInstallDir(ByteBuffer byteBuffer, String fileName) throws IOException {
     String destination = this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
