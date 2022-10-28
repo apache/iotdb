@@ -16,13 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.writelog.io;
 
-package org.apache.iotdb.confignode.procedure.state;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 
-public enum RemoveDataNodeState {
-  REGION_REPLICA_CHECK,
-  REMOVE_DATA_NODE_PREPARE,
-  BROADCAST_DISABLE_DATA_NODE,
-  SUBMIT_REGION_MIGRATE,
-  STOP_DATA_NODE
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+public interface ILogReader {
+
+  /** release resources occupied by this object, like file streams. */
+  void close();
+
+  /**
+   * return whether there exists next log to be read.
+   *
+   * @return whether there exists next log to be read.
+   * @throws IOException
+   */
+  boolean hasNext() throws FileNotFoundException;
+
+  /**
+   * return the next log read from media like a WAL file and covert it to a PhysicalPlan.
+   *
+   * @return the next log as a PhysicalPlan
+   * @throws java.util.NoSuchElementException when there are no more logs
+   */
+  ConfigPhysicalPlan next() throws FileNotFoundException;
 }

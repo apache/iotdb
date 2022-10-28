@@ -28,8 +28,9 @@ import java.util.Properties;
 public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String targetConfigNode;
-  private final int mppDataExchangePort;
-  private final int internalPort;
+  private int mppDataExchangePort;
+  private int internalPort;
+  private String internal_address;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
@@ -38,6 +39,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
+    this.internal_address = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
@@ -48,10 +50,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected void updateConfig(Properties properties) {
     properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
-    properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
+    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(super.getPort()));
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, this.internal_address);
     properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
+    properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
@@ -91,6 +93,28 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
             "-s"));
   }
 
+  @Override
+  public void renameFile() {
+    String dataNodeName = "DataNode";
+    // rename log file
+    String oldLogFilePath = getLogDirPath() + File.separator + dataNodeName + portList[0] + ".log";
+    String newLogFilePath = getLogDirPath() + File.separator + getId() + ".log";
+    File oldLogFile = new File(oldLogFilePath);
+    oldLogFile.renameTo(new File(newLogFilePath));
+
+    // rename node dir
+    String oldNodeDirPath =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + dataNodeName
+            + portList[0];
+    String newNodeDirPath = getNodePath();
+    File oldNodeDir = new File(oldNodeDirPath);
+    oldNodeDir.renameTo(new File(newNodeDirPath));
+  }
+
   protected String mainClassName() {
     return "org.apache.iotdb.db.service.DataNode";
   }
@@ -99,8 +123,16 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return mppDataExchangePort;
   }
 
+  public void setMppDataExchangePort(int mppDataExchangePort) {
+    this.mppDataExchangePort = mppDataExchangePort;
+  }
+
   public int getInternalPort() {
     return internalPort;
+  }
+
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
   }
 
   public int getDataRegionConsensusPort() {
