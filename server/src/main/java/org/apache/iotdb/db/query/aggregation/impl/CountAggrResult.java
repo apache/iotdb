@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
@@ -32,6 +33,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class CountAggrResult extends AggregateResult {
+  private Statistics statisticsInstance = new DoubleStatistics();
 
   public CountAggrResult() {
     super(TSDataType.INT64, AggregationType.COUNT);
@@ -41,12 +43,15 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return getLongValue();
+    if (statisticsInstance.getCount() > 0) {
+      setLongValue((long) statisticsInstance.getValidityErrors());
+    }
+    return hasCandidateResult() ? getLongValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    setLongValue(getLongValue() + statistics.getCount());
+    setLongValue(getLongValue() + statistics.getValidityErrors());
   }
 
   @Override
