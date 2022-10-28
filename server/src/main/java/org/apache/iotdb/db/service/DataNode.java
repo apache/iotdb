@@ -599,18 +599,21 @@ public class DataNode implements DataNodeMBean {
     List<TriggerInformation> res = new ArrayList<>();
     for (TriggerInformation triggerInformation :
         resourcesInformationHolder.getTriggerInformationList()) {
-      // jar does not exist, add current triggerInformation to list
-      if (!TriggerExecutableManager.getInstance()
-          .hasFileUnderLibRoot(triggerInformation.getJarName())) {
-        res.add(triggerInformation);
-      } else {
-        try {
-          // local jar has conflicts with jar on config node, add current triggerInformation to list
-          if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
+      if (triggerInformation.isUsingURI()) {
+        // jar does not exist, add current triggerInformation to list
+        if (!TriggerExecutableManager.getInstance()
+            .hasFileUnderInstallDir(triggerInformation.getJarName())) {
+          res.add(triggerInformation);
+        } else {
+          try {
+            // local jar has conflicts with jar on config node, add current triggerInformation to
+            // list
+            if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
+              res.add(triggerInformation);
+            }
+          } catch (TriggerManagementException e) {
             res.add(triggerInformation);
           }
-        } catch (TriggerManagementException e) {
-          res.add(triggerInformation);
         }
       }
     }

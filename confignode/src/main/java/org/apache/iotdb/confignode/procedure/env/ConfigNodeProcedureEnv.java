@@ -491,8 +491,8 @@ public class ConfigNodeProcedureEnv {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         nodeManager.getRegisteredDataNodeLocations();
     final TCreateTriggerInstanceReq request =
-        new TCreateTriggerInstanceReq(
-            triggerInformation.serialize(), ByteBuffer.wrap(jarFile.getValues()));
+        new TCreateTriggerInstanceReq(triggerInformation.serialize());
+    request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
 
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(

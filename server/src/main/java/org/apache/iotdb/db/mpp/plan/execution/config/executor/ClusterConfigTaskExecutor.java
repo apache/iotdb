@@ -314,14 +314,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getPath();
+          libRoot = new URI(uriString).getRawPath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
           // set md5 of the jar file
-          jarMd5 =
-              DigestUtils.md5Hex(
-                  Files.newInputStream(Paths.get(createFunctionStatement.getUriString())));
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
         // modify req
         tCreateFunctionReq.setJarFile(jarFile);
@@ -332,7 +330,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "%s-%s.%s",
                 jarFileName.substring(0, jarFileName.lastIndexOf(".")),
                 jarMd5,
-                jarFileName.substring(jarFileName.lastIndexOf("." + 1))));
+                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
       // try to create instance, this request will fail if creation is not successful
@@ -417,64 +415,74 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+
       TCreateTriggerReq tCreateTriggerReq =
           new TCreateTriggerReq(
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getClassName(),
-              createTriggerStatement.getJarPath(),
-              createTriggerStatement.isUsingURI(),
               createTriggerStatement.getTriggerEvent().getId(),
               createTriggerStatement.getTriggerType().getId(),
               createTriggerStatement.getPathPattern().serialize(),
               createTriggerStatement.getAttributes(),
-              FailureStrategy.OPTIMISTIC.getId()); // set default strategy
+              FailureStrategy.OPTIMISTIC.getId(),
+              createTriggerStatement.isUsingURI()); // set default strategy
 
       String libRoot = TriggerExecutableManager.getInstance().getLibRoot();
+      String jarFileName;
+      ByteBuffer jarFile;
+      String jarMd5;
       if (createTriggerStatement.isUsingURI()) {
-        try {
-          // download executable
-          ExecutableResource resource =
-              TriggerExecutableManager.getInstance()
-                  .request(Collections.singletonList(createTriggerStatement.getJarPath()));
-          String uriString = createTriggerStatement.getJarPath();
-          String jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
-          // move to ext
-          TriggerExecutableManager.getInstance()
-              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
-          tCreateTriggerReq.setJarPath(jarFileName);
-          // jarFilePath after moving to ext lib
-          String jarFilePathUnderLib =
-              TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
-          tCreateTriggerReq.setJarFile(ExecutableManager.transferToBytebuffer(jarFilePathUnderLib));
-          tCreateTriggerReq.setJarMD5(
-              DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
+        String uriString = createTriggerStatement.getUriString();
+        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        if (!new URI(uriString).getScheme().equals("file")) {
+          try {
+            // download executable
+            ExecutableResource resource =
+                TriggerExecutableManager.getInstance()
+                    .request(Collections.singletonList(uriString));
+            String jarFilePathUnderTempDir =
+                TriggerExecutableManager.getInstance()
+                        .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                    + File.separator
+                    + jarFileName;
+            // libRoot should be the path of the specified jar
+            libRoot = jarFilePathUnderTempDir;
+            jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
 
-        } catch (IOException | URISyntaxException e) {
-          LOGGER.warn(
-              "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
-              createTriggerStatement.getTriggerName(),
-              createTriggerStatement.getJarPath(),
-              e);
-          future.setException(
-              new IoTDBException(
-                  "Failed to download executable for trigger '"
-                      + createTriggerStatement.getTriggerName()
-                      + "'",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
+          } catch (IOException | URISyntaxException e) {
+            LOGGER.warn(
+                "Failed to download executable for Trigger({}) using URI: {}, the cause is: {}",
+                createTriggerStatement.getTriggerName(),
+                createTriggerStatement.getUriString(),
+                e);
+            future.setException(
+                new IoTDBException(
+                    "Failed to download executable for Trigger '"
+                        + createTriggerStatement.getUriString()
+                        + "'",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+        } else {
+          // libRoot should be the path of the specified jar
+          libRoot = new URI(uriString).getRawPath();
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // ConfigNode.
+          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+          // set md5 of the jar file
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
-      } else {
-        // change libRoot
-        libRoot = createTriggerStatement.getJarPath();
-        // set jarPath to file name instead of the full path
-        tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
-        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        tCreateTriggerReq.setJarFile(
-            ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
-        // set md5 of the jar file
-        tCreateTriggerReq.setJarMD5(
-            DigestUtils.md5Hex(
-                Files.newInputStream(Paths.get(createTriggerStatement.getJarPath()))));
+        // modify req
+        tCreateTriggerReq.setJarFile(jarFile);
+        tCreateTriggerReq.setJarMD5(jarMd5);
+        tCreateTriggerReq.setIsUsingURI(true);
+        tCreateTriggerReq.setJarName(
+            String.format(
+                "%s-%s.%s",
+                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                jarMd5,
+                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
       // try to create instance, this request will fail if creation is not successful
@@ -497,7 +505,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to load class '"
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
-                    + createTriggerStatement.getJarPath(),
+                    + createTriggerStatement.getUriString(),
                 TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
         return future;
       }
@@ -514,7 +522,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (TException | IOException | URISyntaxException e) {
       future.setException(e);
     }
     return future;

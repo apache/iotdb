@@ -1000,6 +1000,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new PartialPath("root.test.**"),
             "test",
             "test.class",
+            true,
             "test.jar",
             null,
             TriggerEvent.AFTER_INSERT,

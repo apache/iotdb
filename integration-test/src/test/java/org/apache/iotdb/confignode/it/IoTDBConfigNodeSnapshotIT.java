@@ -205,13 +205,12 @@ public class IoTDBConfigNodeSnapshotIT {
         new TCreateTriggerReq(
                 "test1",
                 "org.apache.iotdb.trigger.SimpleTrigger",
-                "trigger-example.jar",
-                false,
                 TriggerEvent.AFTER_INSERT.getId(),
                 TriggerType.STATELESS.getId(),
                 new PartialPath("root.test1.**").serialize(),
                 Collections.emptyMap(),
-                FailureStrategy.OPTIMISTIC.getId())
+                FailureStrategy.OPTIMISTIC.getId(),
+                true)
             .setJarMD5(jarMD5)
             .setJarFile(jarFile);
 
@@ -221,13 +220,12 @@ public class IoTDBConfigNodeSnapshotIT {
         new TCreateTriggerReq(
                 "test2",
                 "org.apache.iotdb.trigger.SimpleTrigger",
-                "trigger-example.jar",
-                false,
                 TriggerEvent.BEFORE_INSERT.getId(),
                 TriggerType.STATEFUL.getId(),
                 new PartialPath("root.test2.**").serialize(),
                 attributes,
-                FailureStrategy.OPTIMISTIC.getId())
+                FailureStrategy.OPTIMISTIC.getId(),
+                true)
             .setJarMD5(jarMD5)
             .setJarFile(jarFile);
 
@@ -252,7 +250,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
       Assert.assertEquals(createTriggerReq.getTriggerName(), triggerInformation.getTriggerName());
       Assert.assertEquals(createTriggerReq.getClassName(), triggerInformation.getClassName());
-      Assert.assertEquals(createTriggerReq.getJarPath(), triggerInformation.getJarName());
+      Assert.assertEquals(createTriggerReq.getJarName(), triggerInformation.getJarName());
       Assert.assertEquals(
           createTriggerReq.getTriggerEvent(), triggerInformation.getEvent().getId());
       Assert.assertEquals(

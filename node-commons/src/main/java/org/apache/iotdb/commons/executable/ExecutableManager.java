@@ -260,4 +260,8 @@ public class ExecutableManager {
   public String getLibRoot() {
     return libRoot;
   }
+
+  public String getInstallDir() {
+    return libRoot + File.separator + INSTALL_DIR;
+  }
 }
