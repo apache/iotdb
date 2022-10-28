@@ -75,6 +75,10 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to stop PIPE [{}]", pipeName);
     pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+    if (pipeInfo.getStatus().equals(PipeStatus.DROP)) {
+      throw new PipeException(
+          String.format("PIPE [%s] has been dropped and cannot be stopped again.", pipeName));
+    }
     return pipeInfo.getStatus().equals(PipeStatus.STOP);
   }
 
