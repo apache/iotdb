@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -33,26 +32,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
-
-import static org.junit.Assert.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MCFLeaderBalancerTest {
 
-  private static final List<TConsensusGroupId> regionGroupIds = new ArrayList<>();
-  private static final List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-  private static final List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
-
-  @BeforeClass
-  public static void prepareData() {
+  /** This test shows a simple case that greedy algorithm might fail */
+  @Test
+  public void optimalLeaderDistributionTest() {
+    // Prepare Data
+    List<TConsensusGroupId> regionGroupIds = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       regionGroupIds.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, i));
     }
 
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
       dataNodeLocations.add(new TDataNodeLocation().setDataNodeId(i));
     }
 
+    List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
     regionReplicaSets.add(
         new TRegionReplicaSet(
             regionGroupIds.get(0),
@@ -68,10 +70,8 @@ public class MCFLeaderBalancerTest {
             regionGroupIds.get(2),
             Arrays.asList(
                 dataNodeLocations.get(0), dataNodeLocations.get(2), dataNodeLocations.get(3))));
-  }
 
-  @Test
-  public void optimalLeaderDistributionTest() {
+    // Prepare input parameters
     Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet ->
@@ -82,13 +82,135 @@ public class MCFLeaderBalancerTest {
     Set<Integer> disabledDataNodeSet = new HashSet<>();
     disabledDataNodeSet.add(0);
 
+    // Do balancing
     MCFLeaderBalancer mcfLeaderBalancer =
         new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<TConsensusGroupId, Integer> leaderDistribution =
         mcfLeaderBalancer.generateOptimalLeaderDistribution();
+    // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
+    // Each DataNode occurs exactly once
     Assert.assertEquals(3, new HashSet<>(leaderDistribution.values()).size());
+    // MaxFlow is 3
     Assert.assertEquals(3, mcfLeaderBalancer.getMaximumFlow());
+    // MinimumCost is 3(switch leader cost) + 3(load cost, 1 for each DataNode)
     Assert.assertEquals(3 + 3, mcfLeaderBalancer.getMinimumCost());
+  }
+
+  /** The leader will remain the same if all DataNodes are disabled */
+  @Test
+  public void disableTest() {
+    TRegionReplicaSet regionReplicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 0),
+            Arrays.asList(
+                new TDataNodeLocation().setDataNodeId(0),
+                new TDataNodeLocation().setDataNodeId(1),
+                new TDataNodeLocation().setDataNodeId(2)));
+
+    // Prepare input parameters
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    regionLeaderMap.put(regionReplicaSet.getRegionId(), 1);
+    Set<Integer> disabledDataNodeSet = new HashSet<>();
+    disabledDataNodeSet.add(0);
+    disabledDataNodeSet.add(1);
+    disabledDataNodeSet.add(2);
+
+    // Do balancing
+    MCFLeaderBalancer mcfLeaderBalancer =
+        new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+    Map<TConsensusGroupId, Integer> leaderDistribution =
+        mcfLeaderBalancer.generateOptimalLeaderDistribution();
+    Assert.assertEquals(1, leaderDistribution.size());
+    Assert.assertEquals(1, new HashSet<>(leaderDistribution.values()).size());
+    // Leader remains the same
+    Assert.assertEquals(
+        regionLeaderMap.get(regionReplicaSet.getRegionId()),
+        leaderDistribution.get(regionReplicaSet.getRegionId()));
+    // MaxFlow is 0
+    Assert.assertEquals(0, mcfLeaderBalancer.getMaximumFlow());
+    // MinimumCost is 0
+    Assert.assertEquals(0, mcfLeaderBalancer.getMinimumCost());
+  }
+
+  /**
+   * In this case shows the balance ability for big cluster.
+   *
+   * <p>i.e. Simulate 1500 RegionGroups and 300 DataNodes
+   */
+  @Test
+  public void bigClusterTest() {
+    final int regionGroupNum = 1500;
+    final int dataNodeNum = 300;
+    final int replicationFactor = 3;
+
+    // The loadCost for each DataNode are the same
+    int x = regionGroupNum / dataNodeNum;
+    // i.e. formula of 1^2 + 2^2 + 3^2 + ...
+    int loadCost = x * (x + 1) * (2 * x + 1) / 6;
+
+    int dataNodeId = 0;
+    Random random = new Random();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    for (int i = 0; i < regionGroupNum; i++) {
+      TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, i);
+      int leaderId = (dataNodeId + random.nextInt(replicationFactor)) % dataNodeNum;
+
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      regionReplicaSet.setRegionId(regionGroupId);
+      for (int j = 0; j < 3; j++) {
+        regionReplicaSet.addToDataNodeLocations(new TDataNodeLocation().setDataNodeId(dataNodeId));
+        dataNodeId = (dataNodeId + 1) % dataNodeNum;
+      }
+
+      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionLeaderMap.put(regionGroupId, leaderId);
+    }
+
+    // Do balancing
+    MCFLeaderBalancer mcfLeaderBalancer =
+        new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, new HashSet<>());
+    Map<TConsensusGroupId, Integer> leaderDistribution =
+        mcfLeaderBalancer.generateOptimalLeaderDistribution();
+    // All RegionGroup got a leader
+    Assert.assertEquals(regionGroupNum, leaderDistribution.size());
+
+    Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+    leaderDistribution
+        .values()
+        .forEach(
+            leaderId ->
+                leaderCounter
+                    .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
+                    .getAndIncrement());
+    // Every DataNode has leader
+    Assert.assertEquals(dataNodeNum, leaderCounter.size());
+    // Every DataNode has exactly regionGroupNum / dataNodeNum leaders
+    leaderCounter
+        .values()
+        .forEach(leaderNum -> Assert.assertEquals(regionGroupNum / dataNodeNum, leaderNum.get()));
+
+    // MaxFlow is regionGroupNum
+    Assert.assertEquals(regionGroupNum, mcfLeaderBalancer.getMaximumFlow());
+
+    int minimumCost = mcfLeaderBalancer.getMinimumCost();
+    Assert.assertTrue(minimumCost >= loadCost * dataNodeNum);
+    // The number of RegionGroups who have switched leader
+    int switchCost = minimumCost - loadCost * dataNodeNum;
+    AtomicInteger switchCount = new AtomicInteger(0);
+    regionLeaderMap.forEach(
+        (regionGroupId, originLeader) -> {
+          if (!Objects.equals(originLeader, leaderDistribution.get(regionGroupId))) {
+            switchCount.getAndIncrement();
+          }
+        });
+    Assert.assertEquals(switchCost, switchCount.get());
+
+    System.out.printf(
+        "MCF algorithm switch leader for %s times to construct a balanced leader distribution of 300 DataNodes and 1500 RegionGroups cluster.%n",
+        switchCost);
   }
 }
