@@ -1818,7 +1818,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.constant() != null) {
       alias = parseStringLiteral(ctx.constant().getText());
       if (PathUtils.isRealNumber(alias)
-              || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
         throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
       }
     } else {
