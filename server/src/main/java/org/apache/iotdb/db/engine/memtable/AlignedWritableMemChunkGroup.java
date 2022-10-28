@@ -41,6 +41,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
 
+  long latestTime;
+
   public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
     memChunk = new AlignedWritableMemChunk(schemaList);
   }
@@ -55,6 +57,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
+    if (latestTime < times[end - 1]) {
+      latestTime = times[end - 1];
+    }
     return memChunk.writeAlignedValuesWithFlushCheck(
         times, columns, bitMaps, schemaList, start, end);
   }
@@ -85,6 +90,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public boolean writeWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    if (latestTime < insertTime) {
+      latestTime = insertTime;
+    }
     return memChunk.writeAlignedValueWithFlushCheck(insertTime, objectValue, schemaList);
   }
 
@@ -135,23 +143,30 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunk.getTVList().rowCount();
   }
 
+  @Override
+  public long getLatestTime() {
+    return latestTime;
+  }
+
   public AlignedWritableMemChunk getAlignedMemChunk() {
     return memChunk;
   }
 
   @Override
   public int serializedSize() {
-    return memChunk.serializedSize();
+    return Long.BYTES + memChunk.serializedSize();
   }
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putLong(latestTime);
     memChunk.serializeToWAL(buffer);
   }
 
   public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
       throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
+    memChunkGroup.latestTime = stream.readLong();
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
     return memChunkGroup;
   }

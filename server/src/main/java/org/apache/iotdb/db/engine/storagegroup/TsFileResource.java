@@ -317,6 +317,12 @@ public class TsFileResource {
     timeIndex.updateEndTime(device, time);
   }
 
+  public void updateEndTime(Map<String, Long> times) {
+    for (Map.Entry<String, Long> entry : times.entrySet()) {
+      timeIndex.updateEndTime(entry.getKey(), entry.getValue());
+    }
+  }
+
   public boolean resourceFileExists() {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }

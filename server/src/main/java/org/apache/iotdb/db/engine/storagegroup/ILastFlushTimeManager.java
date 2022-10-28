@@ -24,10 +24,6 @@ import java.util.Map;
 public interface ILastFlushTimeManager {
 
   // region set
-  void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap);
-
-  void setOneDeviceLastTime(long timePartitionId, String path, long time);
-
   void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
 
   void setOneDeviceFlushedTime(long timePartitionId, String path, long time);
@@ -38,8 +34,6 @@ public interface ILastFlushTimeManager {
   // endregion
 
   // region update
-  void updateLastTime(long timePartitionId, String path, long time);
-
   void updateFlushedTime(long timePartitionId, String path, long time);
 
   void updateGlobalFlushedTime(String path, long time);
@@ -49,7 +43,6 @@ public interface ILastFlushTimeManager {
   // endregion
 
   // region ensure
-  void ensureLastTimePartition(long timePartitionId);
 
   void ensureFlushedTimePartition(long timePartitionId);
 
@@ -59,29 +52,20 @@ public interface ILastFlushTimeManager {
   // region support upgrade methods
   void applyNewlyFlushedTimeToFlushedTime();
 
-  /**
-   * update latest flush time for partition id
-   *
-   * @param partitionId partition id
-   * @param latestFlushTime lastest flush time
-   * @return true if update latest flush time success
-   */
-  boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime);
-
-  boolean updateLatestFlushTime(long partitionId);
+  boolean updateLatestFlushTime(long partitionId, Map<String, Long> latestFlushTimeMap);
   // endregion
 
   // region query
   long getFlushedTime(long timePartitionId, String path);
 
-  long getLastTime(long timePartitionId, String path);
-
   long getGlobalFlushedTime(String path);
   // endregion
 
-  // region clear
-  void clearLastTime();
+  // region remove
+  void removePartition(long timePartitionId);
+  // endregion
 
+  // region clear
   void clearFlushedTime();
 
   void clearGlobalFlushedTime();

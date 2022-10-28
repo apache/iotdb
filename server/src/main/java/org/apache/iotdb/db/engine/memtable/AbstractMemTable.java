@@ -762,6 +762,15 @@ public abstract class AbstractMemTable implements IMemTable {
     this.flushStatus = flushStatus;
   }
 
+  @Override
+  public Map<String, Long> getLatestTime() {
+    Map<String, Long> latestTimeForEachDevice = new HashMap<>();
+    for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getLatestTime());
+    }
+    return latestTimeForEachDevice;
+  }
+
   /** Notice: this method is concurrent unsafe */
   @Override
   public int serializedSize() {

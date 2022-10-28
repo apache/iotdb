@@ -52,4 +52,6 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   long getCurrentTVListSize(String measurement);
+
+  long getLatestTime();
 }

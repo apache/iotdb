@@ -162,8 +162,6 @@ public class IDTableFlushTimeTest {
     assertEquals(
         103L, storageGroupProcessor.getLastFlushTimeManager().getFlushedTime(0L, "root.isp.d1"));
     assertEquals(
-        123L, storageGroupProcessor.getLastFlushTimeManager().getLastTime(0L, "root.isp.d1"));
-    assertEquals(
         103L, storageGroupProcessor.getLastFlushTimeManager().getGlobalFlushedTime("root.isp.d1"));
 
     // delete time partition
@@ -176,9 +174,6 @@ public class IDTableFlushTimeTest {
     assertEquals(
         Long.MIN_VALUE,
         storageGroupProcessor.getLastFlushTimeManager().getFlushedTime(0L, "root.isp.d1"));
-    assertEquals(
-        Long.MIN_VALUE,
-        storageGroupProcessor.getLastFlushTimeManager().getLastTime(0L, "root.isp.d1"));
     assertEquals(
         123L, storageGroupProcessor.getLastFlushTimeManager().getGlobalFlushedTime("root.isp.d1"));
   }

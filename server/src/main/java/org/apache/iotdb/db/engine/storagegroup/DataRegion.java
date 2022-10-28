@@ -559,7 +559,6 @@ public class DataRegion {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId.intern(), endTime);
       }
-      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
@@ -611,7 +610,6 @@ public class DataRegion {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        lastFlushTimeManager.setOneDeviceLastTime(endTimePartitionId, deviceId, endTime);
         lastFlushTimeManager.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
@@ -874,8 +872,6 @@ public class DataRegion {
         return;
       }
 
-      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
-
       // fire trigger before insertion
       TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowPlan);
       // insert to sequence or unSequence file
@@ -919,8 +915,6 @@ public class DataRegion {
           && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
         return;
       }
-
-      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
 
       // fire trigger before insertion
       // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowNode);
@@ -1206,15 +1200,6 @@ public class DataRegion {
       return false;
     }
 
-    lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
-    // try to update the latest time of the device of this tsRecord
-    if (sequence) {
-      lastFlushTimeManager.updateLastTime(
-          timePartitionId,
-          insertTabletPlan.getDevicePath().getFullPath(),
-          insertTabletPlan.getTimes()[end - 1]);
-    }
-
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
@@ -1266,15 +1251,6 @@ public class DataRegion {
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return false;
-    }
-
-    lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
-    // try to update the latest time of the device of this tsRecord
-    if (sequence) {
-      lastFlushTimeManager.updateLastTime(
-          timePartitionId,
-          insertTabletNode.getDevicePath().getFullPath(),
-          insertTabletNode.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -1337,10 +1313,6 @@ public class DataRegion {
 
     tsFileProcessor.insert(insertRowPlan);
 
-    // try to update the latest time of the device of this tsRecord
-    lastFlushTimeManager.updateLastTime(
-        timePartitionId, insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getTime());
-
     long globalLatestFlushTime =
         lastFlushTimeManager.getGlobalFlushedTime(insertRowPlan.getDevicePath().getFullPath());
 
@@ -1361,10 +1333,6 @@ public class DataRegion {
     }
 
     tsFileProcessor.insert(insertRowNode);
-
-    // try to update the latest time of the device of this tsRecord
-    lastFlushTimeManager.updateLastTime(
-        timePartitionId, insertRowNode.getDevicePath().getFullPath(), insertRowNode.getTime());
 
     long globalLatestFlushTime =
         lastFlushTimeManager.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
@@ -1644,7 +1612,6 @@ public class DataRegion {
         tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
-      updateEndTimeMap(tsFileProcessor);
       tsFileProcessor.asyncClose();
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
@@ -1725,7 +1692,6 @@ public class DataRegion {
       this.tsFileManager.clear();
       lastFlushTimeManager.clearFlushedTime();
       lastFlushTimeManager.clearGlobalFlushedTime();
-      lastFlushTimeManager.clearLastTime();
     } finally {
       writeUnlock();
     }
@@ -2449,52 +2415,20 @@ public class DataRegion {
     }
   }
 
-  /**
-   * when close an TsFileProcessor, update its EndTimeMap immediately
-   *
-   * @param tsFileProcessor processor to be closed
-   */
-  private void updateEndTimeMap(TsFileProcessor tsFileProcessor) {
-    TsFileResource resource = tsFileProcessor.getTsFileResource();
-    for (String deviceId : resource.getDevices()) {
-      resource.updateEndTime(
-          deviceId, lastFlushTimeManager.getLastTime(tsFileProcessor.getTimeRangeId(), deviceId));
-    }
-  }
-
-  private boolean unsequenceFlushCallback(TsFileProcessor processor) {
+  private boolean unsequenceFlushCallback(TsFileProcessor processor, Map<String, Long> updateMap) {
     return true;
   }
 
-  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
-    boolean res = lastFlushTimeManager.updateLatestFlushTime(processor.getTimeRangeId());
+  private boolean updateLatestFlushTimeCallback(
+      TsFileProcessor processor, Map<String, Long> latestFlushTimeMap) {
+    boolean res =
+        lastFlushTimeManager.updateLatestFlushTime(processor.getTimeRangeId(), latestFlushTimeMap);
     if (!res) {
       logger.warn(
           "Partition: {} does't have latest time for each device. "
               + "No valid record is written into memtable. Flushing tsfile is: {}",
           processor.getTimeRangeId(),
           processor.getTsFileResource().getTsFile());
-    }
-
-    return res;
-  }
-
-  /**
-   * update latest flush time for partition id
-   *
-   * @param partitionId partition id
-   * @param latestFlushTime lastest flush time
-   * @return true if update latest flush time success
-   */
-  private boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
-    boolean res =
-        lastFlushTimeManager.updateLatestFlushTimeToPartition(partitionId, latestFlushTime);
-    if (!res) {
-      logger.warn(
-          "Partition: {} does't have latest time for each device. "
-              + "No valid record is written into memtable.  latest flush time is: {}",
-          partitionId,
-          latestFlushTime);
     }
 
     return res;
@@ -3012,7 +2946,6 @@ public class DataRegion {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = StorageEngineV2.getTimePartition(endTime);
-      lastFlushTimeManager.updateLastTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeManager.updateGlobalFlushedTime(device, endTime);
     }
@@ -3439,13 +3372,13 @@ public class DataRegion {
         iterator.hasNext(); ) {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
       long partitionId = longTsFileProcessorEntry.getKey();
+      lastFlushTimeManager.removePartition(partitionId);
       TsFileProcessor processor = longTsFileProcessorEntry.getValue();
       if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
         processor.getTsFileResource().remove();
         tsFileManager.remove(processor.getTsFileResource(), sequence);
-        updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug(
             "{} is removed during deleting partitions",
             processor.getTsFileResource().getTsFilePath());
@@ -3461,7 +3394,7 @@ public class DataRegion {
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         tsFileManager.remove(tsFileResource, sequence);
-        updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
+        lastFlushTimeManager.removePartition(tsFileResource.getTimePartition());
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
@@ -3508,8 +3441,6 @@ public class DataRegion {
             && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
           return;
         }
-
-        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
 
         // fire trigger before insertion
         TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
@@ -3572,8 +3503,6 @@ public class DataRegion {
             && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
           return;
         }
-
-        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
 
         // fire trigger before insertion
         // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
@@ -3736,7 +3665,7 @@ public class DataRegion {
   @FunctionalInterface
   public interface UpdateEndTimeCallBack {
 
-    boolean call(TsFileProcessor caller);
+    boolean call(TsFileProcessor caller, Map<String, Long> updateMap);
   }
 
   @FunctionalInterface
