@@ -19,243 +19,119 @@
 
 -->
 
+# 查询写回（SELECT INTO）
 
+`SELECT INTO` 语句用于将查询结果写入一系列指定的时间序列中。
 
-# 查询写回（SELECT ... INTO ...）
+应用场景如下：
+- **实现 IoTDB 内部 ETL**：对原始数据进行 ETL 处理后写入新序列。
+- **查询结果存储**：将查询结果进行持久化存储，起到类似物化视图的作用。
+- **非对齐序列转对齐序列**：对齐序列从0.13版本开始支持，可以通过该功能将历史的非对齐序列重新写成对齐序列。
 
-`SELECT ... INTO ...` 语句允许您将查询结果集写回到指定序列上。
+## 语法定义
 
-
-
-## SQL
-
-### 语法
-
-**下面是 `select` 语句的语法定义：**
-
-```sql
-selectClause 
-intoClause? 
-fromClause 
-whereClause? 
-specialClause?
-```
-
-如果去除 `intoClause` 子句，那么 `select` 语句即是单纯的查询语句。
-
-`intoClause` 子句是写回功能的标记语句。
-
-
-
-**下面是 `intoClause` 子句的定义：**
+### 整体描述
 
 ```sql
-intoClause
-  : INTO ALIGNED? intoPath (COMMA intoPath)*
-  ;
+selectIntoStatement
+    : SELECT
+        resultColumn [, resultColumn] ...
+        INTO intoItem [, intoItem] ...
+        FROM prefixPath [, prefixPath] ...
+        [WHERE whereCondition]
+        [GROUP BY groupByTimeClause, groupByLevelClause]
+        [FILL {PREVIOUS | LINEAR | constant}]
+        [LIMIT rowLimit OFFSET rowOffset]
+        [ALIGN BY DEVICE]
+    ;
 
-intoPath
-  : fullPath
-  | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
-  ;
+intoItem
+    : [ALIGNED] intoDevicePath '(' intoMeasurementName [',' intoMeasurementName]* ')'
+    ;
 ```
 
-`intoPath`（目标序列）支持两种方式指定：
+### `INTO` 子句
 
-* 以 `root` 开头的完整序列名指定
+`INTO` 子句由若干个 `intoItem` 构成。
 
-  * 例子：
+每个 `intoItem` 由一个目标设备路径和一个包含若干目标物理量名的列表组成（与 `INSERT` 语句中的 `INTO` 子句写法类似）。
 
-    ```sql
-    select s1, s1 
-    into root.sg.d1.t1, root.sg.d1.t2 
-    from root.sg.d1
-    ```
+其中每个目标物理量名与目标设备路径组成一个目标序列，一个 `intoItem` 包含若干目标序列。例如：`root.sg_copy.d1(s1, s2)` 指定了两条目标序列 `root.sg_copy.d1.s1` 和 `root.sg_copy.d1.s2`。
 
-* 不以 `root` 开头的部分序列名指定，此时目标序列由 `from` 子句中的序列前缀和`intoPath`拼接而成
+`INTO` 子句指定的目标序列要能够与查询结果集的列一一对应。具体规则如下：
 
-  * 例子：
+- **按时间对齐**（默认）：全部 `intoItem` 包含的目标序列数量要与查询结果集的列数（除时间列外）一致，且按照表头从左到右的顺序一一对应。
+- **按设备对齐**（使用 `ALIGN BY DEVICE`）：全部 `intoItem` 中指定的目标设备数和查询的设备数（即 `FROM` 子句中路径模式匹配的设备数）一致，且按照结果集设备的输出顺序一一对应。
+  为每个目标设备指定的目标物理量数量要与查询结果集的列数（除时间和设备列外）一致，且按照表头从左到右的顺序一一对应。
 
-    ```sql
-    select s1, s1 
-    into t1, t2 
-    from root.sg.d1
-    ```
-    
-    这等价于
-    
-    ```sql
-    select s1, s1 
-    into root.sg.d1.t1, root.sg.d1.t2 
-    from root.sg.d1
-    ```
+下面通过示例进一步说明：
 
+- **示例 1**（按时间对齐）：
 
+- **示例 2**（按时间对齐）：
 
-**在`intoPath` 中，您还可以使用 `${i}`风格的路径匹配符来表示`from`子句中的部分路径。**
+- **示例 3**（按设备对齐）：
 
-比如，对于路径`root.sg1.d1.v1`而言，`${1}`表示`sg1`，`${2}`表示`d1`，`${3}`表示`v1`。
+- **示例 4**（按设备对齐）：
 
+### 使用变量占位符
 
-  * 例子：
+特别地，可以使用变量占位符描述目标序列与查询序列之间的对应规律，简化语句书写。目前支持以下两种变量占位符：
+ 
+- 后缀复制符 `::`：复制查询设备后缀（或物理量），表示从该层开始一直到设备的最后一层（或物理量），目标设备的节点名（或物理量名）与查询的设备对应的节点名（或物理量名）相同。
+- 单层节点匹配符 `${i}`：表示目标序列当前层节点名与查询序列的第`i`层节点名相同。比如，对于路径`root.sg1.d1.s1`而言，`${1}`表示`sg1`，`${2}`表示`d1`，`${3}`表示`s1`。
 
-    ```sql
-    select s1, s1, s1
-    into ${1}_t1, ${2}, root.${2}.${1}.t2
-    from root.sg.d1
-    ```
-    
-    这等价于
-    
-    ```sql
-    select s1, s1, s1
-    into root.sg.d1.sg_t1, root.sg.d1.d1, root.d1.sg.t2
-    from root.sg.d1
-    ```
+注意：变量占位符**只能描述序列与序列之间的对应关系**，不能用于函数、表达式等。
 
+在使用变量占位符时，`intoItem`与查询结果集列的对应关系不能存在歧义，具体情况分类讨论如下：
 
+- **按时间对齐**（默认）
+    > 注：如果查询中包含聚合、表达式计算，此时查询结果中的列无法与某个序列对应，因此目标设备和目标物理量都不能使用变量占位符。 
+- **按设备对齐**（使用 `ALIGN BY DEVICE`）
+    > 注：如果查询中包含聚合、表达式计算，此时查询结果中的列无法与某个物理量对应，因此目标物理量不能使用变量占位符。
 
-**您可以通过关键词  `ALIGNED` 指定 `intoPath`（目标序列）是否为一个对齐时间序列。**
+### 指定目标序列为对齐序列
 
-当目标序列存在时，您需要保证源序列和目标时间序列的类型匹配。
+通过 `ALIGNED` 关键词可以指定写入的目标设备为对齐写入，每个 `intoItem` 可以独立设置。
 
-当目标序列不存在时，系统将自动创建一个新的目标对齐时间序列。
+### 不支持使用的查询子句
 
+- `SLIMIT`、`SOFFSET`：查询出来的列不确定，功能不清晰，因此不支持。
+- `LAST`、`GROUP BY TAGS`、`DISABLE ALIGN`：表结构和写入结构不一致，因此不支持。
 
-  * 例子：
+### 其他要注意的点
 
-    ```sql
-    select s1, s2, s3
-    into aligned root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
-    from root.sg.d1
-    ```
+- 对于一般的聚合查询，时间戳是无意义的，约定使用 0 来存储。
+- 当目标序列存在时，需要保证源序列和目标时间序列的数据类型、压缩和编码方式、是否属于对齐设备等元数据信息一致。
+- 当目标序列不存在时，系统将自动创建目标序列（包括存储组）。
+- 当查询的序列不存在或查询的序列不存在数据，则不会自动创建目标序列。
 
+## 应用举例
 
+### 查询结果存储
+将查询结果进行持久化存储，起到类似物化视图的作用。
 
+### 非对齐序列转对齐序列
+对齐序列从 0.13 版本开始支持，可以通过该功能将历史的非对齐序列重新写成对齐序列。
 
-### 支持写回的查询类型
+**注意：** 建议配合使用 `LIMIT & OFFSET` 子句或 `WHERE` 子句（时间过滤条件）对数据进行分批，防止单次操作的数据量过大。
 
-**注意，除了下述类型的查询，其余类型的查询（如`LAST`查询和原始聚合查询）都不被支持。**
-
-* 原始序列查询
-
-  ```sql
-  select s1, s1 
-  into t1, t2 
-  from root.sg.d1
-  ```
-
-* 时间序列生成函数查询（UDF查询）
-
-  ```sql
-  select s1, sin(s2) 
-  into t1, t2 
-  from root.sg.d1
-  ```
-
-* 数学表达式查询
-
-  ```sql
-  select s1, sin(s2), s1 + s3 
-  into t1, t2, t3 
-  from root.sg.d1
-  ```
-
-* 嵌套查询
-
-  ```sql
-  select -s1, sin(cos(tan(s1 + s2 * s3))) + cos(s3), top_k(s1 + s3, 'k'='1') 
-  into t1, t2, t3 
-  from root.sg.d1
-  ```
-
-* Fill 查询
-
-  ```sql
-  select s1 
-  into fill_s1 
-  from root.sg.d1 
-  where time = 10 
-  fill(float [linear, 1ms, 1ms])
-  ```
-
-* Group By 查询
-
-  ```sql
-  select count(s1) 
-  into group_by_s1 
-  from root.sg.d1 
-  group by ([1, 5), 1ms)
-  ```
-
-* Group By Fill 查询
-
-	```sql
-  select last_value(s1) 
-  into group_by_fill_s1 
-  from root.sg.d1 
-  group by ([1, 10),1ms) 
-  fill (float[PREVIOUS])
-  ```
-
-
-
-### 支持写回的查询子句
-
-**注意，除了下述子句，其余查询子句（如 `DESC` / `SOFFSET` 等）都不被支持。**
-
-* 支持值过滤
-
-  ```sql
-  select s1, s1 
-  into t1, t2 
-  from root.sg.d1
-  where s1 > 0 and s2 < 0
-  ```
-
-* 支持时间过滤
-
-    ```sql
-    select s1, s1 
-    into t1, t2 
-    from root.sg.d1
-    where time > 0
-    ```
-
-* LIMIT / OFFSET
-
-  ```sql
-  select s1, s1 
-  into t1, t2 
-  from root.sg.d1
-  limit 5 offset 1000
-  ```
-
-
-
-### 其他限制
-
-* `select`子句中的源序列和`into`子句中的目标序列数量必须相同
-* `select`子句不支持带 `*`/`**` 查询
-* `into`子句中的目标序列不必预先创建（可使用自动创建schema功能），但是当`into`子句中的目标序列已存在时，您需要保证`select`子句中的源序列和`into`子句中的目标序列的数据类型一致
-* `into`子句中的目标序列必须是互不相同的
-* `from`子句只允许有一列序列前缀
-* `from`子句不支持带 `*`/`**`
-* 由于时间序列生成函数查询（UDF查询）/ 数学表达式查询 / 嵌套查询 尚不支持对齐时间序列（Aligned Timeseries），所以如果您在`select`子句中使用了上述查询，并且对应操作数包含对齐时间序列，会提示错误
-
-
-
-## 权限
+## 相关用户权限
 
 用户必须有下列权限才能正常执行查询写回语句：
 
-* 所有 `select` 子句中源序列的 `READ_TIMESERIES` 权限
-* 所有 `into` 子句中目标序列 `INSERT_TIMESERIES` 权限
+* 所有 `SELECT` 子句中源序列的 `READ_TIMESERIES` 权限。
+* 所有 `INTO` 子句中目标序列 `INSERT_TIMESERIES` 权限。
 
 更多用户权限相关的内容，请参考[权限管理语句](../Administration-Management/Administration.md)。
 
+## 相关配置参数
 
+* `select_into_insert_tablet_plan_row_limit`
 
-## 配置参数
-
-* `select_into_insert_tablet_plan_row_limit`：执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数。 默认为 10000。
+  | 参数名 | select_into_insert_tablet_plan_row_limit |
+  | ---- | ---- | 
+  | 描述 | 写入过程中每一批 `Tablet` 的最大行数 | 
+  | 类型 | int32 | 
+  | 默认值 | 10000 | 
+  | 改后生效方式 | 重启后生效 | 
