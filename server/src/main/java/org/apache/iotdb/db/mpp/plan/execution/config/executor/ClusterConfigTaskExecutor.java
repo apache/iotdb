@@ -314,14 +314,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getPath();
+          libRoot = new URI(uriString).getRawPath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
           // set md5 of the jar file
-          jarMd5 =
-              DigestUtils.md5Hex(
-                  Files.newInputStream(Paths.get(createFunctionStatement.getUriString())));
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
         // modify req
         tCreateFunctionReq.setJarFile(jarFile);
@@ -332,7 +330,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "%s-%s.%s",
                 jarFileName.substring(0, jarFileName.lastIndexOf(".")),
                 jarMd5,
-                jarFileName.substring(jarFileName.lastIndexOf("." + 1))));
+                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
       // try to create instance, this request will fail if creation is not successful
