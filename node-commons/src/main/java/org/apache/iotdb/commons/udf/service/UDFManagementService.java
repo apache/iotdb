@@ -186,7 +186,7 @@ public class UDFManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      UDFExecutableManager.getInstance().saveToLibDir(byteBuffer, jarName);
+      UDFExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
     }
   }
 

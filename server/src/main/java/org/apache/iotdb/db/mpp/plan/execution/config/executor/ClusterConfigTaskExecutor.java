@@ -282,7 +282,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
         String uriString = createFunctionStatement.getUriString();
-        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        jarFileName = new File(createFunctionStatement.getUriString()).getName();
         if (!new URI(uriString).getScheme().equals("file")) {
           try {
             // download executable
@@ -319,9 +319,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
           // set md5 of the jar file
-          jarMd5 =
-              DigestUtils.md5Hex(
-                  Files.newInputStream(Paths.get(createFunctionStatement.getUriString())));
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
         // modify req
         tCreateFunctionReq.setJarFile(jarFile);
