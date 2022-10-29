@@ -126,8 +126,11 @@ public class UDFInformation {
     ReadWriteIOUtils.write(functionName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(isBuiltin, outputStream);
-    ReadWriteIOUtils.write(jarName, outputStream);
-    ReadWriteIOUtils.write(jarMD5, outputStream);
+    ReadWriteIOUtils.write(isUsingURI, outputStream);
+    if (isUsingURI) {
+      ReadWriteIOUtils.write(jarName, outputStream);
+      ReadWriteIOUtils.write(jarMD5, outputStream);
+    }
   }
 
   public static UDFInformation deserialize(ByteBuffer byteBuffer) {
@@ -135,8 +138,12 @@ public class UDFInformation {
     udfInformation.setFunctionName(ReadWriteIOUtils.readString(byteBuffer));
     udfInformation.setClassName(ReadWriteIOUtils.readString(byteBuffer));
     udfInformation.setBuiltin(ReadWriteIOUtils.readBool(byteBuffer));
-    udfInformation.setJarName(ReadWriteIOUtils.readString(byteBuffer));
-    udfInformation.setJarMD5(ReadWriteIOUtils.readString(byteBuffer));
+    boolean isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
+    udfInformation.setUsingURI(isUsingURI);
+    if (isUsingURI) {
+      udfInformation.setJarName(ReadWriteIOUtils.readString(byteBuffer));
+      udfInformation.setJarMD5(ReadWriteIOUtils.readString(byteBuffer));
+    }
     return udfInformation;
   }
 }

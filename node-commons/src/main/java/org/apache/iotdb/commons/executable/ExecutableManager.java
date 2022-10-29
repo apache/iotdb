@@ -190,6 +190,10 @@ public class ExecutableManager {
     return libRoot + File.separator + name;
   }
 
+  public String getFileStringUnderInstallByName(String name) {
+    return libRoot + File.separator + INSTALL_DIR + File.separator + name;
+  }
+
   private File getFileByFullPath(String path) {
     return FSFactoryProducer.getFSFactory().getFile(path);
   }

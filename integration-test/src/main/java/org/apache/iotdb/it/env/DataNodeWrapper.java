@@ -70,7 +70,12 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-datanode.properties");
+    return workDirFilePath("conf", "iotdb-datanode.properties");
+  }
+
+  @Override
+  protected String getCommonConfigPath() {
+    return workDirFilePath("conf", "iotdb-common.properties");
   }
 
   @Override
@@ -80,7 +85,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void addStartCmdParams(List<String> params) {
-    final String workDir = getNodePath() + File.separator + "datanode";
+    final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(

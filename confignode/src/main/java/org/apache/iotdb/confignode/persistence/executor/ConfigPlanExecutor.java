@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan
 import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
@@ -80,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -211,7 +211,7 @@ public class ConfigPlanExecutor {
       case GetTriggerJar:
         return triggerInfo.getTriggerJar((GetTriggerJarPlan) req);
       case GetTransferringTriggers:
-        return triggerInfo.getTransferringTriggers((GetTransferringTriggersPlan) req);
+        return triggerInfo.getTransferringTriggers();
       case GetRegionId:
         return partitionInfo.getRegionId((GetRegionIdPlan) req);
       case GetTimeSlotList:
@@ -321,6 +321,8 @@ public class ConfigPlanExecutor {
             (RollbackPreUnsetSchemaTemplatePlan) physicalPlan);
       case UnsetTemplate:
         return clusterSchemaInfo.unsetSchemaTemplate((UnsetSchemaTemplatePlan) physicalPlan);
+      case DropSchemaTemplate:
+        return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
       case CreatePipeSink:
         return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
       case DropPipeSink:

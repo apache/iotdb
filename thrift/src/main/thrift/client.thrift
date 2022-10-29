@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
@@ -66,6 +67,7 @@ struct TSExecuteStatementResp {
   10: optional list<string> sgColumns
   11: optional list<byte> aliasColumns
   12: optional TSTracingInfo tracingInfo
+  13: optional list<binary> queryResult
 }
 
 enum TSProtocolVersion {
@@ -173,6 +175,7 @@ struct TSFetchResultsResp{
   3: required bool isAlign
   4: optional TSQueryDataSet queryDataSet
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  6: optional list<binary> queryResult
 }
 
 struct TSFetchMetadataResp{
@@ -430,6 +433,19 @@ struct TSyncTransportMetaInfo{
 }
 
 service IClientRPCService {
+
+  TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeUpdateStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
+
+  TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
+
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
   common.TSStatus closeSession(1:TSCloseSessionReq req);
@@ -442,9 +458,9 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
+  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req);
 
-  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
+  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req);
 
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
