@@ -59,26 +59,6 @@ def test_template_create():
             "s1",
             "s2",
         ]
-        assert session.count_measurements_in_template(measurement_template_name) == 3
-        assert (
-            session.is_measurement_in_template(measurement_template_name, "s1") is True
-        )
-        assert (
-            session.is_path_exist_in_template(measurement_template_name, "s1") is True
-        )
-        assert (
-            session.is_path_exist_in_template(measurement_template_name, "s4") is False
-        )
-
-        session.delete_node_in_template(measurement_template_name, "s1")
-        assert session.show_measurements_in_template(measurement_template_name) == [
-            "s3",
-            "s2",
-        ]
-        assert session.count_measurements_in_template(measurement_template_name) == 2
-        assert (
-            session.is_path_exist_in_template(measurement_template_name, "s1") is False
-        )
 
         session.drop_schema_template(measurement_template_name)
 
@@ -93,6 +73,20 @@ def test_set_template():
 
         template_name = "set_template_python"
         template = Template(name=template_name, share_time=False)
+        m_node_x = MeasurementNode(
+            name="x",
+            data_type=TSDataType.INT64,
+            encoding=TSEncoding.RLE,
+            compression_type=Compressor.SNAPPY,
+        )
+        m_node_y = MeasurementNode(
+            name="y",
+            data_type=TSDataType.INT64,
+            encoding=TSEncoding.RLE,
+            compression_type=Compressor.SNAPPY,
+        )
+        template.add_template(m_node_x)
+        template.add_template(m_node_y)
         session.create_schema_template(template)
 
         session.set_schema_template(template_name, "root.python.GPS")
@@ -100,6 +94,8 @@ def test_set_template():
 
         assert session.show_paths_template_set_on(template_name) == ["root.python.GPS"]
         assert session.show_paths_template_using_on(template_name) == ["root.python.GPS"]
+
+        session.execute_non_query_statement("delete timeseries of schema template from root.python.GPS")
 
         session.unset_schema_template(template_name, "root.python.GPS")
         session.drop_schema_template(template_name)
