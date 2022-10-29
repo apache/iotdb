@@ -29,9 +29,9 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -249,12 +249,12 @@ public class IoTDBConfigNodeSnapshotIT {
             .setJarMD5(jarMD5)
             .setJarFile(jarFile);
 
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        client.createTrigger(createTriggerReq1).getCode()
-        );
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        client.createTrigger(createTriggerReq2).getCode()
-        );
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq1).getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq2).getCode());
 
     List<TCreateTriggerReq> result = new ArrayList<>();
     result.add(createTriggerReq2);
@@ -305,12 +305,12 @@ public class IoTDBConfigNodeSnapshotIT {
         new TCreateFunctionReq(
             "test2", "org.apache.iotdb.udf.UDTFExample", jarName, jarFile, jarMD5);
 
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        client.createFunction(createFunctionReq1).getCode()
-        );
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        client.createFunction(createFunctionReq2).getCode()
-        );
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq1).getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq2).getCode());
 
     List<TCreateFunctionReq> result = new ArrayList<>();
     result.add(createFunctionReq1);
@@ -324,8 +324,7 @@ public class IoTDBConfigNodeSnapshotIT {
       UDFInformation udfInformation =
           UDFInformation.deserialize(resp.getAllUDFInformation().get(i));
 
-      assertEquals(
-          createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
+      assertEquals(createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
       assertEquals(createFunctionReq.getClassName(), udfInformation.getClassName());
       assertEquals(createFunctionReq.getJarName(), udfInformation.getJarName());
       assertEquals(createFunctionReq.getJarMD5(), udfInformation.getJarMD5());
