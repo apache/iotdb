@@ -106,5 +106,8 @@ public enum ConfigPhysicalPlanType {
   GetTemplateSetInfo,
   UpdateDataNodeConfiguration,
   GetFunctionTable,
-  GetFunctionJar
+  GetFunctionJar,
+  PreUnsetTemplate,
+  RollbackUnsetTemplate,
+  UnsetTemplate
 }

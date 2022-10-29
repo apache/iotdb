@@ -124,6 +124,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -193,6 +195,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -712,6 +715,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
+  public TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
+      throws TException {
+    PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
+    TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
+    int result = 0;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      // todo implement as consensus layer read request
+      ReadWriteLock readWriteLock =
+          regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
+      // count paths using template for unset template shall block all template activation
+      readWriteLock.writeLock().lock();
+      try {
+        ISchemaRegion schemaRegion =
+            schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+        PathPatternTree filteredPatternTree =
+            filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+        if (filteredPatternTree.isEmpty()) {
+          continue;
+        }
+        result += schemaRegion.countPathsUsingTemplate(req.getTemplateId(), filteredPatternTree);
+      } catch (MetadataException e) {
+        LOGGER.error(e.getMessage(), e);
+        resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        return resp;
+      } finally {
+        readWriteLock.writeLock().unlock();
+      }
+    }
+    resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    resp.setCount(result);
+    return resp;
   }
 
   @Override
