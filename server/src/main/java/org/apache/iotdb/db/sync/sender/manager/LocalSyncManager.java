@@ -68,7 +68,7 @@ public class LocalSyncManager implements ISyncManager {
             new PartialPath(device).concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
         if (deletion.getPath().overlapWith(path)) {
           Deletion splitDeletion =
-              new Deletion(path, 0, deletion.getStartTime(), deletion.getEndTime());
+              new Deletion(deletion.getPath(), 0, deletion.getStartTime(), deletion.getEndTime());
           syncPipe.collectRealTimeDeletion(
               splitDeletion, dataRegion.getStorageGroupName(), dataRegionId);
         }
