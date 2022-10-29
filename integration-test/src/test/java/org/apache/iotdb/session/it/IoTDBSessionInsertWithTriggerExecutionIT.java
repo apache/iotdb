@@ -53,7 +53,8 @@ import static org.junit.Assert.fail;
 @Category({ClusterIT.class})
 public class IoTDBSessionInsertWithTriggerExecutionIT {
   private static final String TRIGGER_JAR_PREFIX =
-      System.getProperty("user.dir")
+      "file:"
+          + System.getProperty("user.dir")
           + File.separator
           + "target"
           + File.separator
@@ -115,13 +116,13 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
       // create stateless triggers before insertion
       session.executeNonQueryStatement(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       session.executeNonQueryStatement(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
@@ -129,13 +130,13 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
       // create stateless triggers after insertion
       session.executeNonQueryStatement(
           String.format(
-              "create stateless trigger %s after insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s after insert on root.test.stateless.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
       session.executeNonQueryStatement(
           String.format(
-              "create stateless trigger %s after insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s after insert on root.test.stateless.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
@@ -143,13 +144,13 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
       // create stateful triggers before insertion
       session.executeNonQueryStatement(
           String.format(
-              "create stateful trigger %s before insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s before insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       session.executeNonQueryStatement(
           String.format(
-              "create stateful trigger %s before insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s before insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
@@ -157,13 +158,13 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
       // create stateful triggers after insertion
       session.executeNonQueryStatement(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.* as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
       session.executeNonQueryStatement(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.a as 'org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
@@ -319,7 +320,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   }
 
   private int getCounter(String counterName) throws IOException {
-    String counterFilePath = TRIGGER_JAR_PREFIX + counterName + ".txt";
+    String counterFilePath = TRIGGER_JAR_PREFIX.substring(5) + counterName + ".txt";
     int counter = 0;
     try (InputStreamReader Reader =
             new InputStreamReader(

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -29,53 +30,36 @@ import java.util.Objects;
 
 public class RegionStatistics {
 
-  // For confirm the leadership.
-  // The Region who claim itself as the leader and
-  // has the maximum versionTimestamp is considered as the true leader
-  private long versionTimestamp;
-  private boolean isLeader;
-
   private RegionStatus regionStatus;
 
   public RegionStatistics() {
     // Empty constructor
   }
 
-  public RegionStatistics(long versionTimestamp, boolean isLeader, RegionStatus regionStatus) {
-    this.versionTimestamp = versionTimestamp;
-    this.isLeader = isLeader;
+  public RegionStatistics(RegionStatus regionStatus) {
     this.regionStatus = regionStatus;
-  }
-
-  public long getVersionTimestamp() {
-    return versionTimestamp;
-  }
-
-  public boolean isLeader() {
-    return isLeader;
   }
 
   public RegionStatus getRegionStatus() {
     return regionStatus;
   }
 
+  public RegionHeartbeatSample convertToRegionHeartbeatSample() {
+    long currentTime = System.currentTimeMillis();
+    return new RegionHeartbeatSample(currentTime, currentTime, regionStatus);
+  }
+
   public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(versionTimestamp, stream);
-    ReadWriteIOUtils.write(isLeader, stream);
     ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
   }
 
   // Deserializer for snapshot
   public void deserialize(InputStream inputStream) throws IOException {
-    this.versionTimestamp = ReadWriteIOUtils.readLong(inputStream);
-    this.isLeader = ReadWriteIOUtils.readBool(inputStream);
     this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(inputStream));
   }
 
   // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
-    this.versionTimestamp = buffer.getLong();
-    this.isLeader = ReadWriteIOUtils.readBool(buffer);
     this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(buffer));
   }
 
@@ -84,28 +68,16 @@ public class RegionStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionStatistics that = (RegionStatistics) o;
-    return isLeader == that.isLeader
-        && regionStatus == that.regionStatus
-        // In order to prevent the RegionStatistics from updating too fast.
-        // Here we consider the versionTimestamp equal when the difference is small.
-        // TODO: optimize
-        && Math.abs(versionTimestamp - that.versionTimestamp) < 60 * 1000;
+    return regionStatus == that.regionStatus;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(versionTimestamp, isLeader, regionStatus);
+    return Objects.hash(regionStatus);
   }
 
   @Override
   public String toString() {
-    return "RegionStatistics{"
-        + "versionTimestamp="
-        + versionTimestamp
-        + ", isLeader="
-        + isLeader
-        + ", regionStatus="
-        + regionStatus
-        + '}';
+    return "RegionStatistics{" + "regionStatus=" + regionStatus + '}';
   }
 }

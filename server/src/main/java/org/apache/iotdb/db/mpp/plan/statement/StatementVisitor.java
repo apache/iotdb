@@ -74,6 +74,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -432,5 +433,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowContinuousQueries(
       ShowContinuousQueriesStatement showContinuousQueriesStatement, C context) {
     return visitStatement(showContinuousQueriesStatement, context);
+  }
+
+  public R visitUnsetSchemaTemplate(
+      UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, C context) {
+    return visitStatement(unsetSchemaTemplateStatement, context);
   }
 }

@@ -117,7 +117,7 @@ public class UDFInfo implements SnapshotProcessor {
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
       existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
       if (physicalPlan.getJarFile() != null) {
-        udfExecutableManager.writeToLibDir(
+        udfExecutableManager.saveToLibDir(
             ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
