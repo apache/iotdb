@@ -49,8 +49,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.slf4j.Logger;
@@ -139,6 +137,10 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
+  public Map<TConsensusGroupId, Integer> getLatestRegionLeaderMap() {
+    return routeBalancer.getLatestRegionLeaderMap();
+  }
+
   /**
    * Generate an optimal real-time read/write requests routing policy.
    *
@@ -147,12 +149,11 @@ public class LoadManager {
    *     sorting result have higher priority.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap() {
-    // Always take the latest locations of RegionGroups as the input parameter
-    return routeBalancer.getLatestRegionRouteMap(getPartitionManager().getAllReplicaSets());
+    return routeBalancer.getLatestRegionPriorityMap();
   }
 
-  /** Start the load balancing service */
-  public void startLoadBalancingService() {
+  /** Start the load statistics service */
+  public void startLoadStatisticsService() {
     synchronized (scheduleMonitor) {
       if (currentLoadStatisticsFuture == null) {
         currentLoadStatisticsFuture =
@@ -167,8 +168,8 @@ public class LoadManager {
     }
   }
 
-  /** Stop the load balancing service */
-  public void stopLoadBalancingService() {
+  /** Stop the load statistics service */
+  public void stopLoadStatisticsService() {
     synchronized (scheduleMonitor) {
       if (currentLoadStatisticsFuture != null) {
         currentLoadStatisticsFuture.cancel(false);
@@ -186,10 +187,12 @@ public class LoadManager {
         .getNodeCacheMap()
         .forEach(
             (nodeId, nodeCache) -> {
-              // Check if NodeStatistics needs to be updated
-              NodeStatistics nodeStatistics = nodeCache.updateNodeStatistics();
-              if (nodeStatistics != null) {
-                updateLoadStatisticsPlan.putNodeStatistics(nodeId, nodeStatistics);
+              // Update and check if NodeStatistics needs consensus
+              nodeCache.updateNodeStatistics();
+              if (!nodeCache
+                  .getStatistics()
+                  .equals(getNodeManager().getNodeStatistics(nodeId, false))) {
+                updateLoadStatisticsPlan.putNodeStatistics(nodeId, nodeCache.getStatistics());
               }
             });
 
@@ -197,21 +200,28 @@ public class LoadManager {
     getPartitionManager()
         .getRegionGroupCacheMap()
         .forEach(
-            (consensusGroupId, regionGroupCache) -> {
-              // Check if RegionGroupStatistics needs to be updated
-              RegionGroupStatistics regionGroupStatistics =
-                  regionGroupCache.updateRegionGroupStatistics();
-              if (regionGroupStatistics != null) {
+            (regionGroupId, regionGroupCache) -> {
+              // Update and check if RegionGroupStatistics needs consensus
+              regionGroupCache.updateRegionGroupStatistics();
+              if (!regionGroupCache
+                  .getStatistics()
+                  .equals(getPartitionManager().getRegionGroupStatistics(regionGroupId, false))) {
                 updateLoadStatisticsPlan.putRegionGroupStatistics(
-                    consensusGroupId, regionGroupStatistics);
+                    regionGroupId, regionGroupCache.getStatistics());
               }
             });
 
-    // Update LoadStatistics if necessary
-    if (updateLoadStatisticsPlan.isNeedUpdate()) {
-      getConsensusManager().write(updateLoadStatisticsPlan);
+    // Update RegionRouteMap
+    routeBalancer.updateRegionRouteMap();
+    if (!routeBalancer
+        .getLatestRegionRouteMap()
+        .equals(getPartitionManager().getRegionRouteMap())) {
+      updateLoadStatisticsPlan.setRegionRouteMap(routeBalancer.getLatestRegionRouteMap());
+    }
 
-      // TODO: Broadcast the latest RegionRouteMap in RegionBalancer
+    // Consensus-write LoadStatistics if not empty
+    if (!updateLoadStatisticsPlan.isEmpty()) {
+      getConsensusManager().write(updateLoadStatisticsPlan);
       broadcastLatestRegionRouteMap();
     }
   }
@@ -260,6 +270,7 @@ public class LoadManager {
   public void recoverHeartbeatCache() {
     getNodeManager().recoverNodeCacheMap();
     getPartitionManager().recoverRegionGroupCacheMap();
+    routeBalancer.recoverRegionRouteMap();
   }
 
   public RouteBalancer getRouteBalancer() {

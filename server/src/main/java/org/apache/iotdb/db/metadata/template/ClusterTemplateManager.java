@@ -36,7 +36,6 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -304,19 +303,14 @@ public class ClusterTemplateManager implements ITemplateManager {
     try {
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
 
-      int templateNum = ReadWriteIOUtils.readInt(buffer);
-
-      int pathNum;
-      String pathSetTemplate;
-      for (int i = 0; i < templateNum; i++) {
-        Template template = new Template();
-        template.deserialize(buffer);
+      Map<Template, List<String>> parsedTemplateSetInfo =
+          TemplateInternalRPCUtil.parseAddTemplateSetInfoBytes(buffer);
+      for (Map.Entry<Template, List<String>> entry : parsedTemplateSetInfo.entrySet()) {
+        Template template = entry.getKey();
         templateIdMap.put(template.getId(), template);
         templateNameMap.put(template.getName(), template.getId());
 
-        pathNum = ReadWriteIOUtils.readInt(buffer);
-        for (int j = 0; j < pathNum; j++) {
-          pathSetTemplate = ReadWriteIOUtils.readString(buffer);
+        for (String pathSetTemplate : entry.getValue()) {
           try {
             PartialPath path = new PartialPath(pathSetTemplate);
             pathSetTemplateMap.put(path, template.getId());
@@ -329,7 +323,6 @@ public class ClusterTemplateManager implements ITemplateManager {
           }
         }
       }
-
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -342,13 +335,20 @@ public class ClusterTemplateManager implements ITemplateManager {
     readWriteLock.writeLock().lock();
     try {
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
-      int templateId = ReadWriteIOUtils.readInt(buffer);
-      String pathSetTemplate = ReadWriteIOUtils.readString(buffer);
+      Pair<Integer, String> parsedInfo =
+          TemplateInternalRPCUtil.parseInvalidateTemplateSetInfoBytes(buffer);
+      int templateId = parsedInfo.left;
+      String pathSetTemplate = parsedInfo.right;
       try {
         PartialPath path = new PartialPath(pathSetTemplate);
         pathSetTemplateMap.remove(path);
         if (templateSetOnPathsMap.containsKey(templateId)) {
           templateSetOnPathsMap.get(templateId).remove(path);
+          if (templateSetOnPathsMap.get(templateId).isEmpty()) {
+            templateSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
         }
       } catch (IllegalPathException ignored) {
 

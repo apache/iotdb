@@ -2143,6 +2143,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException {
+    int result = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      result += mtree.countPathsUsingTemplate(pathPattern, templateId);
+    }
+    return result;
+  }
+
   // endregion
 
   // region Interfaces for Trigger

@@ -16,37 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.write.cq;
 
-package org.apache.iotdb.confignode.consensus.response;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
-import org.apache.iotdb.consensus.common.DataSet;
-
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
-public class TriggerJarResp implements DataSet {
+import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.SHOW_CQ;
 
-  private TSStatus status;
+public class ShowCQPlan extends ConfigPhysicalPlan {
 
-  private final List<ByteBuffer> jarList;
-
-  public TriggerJarResp(TSStatus status, List<ByteBuffer> jarList) {
-    this.status = status;
-    this.jarList = jarList;
+  public ShowCQPlan() {
+    super(SHOW_CQ);
   }
 
-  public TSStatus getStatus() {
-    return status;
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
-  public TGetTriggerJarResp convertToThriftResponse() throws IOException {
-    return new TGetTriggerJarResp(status, jarList);
-  }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

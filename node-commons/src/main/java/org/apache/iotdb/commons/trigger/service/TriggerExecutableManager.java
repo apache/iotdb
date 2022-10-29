@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.trigger.service;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class TriggerExecutableManager extends ExecutableManager {
@@ -40,6 +41,7 @@ public class TriggerExecutableManager extends ExecutableManager {
     if (INSTANCE == null) {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(triggerLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(triggerLibRoot + File.separator + INSTALL_DIR);
       INSTANCE = new TriggerExecutableManager(temporaryLibRoot, triggerLibRoot);
     }
     return INSTANCE;

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
@@ -141,7 +142,7 @@ public class StandaloneCoordinatorTest {
         coordinator.execute(
             statement,
             queryId,
-            null,
+            new SessionInfo(0, "root", "+5:00"),
             "",
             partitionFetcher,
             schemaFetcher,

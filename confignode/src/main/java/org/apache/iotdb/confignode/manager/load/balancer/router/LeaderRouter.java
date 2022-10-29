@@ -32,24 +32,21 @@ import java.util.concurrent.ConcurrentHashMap;
 /** The LeaderRouter always pick the leader Replica */
 public class LeaderRouter implements IRouter {
 
-  // Map<RegionGroupId, leader location>
-  private final Map<TConsensusGroupId, Integer> leaderMap;
-  // Map<DataNodeId, loadScore>
-  private final Map<Integer, Long> loadScoreMap;
-
-  public LeaderRouter(Map<TConsensusGroupId, Integer> leaderMap, Map<Integer, Long> loadScoreMap) {
-    this.leaderMap = leaderMap;
-    this.loadScoreMap = loadScoreMap;
+  public LeaderRouter() {
+    // Empty constructor
   }
 
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
-      List<TRegionReplicaSet> replicaSets) {
-    Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
+      List<TRegionReplicaSet> replicaSets,
+      Map<TConsensusGroupId, Integer> regionLeaderMap,
+      Map<Integer, Long> dataNodeLoadScoreMap) {
+
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
-          int leaderId = leaderMap.getOrDefault(replicaSet.getRegionId(), -1);
+          int leaderId = regionLeaderMap.getOrDefault(replicaSet.getRegionId(), -1);
           TRegionReplicaSet sortedReplicaSet = new TRegionReplicaSet();
           sortedReplicaSet.setRegionId(replicaSet.getRegionId());
 
@@ -74,7 +71,7 @@ public class LeaderRouter implements IRouter {
                     // In this case we put a maximum loadScore into the sortList.
                     sortList.add(
                         new Pair<>(
-                            loadScoreMap.computeIfAbsent(
+                            dataNodeLoadScoreMap.computeIfAbsent(
                                 dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
@@ -85,9 +82,9 @@ public class LeaderRouter implements IRouter {
             }
           }
 
-          result.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
+          regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
         });
 
-    return result;
+    return regionPriorityMap;
   }
 }
