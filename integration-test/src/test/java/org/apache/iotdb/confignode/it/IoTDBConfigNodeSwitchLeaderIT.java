@@ -18,24 +18,18 @@
  */
 package org.apache.iotdb.confignode.it;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -43,7 +37,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -126,22 +119,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
   }
 
-  /** Generate a PatternTree and serialize it into a ByteBuffer */
-  private ByteBuffer generatePatternTreeBuffer(String[] paths)
-      throws IllegalPathException, IOException {
-    PathPatternTree patternTree = new PathPatternTree();
-    for (String path : paths) {
-      patternTree.appendPathPattern(new PartialPath(path));
-    }
-    patternTree.constructTree();
-
-    PublicBAOS baos = new PublicBAOS();
-    patternTree.serialize(baos);
-    return ByteBuffer.wrap(baos.toByteArray());
-  }
-
   @Test
-  public void loadStatisticsInheritIT()
+  public void basicDataInheritIT()
       throws IOException, TException, IllegalPathException, InterruptedException {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -154,7 +133,6 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     TSchemaPartitionTableResp schemaPartitionTableResp0;
     TDataPartitionTableResp dataPartitionTableResp0;
     TShowDataNodesResp showDataNodesResp0;
-    Map<TConsensusGroupId, TRegionInfo> dataRegionInfoMap = new HashMap<>();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -166,7 +144,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
       // Create SchemaRegionGroups through getOrCreateSchemaPartition and record
       // SchemaPartitionTable
-      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      ByteBuffer buffer =
+          ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
       schemaPartitionTableResp0 =
           client.getOrCreateSchemaPartitionTable(
               new TSchemaPartitionReq().setPathPatternTree(buffer));
@@ -187,23 +166,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
 
-      // Sleep to wait for UpdateLoadStatistics
-      TimeUnit.MILLISECONDS.sleep(partitionRegionRatisRPCLeaderElectionTimeoutMaxMs);
-
       // Record showDataNodesResp
       showDataNodesResp0 = client.showDataNodes();
-
-      // Record RegionInfo of DataRegions
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (TConsensusGroupType.DataRegion.equals(
-                    regionInfo.getConsensusGroupId().getType())) {
-                  dataRegionInfoMap.put(regionInfo.getConsensusGroupId(), regionInfo);
-                }
-              });
     }
 
     // Switch the current ConfigNode-Leader
@@ -212,7 +176,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Check SchemaPartitionTable
-      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      ByteBuffer buffer =
+          ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
       Assert.assertEquals(
           schemaPartitionTableResp0,
           client.getSchemaPartitionTable(new TSchemaPartitionReq().setPathPatternTree(buffer)));
@@ -229,20 +194,6 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
       // Check DataNodes' statuses
       Assert.assertEquals(showDataNodesResp0, client.showDataNodes());
-
-      // Check DataRegions' RegionInfo
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      Map<TConsensusGroupId, TRegionInfo> dataRegionInfoMap1 = new HashMap<>();
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                if (TConsensusGroupType.DataRegion.equals(
-                    regionInfo.getConsensusGroupId().getType())) {
-                  dataRegionInfoMap1.put(regionInfo.getConsensusGroupId(), regionInfo);
-                }
-              });
-      Assert.assertEquals(dataRegionInfoMap, dataRegionInfoMap1);
     }
   }
 }

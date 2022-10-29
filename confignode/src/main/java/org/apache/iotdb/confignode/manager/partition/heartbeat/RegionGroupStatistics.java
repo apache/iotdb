@@ -62,6 +62,10 @@ public class RegionGroupStatistics {
         : RegionStatus.Unknown;
   }
 
+  public Map<Integer, RegionStatistics> getRegionStatisticsMap() {
+    return regionStatisticsMap;
+  }
+
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
     return new RegionGroupStatistics(RegionGroupStatus.Disabled, new ConcurrentHashMap<>());
   }
@@ -126,11 +130,6 @@ public class RegionGroupStatistics {
 
   @Override
   public String toString() {
-    return "RegionGroupStatistics{"
-        + "regionGroupStatus="
-        + regionGroupStatus
-        + ", regionStatisticsMap="
-        + regionStatisticsMap
-        + '}';
+    return "RegionGroupStatistics{" + "regionGroupStatus=" + regionGroupStatus + '}';
   }
 }

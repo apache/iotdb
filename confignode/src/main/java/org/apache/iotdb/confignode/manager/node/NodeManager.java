@@ -105,8 +105,6 @@ public class NodeManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
-  public static final int CURRENT_NODE_ID = CONF.getConfigNodeId();
-
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
   private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
       CONF.getUnknownDataNodeDetectInterval();
@@ -499,7 +497,7 @@ public class NodeManager {
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
-                configNodeLocation.getConfigNodeId() == CURRENT_NODE_ID
+                configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID
                     ? RegionRoleType.Leader.name()
                     : RegionRoleType.Follower.name());
             configNodeInfoList.add(info);
@@ -718,7 +716,7 @@ public class NodeManager {
       THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getConfigNodeId() == CURRENT_NODE_ID) {
+      if (configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
         // Skip itself
         continue;
       }
@@ -728,7 +726,7 @@ public class NodeManager {
               (ConfigNodeHeartbeatCache)
                   nodeCacheMap.computeIfAbsent(
                       configNodeLocation.getConfigNodeId(),
-                      empty -> new ConfigNodeHeartbeatCache(configNodeLocation)));
+                      empty -> new ConfigNodeHeartbeatCache(configNodeLocation.getConfigNodeId())));
       AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
@@ -936,20 +934,24 @@ public class NodeManager {
 
   /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched */
   public void initNodeHeartbeatCache() {
+    final int CURRENT_NODE_ID = ConfigNodeHeartbeatCache.CURRENT_NODE_ID;
     nodeCacheMap.clear();
 
     // Init ConfigNodeHeartbeatCache
     getRegisteredConfigNodes()
         .forEach(
-            configNodeLocation ->
+            configNodeLocation -> {
+              if (configNodeLocation.getConfigNodeId() != CURRENT_NODE_ID) {
                 nodeCacheMap.put(
                     configNodeLocation.getConfigNodeId(),
-                    new ConfigNodeHeartbeatCache(configNodeLocation)));
+                    new ConfigNodeHeartbeatCache(configNodeLocation.getConfigNodeId()));
+              }
+            });
     // Force set itself and never update
-    nodeCacheMap
-        .get(CURRENT_NODE_ID)
-        .forceUpdate(
-            ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS.convertToNodeHeartbeatSample());
+    nodeCacheMap.put(
+        ConfigNodeHeartbeatCache.CURRENT_NODE_ID,
+        new ConfigNodeHeartbeatCache(
+            CURRENT_NODE_ID, ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS));
 
     // Init DataNodeHeartbeatCache
     getRegisteredDataNodes()

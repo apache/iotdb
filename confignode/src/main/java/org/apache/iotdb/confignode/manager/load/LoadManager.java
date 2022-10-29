@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.slf4j.Logger;
@@ -62,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -245,11 +247,15 @@ public class LoadManager {
     LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
         differentRegionGroupStatisticsMap.entrySet()) {
-      // TODO: formulate
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionGroupStatisticsEntry.getKey(),
-          regionGroupStatisticsEntry.getValue());
+      LOGGER.info("[UpdateLoadStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
+      LOGGER.info("[UpdateLoadStatistics]\t {}", regionGroupStatisticsEntry.getValue());
+      for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
+          regionGroupStatisticsEntry.getValue().getRegionStatisticsMap().entrySet()) {
+        LOGGER.info(
+            "[UpdateLoadStatistics]\t dataNodeId{}={}",
+            regionStatisticsEntry.getKey(),
+            regionStatisticsEntry.getValue());
+      }
     }
   }
 
@@ -263,14 +269,15 @@ public class LoadManager {
           regionLeaderEntry.getValue());
     }
 
-    // TODO: formulate
     LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
         regionRouteMap.getRegionPriorityMap().entrySet()) {
       LOGGER.info(
           "[UpdateLoadStatistics]\t {}={}",
           regionPriorityEntry.getKey(),
-          regionPriorityEntry.getValue());
+          regionPriorityEntry.getValue().getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
     }
   }
 
