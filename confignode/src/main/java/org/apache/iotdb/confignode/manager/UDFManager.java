@@ -46,7 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -70,14 +69,15 @@ public class UDFManager {
   public TSStatus createFunction(TCreateFunctionReq req) {
     udfInfo.acquireUDFTableLock();
     try {
+      final boolean isUsingURI = req.isIsUsingURI();
       final String udfName = req.udfName.toUpperCase(),
-          jarName = req.getJarName(),
-          jarMD5 = req.jarMD5;
+          jarMD5 = req.getJarMD5(),
+          jarName = req.getJarName();
       final byte[] jarFile = req.getJarFile();
       udfInfo.validate(udfName, jarName, jarMD5);
 
       final UDFInformation udfInformation =
-          new UDFInformation(udfName, req.getClassName(), false, jarName, jarMD5);
+          new UDFInformation(udfName, req.getClassName(), false, isUsingURI, jarName, jarMD5);
 
       LOGGER.info("Start to create UDF [{}] on Data Nodes", udfName);
 
@@ -88,7 +88,7 @@ public class UDFManager {
         return dataNodesStatus;
       }
 
-      final boolean needToSaveJar = udfInfo.needToSaveJar(jarName);
+      final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
       LOGGER.info(
           "Start to add UDF [{}] in UDF_Table on Config Nodes, needToSaveJar[{}]",
@@ -113,7 +113,7 @@ public class UDFManager {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionInstanceReq req =
-        new TCreateFunctionInstanceReq(udfInformation.serialize(), ByteBuffer.wrap(jarFile));
+        new TCreateFunctionInstanceReq(udfInformation.serialize()).setJarFile(jarFile);
     AsyncClientHandler<TCreateFunctionInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);

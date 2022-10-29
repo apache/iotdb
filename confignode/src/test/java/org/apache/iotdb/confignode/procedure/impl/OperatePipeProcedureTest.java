@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
@@ -31,7 +33,9 @@ import org.junit.Test;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -64,6 +68,20 @@ public class OperatePipeProcedureTest {
     } catch (Exception e) {
       fail();
     }
+
+    PublicBAOS byteArrayOutputStream2 = new PublicBAOS();
+    outputStream = new DataOutputStream(byteArrayOutputStream2);
+    p1.setExecutedDataNodeIds(new HashSet<>(Arrays.asList(1, 2, 3)));
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream2.getBuf(), 0, byteArrayOutputStream2.size());
+
+      CreatePipeProcedure p2 = (CreatePipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
   }
 
   @Test
@@ -76,6 +94,21 @@ public class OperatePipeProcedureTest {
       p1.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      StartPipeProcedure p2 = (StartPipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
+
+    PublicBAOS byteArrayOutputStream2 = new PublicBAOS();
+    outputStream = new DataOutputStream(byteArrayOutputStream2);
+    p1.setPipeInfo(generateMockPipeInfo());
+    p1.setExecutedDataNodeIds(new HashSet<>(Arrays.asList(1, 2, 3)));
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream2.getBuf(), 0, byteArrayOutputStream2.size());
 
       StartPipeProcedure p2 = (StartPipeProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
@@ -100,6 +133,21 @@ public class OperatePipeProcedureTest {
     } catch (Exception e) {
       fail();
     }
+
+    PublicBAOS byteArrayOutputStream2 = new PublicBAOS();
+    outputStream = new DataOutputStream(byteArrayOutputStream2);
+    p1.setPipeInfo(generateMockPipeInfo());
+    p1.setExecutedDataNodeIds(new HashSet<>(Arrays.asList(1, 2, 3)));
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream2.getBuf(), 0, byteArrayOutputStream2.size());
+
+      StopPipeProcedure p2 = (StopPipeProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
   }
 
   @Test
@@ -118,5 +166,9 @@ public class OperatePipeProcedureTest {
     } catch (Exception e) {
       fail();
     }
+  }
+
+  private PipeInfo generateMockPipeInfo() {
+    return new TsFilePipeInfo("pipeName", "sinkName", System.currentTimeMillis(), 999, true);
   }
 }

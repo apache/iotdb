@@ -139,7 +139,7 @@ public class TriggerInfo implements SnapshotProcessor {
       triggerTable.addTriggerInformation(triggerInformation.getTriggerName(), triggerInformation);
       existedJarToMD5.put(triggerInformation.getJarName(), triggerInformation.getJarFileMD5());
       if (physicalPlan.getJarFile() != null) {
-        triggerExecutableManager.writeToLibDir(
+        triggerExecutableManager.saveToLibDir(
             ByteBuffer.wrap(physicalPlan.getJarFile().getValues()),
             triggerInformation.getJarName());
       }

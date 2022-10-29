@@ -17,18 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-public class ConsensusGroupAddPeerException extends Exception {
-  public ConsensusGroupAddPeerException(String message) {
-    super(message);
-  }
-
-  public ConsensusGroupAddPeerException(Throwable cause) {
-    super(cause);
-  }
-
-  public ConsensusGroupAddPeerException(String message, Throwable cause) {
-    super(message, cause);
-  }
+public enum UnsetTemplateState {
+  CONSTRUCT_BLACK_LIST,
+  CLEAN_DATANODE_TEMPLATE_CACHE,
+  CHECK_DATANODE_TEMPLATE_ACTIVATION,
+  UNSET_SCHEMA_TEMPLATE
 }

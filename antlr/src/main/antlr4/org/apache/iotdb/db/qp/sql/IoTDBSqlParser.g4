@@ -118,7 +118,11 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL jarLocation
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    ;
+
+uriClasue
+    : USING URI uri
     ;
 
 uri
@@ -127,7 +131,7 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL uriClasue? triggerAttributeClause?
     ;
 
 triggerType
@@ -136,10 +140,6 @@ triggerType
 
 triggerEventClause
     : (BEFORE | AFTER) (INSERT | DELETE)
-    ;
-
-jarLocation
-    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause

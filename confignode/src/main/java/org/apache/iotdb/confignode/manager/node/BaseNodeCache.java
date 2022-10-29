@@ -62,12 +62,21 @@ public abstract class BaseNodeCache {
     }
   }
 
+  /** Invoking periodically to update Node's latest NodeStatistics */
+  public abstract void updateNodeStatistics();
+
   /**
-   * Invoking periodically to update Nodes' current load statistics
+   * Actively append a custom NodeHeartbeatSample to force a change in the NodeStatistics.
    *
-   * @return NodeStatistics if some fields of statistics changed, null otherwise
+   * <p>For example, this interface can be invoked in Node removing process to forcibly change the
+   * corresponding Node's status to Removing without waiting for heartbeat sampling
+   *
+   * @param newHeartbeatSample A custom NodeHeartbeatSample that will lead to needed NodeStatistics
    */
-  public abstract NodeStatistics updateNodeStatistics();
+  public void forceUpdate(NodeHeartbeatSample newHeartbeatSample) {
+    cacheHeartbeatSample(newHeartbeatSample);
+    updateNodeStatistics();
+  }
 
   /**
    * TODO: The loadScore of each Node will be changed to Double
@@ -84,6 +93,7 @@ public abstract class BaseNodeCache {
     return NodeStatus.parse(statistics.getStatus().getStatus());
   }
 
+  /** @return The reason why lead to current NodeStatus */
   public String getNodeStatusWithReason() {
     if (statistics.getStatusReason() == null) {
       return statistics.getStatus().getStatus();
@@ -92,7 +102,7 @@ public abstract class BaseNodeCache {
     }
   }
 
-  public void setRemoving() {
-    this.statistics.setRemoving();
+  public NodeStatistics getStatistics() {
+    return statistics;
   }
 }

@@ -315,9 +315,10 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required string jarName
-  4: required binary jarFile
-  5: required string jarMD5
+  3: required bool isUsingURI
+  4: optional string jarName
+  5: optional binary jarFile
+  6: optional string jarMD5
 }
 
 struct TDropFunctionReq {
@@ -345,15 +346,15 @@ enum TTriggerState {
 struct TCreateTriggerReq {
   1: required string triggerName
   2: required string className,
-  3: required string jarPath,
-  4: required bool usingURI,
-  5: required byte triggerEvent,
-  6: required byte triggerType
-  7: required binary pathPattern,
-  8: required map<string, string> attributes,
-  9: optional binary jarFile,
-  10: optional string jarMD5,
-  11: required i32 failureStrategy
+  3: required byte triggerEvent,
+  4: required byte triggerType
+  5: required binary pathPattern,
+  6: required map<string, string> attributes,
+  7: required i32 failureStrategy
+  8: required bool isUsingURI,
+  9: optional string jarName,
+  10: optional binary jarFile,
+  11: optional string jarMD5,
 }
 
 struct TDropTriggerReq {
@@ -585,6 +586,12 @@ struct TDeactivateSchemaTemplateReq{
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
+}
+
+struct TUnsetSchemaTemplateReq{
+  1: required string queryId
+  2: required string templateName
+  3: required string path
 }
 
 service IConfigNodeRPCService {
@@ -950,6 +957,13 @@ service IConfigNodeRPCService {
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
+
+  common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
+
+  /**
+     * Drop schema template
+     */
+    common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries

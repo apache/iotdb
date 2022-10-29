@@ -53,7 +53,8 @@ public class UDFTable {
           new UDFInformation(
               functionName.toUpperCase(),
               builtinTimeSeriesGeneratingFunction.getClassName(),
-              true));
+              true,
+              false));
       functionToClassMap.put(
           functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }

@@ -137,6 +137,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -656,6 +657,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
     return configManager.deactivateSchemaTemplate(req);
+  }
+
+  @Override
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
+    return configManager.unsetSchemaTemplate(req);
+  }
+
+  @Override
+  public TSStatus dropSchemaTemplate(String req) throws TException {
+    return configManager.dropSchemaTemplate(req);
   }
 
   @Override

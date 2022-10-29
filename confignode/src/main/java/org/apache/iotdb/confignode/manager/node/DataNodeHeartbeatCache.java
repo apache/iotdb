@@ -29,13 +29,8 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     super();
   }
 
-  /** Constructor that only used when ConfigNode-leader switched */
-  public DataNodeHeartbeatCache(NodeStatistics nodeStatistics) {
-    this.statistics = nodeStatistics;
-  }
-
   @Override
-  public NodeStatistics updateNodeStatistics() {
+  public void updateNodeStatistics() {
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
@@ -56,9 +51,14 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     /* Update loadScore */
-    long loadScore = NodeStatus.isNormalStatus(status) ? -lastSendTime : Long.MAX_VALUE;
+    // Only consider Running DataNode as available currently
+    // TODO: Construct load score module
+    long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
-    return newStatistics.equals(statistics) ? null : (statistics = newStatistics);
+    if (!statistics.equals(newStatistics)) {
+      // Update NodeStatistics if necessary
+      statistics = newStatistics;
+    }
   }
 }

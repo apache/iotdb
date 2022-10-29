@@ -121,10 +121,12 @@ public class UDFInfo implements SnapshotProcessor {
     try {
       final UDFInformation udfInformation = physicalPlan.getUdfInformation();
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
-      existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
-      if (physicalPlan.getJarFile() != null) {
-        udfExecutableManager.writeToLibDir(
-            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
+      if (udfInformation.isUsingURI()) {
+        existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+        if (physicalPlan.getJarFile() != null) {
+          udfExecutableManager.saveToInstallDir(
+              ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
+        }
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
@@ -150,7 +152,7 @@ public class UDFInfo implements SnapshotProcessor {
       for (String jarName : physicalPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
-                UDFExecutableManager.getInstance().getFileStringUnderLibRootByName(jarName)));
+                UDFExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
       }
     } catch (Exception e) {
       LOGGER.error("Get UDF_Jar failed", e);
