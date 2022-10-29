@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.manager;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -63,7 +64,8 @@ public class LocalSyncManager implements ISyncManager {
 
     for (String device : devices) {
       try {
-        PartialPath path = new PartialPath(device);
+        PartialPath path =
+            new PartialPath(device).concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
         if (deletion.getPath().overlapWith(path)) {
           Deletion splitDeletion =
               new Deletion(path, 0, deletion.getStartTime(), deletion.getEndTime());
