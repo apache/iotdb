@@ -219,11 +219,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   public void changeConfig(Properties properties) {
     try {
       String commonConfigPath = getCommonConfigPath();
-      Properties configProperties = new Properties();
+      Properties commonConfigProperties = new Properties();
       try (InputStream confInput = Files.newInputStream(Paths.get(commonConfigPath))) {
-        configProperties.load(confInput);
+        commonConfigProperties.load(confInput);
       }
       String configPath = getConfigPath();
+      Properties configProperties = new Properties();
+      configProperties.putAll(commonConfigProperties);
       try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
         configProperties.load(confInput);
       }
