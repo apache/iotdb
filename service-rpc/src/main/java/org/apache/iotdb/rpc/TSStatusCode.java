@@ -174,9 +174,15 @@ public enum TSStatusCode {
   OVERLAP_WITH_EXISTING_TASK(920),
   NOT_AVAILABLE_REGION_GROUP(921),
   CREATE_TRIGGER_ERROR(922),
-  DROP_TRIGGER_ERROR(923);
+  DROP_TRIGGER_ERROR(923),
+  UPDATE_DATANODE_FAILED(924),
 
-  private int statusCode;
+  NO_SUCH_CQ(930),
+  CQ_ALREADY_ACTIVE(931),
+  CQ_AlREADY_EXIST(932),
+  CQ_UPDATE_LAST_EXEC_TIME_FAILED(933);
+
+  private final int statusCode;
 
   private static final Map<Integer, TSStatusCode> CODE_MAP = new HashMap<>();
 

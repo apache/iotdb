@@ -22,8 +22,10 @@ package org.apache.iotdb.commons.udf;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class UDFTable {
   private final Map<String, UDFInformation> udfInformationMap;
@@ -46,7 +48,8 @@ public class UDFTable {
           new UDFInformation(
               functionName.toUpperCase(),
               builtinTimeSeriesGeneratingFunction.getClassName(),
-              true));
+              true,
+              false));
       functionToClassMap.put(
           functionName.toUpperCase(), builtinTimeSeriesGeneratingFunction.getFunctionClass());
     }
@@ -84,6 +87,12 @@ public class UDFTable {
 
   public UDFInformation[] getAllUDFInformation() {
     return udfInformationMap.values().toArray(new UDFInformation[0]);
+  }
+
+  public List<UDFInformation> getAllNonBuiltInUDFInformation() {
+    return udfInformationMap.values().stream()
+        .filter(udfInformation -> !udfInformation.isBuiltin())
+        .collect(Collectors.toList());
   }
 
   public boolean containsUDF(String udfName) {

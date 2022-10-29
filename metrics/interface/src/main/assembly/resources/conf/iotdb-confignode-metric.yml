@@ -34,11 +34,6 @@ monitorType: MICROMETER
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
-# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - FILE
-
 # The period of the collection of some metrics in asynchronous way, such as tsfile size.
 asyncCollectPeriodInSecond: 5
 
@@ -52,5 +47,5 @@ ioTDBReporterConfig:
   username: root
   password: root
   maxConnectionNumber: 3
-  database: _metric
+  database: metric
   pushPeriodInSecond: 15

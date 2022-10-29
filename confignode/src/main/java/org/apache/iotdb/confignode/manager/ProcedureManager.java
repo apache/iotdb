@@ -41,12 +41,14 @@ import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
@@ -60,6 +62,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -78,6 +81,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ProcedureManager {
@@ -255,6 +259,50 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus unsetSchemaTemplate(String queryId, Template template, PartialPath path) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      UnsetTemplateProcedure unsetTemplateProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureFactory.ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+          continue;
+        }
+        unsetTemplateProcedure = (UnsetTemplateProcedure) procedure;
+        if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
+          procedureId = unsetTemplateProcedure.getProcId();
+          break;
+        }
+        if (template.getId() == unsetTemplateProcedure.getTemplateId()
+            && path.equals(unsetTemplateProcedure.getPath())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is unsetting target template from target path "
+                  + path.getFullPath());
+        }
+        procedureId =
+            this.executor.submitProcedure(new UnsetTemplateProcedure(queryId, template, path));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
@@ -355,6 +403,13 @@ public class ProcedureManager {
       return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
+  }
+
+  public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
+    long procedureId = executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
+    List<TSStatus> statusList = new ArrayList<>();
+    waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    return statusList.get(0);
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {

@@ -22,12 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -103,8 +103,8 @@ public class LoadManagerMetrics implements IMetricSet {
   private Integer getLeadershipCountByDatanode(int dataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
-    getPartitionManager()
-        .getAllLeadership()
+    getLoadManager()
+        .getLatestRegionLeaderMap()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
     return idToCountMap.get(dataNodeId);
   }
@@ -185,6 +185,10 @@ public class LoadManagerMetrics implements IMetricSet {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   private int getRunningConfigNodesNum(AbstractMetricService metricService) {

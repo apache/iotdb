@@ -25,10 +25,17 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -39,7 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +62,10 @@ public class UDFManager {
     this.udfInfo = udfInfo;
   }
 
+  public UDFInfo getUdfInfo() {
+    return udfInfo;
+  }
+
   public TSStatus createFunction(TCreateFunctionReq req) {
     udfInfo.acquireUDFTableLock();
     try {
@@ -65,7 +76,7 @@ public class UDFManager {
       udfInfo.validate(udfName, jarName, jarMD5);
 
       final UDFInformation udfInformation =
-          new UDFInformation(udfName, req.getClassName(), false, jarName, jarMD5);
+          new UDFInformation(udfName, req.getClassName(), false, true, jarName, jarMD5);
 
       LOGGER.info("Start to create UDF [{}] on Data Nodes", udfName);
 
@@ -101,7 +112,7 @@ public class UDFManager {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionInstanceReq req =
-        new TCreateFunctionInstanceReq(udfInformation.serialize(), ByteBuffer.wrap(jarFile));
+        new TCreateFunctionInstanceReq(udfInformation.serialize());
     AsyncClientHandler<TCreateFunctionInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
@@ -109,18 +120,26 @@ public class UDFManager {
   }
 
   public TSStatus dropFunction(String functionName) {
+    functionName = functionName.toUpperCase();
+    udfInfo.acquireUDFTableLock();
     try {
-      final List<TSStatus> nodeResponseList = dropFunctionOnDataNodes(functionName);
-      final TSStatus configNodeStatus =
-          configManager.getConsensusManager().write(new DropFunctionPlan(functionName)).getStatus();
-      nodeResponseList.add(configNodeStatus);
-      return RpcUtils.squashResponseStatusList(nodeResponseList);
+      udfInfo.validate(functionName);
+
+      TSStatus result = RpcUtils.squashResponseStatusList(dropFunctionOnDataNodes(functionName));
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result;
+      }
+
+      return configManager
+          .getConsensusManager()
+          .write(new DropFunctionPlan(functionName))
+          .getStatus();
     } catch (Exception e) {
-      final String errorMessage =
-          String.format("Failed to deregister UDF %s, because of exception: %s", functionName, e);
-      LOGGER.warn(errorMessage, e);
+      LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(errorMessage);
+          .setMessage(e.getMessage());
+    } finally {
+      udfInfo.releaseUDFTableLock();
     }
   }
 
@@ -134,5 +153,36 @@ public class UDFManager {
         new AsyncClientHandler<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
+  }
+
+  public TGetUDFTableResp getUDFTable() {
+    try {
+      return ((FunctionTableResp)
+              configManager.getConsensusManager().read(new GetFunctionTablePlan()).getDataset())
+          .convertToThriftResponse();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get TriggerTable", e);
+      return new TGetUDFTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
+  }
+
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
+    try {
+      return ((JarResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new GetUDFJarPlan(req.getJarNameList()))
+                  .getDataset())
+          .convertToThriftResponse();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get TriggerJar", e);
+      return new TGetJarInListResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
   }
 }

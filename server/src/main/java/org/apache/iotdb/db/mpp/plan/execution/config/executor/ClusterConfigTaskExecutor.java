@@ -34,12 +34,14 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
@@ -56,6 +58,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -66,12 +69,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
@@ -80,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTas
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
@@ -92,6 +98,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -111,6 +118,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -140,6 +148,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -274,52 +283,62 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     String className = createFunctionStatement.getClassName();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TCreateFunctionReq tCreateFunctionReq = new TCreateFunctionReq(udfName, className, false);
       String libRoot = UDFExecutableManager.getInstance().getLibRoot();
       String jarFileName;
       ByteBuffer jarFile;
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
-        try {
-          // download executable
-          ExecutableResource resource =
-              UDFExecutableManager.getInstance()
-                  .request(Collections.singletonList(createFunctionStatement.getJarPath()));
-          String uriString = createFunctionStatement.getJarPath();
-          jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
-          // move to ext
-          UDFExecutableManager.getInstance()
-              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
-          // jarFilePath after moving to ext lib
-          String jarFilePathUnderLib =
-              UDFExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
-          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderLib);
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib)));
+        String uriString = createFunctionStatement.getUriString();
+        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        if (!new URI(uriString).getScheme().equals("file")) {
+          try {
+            // download executable
+            ExecutableResource resource =
+                UDFExecutableManager.getInstance().request(Collections.singletonList(uriString));
+            String jarFilePathUnderTempDir =
+                UDFExecutableManager.getInstance()
+                        .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                    + File.separator
+                    + jarFileName;
+            // libRoot should be the path of the specified jar
+            libRoot = jarFilePathUnderTempDir;
+            jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
 
-        } catch (IOException | URISyntaxException e) {
-          LOGGER.warn(
-              "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
-              createFunctionStatement.getUdfName(),
-              createFunctionStatement.getJarPath(),
-              e);
-          future.setException(
-              new IoTDBException(
-                  "Failed to download executable for UDF '"
-                      + createFunctionStatement.getUdfName()
-                      + "'",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
+          } catch (IOException | URISyntaxException e) {
+            LOGGER.warn(
+                "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
+                createFunctionStatement.getUdfName(),
+                createFunctionStatement.getUriString(),
+                e);
+            future.setException(
+                new IoTDBException(
+                    "Failed to download executable for UDF '"
+                        + createFunctionStatement.getUdfName()
+                        + "'",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+        } else {
+          // libRoot should be the path of the specified jar
+          libRoot = new URI(uriString).getRawPath();
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // ConfigNode.
+          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+          // set md5 of the jar file
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
-      } else {
-        // change libRoot
-        libRoot = createFunctionStatement.getJarPath();
-
-        jarFileName = new File(createFunctionStatement.getJarPath()).getName();
-        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        jarFile = ExecutableManager.transferToBytebuffer(createFunctionStatement.getJarPath());
-        // set md5 of the jar file
-        jarMd5 =
-            DigestUtils.md5Hex(
-                Files.newInputStream(Paths.get(createFunctionStatement.getJarPath())));
+        // modify req
+        tCreateFunctionReq.setJarFile(jarFile);
+        tCreateFunctionReq.setJarMD5(jarMd5);
+        tCreateFunctionReq.setIsUsingURI(true);
+        tCreateFunctionReq.setJarName(
+            String.format(
+                "%s-%s.%s",
+                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                jarMd5,
+                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
       // try to create instance, this request will fail if creation is not successful
@@ -336,19 +355,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to load class '"
                     + createFunctionStatement.getClassName()
                     + "', because it's not found in jar file: "
-                    + createFunctionStatement.getJarPath(),
+                    + createFunctionStatement.getUriString(),
                 TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
 
-      final TSStatus executionStatus =
-          client.createFunction(
-              new TCreateFunctionReq(
-                  createFunctionStatement.getUdfName(),
-                  createFunctionStatement.getClassName(),
-                  jarFileName,
-                  jarFile,
-                  jarMd5));
+      final TSStatus executionStatus = client.createFunction(tCreateFunctionReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.error(
             "Failed to create function {}({}) because {}",
@@ -359,7 +371,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (TException | IOException | URISyntaxException e) {
       future.setException(e);
     }
     return future;
@@ -411,64 +423,74 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+
       TCreateTriggerReq tCreateTriggerReq =
           new TCreateTriggerReq(
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getClassName(),
-              createTriggerStatement.getJarPath(),
-              createTriggerStatement.isUsingURI(),
               createTriggerStatement.getTriggerEvent().getId(),
               createTriggerStatement.getTriggerType().getId(),
               createTriggerStatement.getPathPattern().serialize(),
               createTriggerStatement.getAttributes(),
-              FailureStrategy.OPTIMISTIC.getId()); // set default strategy
+              FailureStrategy.OPTIMISTIC.getId(),
+              createTriggerStatement.isUsingURI()); // set default strategy
 
       String libRoot = TriggerExecutableManager.getInstance().getLibRoot();
+      String jarFileName;
+      ByteBuffer jarFile;
+      String jarMd5;
       if (createTriggerStatement.isUsingURI()) {
-        try {
-          // download executable
-          ExecutableResource resource =
-              TriggerExecutableManager.getInstance()
-                  .request(Collections.singletonList(createTriggerStatement.getJarPath()));
-          String uriString = createTriggerStatement.getJarPath();
-          String jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
-          // move to ext
-          TriggerExecutableManager.getInstance()
-              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
-          tCreateTriggerReq.setJarPath(jarFileName);
-          // jarFilePath after moving to ext lib
-          String jarFilePathUnderLib =
-              TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
-          tCreateTriggerReq.setJarFile(ExecutableManager.transferToBytebuffer(jarFilePathUnderLib));
-          tCreateTriggerReq.setJarMD5(
-              DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
+        String uriString = createTriggerStatement.getUriString();
+        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        if (!new URI(uriString).getScheme().equals("file")) {
+          try {
+            // download executable
+            ExecutableResource resource =
+                TriggerExecutableManager.getInstance()
+                    .request(Collections.singletonList(uriString));
+            String jarFilePathUnderTempDir =
+                TriggerExecutableManager.getInstance()
+                        .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                    + File.separator
+                    + jarFileName;
+            // libRoot should be the path of the specified jar
+            libRoot = jarFilePathUnderTempDir;
+            jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
 
-        } catch (IOException | URISyntaxException e) {
-          LOGGER.warn(
-              "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
-              createTriggerStatement.getTriggerName(),
-              createTriggerStatement.getJarPath(),
-              e);
-          future.setException(
-              new IoTDBException(
-                  "Failed to download executable for trigger '"
-                      + createTriggerStatement.getTriggerName()
-                      + "'",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
+          } catch (IOException | URISyntaxException e) {
+            LOGGER.warn(
+                "Failed to download executable for Trigger({}) using URI: {}, the cause is: {}",
+                createTriggerStatement.getTriggerName(),
+                createTriggerStatement.getUriString(),
+                e);
+            future.setException(
+                new IoTDBException(
+                    "Failed to download executable for Trigger '"
+                        + createTriggerStatement.getUriString()
+                        + "'",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+        } else {
+          // libRoot should be the path of the specified jar
+          libRoot = new URI(uriString).getRawPath();
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // ConfigNode.
+          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+          // set md5 of the jar file
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
-      } else {
-        // change libRoot
-        libRoot = createTriggerStatement.getJarPath();
-        // set jarPath to file name instead of the full path
-        tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
-        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        tCreateTriggerReq.setJarFile(
-            ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
-        // set md5 of the jar file
-        tCreateTriggerReq.setJarMD5(
-            DigestUtils.md5Hex(
-                Files.newInputStream(Paths.get(createTriggerStatement.getJarPath()))));
+        // modify req
+        tCreateTriggerReq.setJarFile(jarFile);
+        tCreateTriggerReq.setJarMD5(jarMd5);
+        tCreateTriggerReq.setIsUsingURI(true);
+        tCreateTriggerReq.setJarName(
+            String.format(
+                "%s-%s.%s",
+                jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                jarMd5,
+                jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
       }
 
       // try to create instance, this request will fail if creation is not successful
@@ -491,7 +513,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to load class '"
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
-                    + createTriggerStatement.getJarPath(),
+                    + createTriggerStatement.getUriString(),
                 TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
         return future;
       }
@@ -508,7 +530,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (TException | IOException | URISyntaxException e) {
       future.setException(e);
     }
     return future;
@@ -947,8 +969,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute deactivate schema template {} from {} in config node, status is {}.",
-            deactivateTemplateStatement.getPathPatternList(),
             deactivateTemplateStatement.getTemplateName(),
+            deactivateTemplateStatement.getPathPatternList(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
@@ -974,6 +996,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // memory operation, won't happen
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> unsetSchemaTemplate(
+      String queryId, UnsetSchemaTemplateStatement unsetSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TUnsetSchemaTemplateReq req = new TUnsetSchemaTemplateReq();
+    req.setQueryId(queryId);
+    req.setTemplateName(unsetSchemaTemplateStatement.getTemplateName());
+    req.setPath(unsetSchemaTemplateStatement.getPath().getFullPath());
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
+            ConfigNodeInfo.partitionRegionId)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.unsetSchemaTemplate(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute unset schema template {} from {} in config node, status is {}.",
+            unsetSchemaTemplateStatement.getTemplateName(),
+            unsetSchemaTemplateStatement.getPath(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override
@@ -1264,6 +1329,85 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     GetTimeSlotListTask.buildTSBlock(resp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createContinuousQuery(
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
+    createContinuousQueryStatement.semanticCheck();
+
+    String queryBody = createContinuousQueryStatement.getQueryBody();
+    // TODO Do not modify Statement in Analyzer
+    Analyzer.validate(createContinuousQueryStatement.getQueryBodyStatement());
+
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TCreateCQReq tCreateCQReq =
+          new TCreateCQReq(
+              createContinuousQueryStatement.getCqId(),
+              createContinuousQueryStatement.getEveryInterval(),
+              createContinuousQueryStatement.getBoundaryTime(),
+              createContinuousQueryStatement.getStartTimeOffset(),
+              createContinuousQueryStatement.getEndTimeOffset(),
+              createContinuousQueryStatement.getTimeoutPolicy().getType(),
+              queryBody,
+              sql,
+              createContinuousQueryStatement.getZoneId(),
+              username);
+      final TSStatus executionStatus = client.createCQ(tCreateCQReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.error(
+            "[{}] Failed to create continuous query {}. TSStatus is {}",
+            executionStatus,
+            createContinuousQueryStatement.getCqId(),
+            executionStatus.message);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      final TSStatus executionStatus = client.dropCQ(new TDropCQReq(cqId));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.error("[{}] Failed to drop continuous query {}.", executionStatus, cqId);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showContinuousQueries() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TShowCQResp showCQResp = client.showCQ();
+      if (showCQResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showCQResp.getStatus().message, showCQResp.getStatus().code));
+        return future;
+      }
+      // convert cqList and buildTsBlock
+      ShowContinuousQueriesTask.buildTsBlock(showCQResp.getCqList(), future);
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+
     return future;
   }
 }

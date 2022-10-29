@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -49,17 +50,21 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -71,11 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -91,6 +92,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -100,6 +102,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -298,6 +301,11 @@ public class ConfigNodeClient
         }
         configNodes = newConfigNodes;
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -310,6 +318,27 @@ public class ConfigNodeClient
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRemoveResp resp = client.removeDataNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TDataNodeRegisterResp resp = client.updateDataNode(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -330,6 +359,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -346,6 +380,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -362,6 +401,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -378,6 +422,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -394,6 +443,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -410,6 +464,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -427,6 +486,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -445,6 +509,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -461,6 +530,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -477,6 +551,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -493,6 +572,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -509,6 +593,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -526,6 +615,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -543,6 +637,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -560,6 +659,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -576,6 +680,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -593,6 +702,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -609,6 +723,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -625,6 +744,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -641,6 +765,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -657,6 +786,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -703,6 +837,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -719,6 +858,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -735,6 +879,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -751,6 +900,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -767,6 +921,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -783,6 +942,11 @@ public class ConfigNodeClient
           return showRegionResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -800,6 +964,11 @@ public class ConfigNodeClient
           return showDataNodesResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -816,6 +985,11 @@ public class ConfigNodeClient
           return showConfigNodesResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -834,6 +1008,11 @@ public class ConfigNodeClient
           return showStorageGroupResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -850,6 +1029,11 @@ public class ConfigNodeClient
           return regionRouteMapResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -871,6 +1055,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -887,6 +1076,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -911,10 +1105,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetUDFJarResp getUDFJar(TGetUDFJarReq req) throws TException {
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetUDFJarResp resp = client.getUDFJar(req);
+        TGetJarInListResp resp = client.getUDFJar(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
@@ -935,6 +1129,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -951,6 +1150,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -968,6 +1172,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -983,6 +1192,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -999,6 +1213,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1007,14 +1226,19 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) throws TException {
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetTriggerJarResp resp = client.getTriggerJar(req);
+        TGetJarInListResp resp = client.getTriggerJar(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1031,6 +1255,11 @@ public class ConfigNodeClient
           return tsStatus;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1047,6 +1276,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1063,6 +1297,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1079,6 +1318,11 @@ public class ConfigNodeClient
           return tsStatus;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1095,6 +1339,11 @@ public class ConfigNodeClient
           return tGetPathsSetTemplatesResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1107,6 +1356,27 @@ public class ConfigNodeClient
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.deactivateSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.unsetSchemaTemplate(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -1127,6 +1397,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1143,6 +1418,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1159,6 +1439,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1175,6 +1460,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1191,6 +1481,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1207,6 +1502,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1223,6 +1523,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1239,6 +1544,11 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1255,6 +1565,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1287,6 +1602,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1303,6 +1623,11 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
       reconnect();
@@ -1315,6 +1640,59 @@ public class ConfigNodeClient
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TGetSeriesSlotListResp resp = client.getSeriesSlotList(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createCQ(TCreateCQReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createCQ(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropCQ(TDropCQReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropCQ(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowCQResp showCQ() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowCQResp resp = client.showCQ();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

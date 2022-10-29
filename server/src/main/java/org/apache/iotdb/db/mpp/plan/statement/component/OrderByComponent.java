@@ -89,4 +89,16 @@ public class OrderByComponent extends StatementNode {
     checkState(timeOrderPriority != -1, "The device order is not specified.");
     return sortItemList.get(deviceOrderPriority).getOrdering();
   }
+
+  public String toSQLString() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("ORDER BY ");
+    for (int i = 0; i < sortItemList.size(); i++) {
+      sqlBuilder.append(sortItemList.get(i).toSQLString());
+      if (i < sortItemList.size() - 1) {
+        sqlBuilder.append(", ");
+      }
+    }
+    return sqlBuilder.toString();
+  }
 }

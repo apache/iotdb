@@ -39,14 +39,21 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTrigger
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -73,7 +80,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
@@ -85,6 +95,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -127,6 +138,8 @@ public class ConfigPlanExecutor {
   private final TriggerInfo triggerInfo;
   private final ClusterSyncInfo syncInfo;
 
+  private final CQInfo cqInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -135,7 +148,8 @@ public class ConfigPlanExecutor {
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
-      ClusterSyncInfo syncInfo) {
+      ClusterSyncInfo syncInfo,
+      CQInfo cqInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
@@ -144,6 +158,7 @@ public class ConfigPlanExecutor {
     this.udfInfo = udfInfo;
     this.triggerInfo = triggerInfo;
     this.syncInfo = syncInfo;
+    this.cqInfo = cqInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -203,6 +218,12 @@ public class ConfigPlanExecutor {
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
+      case SHOW_CQ:
+        return cqInfo.showCQ((ShowCQPlan) req);
+      case GetFunctionTable:
+        return udfInfo.getUDFTable();
+      case GetFunctionJar:
+        return udfInfo.getUDFJar((GetUDFJarPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -215,6 +236,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
+      case UpdateDataNodeConfiguration:
+        return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
       case SetStorageGroup:
         TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -291,6 +314,13 @@ public class ConfigPlanExecutor {
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
+      case PreUnsetTemplate:
+        return clusterSchemaInfo.preUnsetSchemaTemplate((PreUnsetSchemaTemplatePlan) physicalPlan);
+      case RollbackUnsetTemplate:
+        return clusterSchemaInfo.rollbackUnsetSchemaTemplate(
+            (RollbackPreUnsetSchemaTemplatePlan) physicalPlan);
+      case UnsetTemplate:
+        return clusterSchemaInfo.unsetSchemaTemplate((UnsetSchemaTemplatePlan) physicalPlan);
       case CreatePipeSink:
         return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
       case DropPipeSink:
@@ -301,12 +331,21 @@ public class ConfigPlanExecutor {
         return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
       case DropPipe:
         return syncInfo.dropPipe((DropPipePlan) physicalPlan);
+      case ADD_CQ:
+        return cqInfo.addCQ((AddCQPlan) physicalPlan);
+      case DROP_CQ:
+        return cqInfo.dropCQ((DropCQPlan) physicalPlan);
+      case ACTIVE_CQ:
+        return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
+      case UPDATE_CQ_LAST_EXEC_TIME:
+        return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
       case UpdateLoadStatistics:
         LOGGER.info(
             "[UpdateLoadStatistics] Update cluster load statistics, timestamp: {}",
             System.currentTimeMillis());
         nodeInfo.updateNodeStatistics((UpdateLoadStatisticsPlan) physicalPlan);
-        return partitionInfo.updateRegionGroupStatistics((UpdateLoadStatisticsPlan) physicalPlan);
+        return partitionInfo.updateRegionGroupStatisticsAndRegionRouteMap(
+            (UpdateLoadStatisticsPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

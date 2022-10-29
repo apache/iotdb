@@ -65,7 +65,7 @@ public class RegionCache {
       status = lastSample.getStatus();
     }
 
-    return new RegionStatistics(lastSample.getSendTimestamp(), lastSample.isLeader(), status);
+    return new RegionStatistics(status);
   }
 
   private RegionHeartbeatSample getLastSample() {
