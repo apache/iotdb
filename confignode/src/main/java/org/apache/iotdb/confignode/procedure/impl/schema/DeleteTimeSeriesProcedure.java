@@ -220,7 +220,7 @@ public class DeleteTimeSeriesProcedure
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
         getLeaderDataNodeRegionGroupMap(
-            env.getConfigManager().getPartitionManager().getAllLeadership(),
+            env.getConfigManager().getLoadManager().getLatestRegionLeaderMap(),
             relatedSchemaRegionGroup);
 
     // fetch schema black list by dataNode

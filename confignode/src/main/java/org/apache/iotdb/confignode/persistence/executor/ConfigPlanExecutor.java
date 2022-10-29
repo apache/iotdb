@@ -369,7 +369,8 @@ public class ConfigPlanExecutor {
             "[UpdateLoadStatistics] Update cluster load statistics, timestamp: {}",
             System.currentTimeMillis());
         nodeInfo.updateNodeStatistics((UpdateLoadStatisticsPlan) physicalPlan);
-        return partitionInfo.updateRegionGroupStatistics((UpdateLoadStatisticsPlan) physicalPlan);
+        return partitionInfo.updateRegionGroupStatisticsAndRegionRouteMap(
+            (UpdateLoadStatisticsPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

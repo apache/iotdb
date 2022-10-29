@@ -19,28 +19,15 @@
 package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
-import org.apache.iotdb.consensus.ConsensusFactory;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupCache {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
-
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      CONF.getDataRegionConsensusProtocolClass();
 
   private final TConsensusGroupId consensusGroupId;
 
@@ -57,14 +44,6 @@ public class RegionGroupCache {
     this.statistics = RegionGroupStatistics.generateDefaultRegionGroupStatistics();
   }
 
-  public RegionGroupCache(
-      TConsensusGroupId consensusGroupId, RegionGroupStatistics regionGroupStatistics) {
-    this.consensusGroupId = consensusGroupId;
-    this.regionCacheMap = new ConcurrentHashMap<>();
-
-    this.statistics = regionGroupStatistics;
-  }
-
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
     regionCacheMap
         .computeIfAbsent(dataNodeId, empty -> new RegionCache())
@@ -77,42 +56,24 @@ public class RegionGroupCache {
    * <p>1. RegionGroupStatus
    *
    * <p>2. RegionStatus
-   *
-   * <p>2. LeaderDataNodeId
-   *
-   * @return RegionGroupStatistics if some fields of statistics changed, null otherwise
    */
-  public RegionGroupStatistics updateRegionGroupStatistics() {
-    long updateVersion = Long.MIN_VALUE;
-    int leaderDataNodeId = -1;
+  public void updateRegionGroupStatistics() {
     Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
       // Update RegionStatistics
       RegionStatistics regionStatistics = cacheEntry.getValue().getRegionStatistics();
       regionStatisticsMap.put(cacheEntry.getKey(), regionStatistics);
-
-      // Update leaderDataNodeId
-      if (regionStatistics.getVersionTimestamp() > updateVersion && regionStatistics.isLeader()) {
-        updateVersion = regionStatistics.getVersionTimestamp();
-        leaderDataNodeId = cacheEntry.getKey();
-      }
-    }
-
-    // Keep leaderDataNodeId as the default value when
-    // using the MultiLeader consensus protocol
-    if (ConsensusFactory.MultiLeaderConsensus.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
-        && TConsensusGroupType.DataRegion.equals(consensusGroupId.getType())) {
-      leaderDataNodeId = -1;
     }
 
     // Update RegionGroupStatus
     RegionGroupStatus status = updateRegionGroupStatus(regionStatisticsMap);
 
     RegionGroupStatistics newRegionGroupStatistics =
-        new RegionGroupStatistics(leaderDataNodeId, status, regionStatisticsMap);
-    return newRegionGroupStatistics.equals(statistics)
-        ? null
-        : (statistics = newRegionGroupStatistics);
+        new RegionGroupStatistics(status, regionStatisticsMap);
+    if (!statistics.equals(newRegionGroupStatistics)) {
+      // Update RegionGroupStatistics if necessary
+      statistics = newRegionGroupStatistics;
+    }
   }
 
   private RegionGroupStatus updateRegionGroupStatus(
@@ -142,10 +103,26 @@ public class RegionGroupCache {
     }
   }
 
+  /**
+   * Actively append custom NodeHeartbeatSamples to force a change in the RegionGroupStatistics.
+   *
+   * <p>For example, this interface can be invoked in RegionGroup creating process to forcibly
+   * activate the corresponding RegionGroup's status to Available without waiting for heartbeat
+   * sampling
+   *
+   * @param newHeartbeatSamples Custom RegionHeartbeatSamples that will lead to needed
+   *     RegionGroupStatistics
+   */
+  public void forceUpdate(Map<Integer, RegionHeartbeatSample> newHeartbeatSamples) {
+    newHeartbeatSamples.forEach(this::cacheHeartbeatSample);
+    updateRegionGroupStatistics();
+  }
+
   public void removeCacheIfExists(int dataNodeId) {
     regionCacheMap.remove(dataNodeId);
   }
 
+  /** @return The latest RegionGroupStatistics of the current RegionGroup */
   public RegionGroupStatistics getStatistics() {
     return statistics;
   }

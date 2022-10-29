@@ -25,18 +25,13 @@ public class RegionHeartbeatSample {
   // Unit: ms
   private final long sendTimestamp;
   private final long receiveTimestamp;
-
-  private final boolean isLeader;
   private final RegionStatus status;
 
   // TODO: Add load sample
 
-  public RegionHeartbeatSample(
-      long sendTimestamp, long receiveTimestamp, boolean isLeader, RegionStatus status) {
+  public RegionHeartbeatSample(long sendTimestamp, long receiveTimestamp, RegionStatus status) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
-
-    this.isLeader = isLeader;
     this.status = status;
   }
 
@@ -46,10 +41,6 @@ public class RegionHeartbeatSample {
 
   public long getReceiveTimestamp() {
     return receiveTimestamp;
-  }
-
-  public boolean isLeader() {
-    return isLeader;
   }
 
   public RegionStatus getStatus() {

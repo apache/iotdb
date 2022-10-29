@@ -105,6 +105,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
@@ -1169,20 +1170,47 @@ public class ConfigPhysicalPlanSerDeTest {
   public void UpdateLoadStatisticsPlanTest() throws IOException {
     UpdateLoadStatisticsPlan updateLoadStatisticsPlan0 = new UpdateLoadStatisticsPlan();
 
+    // Set NodeStatistics
     for (int i = 0; i < 3; i++) {
       updateLoadStatisticsPlan0.putNodeStatistics(
           i, new NodeStatistics(i, NodeStatus.Running, null));
     }
 
+    // Set RegionGroupStatistics
     for (int i = 0; i < 10; i++) {
       Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
       for (int j = 0; j < 3; j++) {
-        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
+        regionStatisticsMap.put(j, new RegionStatistics(RegionStatus.Unknown));
       }
       updateLoadStatisticsPlan0.putRegionGroupStatistics(
           new TConsensusGroupId(DataRegion, i),
-          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
+          new RegionGroupStatistics(RegionGroupStatus.Available, regionStatisticsMap));
     }
+
+    // Set RegionRouteMap
+    RegionRouteMap regionRouteMap = new RegionRouteMap();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new HashMap<>();
+    for (int i = 0; i < 10; i++) {
+      TConsensusGroupId regionGroupId = new TConsensusGroupId(SchemaRegion, i);
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      regionReplicaSet.setRegionId(regionGroupId);
+      for (int j = 0; j < 3; j++) {
+        regionReplicaSet.addToDataNodeLocations(
+            new TDataNodeLocation(
+                j,
+                new TEndPoint("0.0.0.0", 6667 + j),
+                new TEndPoint("0.0.0.0", 9003 + j),
+                new TEndPoint("0.0.0.0", 8777 + j),
+                new TEndPoint("0.0.0.0", 40010 + j),
+                new TEndPoint("0.0.0.0", 50010 + j)));
+      }
+      regionLeaderMap.put(regionGroupId, i % 3);
+      regionPriorityMap.put(regionGroupId, regionReplicaSet);
+    }
+    regionRouteMap.setRegionLeaderMap(regionLeaderMap);
+    regionRouteMap.setRegionPriorityMap(regionPriorityMap);
+    updateLoadStatisticsPlan0.setRegionRouteMap(regionRouteMap);
 
     UpdateLoadStatisticsPlan updateLoadStatisticsPlan1 =
         (UpdateLoadStatisticsPlan)

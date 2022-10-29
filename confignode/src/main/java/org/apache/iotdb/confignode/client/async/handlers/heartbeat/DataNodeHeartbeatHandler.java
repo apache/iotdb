@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -37,14 +39,17 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final TDataNodeLocation dataNodeLocation;
   private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
+  private final RouteBalancer routeBalancer;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
-      Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap) {
+      Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
+      RouteBalancer routeBalancer) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
+    this.routeBalancer = routeBalancer;
   }
 
   @Override
@@ -58,8 +63,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     // Update RegionGroupCache
     heartbeatResp
         .getJudgedLeaders()
+        .keySet()
         .forEach(
-            (consensusGroupId, isLeader) ->
+            consensusGroupId ->
                 regionGroupCacheMap
                     .computeIfAbsent(
                         consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
@@ -68,9 +74,21 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                         new RegionHeartbeatSample(
                             heartbeatResp.getHeartbeatTimestamp(),
                             receiveTime,
-                            isLeader,
                             // Region will inherit DataNode's status
                             RegionStatus.parse(heartbeatResp.getStatus()))));
+
+    // Update leaderCache
+    heartbeatResp
+        .getJudgedLeaders()
+        .forEach(
+            (consensusGroupId, isLeader) -> {
+              if (isLeader) {
+                routeBalancer.cacheLeaderSample(
+                    consensusGroupId,
+                    new Pair<>(
+                        heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
+              }
+            });
   }
 
   @Override

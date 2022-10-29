@@ -113,6 +113,23 @@ public class StorageGroupPartitionTable {
 
     return result;
   }
+  /**
+   * Get all RegionGroups currently owned by this StorageGroup
+   *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        result.add(regionGroup.getReplicaSet());
+      }
+    }
+
+    return result;
+  }
 
   /**
    * Get all RegionGroups currently owned by this StorageGroup
