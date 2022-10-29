@@ -442,4 +442,9 @@ public class TsFileManager {
       return false;
     }
   }
+
+  public boolean isLatestTimePartition(long timePartitionId) {
+    return !(sequenceFiles.higherKey(timePartitionId) != null
+        || unsequenceFiles.higherKey(timePartitionId) != null);
+  }
 }

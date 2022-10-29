@@ -19,26 +19,19 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
-/**
- * This class manages last time and flush time for sequence and unsequence determination This class
- * This class is NOT thread safe, caller should ensure synchronization
- */
-public class LastFlushTimeManager implements ILastFlushTimeManager {
-  private static final Logger logger = LoggerFactory.getLogger(LastFlushTimeManager.class);
-  /*
-   * time partition id -> map, which contains
-   * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
-   * changes upon timestamps of each device, and is used to update partitionLatestFlushedTimeForEachDevice
-   * when a flush is issued.
-   */
-  private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
+public class HashLastFlushTimeMap implements ILastFlushTimeMap {
+
+  private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
+
   /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
    * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a
@@ -58,17 +51,11 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
    */
   private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
 
-  // region set
-  @Override
-  public void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap) {
-    latestTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-        .putAll(lastTimeMap);
-  }
+  /** used for recovering flush time from tsfile resource */
+  TsFileManager tsFileManager;
 
-  @Override
-  public void setOneDeviceLastTime(long timePartitionId, String path, long time) {
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>()).put(path, time);
+  public HashLastFlushTimeMap(TsFileManager tsFileManager) {
+    this.tsFileManager = tsFileManager;
   }
 
   @Override
@@ -95,17 +82,6 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
     globalLatestFlushedTimeForEachDevice.put(path, time);
   }
 
-  // endregion
-
-  // region update
-
-  @Override
-  public void updateLastTime(long timePartitionId, String path, long time) {
-    latestTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-        .compute(path, (k, v) -> v == null ? time : Math.max(v, time));
-  }
-
   @Override
   public void updateFlushedTime(long timePartitionId, String path, long time) {
     partitionLatestFlushedTimeForEachDevice
@@ -127,39 +103,23 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
         .compute(deviceId, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
-  // endregion
-
-  // region ensure
-
   @Override
-  public void ensureLastTimePartition(long timePartitionId) {
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
+  public boolean checkAndCreateFlushedTimePartition(long timePartitionId) {
+    if (!partitionLatestFlushedTimeForEachDevice.containsKey(timePartitionId)) {
+      partitionLatestFlushedTimeForEachDevice.put(timePartitionId, new HashMap<>());
+      return false;
+    }
+    return true;
   }
-
-  @Override
-  public void ensureFlushedTimePartition(long timePartitionId) {
-    partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
-  }
-
-  @Override
-  public long ensureFlushedTimePartitionAndInit(long timePartitionId, String path, long initTime) {
-    return partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-        .computeIfAbsent(path, id -> initTime);
-  }
-
-  // endregion
-
-  // region upgrade support methods
 
   @Override
   public void applyNewlyFlushedTimeToFlushedTime() {
-    for (Entry<Long, Map<String, Long>> entry :
+    for (Map.Entry<Long, Map<String, Long>> entry :
         newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet()) {
       long timePartitionId = entry.getKey();
       Map<String, Long> latestFlushTimeForPartition =
           partitionLatestFlushedTimeForEachDevice.getOrDefault(timePartitionId, new HashMap<>());
-      for (Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
+      for (Map.Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
         String device = endTimeMap.getKey();
         long endTime = endTimeMap.getValue();
         if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
@@ -171,49 +131,12 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
     }
   }
 
-  /**
-   * update latest flush time for partition id
-   *
-   * @param partitionId partition id
-   * @param latestFlushTime lastest flush time
-   * @return true if update latest flush time success
-   */
   @Override
-  public boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
-    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice.get(partitionId);
-
-    if (curPartitionDeviceLatestTime == null) {
+  public boolean updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
+    if (updateMap.isEmpty()) {
       return false;
     }
-
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      // set lastest flush time to latestTimeForEachDevice
-      entry.setValue(latestFlushTime);
-
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      newlyFlushedPartitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
-          < entry.getValue()) {
-        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public boolean updateLatestFlushTime(long partitionId) {
-    // update the largest timestamp in the last flushing memtable
-    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice.get(partitionId);
-
-    if (curPartitionDeviceLatestTime == null) {
-      return false;
-    }
-
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+    for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(partitionId, id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
@@ -227,32 +150,16 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
     return true;
   }
 
-  // endregion
-
-  // region query
   @Override
   public long getFlushedTime(long timePartitionId, String path) {
     return partitionLatestFlushedTimeForEachDevice
         .get(timePartitionId)
-        .getOrDefault(path, Long.MIN_VALUE);
-  }
-
-  @Override
-  public long getLastTime(long timePartitionId, String path) {
-    return latestTimeForEachDevice.get(timePartitionId).getOrDefault(path, Long.MIN_VALUE);
+        .computeIfAbsent(path, k -> recoverFlushTime(timePartitionId, path));
   }
 
   @Override
   public long getGlobalFlushedTime(String path) {
     return globalLatestFlushedTimeForEachDevice.getOrDefault(path, Long.MIN_VALUE);
-  }
-
-  // endregion
-
-  // region clear
-  @Override
-  public void clearLastTime() {
-    latestTimeForEachDevice.clear();
   }
 
   @Override
@@ -264,5 +171,30 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
   public void clearGlobalFlushedTime() {
     globalLatestFlushedTimeForEachDevice.clear();
   }
-  // endregion
+
+  @Override
+  public void removePartition(long partitionId) {
+    partitionLatestFlushedTimeForEachDevice.remove(partitionId);
+  }
+
+  private long recoverFlushTime(long partitionId, String devicePath) {
+    List<TsFileResource> tsFileResourceList =
+        tsFileManager.getSequenceListByTimePartition(partitionId);
+
+    for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
+      if (tsFileResourceList.get(i).timeIndex.mayContainsDevice(devicePath)) {
+        return tsFileResourceList.get(i).timeIndex.getEndTime(devicePath);
+      }
+    }
+
+    return Long.MIN_VALUE;
+  }
+
+  @Override
+  public long getMemSize(long partitionId) {
+    if (partitionLatestFlushedTimeForEachDevice.containsKey(partitionId)) {
+      return RamUsageEstimator.sizeOf(partitionLatestFlushedTimeForEachDevice.get(partitionId));
+    }
+    return 0;
+  }
 }

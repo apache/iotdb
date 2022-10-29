@@ -502,6 +502,8 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
+  /** Memory allocated proportion for flush time */
+  private long allocateMemoryForFlushTime = allocateMemoryForStorageEngine * 50 / 1001;
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -2076,6 +2078,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
     this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
+  }
+
+  public long getAllocateMemoryForFlushTime() {
+    return allocateMemoryForFlushTime;
+  }
+
+  public void setAllocateMemoryForFlushTime(long allocateMemoryForFlushTime) {
+    this.allocateMemoryForFlushTime = allocateMemoryForFlushTime;
   }
 
   public boolean isEnableQueryMemoryEstimation() {

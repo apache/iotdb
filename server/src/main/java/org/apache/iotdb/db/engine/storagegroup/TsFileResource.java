@@ -1073,6 +1073,12 @@ public class TsFileResource {
     }
   }
 
+  public void updateEndTime(Map<String, Long> times) {
+    for (Map.Entry<String, Long> entry : times.entrySet()) {
+      timeIndex.updateEndTime(entry.getKey(), entry.getValue());
+    }
+  }
+
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;

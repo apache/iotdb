@@ -41,6 +41,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
 
+  long latestTime;
+
   public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
   }
@@ -67,6 +69,9 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
               schemaList.get(i).getType(),
               start,
               end);
+    }
+    if (latestTime < times[end - 1]) {
+      latestTime = times[end - 1];
     }
     return flushFlag;
   }
@@ -107,6 +112,9 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
       flushFlag |= memChunk.writeWithFlushCheck(insertTime, objectValue[i]);
+    }
+    if (latestTime < insertTime) {
+      latestTime = insertTime;
     }
     return flushFlag;
   }
@@ -151,9 +159,15 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public long getLatestTime() {
+    return latestTime;
+  }
+
+  @Override
   public int serializedSize() {
     int size = 0;
     size += Integer.BYTES;
+    size += Long.BYTES;
     for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
       size += ReadWriteIOUtils.sizeToWrite(entry.getKey());
       size += entry.getValue().serializedSize();
@@ -164,6 +178,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putInt(memChunkMap.size());
+    buffer.putLong(latestTime);
     for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
       WALWriteUtils.write(entry.getKey(), buffer);
       IWritableMemChunk memChunk = entry.getValue();
@@ -174,6 +189,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   public static WritableMemChunkGroup deserialize(DataInputStream stream) throws IOException {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
     int memChunkMapSize = stream.readInt();
+    memChunkGroup.latestTime = stream.readLong();
     for (int i = 0; i < memChunkMapSize; ++i) {
       String measurement = ReadWriteIOUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);

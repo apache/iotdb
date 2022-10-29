@@ -24,29 +24,15 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
 import java.util.Map;
 
-/**
- * This class manages last time and flush time for sequence and unsequence determination This class
- * This class is NOT thread safe, caller should ensure synchronization This class not support
- * upgrade
- */
-public class IDTableFlushTimeManager implements ILastFlushTimeManager {
+public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
+
   IDTable idTable;
 
-  public IDTableFlushTimeManager(IDTable idTable) {
+  TsFileManager tsFileManager;
+
+  public IDTableLastFlushTimeMap(IDTable idTable, TsFileManager tsFileManager) {
     this.idTable = idTable;
-  }
-
-  // region set
-  @Override
-  public void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap) {
-    for (Map.Entry<String, Long> entry : lastTimeMap.entrySet()) {
-      idTable.getDeviceEntry(entry.getKey()).putLastTimeMap(timePartitionId, entry.getValue());
-    }
-  }
-
-  @Override
-  public void setOneDeviceLastTime(long timePartitionId, String path, long time) {
-    idTable.getDeviceEntry(path).putLastTimeMap(timePartitionId, time);
+    this.tsFileManager = tsFileManager;
   }
 
   @Override
@@ -73,15 +59,6 @@ public class IDTableFlushTimeManager implements ILastFlushTimeManager {
     idTable.getDeviceEntry(path).setGlobalFlushTime(time);
   }
 
-  // endregion
-
-  // region update
-
-  @Override
-  public void updateLastTime(long timePartitionId, String path, long time) {
-    idTable.getDeviceEntry(path).updateLastTimeMap(timePartitionId, time);
-  }
-
   @Override
   public void updateFlushedTime(long timePartitionId, String path, long time) {
     idTable.getDeviceEntry(path).updateFlushTimeMap(timePartitionId, time);
@@ -98,96 +75,40 @@ public class IDTableFlushTimeManager implements ILastFlushTimeManager {
     throw new UnsupportedOperationException("IDTableFlushTimeManager doesn't support upgrade");
   }
 
-  // endregion
-
-  // region ensure
-
   @Override
-  public void ensureLastTimePartition(long timePartitionId) {
-    // do nothing is correct
+  public boolean checkAndCreateFlushedTimePartition(long timePartitionId) {
+    return false;
   }
-
-  @Override
-  public void ensureFlushedTimePartition(long timePartitionId) {
-    // do nothing is correct
-  }
-
-  @Override
-  public long ensureFlushedTimePartitionAndInit(long timePartitionId, String path, long initTime) {
-    return idTable.getDeviceEntry(path).updateFlushTimeMap(timePartitionId, initTime);
-  }
-
-  // endregion
-
-  // region upgrade support methods
 
   @Override
   public void applyNewlyFlushedTimeToFlushedTime() {
     throw new UnsupportedOperationException("IDTableFlushTimeManager doesn't support upgrade");
   }
 
-  /**
-   * update latest flush time for partition id
-   *
-   * @param partitionId partition id
-   * @param latestFlushTime lastest flush time
-   * @return true if update latest flush time success
-   */
   @Override
-  public boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
-    for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
-      deviceEntry.putLastTimeMap(partitionId, latestFlushTime);
-      deviceEntry.putFlushTimeMap(partitionId, latestFlushTime);
-      deviceEntry.updateGlobalFlushTime(latestFlushTime);
+  public boolean updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
+    if (updateMap.isEmpty()) {
+      return false;
     }
 
+    for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
+      DeviceEntry deviceEntry = idTable.getDeviceEntry(entry.getKey());
+      deviceEntry.updateFlushTimeMap(partitionId, entry.getValue());
+      if (deviceEntry.getGlobalFlushTime() < entry.getValue()) {
+        deviceEntry.setGlobalFlushTime(entry.getValue());
+      }
+    }
     return true;
   }
 
-  @Override
-  public boolean updateLatestFlushTime(long partitionId) {
-    boolean updated = false;
-
-    for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
-      Long lastTime = deviceEntry.getLastTime(partitionId);
-      if (lastTime == null) {
-        continue;
-      }
-
-      updated = true;
-      deviceEntry.putFlushTimeMap(partitionId, lastTime);
-      deviceEntry.updateGlobalFlushTime(lastTime);
-    }
-
-    return updated;
-  }
-
-  // endregion
-
-  // region query
   @Override
   public long getFlushedTime(long timePartitionId, String path) {
     return idTable.getDeviceEntry(path).getFLushTimeWithDefaultValue(timePartitionId);
   }
 
   @Override
-  public long getLastTime(long timePartitionId, String path) {
-    return idTable.getDeviceEntry(path).getLastTimeWithDefaultValue(timePartitionId);
-  }
-
-  @Override
   public long getGlobalFlushedTime(String path) {
     return idTable.getDeviceEntry(path).getGlobalFlushTime();
-  }
-
-  // endregion
-
-  // region clear
-  @Override
-  public void clearLastTime() {
-    for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
-      deviceEntry.clearLastTime();
-    }
   }
 
   @Override
@@ -203,5 +124,16 @@ public class IDTableFlushTimeManager implements ILastFlushTimeManager {
       deviceEntry.setGlobalFlushTime(Long.MIN_VALUE);
     }
   }
-  // endregion
+
+  @Override
+  public void removePartition(long partitionId) {
+    for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
+      deviceEntry.removePartition(partitionId);
+    }
+  }
+
+  @Override
+  public long getMemSize(long partitionId) {
+    return 0;
+  }
 }

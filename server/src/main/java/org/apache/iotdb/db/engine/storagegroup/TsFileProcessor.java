@@ -1106,8 +1106,15 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
+    Map<String, Long> lastTimeForEachDevice = new HashMap<>();
+    if (sequence) {
+      lastTimeForEachDevice = tobeFlushed.getLatestTime();
+      tsFileResource.updateEndTime(lastTimeForEachDevice);
+    }
     if (!tobeFlushed.isSignalMemTable()
-        && (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)) {
+        && (tobeFlushed.memSize() == 0
+            || (!updateLatestFlushTimeCallback.call(
+                this, lastTimeForEachDevice, System.currentTimeMillis())))) {
       logger.warn(
           "This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
           storageGroupName,
