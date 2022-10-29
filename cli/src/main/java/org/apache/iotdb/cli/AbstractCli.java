@@ -19,7 +19,6 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -555,7 +554,7 @@ public abstract class AbstractCli {
             }
           }
           // output tracing activity
-          if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
+          if (((IoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
             maxSizeList = new ArrayList<>(2);
             lists = cacheTracingInfo(resultSet, maxSizeList);
             outputTracingInfo(lists, maxSizeList);
@@ -682,8 +681,8 @@ public abstract class AbstractCli {
     maxSizeList.add(0, ACTIVITY_STR.length());
     maxSizeList.add(1, ELAPSED_TIME_STR.length());
 
-    List<String> activityList = ((AbstractIoTDBJDBCResultSet) resultSet).getActivityList();
-    List<Long> elapsedTimeList = ((AbstractIoTDBJDBCResultSet) resultSet).getElapsedTimeList();
+    List<String> activityList = ((IoTDBJDBCResultSet) resultSet).getActivityList();
+    List<Long> elapsedTimeList = ((IoTDBJDBCResultSet) resultSet).getElapsedTimeList();
     String[] statisticsInfoList = {
       "seriesPathNum", "seqFileNum", "unSeqFileNum", "seqChunkInfo", "unSeqChunkInfo", "pageNumInfo"
     };
@@ -693,7 +692,7 @@ public abstract class AbstractCli {
       if (i == activityList.size() - 1) {
         // cache Statistics
         for (String infoName : statisticsInfoList) {
-          String info = ((AbstractIoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
+          String info = ((IoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
           lists.get(0).add(info);
           lists.get(1).add("");
           if (info.length() > maxSizeList.get(0)) {
