@@ -180,6 +180,8 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -699,12 +701,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
-    Pair<String, Boolean> jarPathPair = parseJarLocation(ctx.jarLocation());
-    return new CreateFunctionStatement(
-        parseIdentifier(ctx.udfName.getText()),
-        parseStringLiteral(ctx.className.getText()),
-        jarPathPair.getLeft(),
-        jarPathPair.getRight());
+    if (ctx.uriClasue() == null) {
+      return new CreateFunctionStatement(
+          parseIdentifier(ctx.udfName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          false);
+    } else {
+      String uriString = parseStringLiteral(ctx.uriClasue().uri().getText());
+      try {
+        URI uri = new URI(uriString);
+      } catch (URISyntaxException e) {
+        throw new SQLParserException(String.format("Invalid URI: %s", uriString));
+      }
+      return new CreateFunctionStatement(
+          parseIdentifier(ctx.udfName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          true,
+          uriString);
+    }
   }
 
   // Drop Function
