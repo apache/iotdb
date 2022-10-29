@@ -54,10 +54,8 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -794,15 +792,6 @@ public class PartitionInfo implements SnapshotProcessor {
         RegionMaintainTask task = RegionMaintainTask.Factory.create(fileInputStream, protocol);
         regionMaintainTaskList.add(task);
       }
-
-      // restore RegionGroupStatistics
-      length = ReadWriteIOUtils.readInt(fileInputStream);
-      for (int i = 0; i < length; i++) {
-        TConsensusGroupId groupId = new TConsensusGroupId();
-        groupId.read(protocol);
-        RegionGroupStatistics regionGroupStatistics = new RegionGroupStatistics();
-        regionGroupStatistics.deserialize(fileInputStream);
-      }
     }
   }
 
@@ -866,9 +855,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        nextRegionGroupId,
-        storageGroupPartitionTables,
-        regionMaintainTaskList);
+    return Objects.hash(nextRegionGroupId, storageGroupPartitionTables, regionMaintainTaskList);
   }
 }

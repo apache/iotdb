@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -44,7 +45,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * The RouteBalancer will maintain cluster RegionRouteMap, which contains:
@@ -131,21 +134,21 @@ public class RouteBalancer {
   }
 
   private boolean updateRegionLeaderMap() {
+    AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
           if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType()) && isMultiLeader) {
-            // The RegionGroup's leader is chosen by ConfigNode-leader when using MultiLeaderProtocol
-            if (regionRouteMap.getLeader(regionGroupId) == -1) {
-              greedySelectLeader(regionGroupId, getNodeManager().);
-            }
+            // Ignore MultiLeader consensus protocol
             return;
           }
 
           if (leadershipSample.getRight() != regionRouteMap.getLeader(regionGroupId)) {
             // Update leader
             regionRouteMap.setLeader(regionGroupId, leadershipSample.getRight());
+            isLeaderChanged.set(true);
           }
         });
+    return isLeaderChanged.get();
   }
 
   private boolean updateRegionPriorityMap() {
@@ -241,10 +244,22 @@ public class RouteBalancer {
     // TODO: IOTDB-4768
   }
 
-  /** Recover the regionRouteMap when the ConfigNode-Leader is switched */
-  public void recoverRegionRouteMap() {
+  /** Initialize the regionRouteMap when the ConfigNode-Leader is switched */
+  public void initRegionRouteMap() {
     synchronized (regionRouteMap) {
       regionRouteMap.clear();
+      if (isMultiLeader) {
+        // Greedily pick leader for all existed DataRegionGroups
+        List<TRegionReplicaSet> dataRegionGroups =
+            getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
+        for (TRegionReplicaSet dataRegionGroup : dataRegionGroups) {
+          greedySelectLeader(
+              dataRegionGroup.getRegionId(),
+              dataRegionGroup.getDataNodeLocations().stream()
+                  .map(TDataNodeLocation::getDataNodeId)
+                  .collect(Collectors.toList()));
+        }
+      }
       updateRegionRouteMap();
     }
   }

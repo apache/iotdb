@@ -51,8 +51,8 @@ public class RegionRouteMap {
   }
 
   /**
-   * @return DataNodeId where the specified RegionGroup's leader resides.
-   * And return -1 if the leader is not recorded yet
+   * @return DataNodeId where the specified RegionGroup's leader resides. And return -1 if the
+   *     leader is not recorded yet
    */
   public int getLeader(TConsensusGroupId regionGroupId) {
     return regionLeaderMap.getOrDefault(regionGroupId, -1);

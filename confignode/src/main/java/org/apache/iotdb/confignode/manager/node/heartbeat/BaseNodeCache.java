@@ -67,10 +67,12 @@ public abstract class BaseNodeCache {
   }
 
   /**
-   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics
-   * and compare with the previousStatistics, in order to detect whether the Node's statistics has changed
+   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics and
+   * compare with the previousStatistics, in order to detect whether the Node's statistics has
+   * changed
    *
-   * @return True if the currentStatistics has changed recently(compare with the previousStatistics), false otherwise
+   * @return True if the currentStatistics has changed recently(compare with the
+   *     previousStatistics), false otherwise
    */
   public boolean periodicUpdate() {
     updateCurrentStatistics();
@@ -88,9 +90,10 @@ public abstract class BaseNodeCache {
    * <p>For example, this interface can be invoked in Node removing process to forcibly change the
    * corresponding Node's status to Removing without waiting for heartbeat sampling
    *
-   * <p>Notice: The ConfigNode-leader doesn't know the specified Node's statistics has changed even if this
-   * interface is invoked, since the ConfigNode-leader only detect cluster Nodes' statistics by periodicUpdate interface.
-   * However, other service can still read the update of currentStatistics by invoking getters below.
+   * <p>Notice: The ConfigNode-leader doesn't know the specified Node's statistics has changed even
+   * if this interface is invoked, since the ConfigNode-leader only detect cluster Nodes' statistics
+   * by periodicUpdate interface. However, other service can still read the update of
+   * currentStatistics by invoking getters below.
    *
    * @param newHeartbeatSample A custom NodeHeartbeatSample that will lead to needed NodeStatistics
    */
@@ -99,7 +102,9 @@ public abstract class BaseNodeCache {
     updateCurrentStatistics();
   }
 
-  /** Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow */
+  /**
+   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow
+   */
   protected abstract void updateCurrentStatistics();
 
   /**
@@ -122,7 +127,10 @@ public abstract class BaseNodeCache {
     if (currentStatistics.getStatusReason() == null) {
       return currentStatistics.getStatus().getStatus();
     } else {
-      return currentStatistics.getStatus().getStatus() + "(" + currentStatistics.getStatusReason() + ")";
+      return currentStatistics.getStatus().getStatus()
+          + "("
+          + currentStatistics.getStatusReason()
+          + ")";
     }
   }
 

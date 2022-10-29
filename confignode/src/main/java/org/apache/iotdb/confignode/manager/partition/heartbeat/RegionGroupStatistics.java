@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,16 +68,9 @@ public class RegionGroupStatistics {
 
   public RegionGroupStatistics deepCopy() {
     Map<Integer, RegionStatistics> deepCopyMap = new ConcurrentHashMap<>();
-    regionStatisticsMap.forEach((dataNodeId, regionStatistics) -> deepCopyMap.put(dataNodeId, regionStatistics.deepCopy()));
-    return new RegionGroupStatistics(regionGroupStatus, deepCopyMap);
-  }
-
-  public Map<Integer, RegionHeartbeatSample> convertToRegionHeartbeatSampleMap() {
-    Map<Integer, RegionHeartbeatSample> result = new ConcurrentHashMap<>();
     regionStatisticsMap.forEach(
-        (dataNodeId, regionStatistics) ->
-            result.put(dataNodeId, regionStatistics.convertToRegionHeartbeatSample()));
-    return result;
+        (dataNodeId, regionStatistics) -> deepCopyMap.put(dataNodeId, regionStatistics.deepCopy()));
+    return new RegionGroupStatistics(regionGroupStatus, deepCopyMap);
   }
 
   public void serialize(OutputStream stream) throws IOException {

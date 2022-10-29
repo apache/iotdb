@@ -32,8 +32,7 @@ public class NodeCacheTest {
   public void forceUpdateTest() {
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache();
 
-    // Test update to UnknownStatus
-    dataNodeHeartbeatCache.updateCurrentStatistics();
+    // Test default
     Assert.assertEquals(NodeStatus.Unknown, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
 
@@ -52,5 +51,17 @@ public class NodeCacheTest {
             new THeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
     Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
+  }
+
+  @Test
+  public void periodicUpdateTest() {
+    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache();
+    long currentTime = System.currentTimeMillis();
+    dataNodeHeartbeatCache.cacheHeartbeatSample(
+        new NodeHeartbeatSample(
+            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+    Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
+    Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
+    Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
   }
 }

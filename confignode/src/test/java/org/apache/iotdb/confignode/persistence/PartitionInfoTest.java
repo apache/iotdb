@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -35,16 +34,11 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
-import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -63,7 +57,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class PartitionInfoTest {
@@ -147,9 +140,6 @@ public class PartitionInfoTest {
     partitionInfo.createDataPartition(createDataPartitionPlan);
 
     partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
-
-    partitionInfo.updateRegionGroupStatisticsAndRegionRouteMap(
-        generateUpdateLoadStatisticsPlan(schemaRegionReplicaSet, dataRegionReplicaSet));
 
     partitionInfo.processTakeSnapshot(snapshotDir);
 
@@ -276,39 +266,6 @@ public class PartitionInfoTest {
             dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));
 
     return offerPlan;
-  }
-
-  private UpdateLoadStatisticsPlan generateUpdateLoadStatisticsPlan(
-      TRegionReplicaSet schemaRegionReplicaSet, TRegionReplicaSet dataRegionReplicaSet) {
-    UpdateLoadStatisticsPlan updateLoadStatisticsPlan = new UpdateLoadStatisticsPlan();
-
-    // Build RegionGroupStatistics
-    for (int i = 0; i < 10; i++) {
-      Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
-      for (int j = 0; j < 3; j++) {
-        regionStatisticsMap.put(j, new RegionStatistics(RegionStatus.Unknown));
-      }
-      updateLoadStatisticsPlan.putRegionGroupStatistics(
-          new TConsensusGroupId(DataRegion, i),
-          new RegionGroupStatistics(RegionGroupStatus.Available, regionStatisticsMap));
-    }
-
-    // Build RegionRouteMap
-    RegionRouteMap regionRouteMap = new RegionRouteMap();
-
-    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
-    regionLeaderMap.put(schemaRegionReplicaSet.getRegionId(), 0);
-    regionLeaderMap.put(dataRegionReplicaSet.getRegionId(), 1);
-    regionRouteMap.setRegionLeaderMap(regionLeaderMap);
-
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new HashMap<>();
-    regionPriorityMap.put(schemaRegionReplicaSet.getRegionId(), schemaRegionReplicaSet);
-    regionPriorityMap.put(dataRegionReplicaSet.getRegionId(), dataRegionReplicaSet);
-    regionRouteMap.setRegionPriorityMap(regionPriorityMap);
-
-    updateLoadStatisticsPlan.setRegionRouteMap(regionRouteMap);
-
-    return updateLoadStatisticsPlan;
   }
 
   private CreateSchemaPartitionPlan generateCreateSchemaPartitionReq(

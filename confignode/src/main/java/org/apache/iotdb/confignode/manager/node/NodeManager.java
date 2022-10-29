@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.node;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -60,7 +59,6 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -936,19 +934,30 @@ public class NodeManager {
     return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
   }
 
-  /** Recover the nodeCacheMap when the ConfigNode-Leader is switched */
-  public void recoverNodeCacheMap() {
+  /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched */
+  public void initNodeHeartbeatCache() {
     nodeCacheMap.clear();
 
-    // Recover ConfigNodeHeartbeatCache
-    getRegisteredConfigNodes().forEach(configNodeLocation ->
-            nodeCacheMap.put(configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation)));
+    // Init ConfigNodeHeartbeatCache
+    getRegisteredConfigNodes()
+        .forEach(
+            configNodeLocation ->
+                nodeCacheMap.put(
+                    configNodeLocation.getConfigNodeId(),
+                    new ConfigNodeHeartbeatCache(configNodeLocation)));
     // Force set itself and never update
-    nodeCacheMap.get(CURRENT_NODE_ID).forceUpdate(ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS.convertToNodeHeartbeatSample());
+    nodeCacheMap
+        .get(CURRENT_NODE_ID)
+        .forceUpdate(
+            ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS.convertToNodeHeartbeatSample());
 
-    // Recover DataNodeHeartbeatCache
-    getRegisteredDataNodes().forEach(dataNodeConfiguration ->
-            nodeCacheMap.put(dataNodeConfiguration.getLocation().getDataNodeId(), new DataNodeHeartbeatCache()));
+    // Init DataNodeHeartbeatCache
+    getRegisteredDataNodes()
+        .forEach(
+            dataNodeConfiguration ->
+                nodeCacheMap.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    new DataNodeHeartbeatCache()));
   }
 
   private ConsensusManager getConsensusManager() {

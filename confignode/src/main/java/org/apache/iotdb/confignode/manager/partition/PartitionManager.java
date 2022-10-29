@@ -67,14 +67,12 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -796,10 +794,15 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
-  public void recoverRegionGroupCacheMap() {
+  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  public void initRegionGroupHeartbeatCache() {
     regionGroupCacheMap.clear();
-    getAllReplicaSets().forEach(regionReplicaSet -> regionGroupCacheMap.put(regionReplicaSet.getRegionId(), new RegionGroupCache(regionReplicaSet.getRegionId())));
+    getAllReplicaSets()
+        .forEach(
+            regionReplicaSet ->
+                regionGroupCacheMap.put(
+                    regionReplicaSet.getRegionId(),
+                    new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

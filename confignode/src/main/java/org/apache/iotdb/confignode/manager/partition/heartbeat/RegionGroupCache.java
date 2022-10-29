@@ -61,10 +61,12 @@ public class RegionGroupCache {
   }
 
   /**
-   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics
-   * and compare with the previousStatistics, in order to detect whether the RegionGroup's statistics has changed
+   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics and
+   * compare with the previousStatistics, in order to detect whether the RegionGroup's statistics
+   * has changed
    *
-   * @return True if the currentStatistics has changed recently(compare with the previousStatistics), false otherwise
+   * @return True if the currentStatistics has changed recently(compare with the
+   *     previousStatistics), false otherwise
    */
   public boolean periodicUpdate() {
     updateCurrentStatistics();
@@ -82,9 +84,11 @@ public class RegionGroupCache {
    * <p>For example, this interface can be invoked in RegionGroup creating process to forcibly
    * activate the corresponding RegionGroup's status to Available without waiting for heartbeat
    * sampling
-   * <p>Notice: The ConfigNode-leader doesn't know the specified RegionGroup's statistics has changed even if this
-   * interface is invoked, since the ConfigNode-leader only detect cluster RegionGroups' statistics by periodicUpdate interface.
-   * However, other service can still read the update of currentStatistics by invoking getters below.
+   *
+   * <p>Notice: The ConfigNode-leader doesn't know the specified RegionGroup's statistics has
+   * changed even if this interface is invoked, since the ConfigNode-leader only detect cluster
+   * RegionGroups' statistics by periodicUpdate interface. However, other service can still read the
+   * update of currentStatistics by invoking getters below.
    *
    * @param newHeartbeatSamples Custom RegionHeartbeatSamples that will lead to needed
    *     RegionGroupStatistics
@@ -94,7 +98,9 @@ public class RegionGroupCache {
     updateCurrentStatistics();
   }
 
-  /** Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow */
+  /**
+   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow
+   */
   protected void updateCurrentStatistics() {
     Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {

@@ -62,7 +62,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -202,14 +201,16 @@ public class LoadManager {
     }
 
     // Update RegionGroupStatistics
-    Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap =
+        new ConcurrentHashMap<>();
     getPartitionManager()
         .getRegionGroupCacheMap()
         .forEach(
             (regionGroupId, regionGroupCache) -> {
               if (regionGroupCache.periodicUpdate()) {
                 // Update and record the changed RegionGroupStatistics
-                differentRegionGroupStatisticsMap.put(regionGroupId, regionGroupCache.getStatistics());
+                differentRegionGroupStatisticsMap.put(
+                    regionGroupId, regionGroupCache.getStatistics());
               }
             });
     if (!differentRegionGroupStatisticsMap.isEmpty()) {
@@ -230,44 +231,46 @@ public class LoadManager {
 
   private void recordNodeStatistics(Map<Integer, NodeStatistics> differentNodeStatisticsMap) {
     LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : differentNodeStatisticsMap.entrySet()) {
+    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry :
+        differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              "nodeId{" + nodeCacheEntry.getKey() + "}",
-              nodeCacheEntry.getValue());
+          "[UpdateLoadStatistics]\t {}={}",
+          "nodeId{" + nodeCacheEntry.getKey() + "}",
+          nodeCacheEntry.getValue());
     }
   }
 
-  private void recordRegionGroupStatistics(Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap) {
+  private void recordRegionGroupStatistics(
+      Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap) {
     LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-            differentRegionGroupStatisticsMap.entrySet()) {
+        differentRegionGroupStatisticsMap.entrySet()) {
       // TODO: formulate
       LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionGroupStatisticsEntry.getKey(),
-              regionGroupStatisticsEntry.getValue());
+          "[UpdateLoadStatistics]\t {}={}",
+          regionGroupStatisticsEntry.getKey(),
+          regionGroupStatisticsEntry.getValue());
     }
   }
 
   private void recordRegionRouteMap(RegionRouteMap regionRouteMap) {
     LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
     for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
-            regionRouteMap.getRegionLeaderMap().entrySet()) {
+        regionRouteMap.getRegionLeaderMap().entrySet()) {
       LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionLeaderEntry.getKey(),
-              regionLeaderEntry.getValue());
+          "[UpdateLoadStatistics]\t {}={}",
+          regionLeaderEntry.getKey(),
+          regionLeaderEntry.getValue());
     }
 
     // TODO: formulate
     LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
-            regionRouteMap.getRegionPriorityMap().entrySet()) {
+        regionRouteMap.getRegionPriorityMap().entrySet()) {
       LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionPriorityEntry.getKey(),
-              regionPriorityEntry.getValue());
+          "[UpdateLoadStatistics]\t {}={}",
+          regionPriorityEntry.getKey(),
+          regionPriorityEntry.getValue());
     }
   }
 
@@ -293,14 +296,11 @@ public class LoadManager {
     LOGGER.info("[UpdateLoadStatistics] Broadcast the latest RegionRouteMap finished.");
   }
 
-  /**
-   * Recover all kinds of the HeartbeatCache when the ConfigNode-Leader is switched
-   */
-  public void recoverHeartbeatCache() {
-    // TODO: InitHeartbeatCache
-    getNodeManager().recoverNodeCacheMap();
-    getPartitionManager().recoverRegionGroupCacheMap();
-    routeBalancer.recoverRegionRouteMap();
+  /** Initialize all kinds of the HeartbeatCache when the ConfigNode-Leader is switched */
+  public void initHeartbeatCache() {
+    getNodeManager().initNodeHeartbeatCache();
+    getPartitionManager().initRegionGroupHeartbeatCache();
+    routeBalancer.initRegionRouteMap();
   }
 
   public RouteBalancer getRouteBalancer() {

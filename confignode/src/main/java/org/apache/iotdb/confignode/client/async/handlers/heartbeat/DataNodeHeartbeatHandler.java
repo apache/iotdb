@@ -62,26 +62,26 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
     // Update RegionGroupCache And leaderCache
     heartbeatResp
-            .getJudgedLeaders()
-                    .forEach((regionGroupId, isLeader) -> {
-                      regionGroupCacheMap
-                              .computeIfAbsent(
-                                      regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-                              .cacheHeartbeatSample(
-                                      dataNodeLocation.getDataNodeId(),
-                                      new RegionHeartbeatSample(
-                                              heartbeatResp.getHeartbeatTimestamp(),
-                                              receiveTime,
-                                              // Region will inherit DataNode's status
-                                              RegionStatus.parse(heartbeatResp.getStatus())));
+        .getJudgedLeaders()
+        .forEach(
+            (regionGroupId, isLeader) -> {
+              regionGroupCacheMap
+                  .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
+                  .cacheHeartbeatSample(
+                      dataNodeLocation.getDataNodeId(),
+                      new RegionHeartbeatSample(
+                          heartbeatResp.getHeartbeatTimestamp(),
+                          receiveTime,
+                          // Region will inherit DataNode's status
+                          RegionStatus.parse(heartbeatResp.getStatus())));
 
-                      if (isLeader) {
-                        routeBalancer.cacheLeaderSample(
-                                regionGroupId,
-                                new Pair<>(
-                                        heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
-                      }
-                    });
+              if (isLeader) {
+                routeBalancer.cacheLeaderSample(
+                    regionGroupId,
+                    new Pair<>(
+                        heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
+              }
+            });
   }
 
   @Override
