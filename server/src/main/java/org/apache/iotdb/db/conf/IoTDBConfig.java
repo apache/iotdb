@@ -817,13 +817,13 @@ public class IoTDBConfig {
 
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
-   * iotdb-datanode.properties
+   * iotdb-common.properties
    */
   private boolean enableRpcService = true;
 
   /**
    * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-datanode.properties
+   * iotdb-common.properties
    */
   private boolean enableInfluxDBRpcService = false;
 

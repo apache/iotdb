@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplate
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
@@ -236,7 +235,7 @@ public class ConfigPlanExecutor {
       case GetTriggerJar:
         return triggerInfo.getTriggerJar((GetTriggerJarPlan) req);
       case GetTransferringTriggers:
-        return triggerInfo.getTransferringTriggers((GetTransferringTriggersPlan) req);
+        return triggerInfo.getTransferringTriggers();
       case GetRegionId:
         return partitionInfo.getRegionId((GetRegionIdPlan) req);
       case GetTimeSlotList:
