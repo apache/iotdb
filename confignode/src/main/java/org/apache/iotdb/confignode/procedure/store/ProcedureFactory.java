@@ -101,6 +101,7 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure =
             new CreateCQProcedure(
                 ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
+        break;
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
         break;
