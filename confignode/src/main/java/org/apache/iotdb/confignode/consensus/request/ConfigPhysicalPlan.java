@@ -293,7 +293,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new GetTemplateSetInfoPlan();
           break;
         case DropSchemaTemplate:
-          req = new DropSchemaTemplatePlan();
+          plan = new DropSchemaTemplatePlan();
           break;
         case PreUnsetTemplate:
           plan = new PreUnsetSchemaTemplatePlan();
