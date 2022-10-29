@@ -73,6 +73,11 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  protected String getCommonConfigPath() {
+    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-common.properties");
+  }
+
+  @Override
   public final String getId() {
     if (isSeed) {
       return "SeedConfigNode" + getPort();

@@ -74,6 +74,11 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  protected String getCommonConfigPath() {
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-common.properties");
+  }
+
+  @Override
   public final String getId() {
     return "DataNode" + getPort();
   }
