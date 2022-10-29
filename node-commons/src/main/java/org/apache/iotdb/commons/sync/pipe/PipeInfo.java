@@ -116,7 +116,7 @@ public abstract class PipeInfo {
   protected void deserialize(InputStream inputStream) throws IOException {
     pipeName = ReadWriteIOUtils.readString(inputStream);
     pipeSinkName = ReadWriteIOUtils.readString(inputStream);
-    status = PipeStatus.getTsDataType(ReadWriteIOUtils.readByte(inputStream));
+    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream));
     createTime = ReadWriteIOUtils.readLong(inputStream);
     messageType = PipeMessage.PipeMessageType.values()[ReadWriteIOUtils.readByte(inputStream)];
   }
@@ -124,7 +124,7 @@ public abstract class PipeInfo {
   protected void deserialize(ByteBuffer byteBuffer) {
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
     pipeSinkName = ReadWriteIOUtils.readString(byteBuffer);
-    status = PipeStatus.getTsDataType(ReadWriteIOUtils.readByte(byteBuffer));
+    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer));
     createTime = ReadWriteIOUtils.readLong(byteBuffer);
     messageType = PipeMessage.PipeMessageType.values()[ReadWriteIOUtils.readByte(byteBuffer)];
   }

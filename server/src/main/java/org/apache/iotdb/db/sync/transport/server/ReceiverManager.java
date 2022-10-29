@@ -384,7 +384,6 @@ public class ReceiverManager {
   }
 
   private void createConnection(TSyncIdentityInfo identityInfo) {
-    logger.info("create connection {}", identityInfo);
     long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);

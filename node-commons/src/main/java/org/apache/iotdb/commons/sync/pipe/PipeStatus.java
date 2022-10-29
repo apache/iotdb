@@ -39,7 +39,7 @@ public enum PipeStatus {
     return type;
   }
 
-  public static PipeStatus getTsDataType(byte type) {
+  public static PipeStatus getPipeStatus(byte type) {
     switch (type) {
       case 0:
         return PipeStatus.RUNNING;
