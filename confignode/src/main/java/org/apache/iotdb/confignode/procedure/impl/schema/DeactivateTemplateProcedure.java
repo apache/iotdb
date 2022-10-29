@@ -204,6 +204,7 @@ public class DeactivateTemplateProcedure
 
     // target timeseries has no data
     if (relatedDataRegionGroup.isEmpty()) {
+      setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
       return;
     }
 
