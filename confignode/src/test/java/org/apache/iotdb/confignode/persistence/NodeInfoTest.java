@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfi
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;

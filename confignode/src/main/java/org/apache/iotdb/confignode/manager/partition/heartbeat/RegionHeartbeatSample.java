@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition;
+package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 

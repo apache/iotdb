@@ -16,61 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node;
+package org.apache.iotdb.confignode.manager.node.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
-public class ConfigNodeHeartbeatCache extends BaseNodeCache {
+/** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
+public class DataNodeHeartbeatCache extends BaseNodeCache {
 
-  public static final NodeStatistics CURRENT_NODE_STATISTICS =
-      new NodeStatistics(0, NodeStatus.Running, null);
-
-  private final TConfigNodeLocation configNodeLocation;
-
-  /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics */
-  public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
+  /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
+  public DataNodeHeartbeatCache() {
     super();
-    this.configNodeLocation = configNodeLocation;
-  }
-
-  /** Constructor that only used when ConfigNode-leader switched */
-  public ConfigNodeHeartbeatCache(
-      TConfigNodeLocation configNodeLocation, NodeStatistics nodeStatistics) {
-    this.configNodeLocation = configNodeLocation;
-    this.statistics = nodeStatistics;
   }
 
   @Override
   public void updateNodeStatistics() {
-    // Skip itself
-    if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
-      return;
-    }
-
-    long lastSendTime = 0;
+    NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
-        lastSendTime = slidingWindow.getLast().getSendTimestamp();
+        lastSample = slidingWindow.getLast();
       }
     }
+    long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
 
-    // Update Node status
-    NodeStatus status;
+    /* Update Node status */
+    NodeStatus status = null;
+    String statusReason = null;
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
-    } else {
-      status = NodeStatus.Running;
+    } else if (lastSample != null) {
+      status = lastSample.getStatus();
+      statusReason = lastSample.getStatusReason();
     }
 
     /* Update loadScore */
-    // Only consider Running ConfigNode as available currently
+    // Only consider Running DataNode as available currently
     // TODO: Construct load score module
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
-    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
+    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
     if (!statistics.equals(newStatistics)) {
       // Update NodeStatistics if necessary
       statistics = newStatistics;

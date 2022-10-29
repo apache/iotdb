@@ -43,8 +43,8 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 

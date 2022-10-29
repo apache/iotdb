@@ -58,7 +58,7 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -113,12 +113,6 @@ public class PartitionInfo implements SnapshotProcessor {
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
-  /** For Load-Balancing */
-  // Map<RegionGroupId, RegionGroupStatistics>
-  private final Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
-
-  private final RegionRouteMap regionRouteMap;
-
   private final String snapshotFileName = "partition_info.bin";
 
   public PartitionInfo() {
@@ -126,9 +120,6 @@ public class PartitionInfo implements SnapshotProcessor {
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
 
     this.regionMaintainTaskList = Collections.synchronizedList(new ArrayList<>());
-
-    this.regionGroupStatisticsMap = new ConcurrentHashMap<>();
-    this.regionRouteMap = new RegionRouteMap();
   }
 
   public int generateNextRegionGroupId() {
@@ -770,15 +761,6 @@ public class PartitionInfo implements SnapshotProcessor {
     return RpcUtils.SUCCESS_STATUS;
   }
 
-  /** Only used when the ConfigNode-Leader is switched */
-  public Map<TConsensusGroupId, RegionGroupStatistics> getRegionGroupStatisticsMap() {
-    return regionGroupStatisticsMap;
-  }
-
-  public RegionRouteMap getRegionRouteMap() {
-    return regionRouteMap;
-  }
-
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
@@ -814,17 +796,6 @@ public class PartitionInfo implements SnapshotProcessor {
       for (RegionMaintainTask task : regionMaintainTaskList) {
         task.serialize(fileOutputStream, protocol);
       }
-
-      // serialize RegionGroupStatistics
-      ReadWriteIOUtils.write(regionGroupStatisticsMap.size(), fileOutputStream);
-      for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-          regionGroupStatisticsMap.entrySet()) {
-        regionGroupStatisticsEntry.getKey().write(protocol);
-        regionGroupStatisticsEntry.getValue().serialize(fileOutputStream);
-      }
-
-      // serialize RegionRouteMap
-      regionRouteMap.serialize(fileOutputStream, protocol);
 
       // write to file
       fileOutputStream.flush();
@@ -890,11 +861,7 @@ public class PartitionInfo implements SnapshotProcessor {
         groupId.read(protocol);
         RegionGroupStatistics regionGroupStatistics = new RegionGroupStatistics();
         regionGroupStatistics.deserialize(fileInputStream);
-        regionGroupStatisticsMap.put(groupId, regionGroupStatistics);
       }
-
-      // restore RegionRouteMap
-      regionRouteMap.deserialize(fileInputStream, protocol);
     }
   }
 
@@ -944,8 +911,6 @@ public class PartitionInfo implements SnapshotProcessor {
     nextRegionGroupId.set(-1);
     storageGroupPartitionTables.clear();
     regionMaintainTaskList.clear();
-    regionGroupStatisticsMap.clear();
-    regionRouteMap.clear();
   }
 
   @Override
@@ -955,9 +920,7 @@ public class PartitionInfo implements SnapshotProcessor {
     PartitionInfo that = (PartitionInfo) o;
     return nextRegionGroupId.get() == that.nextRegionGroupId.get()
         && storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
-        && regionMaintainTaskList.equals(that.regionMaintainTaskList)
-        && regionGroupStatisticsMap.equals(that.regionGroupStatisticsMap)
-        && regionRouteMap.equals(that.regionRouteMap);
+        && regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
@@ -965,8 +928,6 @@ public class PartitionInfo implements SnapshotProcessor {
     return Objects.hash(
         nextRegionGroupId,
         storageGroupPartitionTables,
-        regionMaintainTaskList,
-        regionGroupStatisticsMap,
-        regionRouteMap);
+        regionMaintainTaskList);
   }
 }
