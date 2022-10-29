@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -903,6 +904,16 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
+  }
+
+  @Test
+  public void DropSchemaTemplateTest() throws IOException {
+    DropSchemaTemplatePlan dropSchemaTemplatePlan = new DropSchemaTemplatePlan("template");
+    DropSchemaTemplatePlan deserializedPlan =
+        (DropSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(dropSchemaTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        dropSchemaTemplatePlan.getTemplateName(), deserializedPlan.getTemplateName());
   }
 
   @Test

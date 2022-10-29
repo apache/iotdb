@@ -69,6 +69,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -438,5 +439,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitUnsetSchemaTemplate(
       UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, C context) {
     return visitStatement(unsetSchemaTemplateStatement, context);
+  }
+
+  public R visitDropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement, C context) {
+    return visitStatement(dropSchemaTemplateStatement, context);
   }
 }
