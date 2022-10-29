@@ -1749,5 +1749,28 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
+  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    CounterTraverser counterTraverser =
+        new CounterTraverser(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
+              count++;
+            }
+            return false;
+          }
+        };
+    counterTraverser.traverse();
+    return counterTraverser.getCount();
+  }
+
   // endregion
 }

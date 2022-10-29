@@ -135,6 +135,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -180,6 +181,8 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -699,12 +702,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
-    Pair<String, Boolean> jarPathPair = parseJarLocation(ctx.jarLocation());
-    return new CreateFunctionStatement(
-        parseIdentifier(ctx.udfName.getText()),
-        parseStringLiteral(ctx.className.getText()),
-        jarPathPair.getLeft(),
-        jarPathPair.getRight());
+    if (ctx.uriClasue() == null) {
+      return new CreateFunctionStatement(
+          parseIdentifier(ctx.udfName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          false);
+    } else {
+      String uriString = parseStringLiteral(ctx.uriClasue().uri().getText());
+      try {
+        URI uri = new URI(uriString);
+      } catch (URISyntaxException e) {
+        throw new SQLParserException(String.format("Invalid URI: %s", uriString));
+      }
+      return new CreateFunctionStatement(
+          parseIdentifier(ctx.udfName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          true,
+          uriString);
+    }
   }
 
   // Drop Function
@@ -1808,7 +1823,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
       throw new SQLParserException(
           String.format(
-              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              "%s is illegal, identifier not enclosed with backticks can only consist of digits, characters and underscore.",
               src));
     }
   }
@@ -2985,6 +3000,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     statement.setPathPatternList(pathPatternList);
     return statement;
+  }
+
+  @Override
+  public Statement visitUnsetSchemaTemplate(IoTDBSqlParser.UnsetSchemaTemplateContext ctx) {
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    return new UnsetSchemaTemplateStatement(templateName, path);
   }
 
   public Map<String, String> parseSyncAttributeClauses(

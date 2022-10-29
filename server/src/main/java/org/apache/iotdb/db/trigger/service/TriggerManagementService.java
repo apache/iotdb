@@ -273,7 +273,7 @@ public class TriggerManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      TriggerExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+      TriggerExecutableManager.getInstance().saveToLibDir(byteBuffer, jarName);
     }
   }
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
+package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -29,52 +29,37 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class CreateFunctionStatement extends Statement implements IConfigStatement {
+public class UnsetSchemaTemplateStatement extends Statement implements IConfigStatement {
 
-  private final String udfName;
-  private final String className;
+  private String templateName;
+  private PartialPath path;
 
-  private String uriString;
-
-  private final boolean usingURI;
-
-  public CreateFunctionStatement(String udfName, String className, boolean usingURI) {
+  public UnsetSchemaTemplateStatement(String templateName, PartialPath path) {
     super();
-    statementType = StatementType.CREATE_FUNCTION;
-    this.udfName = udfName;
-    this.className = className;
-    this.usingURI = usingURI;
+    statementType = StatementType.UNSET_TEMPLATE;
+    this.templateName = templateName;
+    this.path = path;
   }
 
-  public CreateFunctionStatement(
-      String udfName, String className, boolean usingURI, String uriString) {
-    super();
-    statementType = StatementType.CREATE_FUNCTION;
-    this.udfName = udfName;
-    this.className = className;
-    this.usingURI = usingURI;
-    this.uriString = uriString;
+  public String getTemplateName() {
+    return templateName;
   }
 
-  public String getUdfName() {
-    return udfName;
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
   }
 
-  public String getClassName() {
-    return className;
+  public PartialPath getPath() {
+    return path;
   }
 
-  public String getUriString() {
-    return uriString;
-  }
-
-  public boolean isUsingURI() {
-    return usingURI;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateFunction(this, context);
+    return visitor.visitUnsetSchemaTemplate(this, context);
   }
 
   @Override
@@ -84,6 +69,6 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
 
   @Override
   public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+    return Collections.singletonList(path);
   }
 }

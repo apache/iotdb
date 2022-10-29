@@ -160,8 +160,8 @@ struct TDisableDataNodeReq {
 }
 
 struct TCreateFunctionInstanceReq {
-  1: binary udfInformation
-  2: binary jarFile
+  1: required binary udfInformation
+  2: optional binary jarFile
 }
 
 struct TDropFunctionInstanceReq {
@@ -309,6 +309,17 @@ struct TRollbackSchemaBlackListWithTemplateReq{
 struct TDeactivateTemplateReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TCountPathsUsingTemplateReq{
+  1: required i32 templateId
+  2: required binary patternTree
+  3: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCountPathsUsingTemplateResp{
+  1: required common.TSStatus status
+  2: optional i32 count
 }
 
 struct TCreatePipeOnDataNodeReq{
@@ -603,6 +614,8 @@ service IDataNodeRPCService {
    * and remove according template schema black list in target schemRegion
    */
   common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
+
+  TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
  /**
   * Create PIPE on DataNode

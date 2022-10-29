@@ -106,6 +106,9 @@ public enum ConfigPhysicalPlanType {
   GetPathsSetTemplate((short) 805),
   GetAllTemplateSetInfo((short) 806),
   GetTemplateSetInfo((short) 807),
+  PreUnsetTemplate((short) 808),
+  RollbackUnsetTemplate((short) 809),
+  UnsetTemplate((short) 810),
 
   /** Sync */
   CreatePipeSink((short) 900),

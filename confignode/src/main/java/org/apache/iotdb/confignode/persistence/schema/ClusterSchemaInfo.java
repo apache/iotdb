@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -40,7 +41,10 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
@@ -51,17 +55,16 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -649,7 +652,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus status;
     try {
       int templateId = templateTable.getTemplate(getPathsSetTemplatePlan.getName()).getId();
-      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId));
+      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, false));
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -665,7 +668,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     for (Template template : templateList) {
       id = template.getId();
       try {
-        List<String> pathList = mTree.getPathsSetOnTemplate(id);
+        List<String> pathList = mTree.getPathsSetOnTemplate(id, true);
         if (!pathList.isEmpty()) {
           templateSetInfo.put(id, pathList);
         }
@@ -674,26 +677,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
     }
 
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
-
-      for (Template template : templateList) {
-        if (templateSetInfo.containsKey(template.getId())) {
-          template.serialize(outputStream);
-
-          List<String> pathsSetTemplate = templateSetInfo.get(template.getId());
-          ReadWriteIOUtils.write(pathsSetTemplate.size(), outputStream);
-          for (String path : pathsSetTemplate) {
-            ReadWriteIOUtils.write(path, outputStream);
-          }
-        }
+    Map<Template, List<String>> templateSetInfoMap = new HashMap<>();
+    for (Template template : templateList) {
+      if (templateSetInfo.containsKey(template.getId())) {
+        templateSetInfoMap.put(template, templateSetInfo.get(template.getId()));
       }
-    } catch (IOException ignored) {
-
     }
 
-    return new AllTemplateSetInfoResp(outputStream.toByteArray());
+    return new AllTemplateSetInfoResp(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(templateSetInfoMap));
   }
 
   /**
@@ -740,6 +732,36 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return resp;
+  }
+
+  public TSStatus preUnsetSchemaTemplate(PreUnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.preUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus rollbackUnsetSchemaTemplate(RollbackPreUnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.rollbackUnsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) {
+    try {
+      mTree.unsetTemplate(plan.getTemplateId(), plan.getPath());
+      return StatusUtils.OK;
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
   }
 
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(
