@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.trigger;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -26,37 +26,43 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
-public class GetTriggerTablePlan extends ConfigPhysicalPlan {
+public class GetTriggerJarPlan extends ConfigPhysicalPlan {
 
-  boolean onlyStateful;
+  private List<String> jarNames;
 
-  public GetTriggerTablePlan() {
-    super(ConfigPhysicalPlanType.GetTriggerTable);
+  public GetTriggerJarPlan() {
+    super(ConfigPhysicalPlanType.GetTriggerJar);
   }
 
-  public GetTriggerTablePlan(boolean onlyStateful) {
-    this();
-    this.onlyStateful = onlyStateful;
+  public GetTriggerJarPlan(List<String> triggerNames) {
+    super(ConfigPhysicalPlanType.GetTriggerJar);
+    jarNames = triggerNames;
   }
 
-  public boolean isOnlyStateful() {
-    return onlyStateful;
-  }
-
-  public void setOnlyStateful(boolean onlyStateful) {
-    this.onlyStateful = onlyStateful;
+  public List<String> getJarNames() {
+    return jarNames;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetTriggerTable.ordinal());
+    stream.writeShort(getType().getPlanType());
 
-    ReadWriteIOUtils.write(onlyStateful, stream);
+    ReadWriteIOUtils.write(jarNames.size(), stream);
+    for (String jarName : jarNames) {
+      ReadWriteIOUtils.write(jarName, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.onlyStateful = ReadWriteIOUtils.readBool(buffer);
+    int size = ReadWriteIOUtils.readInt(buffer);
+    jarNames = new ArrayList<>(size);
+    while (size > 0) {
+      jarNames.add(ReadWriteIOUtils.readString(buffer));
+      size--;
+    }
   }
 }

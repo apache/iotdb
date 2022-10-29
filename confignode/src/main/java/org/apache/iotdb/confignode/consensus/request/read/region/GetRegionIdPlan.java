@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -29,20 +32,30 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
+public class GetRegionIdPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;
 
   private TConsensusGroupType partitionType;
 
-  public GetSeriesSlotListPlan() {
-    super(ConfigPhysicalPlanType.GetSeriesSlotList);
+  private TSeriesPartitionSlot seriesSlotId;
+
+  private TTimePartitionSlot timeSlotId;
+
+  public GetRegionIdPlan() {
+    super(ConfigPhysicalPlanType.GetRegionId);
   }
 
-  public GetSeriesSlotListPlan(String storageGroup, TConsensusGroupType partitionType) {
+  public GetRegionIdPlan(
+      String storageGroup,
+      TConsensusGroupType partitionType,
+      TSeriesPartitionSlot seriesSlotId,
+      TTimePartitionSlot timeSlotId) {
     this();
-    this.storageGroup = storageGroup;
     this.partitionType = partitionType;
+    this.storageGroup = storageGroup;
+    this.seriesSlotId = seriesSlotId;
+    this.timeSlotId = timeSlotId;
   }
 
   public String getStorageGroup() {
@@ -53,32 +66,47 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
     return partitionType;
   }
 
+  public TSeriesPartitionSlot getSeriesSlotId() {
+    return seriesSlotId;
+  }
+
+  public TTimePartitionSlot getTimeSlotId() {
+    return timeSlotId;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(storageGroup, stream);
     stream.writeInt(partitionType.ordinal());
+    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
+    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.storageGroup = ReadWriteIOUtils.readString(buffer);
     this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
+    this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
+    this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetSeriesSlotListPlan that = (GetSeriesSlotListPlan) o;
-    return storageGroup.equals(that.storageGroup) && partitionType.equals(that.partitionType);
+    GetRegionIdPlan that = (GetRegionIdPlan) o;
+    return storageGroup.equals(that.storageGroup)
+        && seriesSlotId.equals(that.seriesSlotId)
+        && timeSlotId.equals(that.timeSlotId);
   }
 
   @Override
   public int hashCode() {
     int hashcode = 1;
     hashcode = hashcode * 31 + Objects.hash(storageGroup);
-    hashcode = hashcode * 31 + partitionType.ordinal();
+    hashcode = hashcode * 31 + seriesSlotId.hashCode();
+    hashcode = hashcode * 31 + timeSlotId.hashCode();
     return hashcode;
   }
 }

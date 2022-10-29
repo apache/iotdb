@@ -62,7 +62,7 @@ public class UpdateTriggerLocationPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
 
     ReadWriteIOUtils.write(triggerName, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, stream);

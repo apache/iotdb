@@ -16,22 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GetOrCreateSchemaPartitionPlan extends GetSchemaPartitionPlan {
+public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
 
-  public GetOrCreateSchemaPartitionPlan() {
-    super(ConfigPhysicalPlanType.GetOrCreateSchemaPartition);
+  public GetOrCreateDataPartitionPlan() {
+    super(ConfigPhysicalPlanType.GetOrCreateDataPartition);
   }
 
-  public GetOrCreateSchemaPartitionPlan(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+  public GetOrCreateDataPartitionPlan(
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
     this();
     this.partitionSlotsMap = partitionSlotsMap;
+  }
+
+  /**
+   * Convert TDataPartitionReq to GetOrCreateDataPartitionPlan
+   *
+   * @param req TDataPartitionReq
+   * @return GetOrCreateDataPartitionPlan
+   */
+  public static GetOrCreateDataPartitionPlan convertFromRpcTDataPartitionReq(
+      TDataPartitionReq req) {
+    return new GetOrCreateDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
   }
 }

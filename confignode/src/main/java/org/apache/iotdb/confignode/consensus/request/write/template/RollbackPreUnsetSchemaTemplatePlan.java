@@ -54,7 +54,7 @@ public class RollbackPreUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.RollbackUnsetTemplate.ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(templateId, stream);
     path.serialize(stream);
   }

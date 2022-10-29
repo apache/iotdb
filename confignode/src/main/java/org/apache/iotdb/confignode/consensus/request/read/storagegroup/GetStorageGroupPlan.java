@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.storagegroup;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
