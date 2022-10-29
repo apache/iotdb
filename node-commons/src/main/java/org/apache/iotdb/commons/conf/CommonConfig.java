@@ -29,6 +29,8 @@ import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
+
+  public static final String CONFIG_NAME = "iotdb-common.properties";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
