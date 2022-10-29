@@ -224,16 +224,24 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         commonConfigProperties.load(confInput);
       }
       String configPath = getConfigPath();
+      String additionalConfigPath = getAdditionalConfigPath();
+      if (new File(additionalConfigPath).exists()) {
+        Properties additionalConfigProperties = new Properties();
+        try (InputStream confInput = Files.newInputStream(Paths.get(additionalConfigPath))) {
+          additionalConfigProperties.load(confInput);
+        }
+        commonConfigProperties.putAll(additionalConfigProperties);
+      }
       Properties configProperties = new Properties();
-      configProperties.putAll(commonConfigProperties);
       try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
         configProperties.load(confInput);
       }
+      configProperties.putAll(commonConfigProperties);
       updateConfig(configProperties);
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);
       }
-      try (FileWriter confOutput = new FileWriter(configPath)) {
+      try (FileWriter confOutput = new FileWriter(additionalConfigPath)) {
         configProperties.store(confOutput, null);
       }
     } catch (IOException ex) {
@@ -271,6 +279,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected abstract String getConfigPath();
 
   protected abstract String getCommonConfigPath();
+
+  protected abstract String getAdditionalConfigPath();
 
   protected abstract void updateConfig(Properties properties);
 
