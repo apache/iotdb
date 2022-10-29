@@ -60,10 +60,10 @@ public class ConfigNodeDescriptor {
    */
   public URL getPropsUrl(String configFileName) {
     // Check if a config-directory was specified first.
-    String urlString = System.getProperty(configFileName, null);
+    String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided
     if (urlString == null) {
-      urlString = System.getProperty(configFileName, null);
+      urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
       if (urlString != null) {
         urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configFileName;
       } else {
@@ -97,13 +97,11 @@ public class ConfigNodeDescriptor {
       LOGGER.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
+    Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
 
       LOGGER.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
-      loadProperties(properties);
+      commonProperties.load(inputStream);
 
     } catch (FileNotFoundException e) {
       LOGGER.warn("Fail to find config file {}", url, e);
@@ -126,7 +124,8 @@ public class ConfigNodeDescriptor {
 
       Properties properties = new Properties();
       properties.load(inputStream);
-      loadProperties(properties);
+      commonProperties.putAll(properties);
+      loadProperties(commonProperties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {

@@ -155,13 +155,11 @@ public class IoTDBDescriptor {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
+    Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
 
       logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
-      loadProperties(properties);
+      commonProperties.load(inputStream);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -173,12 +171,11 @@ public class IoTDBDescriptor {
 
     url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
     try (InputStream inputStream = url.openStream()) {
-
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-
-      loadProperties(properties);
+      commonProperties.putAll(properties);
+      loadProperties(commonProperties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -1523,11 +1520,10 @@ public class IoTDBDescriptor {
       return;
     }
 
+    Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      loadHotModifiedProps(properties);
+      commonProperties.load(inputStream);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
@@ -1543,7 +1539,8 @@ public class IoTDBDescriptor {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      loadHotModifiedProps(properties);
+      commonProperties.putAll(properties);
+      loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(

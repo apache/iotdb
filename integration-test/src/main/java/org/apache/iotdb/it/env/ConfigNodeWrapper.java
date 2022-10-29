@@ -69,17 +69,12 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-confignode.properties");
+    return workDirFilePath("conf", "iotdb-confignode.properties");
   }
 
   @Override
   protected String getCommonConfigPath() {
-    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-common.properties");
-  }
-
-  @Override
-  protected String getAdditionalConfigPath() {
-    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-additional.properties");
+    return workDirFilePath("conf", "iotdb-common.properties");
   }
 
   @Override
@@ -92,13 +87,16 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void addStartCmdParams(List<String> params) {
-    final String workDir = getNodePath() + File.separator + "confignode";
+    final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(
             "-Dlogback.configurationFile=" + confDir + File.separator + "logback-confignode.xml",
             "-DCONFIGNODE_HOME=" + workDir,
             "-DCONFIGNODE_CONF=" + confDir,
+            "-DIOTDB_HOME=" + workDir,
+            "-DIOTDB_CONF=" + confDir,
+            "-DTSFILE_CONF=" + confDir,
             "org.apache.iotdb.confignode.service.ConfigNode",
             "-s"));
   }
