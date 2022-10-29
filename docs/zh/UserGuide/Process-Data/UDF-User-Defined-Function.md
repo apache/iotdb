@@ -368,8 +368,8 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 1. 实现一个完整的 UDF 类，假定这个类的全类名为`org.apache.iotdb.udf.UDTFExample`
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
-3. 将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` （也可以是`iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`的子目录）下。
-   **注意，在部署集群的时候，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。**
+3. 可选项。您可以提前将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 下。
+   **注意，在部署集群的时候，如果您想将 JAR 包提前放到指定目录下，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。** 您也可以在注册 UDF 的 SQL 中指定要使用的 JAR 包的 URI，我们会尝试下载该 JAR 包并分发到集群中的每个节点，放置在 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf/install` 下。
    
     > 您可以通过修改配置文件中的`udf_root_dir`来指定 UDF 加载 Jar 的根路径。
 4. 使用 SQL 语句注册该 UDF，假定赋予该 UDF 的名字为`example`
@@ -377,13 +377,13 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 注册 UDF 的 SQL 语法如下：
 
 ```sql
-CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
+CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
 例子中注册 UDF 的 SQL 语句如下：
 
 ```sql
-CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample' USING URI 'http://jar/example.jar'
 ```
 
 由于 IoTDB 的 UDF 是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
