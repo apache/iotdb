@@ -84,23 +84,16 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
         case VALIDATED:
           ConfigManager configManager = env.getConfigManager();
-          boolean needToSaveJar =
-              configManager
-                  .getTriggerManager()
-                  .getTriggerInfo()
-                  .needToSaveJar(triggerInformation.getJarName());
 
           LOG.info(
               "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]",
               triggerInformation.getTriggerName(),
-              needToSaveJar);
+              jarFile != null);
 
           ConsensusWriteResponse response =
               configManager
                   .getConsensusManager()
-                  .write(
-                      new AddTriggerInTablePlan(
-                          triggerInformation, needToSaveJar ? jarFile : null));
+                  .write(new AddTriggerInTablePlan(triggerInformation, jarFile));
           if (!response.isSuccessful()) {
             throw new TriggerManagementException(response.getErrorMessage());
           }
