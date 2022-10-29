@@ -160,11 +160,9 @@ public class IDTableFlushTimeTest {
         StorageEngine.getInstance().getProcessor(new PartialPath("root.isp.d1"));
 
     assertEquals(
-        103L, storageGroupProcessor.getLastFlushTimeManager().getFlushedTime(0L, "root.isp.d1"));
+        103L, storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0L, "root.isp.d1"));
     assertEquals(
-        123L, storageGroupProcessor.getLastFlushTimeManager().getLastTime(0L, "root.isp.d1"));
-    assertEquals(
-        103L, storageGroupProcessor.getLastFlushTimeManager().getGlobalFlushedTime("root.isp.d1"));
+        103L, storageGroupProcessor.getLastFlushTimeMap().getGlobalFlushedTime("root.isp.d1"));
 
     // delete time partition
     Set<Long> deletedPartition = new HashSet<>();
@@ -175,12 +173,9 @@ public class IDTableFlushTimeTest {
 
     assertEquals(
         Long.MIN_VALUE,
-        storageGroupProcessor.getLastFlushTimeManager().getFlushedTime(0L, "root.isp.d1"));
+        storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0L, "root.isp.d1"));
     assertEquals(
-        Long.MIN_VALUE,
-        storageGroupProcessor.getLastFlushTimeManager().getLastTime(0L, "root.isp.d1"));
-    assertEquals(
-        123L, storageGroupProcessor.getLastFlushTimeManager().getGlobalFlushedTime("root.isp.d1"));
+        123L, storageGroupProcessor.getLastFlushTimeMap().getGlobalFlushedTime("root.isp.d1"));
   }
 
   private void insertData(long initTime) throws IllegalPathException, QueryProcessException {

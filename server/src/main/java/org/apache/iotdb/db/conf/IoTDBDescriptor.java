@@ -1618,9 +1618,20 @@ public class IoTDBDescriptor {
     String[] proportions = allocationRatio.split(":");
     int proportionForMemTable = Integer.parseInt(proportions[0].trim());
     int proportionForCompaction = Integer.parseInt(proportions[1].trim());
-    conf.setWriteProportion(
+
+    double writeProportion =
         ((double) (proportionForMemTable)
-            / (double) (proportionForCompaction + proportionForMemTable)));
+            / (double) (proportionForCompaction + proportionForMemTable));
+
+    double flushTimeProportionForWrite =
+        Double.parseDouble(properties.getProperty("flush_time_memory_proportion"));
+    conf.setWriteProportion(writeProportion * (1 - flushTimeProportionForWrite));
+
+    conf.setAllocateMemoryForFlushTime(
+        (long)
+            ((writeProportion * flushTimeProportionForWrite)
+                * conf.getAllocateMemoryForStorageEngine()));
+
     conf.setCompactionProportion(
         ((double) (proportionForCompaction)
             / (double) (proportionForCompaction + proportionForMemTable)));
