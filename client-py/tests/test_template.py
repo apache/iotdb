@@ -89,6 +89,8 @@ def test_set_template():
         template.add_template(m_node_y)
         session.create_schema_template(template)
 
+        session.execute_non_query_statement("set storage group to root.python")
+
         session.set_schema_template(template_name, "root.python.GPS")
         session.execute_non_query_statement("create timeseries of schema template on root.python.GPS")
 
