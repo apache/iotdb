@@ -53,7 +53,7 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
 
     BasicStructureSerDeUtil.write(storageGroup, stream);
     stream.writeInt(dataReplicationFactor);

@@ -17,52 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.trigger;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-public class GetTriggerJarPlan extends ConfigPhysicalPlan {
+public class GetTransferringTriggersPlan extends ConfigPhysicalPlan {
 
-  private List<String> jarNames;
-
-  public GetTriggerJarPlan() {
-    super(ConfigPhysicalPlanType.GetTriggerJar);
-  }
-
-  public GetTriggerJarPlan(List<String> triggerNames) {
-    super(ConfigPhysicalPlanType.GetTriggerJar);
-    jarNames = triggerNames;
-  }
-
-  public List<String> getJarNames() {
-    return jarNames;
+  public GetTransferringTriggersPlan() {
+    super(ConfigPhysicalPlanType.GetTransferringTriggers);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetTriggerJar.ordinal());
-
-    ReadWriteIOUtils.write(jarNames.size(), stream);
-    for (String jarName : jarNames) {
-      ReadWriteIOUtils.write(jarName, stream);
-    }
+    stream.writeShort(getType().getPlanType());
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int size = ReadWriteIOUtils.readInt(buffer);
-    jarNames = new ArrayList<>(size);
-    while (size > 0) {
-      jarNames.add(ReadWriteIOUtils.readString(buffer));
-      size--;
-    }
-  }
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

@@ -67,7 +67,7 @@ public class AddCQPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
     ReadWriteIOUtils.write(md5, stream);
     ReadWriteIOUtils.write(firstExecutionTime, stream);
