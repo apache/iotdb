@@ -961,6 +961,12 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException {
+    return 0;
+  }
+
+  @Override
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     throw new UnsupportedOperationException("getMNodeForTrigger");
   }

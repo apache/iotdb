@@ -148,9 +148,9 @@ public class CreateRegionGroupsProcedure
 
         env.persistAndBroadcastRegionGroup(persistPlan);
         env.getConfigManager().getConsensusManager().write(offerPlan);
-        setNextState(CreateRegionGroupsState.BUILD_REGION_GROUP_CACHE);
+        setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
-      case BUILD_REGION_GROUP_CACHE:
+      case ACTIVATE_REGION_GROUPS:
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -168,12 +168,15 @@ public class CreateRegionGroupsProcedure
 
                           if (!failedRegionReplicaSets.containsKey(
                               regionReplicaSet.getRegionId())) {
-                            env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
+                            // All RegionReplicas created successfully
+                            // All RegionStatus are Running
+                            env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
                           } else {
                             TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
                             if (failedRegionReplicas.getDataNodeLocationsSize()
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                              // Replace the RegionStatus of those RegionReplicas to Unknown
                               failedRegionReplicas
                                   .getDataNodeLocations()
                                   .forEach(
@@ -181,7 +184,7 @@ public class CreateRegionGroupsProcedure
                                           statusMap.replace(
                                               dataNodeLocation.getDataNodeId(),
                                               RegionStatus.Unknown));
-                              env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
+                              env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
                             }
                           }
                         }));

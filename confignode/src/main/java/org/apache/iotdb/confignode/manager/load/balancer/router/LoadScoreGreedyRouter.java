@@ -32,18 +32,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /** The LoadScoreGreedyRouter always pick the Replica with the lowest loadScore */
 public class LoadScoreGreedyRouter implements IRouter {
 
-  // Map<DataNodeId, loadScore>
-  private final Map<Integer, Long> loadScoreMap;
-
-  /** The constructor is used to pass in the load information needed by the algorithm */
-  public LoadScoreGreedyRouter(Map<Integer, Long> loadScoreMap) {
-    this.loadScoreMap = loadScoreMap;
+  public LoadScoreGreedyRouter() {
+    // Empty constructor
   }
 
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
-      List<TRegionReplicaSet> replicaSets) {
-    Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
+      List<TRegionReplicaSet> replicaSets,
+      Map<TConsensusGroupId, Integer> regionLeaderMap,
+      Map<Integer, Long> dataNodeLoadScoreMap) {
+
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
@@ -61,7 +60,7 @@ public class LoadScoreGreedyRouter implements IRouter {
                     // In this case we put a maximum loadScore into the sortList.
                     sortList.add(
                         new Pair<>(
-                            loadScoreMap.computeIfAbsent(
+                            dataNodeLoadScoreMap.computeIfAbsent(
                                 dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
@@ -71,9 +70,9 @@ public class LoadScoreGreedyRouter implements IRouter {
             sortedReplicaSet.addToDataNodeLocations(entry.getRight());
           }
 
-          result.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
+          regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
         });
 
-    return result;
+    return regionPriorityMap;
   }
 }

@@ -20,15 +20,18 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
@@ -39,7 +42,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -109,10 +115,12 @@ public class UDFInfo implements SnapshotProcessor {
     try {
       final UDFInformation udfInformation = physicalPlan.getUdfInformation();
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
-      existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
-      if (physicalPlan.getJarFile() != null) {
-        udfExecutableManager.writeToLibDir(
-            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
+      if (udfInformation.isUsingURI()) {
+        existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+        if (physicalPlan.getJarFile() != null) {
+          udfExecutableManager.saveToInstallDir(
+              ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
+        }
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
@@ -130,6 +138,24 @@ public class UDFInfo implements SnapshotProcessor {
     return new FunctionTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         udfTable.getAllNonBuiltInUDFInformation());
+  }
+
+  public JarResp getUDFJar(GetUDFJarPlan physicalPlan) {
+    List<ByteBuffer> jarList = new ArrayList<>();
+    try {
+      for (String jarName : physicalPlan.getJarNames()) {
+        jarList.add(
+            ExecutableManager.transferToBytebuffer(
+                UDFExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
+      }
+    } catch (Exception e) {
+      LOGGER.error("Get UDF_Jar failed", e);
+      return new JarResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
+          Collections.emptyList());
+    }
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
   public TSStatus dropFunction(DropFunctionPlan req) {

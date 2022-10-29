@@ -200,7 +200,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -289,6 +289,10 @@ public class ConfigNode implements ConfigNodeMBean {
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
     System.exit(-1);
+  }
+
+  public ConfigManager getConfigManager() {
+    return configManager;
   }
 
   private static class ConfigNodeHolder {

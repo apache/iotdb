@@ -48,7 +48,11 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -67,17 +71,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -458,18 +460,10 @@ public class ClusterSchemaManager {
 
     Template template = resp.getTemplateList().get(0);
 
-    // prepare template data and req
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(1, outputStream);
-      template.serialize(outputStream);
-      ReadWriteIOUtils.write(1, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-    }
+    // prepare req
     TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
-    req.setTemplateInfo(outputStream.toByteArray());
+    req.setTemplateInfo(TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, path));
 
     // sync template set info to all dataNodes
     TSStatus status;
@@ -503,14 +497,8 @@ public class ClusterSchemaManager {
     // construct the rollbackReq
     TUpdateTemplateReq rollbackReq = new TUpdateTemplateReq();
     rollbackReq.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateId, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-
-    }
-    rollbackReq.setTemplateInfo(outputStream.toByteArray());
+    rollbackReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(templateId, path));
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
@@ -548,6 +536,9 @@ public class ClusterSchemaManager {
     }
   }
 
+  /**
+   * get all template set info to sync to all dataNodes, the pre unset template info won't be taken
+   */
   public byte[] getAllTemplateSetInfo() {
     AllTemplateSetInfoResp resp =
         (AllTemplateSetInfoResp)
@@ -558,6 +549,91 @@ public class ClusterSchemaManager {
   public TemplateSetInfoResp getTemplateSetInfo(List<PartialPath> patternList) {
     return (TemplateSetInfoResp)
         getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
+  }
+
+  public Pair<TSStatus, Template> checkIsTemplateSetOnPath(String templateName, String path) {
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                String.format("Undefined template name: %s", templateName)),
+            null);
+      }
+    } else {
+      return new Pair<>(templateResp.getStatus(), null);
+    }
+
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> templateSetPathList = pathInfoResp.getPathList();
+      if (templateSetPathList == null
+          || templateSetPathList.isEmpty()
+          || !pathInfoResp.getPathList().contains(path)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
+                String.format("No template on %s", path)),
+            null);
+      } else {
+        return new Pair<>(templateResp.getStatus(), templateResp.getTemplateList().get(0));
+      }
+    } else {
+      return new Pair<>(pathInfoResp.getStatus(), null);
+    }
+  }
+
+  public TSStatus preUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new PreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus rollbackPreUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
+    return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
+  }
+
+  public synchronized TSStatus dropSchemaTemplate(String templateName) {
+
+    // check template existence
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateInfoResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateInfoResp.getStatus();
+    } else if (templateInfoResp.getTemplateList() == null
+        || templateInfoResp.getTemplateList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+          String.format("Undefined template name: %s", templateName));
+    }
+
+    // check is template set on some path, block all template set operation
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return pathInfoResp.getStatus();
+    } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.METADATA_ERROR.getStatusCode(),
+          String.format(
+              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+    }
+
+    // execute drop template
+    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
   private NodeManager getNodeManager() {

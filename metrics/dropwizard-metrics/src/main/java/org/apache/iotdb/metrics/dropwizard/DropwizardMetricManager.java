@@ -91,7 +91,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void remove(MetricType type, MetricInfo metricInfo) {
+  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
     metricRegistry.remove(DropwizardMetricNameTool.toFlatString(metricInfo));
   }
 

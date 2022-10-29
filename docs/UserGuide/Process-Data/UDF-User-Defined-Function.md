@@ -404,8 +404,9 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
-   **Note that when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
+3. Optional. You can place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
+   **Note that if you choose to place the JAR in advance when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
+The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf/install`.
    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
@@ -413,13 +414,13 @@ The process of registering a UDF in IoTDB is as follows:
 The following shows the SQL syntax of how to register a UDF.
 
 ```sql
-CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
+CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
 Here is an example:
 
 ```sql
-CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF'
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF' USING URI 'http://jar/example.jar'
 ```
 
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.

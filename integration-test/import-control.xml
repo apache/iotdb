@@ -61,6 +61,7 @@
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
+    <allow class="org.apache.iotdb.commons.cq.CQState" />
     <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
     <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />

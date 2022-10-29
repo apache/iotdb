@@ -239,7 +239,6 @@ public class SessionManager implements SessionManagerMBean {
   public boolean releaseSessionResource(
       IClientSession session, Consumer<Long> releaseQueryResource) {
     Set<Long> statementIdSet = session.getStatementIds();
-
     if (statementIdSet != null) {
       for (Long statementId : statementIdSet) {
         Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);

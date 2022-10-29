@@ -45,11 +45,13 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -57,9 +59,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -68,8 +73,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -78,12 +81,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
@@ -156,6 +161,13 @@ public interface IManager {
    * @return ProcedureManager instance
    */
   ProcedureManager getProcedureManager();
+
+  /**
+   * Get CQManager
+   *
+   * @return CQManager instance
+   */
+  CQManager getCQManager();
 
   /**
    * Register DataNode
@@ -317,6 +329,8 @@ public interface IManager {
 
   TGetUDFTableResp getUDFTable();
 
+  TGetJarInListResp getUDFJar(TGetJarInListReq req);
+
   /** Create trigger */
   TSStatus createTrigger(TCreateTriggerReq req);
 
@@ -333,7 +347,7 @@ public interface IManager {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName);
 
   /** Get Trigger jar */
-  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req);
+  TGetJarInListResp getTriggerJar(TGetJarInListReq req);
 
   /** Merge on all DataNodes */
   TSStatus merge();
@@ -418,6 +432,12 @@ public interface IManager {
   /** deactivate schema template */
   TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req);
 
+  /** unset schema template */
+  TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req);
+
+  /** Drop schema template */
+  TSStatus dropSchemaTemplate(String templateName);
+
   /*
    * delete timeseries
    *
@@ -500,6 +520,12 @@ public interface IManager {
   TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
 
   TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+
+  TSStatus createCQ(TCreateCQReq req);
+
+  TSStatus dropCQ(TDropCQReq req);
+
+  TShowCQResp showCQ();
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
