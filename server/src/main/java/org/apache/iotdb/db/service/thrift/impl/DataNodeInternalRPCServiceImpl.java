@@ -786,6 +786,26 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req) {
+    // Operate PIPE on DataNode for rollback, createTime in req is required.
+    switch (SyncOperation.values()[req.getOperation()]) {
+      case START_PIPE:
+        SyncService.getInstance().startPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case STOP_PIPE:
+        SyncService.getInstance().stopPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case DROP_PIPE:
+        SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      default:
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+            .setMessage("Unsupported operation.");
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
   public TSStatus executeCQ(TExecuteCQ req) {
 
     long sessionId =

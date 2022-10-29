@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.OperatePipeRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
@@ -175,6 +176,16 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
             countDownLatch);
+      case PRE_CREATE_PIPE:
+      case OPERATE_PIPE:
+      case ROLLBACK_OPERATE_PIPE:
+        return new OperatePipeRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
       case COUNT_PATHS_USING_TEMPLATE:
         return new CountPathsUsingTemplateRPCHandler(
             requestType,
@@ -202,8 +213,6 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_REGION_ROUTE_MAP:
       case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
-      case PRE_CREATE_PIPE:
-      case OPERATE_PIPE:
       case UPDATE_TEMPLATE:
       default:
         return new AsyncTSStatusRPCHandler(

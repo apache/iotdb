@@ -70,7 +70,7 @@ public class SyncPipeUtil {
   // TODO(sync): delete this in new-standalone version
   public static PipeInfo parseCreatePipePlanAsPipeInfo(CreatePipePlan plan, long pipeCreateTime)
       throws PipeException {
-    boolean syncDelOp = true;
+    boolean syncDelOp = false;
     for (Pair<String, String> pair : plan.getPipeAttributes()) {
       pair.left = pair.left.toLowerCase();
       if ("syncdelop".equals(pair.left)) {
@@ -88,9 +88,9 @@ public class SyncPipeUtil {
         syncDelOp);
   }
 
-  public static PipeInfo parseCreatePipePlanAsPipeInfo(
+  public static PipeInfo parseCreatePipeStatementAsPipeInfo(
       CreatePipeStatement createPipeStatement, long pipeCreateTime) throws PipeException {
-    boolean syncDelOp = true;
+    boolean syncDelOp = false;
     for (Map.Entry<String, String> entry : createPipeStatement.getPipeAttributes().entrySet()) {
       String attributeKey = entry.getKey().toLowerCase();
       if ("syncdelop".equals(attributeKey)) {
@@ -139,7 +139,7 @@ public class SyncPipeUtil {
   /** parse TPipeInfo to PipeInfo */
   public static PipeInfo parseTCreatePipeReqAsPipeInfo(TCreatePipeReq pipeInfo, long pipeCreateTime)
       throws PipeException {
-    boolean syncDelOp = true;
+    boolean syncDelOp = false;
     for (Map.Entry<String, String> entry : pipeInfo.getAttributes().entrySet()) {
       String attributeKey = entry.getKey().toLowerCase();
       if ("syncdelop".equals(attributeKey)) {
