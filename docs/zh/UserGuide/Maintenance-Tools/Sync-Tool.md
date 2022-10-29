@@ -136,7 +136,7 @@ IoTDB>
 
 ### CREATE PIPESINK
 
-- 创建接收端为 IoTDB 类型的 PipeSink，其中IP和port是可选参数。当接收端为集群时，填写任意 DataNode 的 `rpc_address` 与 `rpc_port`*。*
+- 创建接收端为 IoTDB 类型的 PipeSink，其中IP和port是可选参数。当接收端为集群时，填写任意一个 DataNode 的 `rpc_address` 与 `rpc_port`。
 
 ```
 IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(ip='127.0.0.1',port=6670);]
