@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.it.sync;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -79,17 +81,11 @@ public class IoTDBPipeIT {
       statement.execute("CREATE PIPE p1 to demo;");
       statement.execute("CREATE PIPE p2 to demo;");
       String expectedHeader =
-          ColumnHeaderConstant.COLUMN_PIPE_CREATE_TIME
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_NAME
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_ROLE
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_REMOTE
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_STATUS
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_MESSAGE
+          StringUtils.join(
+                  ColumnHeaderConstant.showPipeColumnHeaders.stream()
+                      .map(ColumnHeader::getColumnName)
+                      .toArray(),
+                  ",")
               + ",";
 
       // check pipe operation

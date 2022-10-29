@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -127,6 +128,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -1204,7 +1206,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
       }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      ShowPipeTask.buildTSBlock(resp.getPipeInfoList(), future);
+      List<TShowPipeInfo> tShowPipeInfoList =
+          SyncService.getInstance().showPipeForReceiver(showPipeStatement.getPipeName());
+      tShowPipeInfoList.addAll(resp.getPipeInfoList());
+      ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);
     }
