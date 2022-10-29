@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.consensus.exception;
 
-public class ConsensusGroupAddPeerException extends Exception {
-  public ConsensusGroupAddPeerException(String message) {
+public class ConsensusGroupModifyPeerException extends Exception {
+  public ConsensusGroupModifyPeerException(String message) {
     super(message);
   }
 
-  public ConsensusGroupAddPeerException(Throwable cause) {
+  public ConsensusGroupModifyPeerException(Throwable cause) {
     super(cause);
   }
 
-  public ConsensusGroupAddPeerException(String message, Throwable cause) {
+  public ConsensusGroupModifyPeerException(String message, Throwable cause) {
     super(message, cause);
   }
 }
