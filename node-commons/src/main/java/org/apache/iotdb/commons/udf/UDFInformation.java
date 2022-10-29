@@ -32,6 +32,8 @@ public class UDFInformation {
   private String className;
   private boolean isBuiltin;
 
+  private boolean isUsingURI;
+
   private String jarName;
   private String jarMD5;
 
@@ -42,17 +44,25 @@ public class UDFInformation {
     this.className = className;
   }
 
-  public UDFInformation(String functionName, String className, boolean isBuiltin) {
+  public UDFInformation(
+      String functionName, String className, boolean isBuiltin, boolean isUsingURI) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
+    this.isUsingURI = isUsingURI;
   }
 
   public UDFInformation(
-      String functionName, String className, boolean isBuiltin, String jarName, String jarMD5) {
+      String functionName,
+      String className,
+      boolean isBuiltin,
+      boolean isUsingURI,
+      String jarName,
+      String jarMD5) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
+    this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.jarMD5 = jarMD5;
   }
@@ -77,6 +87,10 @@ public class UDFInformation {
     return jarMD5;
   }
 
+  public boolean isUsingURI() {
+    return isUsingURI;
+  }
+
   public void setFunctionName(String functionName) {
     this.functionName = functionName.toUpperCase();
   }
@@ -95,6 +109,10 @@ public class UDFInformation {
 
   public void setJarMD5(String jarMD5) {
     this.jarMD5 = jarMD5;
+  }
+
+  public void setUsingURI(boolean usingURI) {
+    isUsingURI = usingURI;
   }
 
   public ByteBuffer serialize() throws IOException {

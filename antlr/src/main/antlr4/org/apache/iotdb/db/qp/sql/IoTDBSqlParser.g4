@@ -118,7 +118,11 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL jarLocation
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    ;
+
+uriClasue
+    : USING URI uri
     ;
 
 uri
@@ -152,20 +156,24 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=identifier resampleClause? cqSelectIntoClause
-    ;
-
-cqSelectIntoClause
-    : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
-    ;
-
-cqGroupByTimeClause
-    : GROUP BY TIME LR_BRACKET DURATION_LITERAL RR_BRACKET
-      (COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
+    : CREATE (CONTINUOUS QUERY | CQ) cqId=identifier
+        resampleClause?
+        timeoutPolicyClause?
+        BEGIN
+            selectStatement
+        END
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
+    : RESAMPLE
+        (EVERY everyInterval=DURATION_LITERAL)?
+        (FOR DURATION_LITERAL)?
+        (BOUNDARY boundaryTime=timeValue)?
+        (RANGE startTimeOffset=DURATION_LITERAL (COMMA endTimeOffset=DURATION_LITERAL)?)?
+    ;
+
+timeoutPolicyClause
+    : TIMEOUT POLICY (BLOCKED | DISCARD)
     ;
 
 // Alter Timeseries
@@ -223,7 +231,7 @@ dropTrigger
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
+    : DROP (CONTINUOUS QUERY|CQ) cqId=identifier
     ;
 
 // Drop Schema Template
@@ -472,15 +480,15 @@ sortKey
     ;
 
 groupByTimeClause
-    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? fillClause? RR_BRACKET
-    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? fillClause? RR_BRACKET
+    | GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
-    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    | GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     COMMA TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     fillClause
     ;
 

@@ -22,18 +22,21 @@ package org.apache.iotdb.confignode.procedure.store;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,8 +97,15 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
         break;
+      case CREATE_CQ_PROCEDURE:
+        procedure =
+            new CreateCQProcedure(
+                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
+        break;
+      case UNSET_TEMPLATE_PROCEDURE:
+        procedure = new UnsetTemplateProcedure();
         break;
       default:
         LOGGER.error("unknown Procedure type: " + typeNum);
@@ -132,8 +142,12 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.STOP_PIPE_PROCEDURE;
     } else if (procedure instanceof DropPipeProcedure) {
       return ProcedureType.DROP_PIPE_PROCEDURE;
+    } else if (procedure instanceof CreateCQProcedure) {
+      return ProcedureType.CREATE_CQ_PROCEDURE;
     } else if (procedure instanceof DeactivateTemplateProcedure) {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof UnsetTemplateProcedure) {
+      return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
     }
     return null;
   }
@@ -152,7 +166,9 @@ public class ProcedureFactory implements IProcedureFactory {
     START_PIPE_PROCEDURE,
     STOP_PIPE_PROCEDURE,
     DROP_PIPE_PROCEDURE,
-    DEACTIVATE_TEMPLATE_PROCEDURE
+    CREATE_CQ_PROCEDURE,
+    DEACTIVATE_TEMPLATE_PROCEDURE,
+    UNSET_TEMPLATE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {
