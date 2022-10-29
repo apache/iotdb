@@ -171,7 +171,7 @@ struct TDropFunctionInstanceReq {
 
 struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
-  2: required binary jarFile
+  2: optional binary jarFile
 }
 
 struct TActiveTriggerInstanceReq {
@@ -330,6 +330,7 @@ struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
+    3: optional i64 createTime
 }
 
 // ====================================================
@@ -626,6 +627,11 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode for rollback
+  */
+  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
 
  /**
   * Execute CQ on DataNode

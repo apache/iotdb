@@ -109,6 +109,7 @@ public enum ConfigPhysicalPlanType {
   PreUnsetTemplate((short) 808),
   RollbackUnsetTemplate((short) 809),
   UnsetTemplate((short) 810),
+  DropSchemaTemplate((short) 811),
 
   /** Sync */
   CreatePipeSink((short) 900),

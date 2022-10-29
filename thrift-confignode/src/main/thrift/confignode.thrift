@@ -346,15 +346,15 @@ enum TTriggerState {
 struct TCreateTriggerReq {
   1: required string triggerName
   2: required string className,
-  3: required string jarPath,
-  4: required bool usingURI,
-  5: required byte triggerEvent,
-  6: required byte triggerType
-  7: required binary pathPattern,
-  8: required map<string, string> attributes,
-  9: optional binary jarFile,
-  10: optional string jarMD5,
-  11: required i32 failureStrategy
+  3: required byte triggerEvent,
+  4: required byte triggerType
+  5: required binary pathPattern,
+  6: required map<string, string> attributes,
+  7: required i32 failureStrategy
+  8: required bool isUsingURI,
+  9: optional string jarName,
+  10: optional binary jarFile,
+  11: optional string jarMD5,
 }
 
 struct TDropTriggerReq {
@@ -959,6 +959,11 @@ service IConfigNodeRPCService {
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
+
+  /**
+     * Drop schema template
+     */
+    common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries

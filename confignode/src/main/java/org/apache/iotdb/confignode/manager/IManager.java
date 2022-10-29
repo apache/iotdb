@@ -435,6 +435,9 @@ public interface IManager {
   /** unset schema template */
   TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req);
 
+  /** Drop schema template */
+  TSStatus dropSchemaTemplate(String templateName);
+
   /*
    * delete timeseries
    *

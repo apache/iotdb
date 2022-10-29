@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -110,6 +111,20 @@ public class TemplateTable {
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
       templateIdMap.put(template.getId(), template);
+    } finally {
+      templateReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void dropTemplate(String templateName) throws MetadataException {
+    try {
+      templateReadWriteLock.writeLock().lock();
+      Template temp = this.templateMap.remove(templateName);
+      if (temp == null) {
+        LOGGER.error("Undefined template {}", templateName);
+        throw new UndefinedTemplateException(templateName);
+      }
+      templateIdMap.remove(temp.getId());
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }

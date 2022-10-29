@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -81,12 +80,12 @@ public class IoTDBSchemaTemplateIT {
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
 
     // test drop template which has been set
-    //    try {
-    //      statement.execute("DROP SCHEMA TEMPLATE t1");
-    //    } catch (SQLException e) {
-    //      Assert.assertEquals(
-    //          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
-    //    }
+    try {
+      statement.execute("DROP SCHEMA TEMPLATE t1");
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
+    }
 
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
       Assert.assertFalse(resultSet.next());
@@ -214,7 +213,6 @@ public class IoTDBSchemaTemplateIT {
     }
   }
 
-  @Ignore
   @Test
   public void testDropAndShowSchemaTemplates() throws SQLException {
     // show schema templates
