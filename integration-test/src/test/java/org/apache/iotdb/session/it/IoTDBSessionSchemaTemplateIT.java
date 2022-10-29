@@ -63,7 +63,9 @@ public class IoTDBSessionSchemaTemplateIT {
 
   @After
   public void tearDown() throws Exception {
-    session.close();
+    if (session != null) {
+      session.close();
+    }
     EnvFactory.getEnv().cleanAfterTest();
   }
 
