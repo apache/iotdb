@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
+import java.util.List;
 import java.util.Map;
 
 public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
@@ -103,7 +104,13 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public long getFlushedTime(long timePartitionId, String path) {
-    return idTable.getDeviceEntry(path).getFLushTimeWithDefaultValue(timePartitionId);
+    Long flushTime = idTable.getDeviceEntry(path).getFlushTime(timePartitionId);
+    if (flushTime != null) {
+      return flushTime;
+    }
+    long time = recoverFlushTime(timePartitionId, path);
+    idTable.getDeviceEntry(path).updateFlushTimeMap(timePartitionId, time);
+    return time;
   }
 
   @Override
@@ -130,6 +137,19 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
     for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
       deviceEntry.removePartition(partitionId);
     }
+  }
+
+  private long recoverFlushTime(long partitionId, String devicePath) {
+    List<TsFileResource> tsFileResourceList =
+        tsFileManager.getSequenceListByTimePartition(partitionId);
+
+    for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
+      if (tsFileResourceList.get(i).timeIndex.mayContainsDevice(devicePath)) {
+        return tsFileResourceList.get(i).timeIndex.getEndTime(devicePath);
+      }
+    }
+
+    return Long.MIN_VALUE;
   }
 
   @Override
