@@ -59,12 +59,18 @@ import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTrigger
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -90,7 +96,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
@@ -105,6 +114,7 @@ import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatis
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -1046,6 +1056,72 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void ActiveCQPlanTest() throws IOException {
+    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCq_md5");
+    ActiveCQPlan activeCQPlan1 =
+        (ActiveCQPlan) ConfigPhysicalPlan.Factory.create(activeCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(activeCQPlan0, activeCQPlan1);
+  }
+
+  @Test
+  public void AddCQPlanTest() throws IOException {
+    long executionTime = System.currentTimeMillis();
+    AddCQPlan addCQPlan0 =
+        new AddCQPlan(
+            new TCreateCQReq(
+                "testCq1",
+                1000,
+                0,
+                1000,
+                0,
+                (byte) 0,
+                "select s1 into root.backup.d1.s1 from root.sg.d1",
+                "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
+                "Asia",
+                "root"),
+            "testCq1_md5",
+            executionTime);
+    AddCQPlan addCQPlan1 =
+        (AddCQPlan) ConfigPhysicalPlan.Factory.create(addCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(addCQPlan0, addCQPlan1);
+  }
+
+  @Test
+  public void DropCQPlanTest() throws IOException {
+    DropCQPlan dropCQPlan0 = new DropCQPlan("testCq1");
+    DropCQPlan dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+
+    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1_md5");
+    dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+  }
+
+  @Test
+  public void ShowCQPlanTest() throws IOException {
+    ShowCQPlan showCQPlan0 = new ShowCQPlan();
+    ShowCQPlan showCQPlan1 =
+        (ShowCQPlan) ConfigPhysicalPlan.Factory.create(showCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(showCQPlan0, showCQPlan1);
+  }
+
+  @Test
+  public void UpdateCQLastExecTimePlanTest() throws IOException {
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
+        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan1 =
+        (UpdateCQLastExecTimePlan)
+            ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
+  }
+
+  @Test
   public void GetTriggerJarPlanTest() throws IOException {
     List<String> jarNames = new ArrayList<>();
     jarNames.add("test1");
@@ -1205,5 +1281,47 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getUDFTablePlan0.serializeToByteBuffer())
             instanceof GetFunctionTablePlan);
+  }
+
+  @Test
+  public void GetUDFJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("test1");
+    jarNames.add("test2");
+    GetUDFJarPlan getUDFJarPlan0 = new GetUDFJarPlan(jarNames);
+
+    GetUDFJarPlan getUDFJarPlan1 =
+        (GetUDFJarPlan) ConfigPhysicalPlan.Factory.create(getUDFJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getUDFJarPlan0.getJarNames(), getUDFJarPlan1.getJarNames());
+  }
+
+  @Test
+  public void PreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    PreUnsetSchemaTemplatePlan plan = new PreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    PreUnsetSchemaTemplatePlan deserializedPlan =
+        (PreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void RollbackPreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    RollbackPreUnsetSchemaTemplatePlan plan =
+        new RollbackPreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    RollbackPreUnsetSchemaTemplatePlan deserializedPlan =
+        (RollbackPreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void UnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    UnsetSchemaTemplatePlan deserializedPlan =
+        (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
   }
 }

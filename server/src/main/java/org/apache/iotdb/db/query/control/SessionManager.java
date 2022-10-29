@@ -244,6 +244,7 @@ public class SessionManager {
   public boolean releaseSessionResource(long sessionId, Consumer<Long> releaseQueryResource) {
     sessionIdToZoneId.remove(sessionId);
     sessionIdToClientVersion.remove(sessionId);
+    sessionIdToSessionInfo.remove(sessionId);
 
     Set<Long> statementIdSet = sessionIdToStatementId.remove(sessionId);
     if (statementIdSet != null) {

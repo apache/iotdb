@@ -164,6 +164,26 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
+  public void preUnsetSchemaTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackUnsetSchemaTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isSchemaTemplatePreUnset() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void unsetSchemaTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public boolean isStorageGroup() {
     return false;
   }
