@@ -100,8 +100,6 @@ public class UpdateLoadStatisticsPlan extends ConfigPhysicalPlan {
       TTransport transport = new TIOStreamTransport(stream);
       TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-      ReadWriteIOUtils.write(ConfigPhysicalPlanType.UpdateLoadStatistics.ordinal(), stream);
-
       ReadWriteIOUtils.write(nodeStatisticsMap.size(), stream);
       for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
         ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), stream);
