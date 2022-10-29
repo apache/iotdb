@@ -531,7 +531,9 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final TCreateTriggerInstanceReq request =
         new TCreateTriggerInstanceReq(triggerInformation.serialize());
-    request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
+    if (jarFile != null) {
+      request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
+    }
 
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
