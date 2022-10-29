@@ -29,7 +29,6 @@ import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.it.selectinto.IoTDBSelectIntoIT.SQLs;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 
 @RunWith(IoTDBTestRunner.class)
