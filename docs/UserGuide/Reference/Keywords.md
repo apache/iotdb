@@ -21,7 +21,7 @@
 
 # Keywords and Reserved Words
 
-The following list shows the keywords and reserved words in IoTDB 0.13. Reserved keywords are marked with **(R)**.
+The following list shows the keywords and reserved words in IoTDB. Reserved keywords are marked with **(R)**.
 
 - Common Keywords
   - ADD
