@@ -175,9 +175,14 @@ public class PartitionRegionStateMachine
           "Current node [nodeId: {}, ip:port: {}] becomes Leader",
           newLeaderId,
           currentNodeTEndPoint);
+
+      // Recover HeartbeatCache by inheriting old-leader's statistics result
       configManager.getLoadManager().recoverHeartbeatCache();
+
+      // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().startLoadBalancingService();
+      configManager.getLoadManager().startLoadStatisticsService();
+      configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getNodeManager().startHeartbeatService();
       configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
@@ -194,8 +199,11 @@ public class PartitionRegionStateMachine
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
+
+      // Stop leader scheduling services
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stopLoadBalancingService();
+      configManager.getLoadManager().stopLoadStatisticsService();
+      configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
