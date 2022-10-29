@@ -79,7 +79,7 @@ public class IoTDBConfigNodeSnapshotIT {
   protected static String originalConfigNodeConsensusProtocolClass;
 
   protected static int originalRatisSnapshotTriggerThreshold;
-  private static final int testRatisSnapshotTriggerThreshold = 10;
+  private static final int testRatisSnapshotTriggerThreshold = 100;
 
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
