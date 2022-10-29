@@ -109,5 +109,6 @@ public enum ConfigPhysicalPlanType {
   GetFunctionJar,
   PreUnsetTemplate,
   RollbackUnsetTemplate,
-  UnsetTemplate
+  UnsetTemplate,
+  DropSchemaTemplate
 }

@@ -273,6 +273,12 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case ROLLBACK_OPERATE_PIPE:
+          client.operatePipeOnDataNodeForRollback(
+              (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.constructSchemaBlackListWithTemplate(
               (TConstructSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),

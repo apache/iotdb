@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -906,6 +907,16 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void DropSchemaTemplateTest() throws IOException {
+    DropSchemaTemplatePlan dropSchemaTemplatePlan = new DropSchemaTemplatePlan("template");
+    DropSchemaTemplatePlan deserializedPlan =
+        (DropSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(dropSchemaTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        dropSchemaTemplatePlan.getTemplateName(), deserializedPlan.getTemplateName());
+  }
+
+  @Test
   public void CreatePipeSinkPlanTest() throws IOException {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("ip", "127.0.0.1");
@@ -952,7 +963,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void PreCreatePipePlanTest() throws IOException {
     PipeInfo pipeInfo =
         new TsFilePipeInfo(
-            "name", "demo", PipeStatus.PREPARE_CREATE, System.currentTimeMillis(), 999, false);
+            "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
     PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
     PreCreatePipePlan PreCreatePipePlan1 =
         (PreCreatePipePlan)
@@ -962,7 +973,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlan() throws IOException {
-    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PREPARE_CREATE);
+    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PARTIAL_CREATE);
     SetPipeStatusPlan setPipeStatusPlan1 =
         (SetPipeStatusPlan)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());

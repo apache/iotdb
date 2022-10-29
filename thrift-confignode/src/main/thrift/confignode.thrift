@@ -962,6 +962,11 @@ service IConfigNodeRPCService {
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
+     * Drop schema template
+     */
+    common.TSStatus dropSchemaTemplate(string req)
+
+  /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
    *
    * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
