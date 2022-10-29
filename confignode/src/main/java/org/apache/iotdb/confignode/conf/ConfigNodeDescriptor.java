@@ -251,10 +251,10 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-    conf.setHeartbeatInterval(
+    conf.setHeartbeatIntervalInMs(
         Long.parseLong(
             properties.getProperty(
-                "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
+                "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))));
 
     String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
     if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)

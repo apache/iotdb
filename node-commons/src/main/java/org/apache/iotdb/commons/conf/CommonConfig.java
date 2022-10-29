@@ -90,7 +90,7 @@ public class CommonConfig {
    * <p>Notice: if this property is changed, previous created storage group which are not set TTL
    * will also be affected. Unit: millisecond
    */
-  private long defaultTTL = Long.MAX_VALUE;
+  private long defaultTTLInMs = Long.MAX_VALUE;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -238,12 +238,12 @@ public class CommonConfig {
     this.systemFileStorageFs = systemFileStorageFs;
   }
 
-  public long getDefaultTTL() {
-    return defaultTTL;
+  public long getDefaultTTLInMs() {
+    return defaultTTLInMs;
   }
 
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
+  public void setDefaultTTLInMs(long defaultTTLInMs) {
+    this.defaultTTLInMs = defaultTTLInMs;
   }
 
   public int getCnConnectionTimeoutInMS() {

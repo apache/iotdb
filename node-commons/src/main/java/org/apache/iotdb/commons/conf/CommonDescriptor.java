@@ -77,9 +77,10 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
-    config.setDefaultTTL(
+    config.setDefaultTTLInMs(
         Long.parseLong(
-            properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
+            properties.getProperty(
+                "default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))));
     config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
 
     config.setWalDirs(properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).split(","));
