@@ -291,7 +291,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
         String uriString = createFunctionStatement.getUriString();
-        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        jarFileName = new File(createFunctionStatement.getUriString()).getName();
         if (!new URI(uriString).getScheme().equals("file")) {
           try {
             // download executable
