@@ -297,12 +297,16 @@ public class IoTDBConfigNodeSnapshotIT {
     final String jarMD5 = DigestUtils.md5Hex(jarFile.array());
 
     TCreateFunctionReq createFunctionReq1 =
-        new TCreateFunctionReq(
-            "test1", "org.apache.iotdb.udf.UDTFExample", jarName, jarFile, jarMD5);
+        new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setUdfName(jarName)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
 
     TCreateFunctionReq createFunctionReq2 =
-        new TCreateFunctionReq(
-            "test2", "org.apache.iotdb.udf.UDTFExample", jarName, jarFile, jarMD5);
+        new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setUdfName(jarName)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
 
     assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
