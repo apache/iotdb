@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -38,7 +39,7 @@ public class RegionGroupStatistics {
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
 
   public RegionGroupStatistics() {
-    this.regionStatisticsMap = new HashMap<>();
+    this.regionStatisticsMap = new ConcurrentHashMap<>();
   }
 
   public RegionGroupStatistics(
@@ -64,7 +65,13 @@ public class RegionGroupStatistics {
   }
 
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new HashMap<>());
+    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new ConcurrentHashMap<>());
+  }
+
+  public RegionGroupStatistics deepCopy() {
+    Map<Integer, RegionStatistics> deepCopyMap = new ConcurrentHashMap<>();
+    regionStatisticsMap.forEach((dataNodeId, regionStatistics) -> deepCopyMap.put(dataNodeId, regionStatistics.deepCopy()));
+    return new RegionGroupStatistics(regionGroupStatus, deepCopyMap);
   }
 
   public Map<Integer, RegionHeartbeatSample> convertToRegionHeartbeatSampleMap() {

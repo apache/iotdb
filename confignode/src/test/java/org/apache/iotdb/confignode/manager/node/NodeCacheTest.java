@@ -33,7 +33,7 @@ public class NodeCacheTest {
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache();
 
     // Test update to UnknownStatus
-    dataNodeHeartbeatCache.updateNodeStatistics();
+    dataNodeHeartbeatCache.updateCurrentStatistics();
     Assert.assertEquals(NodeStatus.Unknown, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
 

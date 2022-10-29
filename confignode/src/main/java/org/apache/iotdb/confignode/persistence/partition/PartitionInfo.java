@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
@@ -701,64 +700,6 @@ public class PartitionInfo implements SnapshotProcessor {
           .set(dataNodeLocationIntegerMap.get(dataNodeLocation));
     }
     return result;
-  }
-
-  /**
-   * Update RegionGroupStatistics through consensus-write
-   *
-   * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
-   */
-  public TSStatus updateRegionGroupStatisticsAndRegionRouteMap(
-      UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    if (!updateLoadStatisticsPlan.getRegionGroupStatisticsMap().isEmpty()) {
-      synchronized (regionGroupStatisticsMap) {
-        // Update regionGroupStatisticsMap
-        regionGroupStatisticsMap.putAll(updateLoadStatisticsPlan.getRegionGroupStatisticsMap());
-        // Log current RegionGroupStatistics
-        LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
-        for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-            regionGroupStatisticsMap.entrySet()) {
-          LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionGroupStatisticsEntry.getKey(),
-              regionGroupStatisticsEntry.getValue());
-        }
-      }
-    }
-
-    if (!updateLoadStatisticsPlan.getRegionRouteMap().isEmpty()) {
-      synchronized (regionRouteMap) {
-        // Update regionLeaderMap
-        regionRouteMap
-            .getRegionLeaderMap()
-            .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionLeaderMap());
-        // Log current regionLeaderMap
-        LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
-        for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
-            regionRouteMap.getRegionLeaderMap().entrySet()) {
-          LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionLeaderEntry.getKey(),
-              regionLeaderEntry.getValue());
-        }
-
-        // Update regionPriorityMap
-        regionRouteMap
-            .getRegionPriorityMap()
-            .putAll(updateLoadStatisticsPlan.getRegionRouteMap().getRegionPriorityMap());
-        // Log current regionPriorityMap
-        LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
-        for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
-            regionRouteMap.getRegionPriorityMap().entrySet()) {
-          LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              regionPriorityEntry.getKey(),
-              regionPriorityEntry.getValue());
-        }
-      }
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override

@@ -29,7 +29,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public void updateNodeStatistics() {
+  protected void updateCurrentStatistics() {
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
@@ -55,9 +55,9 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
-    if (!statistics.equals(newStatistics)) {
-      // Update NodeStatistics if necessary
-      statistics = newStatistics;
+    if (!currentStatistics.equals(newStatistics)) {
+      // Update the current NodeStatistics if necessary
+      currentStatistics = newStatistics;
     }
   }
 }

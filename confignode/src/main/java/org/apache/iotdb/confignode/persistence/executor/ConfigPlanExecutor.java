@@ -63,7 +63,6 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -367,13 +366,6 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
-      case UpdateLoadStatistics:
-        LOGGER.info(
-            "[UpdateLoadStatistics] Update cluster load statistics, timestamp: {}",
-            System.currentTimeMillis());
-        nodeInfo.updateNodeStatistics((UpdateLoadStatisticsPlan) physicalPlan);
-        return partitionInfo.updateRegionGroupStatisticsAndRegionRouteMap(
-            (UpdateLoadStatisticsPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

@@ -798,53 +798,8 @@ public class PartitionManager {
 
   /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
   public void recoverRegionGroupCacheMap() {
-    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
-        partitionInfo.getRegionGroupStatisticsMap();
     regionGroupCacheMap.clear();
-
-    LOGGER.info("[InheritLoadStatistics] Start to inherit RegionGroupStatistics...");
-
-    getAllReplicaSets()
-        .forEach(
-            regionReplicaSet -> {
-              TConsensusGroupId groupId = regionReplicaSet.getRegionId();
-              if (regionGroupStatisticsMap.containsKey(groupId)) {
-                regionGroupCacheMap.put(groupId, new RegionGroupCache(groupId));
-                regionGroupCacheMap
-                    .get(groupId)
-                    .forceUpdate(
-                        regionGroupStatisticsMap.get(groupId).convertToRegionHeartbeatSampleMap());
-                LOGGER.info(
-                    "[InheritLoadStatistics]\t {}={}",
-                    groupId,
-                    regionGroupCacheMap.get(groupId).getStatistics());
-              }
-            });
-
-    LOGGER.info("[InheritLoadStatistics] Inherit RegionGroupStatistics finish");
-  }
-
-  /**
-   * @param regionGroupId The specified RegionGroup's index
-   * @param isLatest Is the RegionGroupStatistics latest
-   * @return RegionGroupStatistics in RegionGroupCache if the isLatest is set to True,
-   *     RegionGroupStatistics in PartitionInfo otherwise
-   */
-  public RegionGroupStatistics getRegionGroupStatistics(
-      TConsensusGroupId regionGroupId, boolean isLatest) {
-    if (isLatest) {
-      return regionGroupCacheMap.containsKey(regionGroupId)
-          ? regionGroupCacheMap.get(regionGroupId).getStatistics()
-          : RegionGroupStatistics.generateDefaultRegionGroupStatistics();
-    } else {
-      return partitionInfo.getRegionGroupStatisticsMap().containsKey(regionGroupId)
-          ? partitionInfo.getRegionGroupStatisticsMap().get(regionGroupId)
-          : RegionGroupStatistics.generateDefaultRegionGroupStatistics();
-    }
-  }
-
-  public RegionRouteMap getRegionRouteMap() {
-    return partitionInfo.getRegionRouteMap();
+    getAllReplicaSets().forEach(regionReplicaSet -> regionGroupCacheMap.put(regionReplicaSet.getRegionId(), new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

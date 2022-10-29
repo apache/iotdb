@@ -106,12 +106,12 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
+  public static final int CURRENT_NODE_ID = CONF.getConfigNodeId();
+
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
   private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
       CONF.getUnknownDataNodeDetectInterval();
-
-  public static final TEndPoint CURRENT_NODE =
-      new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort());
 
   // when fail to register a new node, set node id to -1
   private static final int ERROR_STATUS_NODE_ID = -1;
@@ -501,7 +501,7 @@ public class NodeManager {
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
-                configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
+                configNodeLocation.getConfigNodeId() == CURRENT_NODE_ID
                     ? RegionRoleType.Leader.name()
                     : RegionRoleType.Follower.name());
             configNodeInfoList.add(info);
@@ -720,7 +720,7 @@ public class NodeManager {
       THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)) {
+      if (configNodeLocation.getConfigNodeId() == CURRENT_NODE_ID) {
         // Skip itself
         continue;
       }
@@ -938,77 +938,17 @@ public class NodeManager {
 
   /** Recover the nodeCacheMap when the ConfigNode-Leader is switched */
   public void recoverNodeCacheMap() {
-    Map<Integer, NodeStatistics> nodeStatisticsMap = nodeInfo.getNodeStatisticsMap();
     nodeCacheMap.clear();
-    LOGGER.info("[InheritLoadStatistics] Start to inherit NodeStatistics...");
 
-    // Force update ConfigNode-leader
-    nodeCacheMap.put(
-        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-        new ConfigNodeHeartbeatCache(
-            new TConfigNodeLocation(
-                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-                CURRENT_NODE,
-                new TEndPoint(
-                    ConfigNodeDescriptor.getInstance().getConf().getInternalAddress(),
-                    ConfigNodeDescriptor.getInstance().getConf().getConsensusPort())),
-            ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS));
+    // Recover ConfigNodeHeartbeatCache
+    getRegisteredConfigNodes().forEach(configNodeLocation ->
+            nodeCacheMap.put(configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation)));
+    // Force set itself and never update
+    nodeCacheMap.get(CURRENT_NODE_ID).forceUpdate(ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS.convertToNodeHeartbeatSample());
 
-    // Inherit ConfigNodeStatistics
-    getRegisteredConfigNodes()
-        .forEach(
-            configNodeLocation -> {
-              int configNodeId = configNodeLocation.getConfigNodeId();
-              if (!configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
-                  && nodeStatisticsMap.containsKey(configNodeId)) {
-                nodeCacheMap.put(configNodeId, new ConfigNodeHeartbeatCache(configNodeLocation));
-                nodeCacheMap
-                    .get(configNodeId)
-                    .forceUpdate(
-                        nodeStatisticsMap.get(configNodeId).convertToNodeHeartbeatSample());
-                LOGGER.info(
-                    "[InheritLoadStatistics]\t {}={}",
-                    "nodeId{" + configNodeId + "}",
-                    nodeCacheMap.get(configNodeId).getStatistics());
-              }
-            });
-
-    // Inherit DataNodeStatistics
-    getRegisteredDataNodes()
-        .forEach(
-            dataNodeConfiguration -> {
-              int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-              if (nodeStatisticsMap.containsKey(dataNodeId)) {
-                nodeCacheMap.put(dataNodeId, new DataNodeHeartbeatCache());
-                nodeCacheMap
-                    .get(dataNodeId)
-                    .forceUpdate(nodeStatisticsMap.get(dataNodeId).convertToNodeHeartbeatSample());
-                LOGGER.info(
-                    "[InheritLoadStatistics]\t {}={}",
-                    "nodeId{" + dataNodeId + "}",
-                    nodeCacheMap.get(dataNodeId).getStatistics());
-              }
-            });
-
-    LOGGER.info("[InheritLoadStatistics] Inherit NodeStatistics finish");
-  }
-
-  /**
-   * @param nodeId The specified Node's index
-   * @param isLatest Is the NodeStatistics latest
-   * @return NodeStatistics in NodeCache if the isLatest is set to True, NodeStatistics in NodeInfo
-   *     otherwise
-   */
-  public NodeStatistics getNodeStatistics(int nodeId, boolean isLatest) {
-    if (isLatest) {
-      return nodeCacheMap.containsKey(nodeId)
-          ? nodeCacheMap.get(nodeId).getStatistics()
-          : NodeStatistics.generateDefaultNodeStatistics();
-    } else {
-      return nodeInfo.getNodeStatisticsMap().containsKey(nodeId)
-          ? nodeInfo.getNodeStatisticsMap().get(nodeId)
-          : NodeStatistics.generateDefaultNodeStatistics();
-    }
+    // Recover DataNodeHeartbeatCache
+    getRegisteredDataNodes().forEach(dataNodeConfiguration ->
+            nodeCacheMap.put(dataNodeConfiguration.getLocation().getDataNodeId(), new DataNodeHeartbeatCache()));
   }
 
   private ConsensusManager getConsensusManager() {

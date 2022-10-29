@@ -42,7 +42,7 @@ public class RegionGroupCacheTest {
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Removing));
     regionGroupCache.cacheHeartbeatSample(
         3, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.ReadOnly));
-    regionGroupCache.updateRegionGroupStatistics();
+    regionGroupCache.updateCurrentStatistics();
 
     Assert.assertEquals(RegionStatus.Running, regionGroupCache.getStatistics().getRegionStatus(0));
     Assert.assertEquals(RegionStatus.Unknown, regionGroupCache.getStatistics().getRegionStatus(1));
@@ -61,7 +61,7 @@ public class RegionGroupCacheTest {
         1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
     runningRegionGroup.cacheHeartbeatSample(
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    runningRegionGroup.updateRegionGroupStatistics();
+    runningRegionGroup.updateCurrentStatistics();
     Assert.assertEquals(
         RegionGroupStatus.Running, runningRegionGroup.getStatistics().getRegionGroupStatus());
 
@@ -73,7 +73,7 @@ public class RegionGroupCacheTest {
         1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
     availableRegionGroup.cacheHeartbeatSample(
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    availableRegionGroup.updateRegionGroupStatistics();
+    availableRegionGroup.updateCurrentStatistics();
     Assert.assertEquals(
         RegionGroupStatus.Available, availableRegionGroup.getStatistics().getRegionGroupStatus());
 
@@ -85,7 +85,7 @@ public class RegionGroupCacheTest {
         1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.ReadOnly));
     disabledRegionGroup0.cacheHeartbeatSample(
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    disabledRegionGroup0.updateRegionGroupStatistics();
+    disabledRegionGroup0.updateCurrentStatistics();
     Assert.assertEquals(
         RegionGroupStatus.Disabled, disabledRegionGroup0.getStatistics().getRegionGroupStatus());
 
@@ -97,7 +97,7 @@ public class RegionGroupCacheTest {
         1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
     disabledRegionGroup1.cacheHeartbeatSample(
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
-    disabledRegionGroup1.updateRegionGroupStatistics();
+    disabledRegionGroup1.updateCurrentStatistics();
     Assert.assertEquals(
         RegionGroupStatus.Disabled, disabledRegionGroup1.getStatistics().getRegionGroupStatus());
 
@@ -109,7 +109,7 @@ public class RegionGroupCacheTest {
         1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
     disabledRegionGroup2.cacheHeartbeatSample(
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Removing));
-    disabledRegionGroup2.updateRegionGroupStatistics();
+    disabledRegionGroup2.updateCurrentStatistics();
     Assert.assertEquals(
         RegionGroupStatus.Disabled, disabledRegionGroup2.getStatistics().getRegionGroupStatus());
   }

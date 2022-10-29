@@ -70,7 +70,7 @@ public class LeaderRouterTest {
                     currentTimeMillis));
       }
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatistics);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateCurrentStatistics);
 
     // Get the loadScoreMap
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

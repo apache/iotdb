@@ -87,7 +87,6 @@ public class RouteBalancer {
     this.configManager = configManager;
 
     this.leaderCache = new ConcurrentHashMap<>();
-
     this.regionRouteMap = new RegionRouteMap();
     switch (ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy()) {
       case GREEDY_POLICY:
@@ -120,19 +119,25 @@ public class RouteBalancer {
     }
   }
 
-  /** Invoking periodically to update the latest RegionRouteMap */
-  public void updateRegionRouteMap() {
+  /**
+   * Invoking periodically to update the RegionRouteMap
+   *
+   * @return True if the RegionRouteMap has changed, false otherwise
+   */
+  public boolean updateRegionRouteMap() {
     synchronized (regionRouteMap) {
-      updateRegionLeaderMap();
-      updateRegionPriorityMap();
+      return updateRegionLeaderMap() | updateRegionPriorityMap();
     }
   }
 
-  private void updateRegionLeaderMap() {
+  private boolean updateRegionLeaderMap() {
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
           if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType()) && isMultiLeader) {
-            // Ignore update leader when using multi-leader consensus protocol
+            // The RegionGroup's leader is chosen by ConfigNode-leader when using MultiLeaderProtocol
+            if (regionRouteMap.getLeader(regionGroupId) == -1) {
+              greedySelectLeader(regionGroupId, getNodeManager().);
+            }
             return;
           }
 
@@ -143,7 +148,7 @@ public class RouteBalancer {
         });
   }
 
-  private void updateRegionPriorityMap() {
+  private boolean updateRegionPriorityMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = regionRouteMap.getRegionLeaderMap();
     Map<Integer, Long> dataNodeLoadScoreMap = getNodeManager().getAllLoadScores();
 
@@ -162,6 +167,9 @@ public class RouteBalancer {
 
     if (!latestRegionPriorityMap.equals(regionRouteMap.getRegionPriorityMap())) {
       regionRouteMap.setRegionPriorityMap(latestRegionPriorityMap);
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -223,6 +231,7 @@ public class RouteBalancer {
         currentLeaderBalancingFuture.cancel(false);
         currentLeaderBalancingFuture = null;
         leaderCache.clear();
+        regionRouteMap.clear();
         LOGGER.info("Route-Balancing service is stopped successfully.");
       }
     }
@@ -235,13 +244,8 @@ public class RouteBalancer {
   /** Recover the regionRouteMap when the ConfigNode-Leader is switched */
   public void recoverRegionRouteMap() {
     synchronized (regionRouteMap) {
-      RegionRouteMap inheritRegionRouteMap = getPartitionManager().getRegionRouteMap();
-      regionRouteMap.setRegionLeaderMap(
-          new ConcurrentHashMap<>(inheritRegionRouteMap.getRegionLeaderMap()));
-      regionRouteMap.setRegionPriorityMap(
-          new ConcurrentHashMap<>(inheritRegionRouteMap.getRegionPriorityMap()));
-
-      LOGGER.info("[InheritLoadStatistics] RegionRouteMap: {}", regionRouteMap);
+      regionRouteMap.clear();
+      updateRegionRouteMap();
     }
   }
 

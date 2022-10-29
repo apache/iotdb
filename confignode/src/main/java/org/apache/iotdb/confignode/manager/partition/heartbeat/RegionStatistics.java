@@ -43,6 +43,10 @@ public class RegionStatistics {
     return regionStatus;
   }
 
+  public RegionStatistics deepCopy() {
+    return new RegionStatistics(regionStatus);
+  }
+
   public RegionHeartbeatSample convertToRegionHeartbeatSample() {
     long currentTime = System.currentTimeMillis();
     return new RegionHeartbeatSample(currentTime, currentTime, regionStatus);

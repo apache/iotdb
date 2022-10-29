@@ -602,11 +602,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
-    TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LoadManager.printRegionRouteMap(resp.getTimestamp(), resp.getRegionRouteMap());
-    }
-    return resp;
+    return configManager.getLatestRegionRouteMap();
   }
 
   @Override

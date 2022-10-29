@@ -90,6 +90,7 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
@@ -104,7 +105,7 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        // Init consensusGroup
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
@@ -248,6 +249,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;

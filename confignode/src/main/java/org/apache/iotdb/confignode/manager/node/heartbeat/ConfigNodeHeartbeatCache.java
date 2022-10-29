@@ -39,13 +39,13 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   public ConfigNodeHeartbeatCache(
       TConfigNodeLocation configNodeLocation, NodeStatistics nodeStatistics) {
     this.configNodeLocation = configNodeLocation;
-    this.statistics = nodeStatistics;
+    this.currentStatistics = nodeStatistics;
   }
 
   @Override
-  public void updateNodeStatistics() {
+  protected void updateCurrentStatistics() {
     // Skip itself
-    if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
+    if (configNodeLocation.getConfigNodeId() == NodeManager.CURRENT_NODE_ID) {
       return;
     }
 
@@ -71,9 +71,9 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
-    if (!statistics.equals(newStatistics)) {
-      // Update NodeStatistics if necessary
-      statistics = newStatistics;
+    if (!currentStatistics.equals(newStatistics)) {
+      // Update the current NodeStatistics if necessary
+      currentStatistics = newStatistics;
     }
   }
 }

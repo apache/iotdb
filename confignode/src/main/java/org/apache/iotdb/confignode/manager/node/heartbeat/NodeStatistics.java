@@ -98,6 +98,10 @@ public class NodeStatistics {
     return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
   }
 
+  public NodeStatistics deepCopy() {
+    return new NodeStatistics(loadScore, status, statusReason);
+  }
+
   public NodeHeartbeatSample convertToNodeHeartbeatSample() {
     long currentTime = System.currentTimeMillis();
     return new NodeHeartbeatSample(

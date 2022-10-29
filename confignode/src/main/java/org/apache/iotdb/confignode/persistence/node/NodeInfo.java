@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -367,28 +366,6 @@ public class NodeInfo implements SnapshotProcessor {
 
   public int generateNextNodeId() {
     return nextNodeId.incrementAndGet();
-  }
-
-  /**
-   * Update NodeStatistics through consensus-write
-   *
-   * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
-   */
-  public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    if (!updateLoadStatisticsPlan.getNodeStatisticsMap().isEmpty()) {
-      synchronized (nodeStatisticsMap) {
-        // Update nodeStatisticsMap
-        nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
-        // Log current NodeStatistics
-        LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-        for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
-          LOGGER.info(
-              "[UpdateLoadStatistics]\t {}={}",
-              "nodeId{" + nodeCacheEntry.getKey() + "}",
-              nodeCacheEntry.getValue());
-        }
-      }
-    }
   }
 
   @Override
