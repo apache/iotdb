@@ -262,11 +262,11 @@ public class ProcedureManager {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
-      ProcedureFactory.ProcedureType type;
+      ProcedureType type;
       UnsetTemplateProcedure unsetTemplateProcedure;
       for (Procedure<?> procedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null || !type.equals(ProcedureFactory.ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
+        if (type == null || !type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
           continue;
         }
         unsetTemplateProcedure = (UnsetTemplateProcedure) procedure;

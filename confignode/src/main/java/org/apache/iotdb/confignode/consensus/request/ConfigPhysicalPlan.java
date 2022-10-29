@@ -292,13 +292,13 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new GetTemplateSetInfoPlan();
           break;
         case PreUnsetTemplate:
-          req = new PreUnsetSchemaTemplatePlan();
+          plan = new PreUnsetSchemaTemplatePlan();
           break;
         case RollbackUnsetTemplate:
-          req = new RollbackPreUnsetSchemaTemplatePlan();
+          plan = new RollbackPreUnsetSchemaTemplatePlan();
           break;
         case UnsetTemplate:
-          req = new UnsetSchemaTemplatePlan();
+          plan = new UnsetSchemaTemplatePlan();
           break;
         case GetNodePathsPartition:
           plan = new GetNodePathsPartitionPlan();
