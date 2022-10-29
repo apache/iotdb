@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.commons.udf.builtin.UDTFM4;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -28,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,9 +41,13 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-// todo : add back when finishes new udf management
-@Ignore
 public class IoTDBUDFM4IT {
+
+  public static final String WINDOW_SIZE_KEY = "windowSize";
+  public static final String TIME_INTERVAL_KEY = "timeInterval";
+  public static final String SLIDING_STEP_KEY = "slidingStep";
+  public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
+  public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -77,13 +79,13 @@ public class IoTDBUDFM4IT {
     String sql =
         String.format(
             "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.vehicle.d1",
-            UDTFM4.TIME_INTERVAL_KEY,
+            TIME_INTERVAL_KEY,
             25,
-            UDTFM4.SLIDING_STEP_KEY,
+            SLIDING_STEP_KEY,
             25,
-            UDTFM4.DISPLAY_WINDOW_BEGIN_KEY,
+            DISPLAY_WINDOW_BEGIN_KEY,
             0,
-            UDTFM4.DISPLAY_WINDOW_END_KEY,
+            DISPLAY_WINDOW_END_KEY,
             100);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
@@ -109,7 +111,7 @@ public class IoTDBUDFM4IT {
     String sql =
         String.format(
             "select M4(s1,'%s'='%s','%s'='%s') from root.vehicle.d1",
-            UDTFM4.WINDOW_SIZE_KEY, 10, UDTFM4.SLIDING_STEP_KEY, 10);
+            WINDOW_SIZE_KEY, 10, SLIDING_STEP_KEY, 10);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -132,13 +134,13 @@ public class IoTDBUDFM4IT {
     String sql =
         String.format(
             "select M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.vehicle.d1",
-            UDTFM4.TIME_INTERVAL_KEY,
+            TIME_INTERVAL_KEY,
             25,
-            UDTFM4.SLIDING_STEP_KEY,
+            SLIDING_STEP_KEY,
             25,
-            UDTFM4.DISPLAY_WINDOW_BEGIN_KEY,
+            DISPLAY_WINDOW_BEGIN_KEY,
             0,
-            UDTFM4.DISPLAY_WINDOW_END_KEY,
+            DISPLAY_WINDOW_END_KEY,
             100);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
