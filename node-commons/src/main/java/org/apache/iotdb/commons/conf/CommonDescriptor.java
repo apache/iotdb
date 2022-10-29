@@ -82,24 +82,24 @@ public class CommonDescriptor {
             properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
     config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
 
-    config.setWalDirs(properties.getProperty("wal_dirs", config.getWalDirs()[0]).split(","));
+    config.setWalDirs(properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).split(","));
 
-    config.setRpcThriftCompressionEnabled(
+    config.setCnRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "rpc_thrift_compression_enable",
-                String.valueOf(config.isRpcThriftCompressionEnabled()))));
+                "cn_rpc_thrift_compression_enable",
+                String.valueOf(config.isCnRpcThriftCompressionEnabled()))));
 
-    config.setConnectionTimeoutInMS(
+    config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
             properties.getProperty(
-                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+                "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))));
 
-    config.setSelectorNumOfClientManager(
+    config.setCnSelectorNumOfClientManager(
         Integer.parseInt(
             properties.getProperty(
-                "selector_thread_nums_of_client_manager",
-                String.valueOf(config.getSelectorNumOfClientManager()))));
+                "cn_selector_thread_nums_of_client_manager",
+                String.valueOf(config.getCnSelectorNumOfClientManager()))));
 
     config.setHandleSystemErrorStrategy(
         HandleSystemErrorStrategy.valueOf(

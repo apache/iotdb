@@ -141,20 +141,20 @@ public class ConfigNodeDescriptor {
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
     conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
+        properties.getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty(
-                IoTDBConstant.INTERNAL_PORT, String.valueOf(conf.getInternalPort()))));
+                IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(conf.getInternalPort()))));
 
     conf.setConsensusPort(
         Integer.parseInt(
             properties.getProperty(
-                IoTDBConstant.CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
+                IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
     // TODO: Enable multiple target_config_nodes
-    String targetConfigNodes = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES, null);
+    String targetConfigNodes = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODES, null);
     if (targetConfigNodes != null) {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
     }
@@ -201,31 +201,32 @@ public class ConfigNodeDescriptor {
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
 
-    conf.setRpcAdvancedCompressionEnable(
+    conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
             properties.getProperty(
-                "rpc_advanced_compression_enable",
-                String.valueOf(conf.isRpcAdvancedCompressionEnable()))));
+                "cn_rpc_advanced_compression_enable",
+                String.valueOf(conf.isCnRpcAdvancedCompressionEnable()))));
 
-    conf.setRpcMaxConcurrentClientNum(
+    conf.setCnRpcMaxConcurrentClientNum(
         Integer.parseInt(
             properties.getProperty(
-                "rpc_max_concurrent_client_num",
-                String.valueOf(conf.getRpcMaxConcurrentClientNum()))));
+                "cn_rpc_max_concurrent_client_num",
+                String.valueOf(conf.getCnRpcMaxConcurrentClientNum()))));
 
-    conf.setThriftDefaultBufferSize(
+    conf.setCnThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
+                "cn_thrift_init_buffer_size",
+                String.valueOf(conf.getCnThriftDefaultBufferSize()))));
 
-    conf.setThriftMaxFrameSize(
+    conf.setCnThriftMaxFrameSize(
         Integer.parseInt(
             properties.getProperty(
-                "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+                "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))));
 
-    conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
+    conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()));
 
-    conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+    conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()));
 
     conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()));
 
