@@ -165,7 +165,7 @@ public class UDFManagementService {
             DigestUtils.md5Hex(
                 Files.newInputStream(
                     Paths.get(
-                        UDFExecutableManager.getInstance().getLibRoot()
+                        UDFExecutableManager.getInstance().getInstallDir()
                             + File.separator
                             + udfInformation.getJarName())));
         // save the md5 in a txt under trigger temporary lib

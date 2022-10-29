@@ -252,7 +252,7 @@ public class TriggerManagementService {
             DigestUtils.md5Hex(
                 Files.newInputStream(
                     Paths.get(
-                        TriggerExecutableManager.getInstance().getLibRoot()
+                        TriggerExecutableManager.getInstance().getInstallDir()
                             + File.separator
                             + triggerInformation.getJarName())));
         // save the md5 in a txt under trigger temporary lib

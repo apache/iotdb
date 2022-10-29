@@ -708,18 +708,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseStringLiteral(ctx.className.getText()),
           false);
     } else {
-      String uriString = parseStringLiteral(ctx.uriClasue().uri().getText());
-      try {
-        URI uri = new URI(uriString);
-      } catch (URISyntaxException e) {
-        throw new SQLParserException(String.format("Invalid URI: %s", uriString));
-      }
+      String uriString = parseAndValidateURI(ctx.uriClasue());
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
           true,
           uriString);
     }
+  }
+
+  private String parseAndValidateURI(IoTDBSqlParser.UriClasueContext ctx) {
+    String uriString = parseStringLiteral(ctx.uri().getText());
+    try {
+      URI uri = new URI(uriString);
+    } catch (URISyntaxException e) {
+      throw new SQLParserException(String.format("Invalid URI: %s", uriString));
+    }
+    return uriString;
   }
 
   // Drop Function
@@ -734,19 +739,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowFunctionsStatement();
   }
 
-  private Pair<String, Boolean> parseJarLocation(IoTDBSqlParser.JarLocationContext ctx) {
-    String jarPath;
-    boolean usingURI;
-    if (ctx.FILE() != null) {
-      usingURI = false;
-      jarPath = parseFilePath(ctx.fileName.getText());
-    } else {
-      usingURI = true;
-      jarPath = parseFilePath(ctx.uri().getText());
-    }
-    return new Pair<>(jarPath, usingURI);
-  }
-
   // Create Trigger =====================================================================
   @Override
   public Statement visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
@@ -756,11 +748,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.triggerType() == null) {
       throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
     }
-    if (ctx.jarLocation() == null) {
-      throw new SemanticException("Please specify the location of jar.");
-    }
-    // parse jarPath
-    Pair<String, Boolean> jarPathPair = parseJarLocation(ctx.jarLocation());
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -770,17 +757,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             parseAttributeValue(triggerAttributeContext.value));
       }
     }
-    return new CreateTriggerStatement(
-        parseIdentifier(ctx.triggerName.getText()),
-        parseStringLiteral(ctx.className.getText()),
-        jarPathPair.getLeft(),
-        jarPathPair.getRight(),
-        ctx.triggerEventClause().BEFORE() != null
-            ? TriggerEvent.BEFORE_INSERT
-            : TriggerEvent.AFTER_INSERT,
-        ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
-        parsePrefixPath(ctx.prefixPath()),
-        attributes);
+    if (ctx.uriClasue() == null) {
+      return new CreateTriggerStatement(
+          parseIdentifier(ctx.triggerName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          "",
+          false,
+          ctx.triggerEventClause().BEFORE() != null
+              ? TriggerEvent.BEFORE_INSERT
+              : TriggerEvent.AFTER_INSERT,
+          ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
+          parsePrefixPath(ctx.prefixPath()),
+          attributes);
+    } else {
+      String uriString = parseAndValidateURI(ctx.uriClasue());
+      return new CreateTriggerStatement(
+          parseIdentifier(ctx.triggerName.getText()),
+          parseStringLiteral(ctx.className.getText()),
+          uriString,
+          true,
+          ctx.triggerEventClause().BEFORE() != null
+              ? TriggerEvent.BEFORE_INSERT
+              : TriggerEvent.AFTER_INSERT,
+          ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
+          parsePrefixPath(ctx.prefixPath()),
+          attributes);
+    }
   }
 
   // Drop Trigger =====================================================================

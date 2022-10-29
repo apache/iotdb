@@ -171,7 +171,7 @@ struct TDropFunctionInstanceReq {
 
 struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
-  2: required binary jarFile
+  2: optional binary jarFile
 }
 
 struct TActiveTriggerInstanceReq {
