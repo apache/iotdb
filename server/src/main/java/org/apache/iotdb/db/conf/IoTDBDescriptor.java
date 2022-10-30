@@ -1624,7 +1624,7 @@ public class IoTDBDescriptor {
             / (double) (proportionForCompaction + proportionForMemTable));
 
     double flushTimeProportionForWrite =
-        Double.parseDouble(properties.getProperty("flush_time_memory_proportion"));
+        Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
     conf.setWriteProportion(writeProportion * (1 - flushTimeProportionForWrite));
 
     conf.setAllocateMemoryForFlushTime(
