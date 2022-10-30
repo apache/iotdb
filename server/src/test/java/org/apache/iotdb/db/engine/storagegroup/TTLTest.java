@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -79,7 +80,9 @@ import static org.junit.Assert.fail;
 public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
+  private DataRegionId dataRegionId1 = new DataRegionId(1);
   private String sg2 = "root.TTL_SG2";
+  private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
   private DataRegion dataRegion;
   private String s1 = "s1";
@@ -110,7 +113,7 @@ public class TTLTest {
     dataRegion =
         new DataRegion(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-            sg1,
+            String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
             sg1);
     IoTDB.schemaProcessor.createTimeseries(

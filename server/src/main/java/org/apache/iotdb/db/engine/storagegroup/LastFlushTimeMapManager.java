@@ -45,11 +45,13 @@ public class LastFlushTimeMapManager {
           (TreeMap<Long, TimePartitionInfo>)
               timePartitionInfoMap.computeIfAbsent(
                   timePartitionInfo.dataRegionId, k -> new TreeMap<>());
-      timePartitionInfoMapForRegion
-              .ceilingEntry(timePartitionInfo.partitionId)
-              .getValue()
-              .isLatestPartition =
-          false;
+
+      Map.Entry<Long, TimePartitionInfo> entry =
+          timePartitionInfoMapForRegion.ceilingEntry(timePartitionInfo.partitionId);
+      if (entry != null) {
+        entry.getValue().isLatestPartition = false;
+      }
+
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
     }
   }
