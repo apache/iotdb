@@ -198,7 +198,7 @@ In previous versions of syntax conventions, we introduced some ambiguity to main
 
 ### Issues related to identifier
 
-In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 0.14, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
+In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 1.0, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
 
 ### Issues related to node name
 
@@ -258,7 +258,7 @@ In version 0.13, the restrictions on using path nodes in non-SQL interfaces are 
   - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
   - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
 
-**In version 0.14, restrictions on using path nodes in non-SQL interfaces were enhanced:**
+**In version 1.0, restrictions on using path nodes in non-SQL interfaces were enhanced:**
 
 - **The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement, escaping is required here.**
 - **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
