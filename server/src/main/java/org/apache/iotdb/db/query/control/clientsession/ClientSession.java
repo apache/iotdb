@@ -78,7 +78,7 @@ public class ClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds == null) {
       throw new IllegalStateException(
-          "StatementId: " + statementId + "doesn't exist in this session " + this);
+          "StatementId: " + statementId + " doesn't exist in this session " + this);
     }
     queryIds.add(queryId);
   }

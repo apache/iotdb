@@ -821,9 +821,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     try {
       QueryStatement s =
-          (QueryStatement)
-              StatementGenerator.createStatement(
-                  req.queryBody, SESSION_MANAGER.getCurrSession().getZoneId());
+          (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
         return RpcUtils.getStatus(
             TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
@@ -856,8 +854,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
       long queryId =
-          SESSION_MANAGER.requestQueryId(
-              SESSION_MANAGER.getCurrSession(), SESSION_MANAGER.requestStatementId(session));
+          SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
