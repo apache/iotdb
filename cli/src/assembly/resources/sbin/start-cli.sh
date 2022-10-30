@@ -23,13 +23,14 @@
 checkEnvVaribles()
 {
   string="$1"
-  array=`echo $string | tr '=' ' '`
-  case "${array[0]}" in
+  array=$(echo $string | tr '=' ' ')
+  eval set -- "$array"
+  case "$1" in
           IOTDB_INCLUDE)
-               IOTDB_INCLUDE="${array[1]}"
+               IOTDB_INCLUDE="$2"
           ;;
           IOTDB_CLI_CONF)
-              IOTDB_CLI_CONF="${array[1]}"
+              IOTDB_CLI_CONF="$2"
           ;;
           *)
             #do nothing

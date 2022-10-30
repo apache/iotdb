@@ -23,25 +23,27 @@
 checkEnvVaribles()
 {
   string="$1"
-  array=`echo $string | tr '=' ' '`
-  case "${array[0]}" in
+  array=$(echo $string | tr '=' ' ')
+  eval set -- "$array"
+  case "$1" in
           IOTDB_INCLUDE)
-               IOTDB_INCLUDE="${array[1]}"
+               IOTDB_INCLUDE="$2"
+               echo "iotdb include is $IOTDB_INCLUDE"
           ;;
           IOTDB_HOME)
-               IOTDB_HOME="${array[1]}"
+               IOTDB_HOME="$2"
           ;;
           IOTDB_DATA_HOME)
-             IOTDB_DATA_HOME="${array[1]}"
+             IOTDB_DATA_HOME="$2"
           ;;
           IOTDB_CONF)
-             IOTDB_CONF="${array[1]}"
+             IOTDB_CONF="$2"
           ;;
           IOTDB_LOG_DIR)
-             IOTDB_LOG_DIR="${array[1]}"
+             IOTDB_LOG_DIR="$2"
           ;;
           IOTDB_LOG_CONFIG)
-             IOTDB_LOG_CONFIG="${array[1]}"
+             IOTDB_LOG_CONFIG="$2"
           ;;
           *)
             #do nothing
@@ -90,6 +92,7 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
+            echo "check....$1 and $2"
             checkEnvVaribles $2
             shift 2
         ;;
