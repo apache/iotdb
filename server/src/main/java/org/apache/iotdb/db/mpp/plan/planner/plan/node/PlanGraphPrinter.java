@@ -21,15 +21,18 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -43,6 +46,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
 
@@ -290,6 +296,51 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
     }
     return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitInto(IntoNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
+    IntoPathDescriptor descriptor = node.getIntoPathDescriptor();
+    drawSourceTargetPath(
+        boxValue,
+        descriptor.getSourceTargetPathPairList(),
+        descriptor.getTargetDeviceToAlignedMap());
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitDeviceViewInto(DeviceViewIntoNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("DeviceViewInto-%s", node.getPlanNodeId().getId()));
+    DeviceViewIntoPathDescriptor descriptor = node.getDeviceViewIntoPathDescriptor();
+    Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap =
+        descriptor.getDeviceToSourceTargetPathPairListMap();
+    for (String deviceName : deviceToSourceTargetPathPairListMap.keySet()) {
+      boxValue.add(String.format("Device [%s]:", deviceName));
+      drawSourceTargetPath(
+          boxValue,
+          deviceToSourceTargetPathPairListMap.get(deviceName),
+          descriptor.getTargetDeviceToAlignedMap());
+    }
+    return render(node, boxValue, context);
+  }
+
+  private void drawSourceTargetPath(
+      List<String> boxValue,
+      List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      Map<String, Boolean> targetDeviceToAlignedMap) {
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+      boxValue.add(
+          String.format(
+              "%s -> %s %s",
+              sourceTargetPathPair.left,
+              sourceTargetPathPair.right,
+              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getDevice())
+                  ? "[ALIGNED]"
+                  : ""));
+    }
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

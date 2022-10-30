@@ -24,7 +24,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class UDFInformation {
 
@@ -145,5 +147,27 @@ public class UDFInformation {
       udfInformation.setJarMD5(ReadWriteIOUtils.readString(byteBuffer));
     }
     return udfInformation;
+  }
+
+  public static UDFInformation deserialize(InputStream inputStream) throws IOException {
+    return deserialize(
+        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    UDFInformation that = (UDFInformation) o;
+    return isBuiltin == that.isBuiltin
+        && Objects.equals(functionName, that.functionName)
+        && Objects.equals(className, that.className)
+        && Objects.equals(jarName, that.jarName)
+        && Objects.equals(jarMD5, that.jarMD5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(functionName);
   }
 }

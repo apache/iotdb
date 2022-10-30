@@ -49,20 +49,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(super.getPort()));
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, this.internal_address);
-    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
-    properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
+    properties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
+    properties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internal_address);
+    properties.setProperty(IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
+    properties.setProperty("dn_mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(
-        "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
+        "dn_data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
-        "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+        "dn_schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("mqtt_host", super.getIp());
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES, this.targetConfigNode);
     }
     properties.setProperty("max_tsblock_size_in_bytes", "1024");
     properties.setProperty("page_size_in_byte", "1024");

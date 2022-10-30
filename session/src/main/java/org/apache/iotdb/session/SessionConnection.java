@@ -218,6 +218,10 @@ public class SessionConnection {
       }
     }
     RpcUtils.verifySuccess(resp);
+    setTimeZoneOfSession(zoneId);
+  }
+
+  protected void setTimeZoneOfSession(String zoneId) {
     this.zoneId = ZoneId.of(zoneId);
   }
 

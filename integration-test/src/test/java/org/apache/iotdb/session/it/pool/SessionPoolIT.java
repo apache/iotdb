@@ -16,22 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.pool;
+package org.apache.iotdb.session.it.pool;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.pool.SessionDataSetWrapper;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,9 +52,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
-public class SessionPoolTest {
+@RunWith(IoTDBTestRunner.class)
+public class SessionPoolIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolIT.class);
   private static final long DEFAULT_QUERY_TIMEOUT = -1;
 
   @Before
@@ -211,7 +218,7 @@ public class SessionPoolTest {
             try {
               SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1, 60000);
               if (wrapper.hasNext()) {
-                Assert.assertEquals(no, wrapper.sessionDataSet.next().getTimestamp());
+                Assert.assertEquals(no, wrapper.next().getTimestamp());
               }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
@@ -246,7 +253,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -274,7 +284,10 @@ public class SessionPoolTest {
               false,
               null,
               false,
-              SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+              SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+              SessionConfig.DEFAULT_VERSION,
+              SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+              SessionConfig.DEFAULT_MAX_FRAME_SIZE);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
@@ -306,7 +319,10 @@ public class SessionPoolTest {
                 false,
                 null,
                 false,
-                SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+                SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+                SessionConfig.DEFAULT_VERSION,
+                SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+                SessionConfig.DEFAULT_MAX_FRAME_SIZE);
         correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
       } catch (StatementExecutionException es) {
@@ -336,7 +352,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
@@ -373,7 +392,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     // stop the server.
     pool.close();
@@ -390,7 +412,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
@@ -431,7 +456,10 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     pool.close();
     try {
       pool.insertRecord(
@@ -465,6 +493,7 @@ public class SessionPoolTest {
             .enableCompression(true)
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
+            .version(Version.V_0_13)
             .build();
 
     assertEquals("localhost", pool.getHost());
@@ -478,5 +507,44 @@ public class SessionPoolTest {
     assertTrue(pool.isEnableCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
+    assertEquals(Version.V_0_13, pool.getVersion());
+  }
+
+  @Test
+  public void testSetters() {
+    SessionPool pool =
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            3,
+            1,
+            60000,
+            false,
+            null,
+            false,
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+            SessionConfig.DEFAULT_VERSION,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+    try {
+      pool.setEnableRedirection(true);
+      assertTrue(pool.isEnableRedirection());
+      pool.setEnableQueryRedirection(true);
+      assertTrue(pool.isEnableQueryRedirection());
+      pool.setTimeZone("GMT+8");
+      assertEquals(ZoneId.of("GMT+8"), pool.getZoneId());
+      pool.setVersion(SessionConfig.DEFAULT_VERSION);
+      assertEquals(SessionConfig.DEFAULT_VERSION, pool.getVersion());
+      pool.setQueryTimeout(12345);
+      assertEquals(12345, pool.getQueryTimeout());
+      pool.setFetchSize(16);
+      assertEquals(16, pool.getFetchSize());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    } finally {
+      pool.close();
+    }
   }
 }

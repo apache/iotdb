@@ -436,6 +436,14 @@ public class Session implements ISession {
   public synchronized void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     defaultSessionConnection.setTimeZone(zoneId);
+    this.zoneId = ZoneId.of(zoneId);
+  }
+
+  /** Only changes the member variable of the Session object without sending it to server. */
+  @Override
+  public void setTimeZoneOfSession(String zoneId) {
+    defaultSessionConnection.setTimeZoneOfSession(zoneId);
+    this.zoneId = ZoneId.of(zoneId);
   }
 
   @Override

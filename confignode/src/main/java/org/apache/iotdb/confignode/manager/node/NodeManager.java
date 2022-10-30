@@ -104,8 +104,7 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-
-  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
+  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
       CONF.getUnknownDataNodeDetectInterval();
 

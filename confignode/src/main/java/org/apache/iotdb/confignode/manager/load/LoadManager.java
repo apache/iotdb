@@ -74,7 +74,7 @@ public class LoadManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
+  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
 

@@ -49,10 +49,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(getPort()));
-    properties.setProperty(IoTDBConstant.CONSENSUS_PORT, String.valueOf(this.consensusPort));
-    properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNodes);
+    properties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
+    properties.setProperty(IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    properties.setProperty(IoTDBConstant.CN_TARGET_CONFIG_NODES, this.targetConfigNodes);
     properties.setProperty(
         "config_node_consensus_protocol_class",
         "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
@@ -64,7 +64,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
         "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
     properties.setProperty("schema_replication_factor", "1");
     properties.setProperty("data_replication_factor", "1");
-    properties.setProperty("connection_timeout_ms", "30000");
+    properties.setProperty("cn_connection_timeout_ms", "30000");
   }
 
   @Override

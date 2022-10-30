@@ -323,7 +323,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getRawPath();
+          libRoot = new File(new URI(uriString)).getAbsolutePath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
@@ -475,7 +475,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getRawPath();
+          libRoot = new File(new URI(uriString)).getAbsolutePath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
