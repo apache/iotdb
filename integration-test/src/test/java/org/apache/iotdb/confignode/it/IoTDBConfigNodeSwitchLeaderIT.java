@@ -29,10 +29,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.AbstractEnv;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -133,7 +131,6 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     TSStatus status;
     TSchemaPartitionTableResp schemaPartitionTableResp0;
     TDataPartitionTableResp dataPartitionTableResp0;
-    TShowDataNodesResp showDataNodesResp0;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -166,15 +163,10 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
-
-      // Record showDataNodesResp
-      showDataNodesResp0 = client.showDataNodes();
     }
 
     // Switch the current ConfigNode-Leader
     switchLeader();
-    // Ensure the ConfigNode-leader receive all Nodes' heartbeat
-    ((AbstractEnv) EnvFactory.getEnv()).testWorking();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -194,9 +186,6 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       sgSlotsMap.put(sg1, seriesSlotMap);
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
-
-      // Check DataNodes' statuses
-      Assert.assertEquals(showDataNodesResp0, client.showDataNodes());
     }
   }
 }
