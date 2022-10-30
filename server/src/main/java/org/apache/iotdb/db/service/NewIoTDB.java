@@ -36,7 +36,6 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -166,7 +165,6 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(SettleService.getINSTANCE());
     }
     registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     // bind predefined metrics

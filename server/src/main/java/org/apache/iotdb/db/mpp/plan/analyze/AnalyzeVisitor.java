@@ -1699,9 +1699,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new VerifyMetadataException(
             String.format("Sg level %d is longer than device %s.", sgLevel, device));
       }
-      for (int i = 0; i < sgLevel; i++) {
-        sgNodes[i] = nodes[i];
-      }
+      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
       PartialPath sgPath = new PartialPath(sgNodes);
       sgSet.add(sgPath);
     }
@@ -1714,7 +1712,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void executeSetStorageGroupStatement(Statement statement) throws LoadFileException {
-    long queryId = SessionManager.getInstance().requestQueryId(false);
+    long queryId = SessionManager.getInstance().requestQueryId();
     ExecutionResult result =
         Coordinator.getInstance()
             .execute(

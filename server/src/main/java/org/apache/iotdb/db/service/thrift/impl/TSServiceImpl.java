@@ -37,7 +37,6 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -51,7 +50,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -158,9 +156,6 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.TRACING_MANAGER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
@@ -212,39 +207,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public TSExecuteStatementResp call() throws Exception {
-      String username = session.getUsername();
-      plan.setLoginUserName(username);
-
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", session, statement);
-
-      final long queryId = SESSION_MANAGER.requestQueryId(statementId, true);
-      QueryContext context =
-          serviceProvider.genQueryContext(
-              queryId, plan.isDebug(), queryStartTime, statement, timeout);
-
-      TSExecuteStatementResp resp;
-      try {
-        if (plan instanceof QueryPlan) {
-          QueryPlan queryPlan = (QueryPlan) plan;
-          queryPlan.setEnableRedirect(enableRedirectQuery);
-          resp = executeQueryPlan(queryPlan, context, isJdbcQuery, fetchSize, username);
-        } else {
-          resp = executeShowOrAuthorPlan(plan, context, fetchSize, username);
-        }
-        resp.setQueryId(queryId);
-        resp.setOperationType(plan.getOperatorType().toString());
-      } catch (Exception e) {
-        SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-        throw e;
-      } finally {
-        addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
-        long costTime = System.currentTimeMillis() - queryStartTime;
-        if (costTime >= CONFIG.getSlowQueryThreshold()) {
-          SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
-        }
-      }
-      return resp;
+      return null;
     }
   }
 
@@ -264,41 +227,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public TSFetchResultsResp call() throws Exception {
-      QueryDataSet queryDataSet = SESSION_MANAGER.getDataset(queryId);
-      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
-      try {
-        if (isAlign) {
-          TSQueryDataSet result = fillRpcReturnData(fetchSize, queryDataSet, session.getUsername());
-          boolean hasResultSet = result.bufferForTime().limit() != 0;
-          if (!hasResultSet) {
-            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-          }
-          resp.setHasResultSet(hasResultSet);
-          resp.setQueryDataSet(result);
-          resp.setIsAlign(true);
-        } else {
-          TSQueryNonAlignDataSet nonAlignResult =
-              fillRpcNonAlignReturnData(fetchSize, queryDataSet, session.getUsername());
-          boolean hasResultSet = false;
-          for (ByteBuffer timeBuffer : nonAlignResult.getTimeList()) {
-            if (timeBuffer.limit() != 0) {
-              hasResultSet = true;
-              break;
-            }
-          }
-          if (!hasResultSet) {
-            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-          }
-          resp.setHasResultSet(hasResultSet);
-          resp.setNonAlignQueryDataSet(nonAlignResult);
-          resp.setIsAlign(false);
-        }
-        QUERY_TIME_MANAGER.unRegisterQuery(queryId, false);
-        return resp;
-      } catch (Exception e) {
-        SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-        throw e;
-      }
+      return null;
     }
   }
 
@@ -373,10 +302,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    return new TSStatus(
-        !SESSION_MANAGER.closeSession(SESSION_MANAGER.getCurrSession())
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
-            : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -387,12 +313,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    return SESSION_MANAGER.closeOperation(
-        SESSION_MANAGER.getCurrSession(),
-        req.queryId,
-        req.statementId,
-        req.isSetStatementId(),
-        req.isSetQueryId());
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -910,7 +831,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         }
       }
     }
-    QUERY_TIME_MANAGER.unRegisterQuery(context.getQueryId(), false);
 
     if (plan.isEnableTracing()) {
       TRACING_MANAGER.registerActivity(
@@ -930,7 +850,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     TSExecuteStatementResp resp = getListDataSetResp(plan, newDataSet);
 
     resp.setQueryDataSet(fillRpcReturnData(fetchSize, newDataSet, username));
-    QUERY_TIME_MANAGER.unRegisterQuery(context.getQueryId(), false);
     return resp;
   }
 
@@ -967,67 +886,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     return resp;
   }
 
-  private TSExecuteStatementResp executeSelectIntoStatement(
-      String statement,
-      long statementId,
-      PhysicalPlan physicalPlan,
-      int fetchSize,
-      long timeout,
-      long sessionId)
-      throws IoTDBException, TException, SQLException, IOException, InterruptedException,
-          QueryFilterOptimizationException {
-    TSStatus status =
-        SESSION_MANAGER.checkAuthority(physicalPlan, SESSION_MANAGER.getCurrSession());
-    if (status != null) {
-      return new TSExecuteStatementResp(status);
-    }
-
-    final long startTime = System.currentTimeMillis();
-    final long queryId = SESSION_MANAGER.requestQueryId(statementId, true);
-    QueryContext context =
-        serviceProvider.genQueryContext(
-            queryId, physicalPlan.isDebug(), startTime, statement, timeout);
-    final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
-    final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
-
-    QUERY_FREQUENCY_RECORDER.incrementAndGet();
-    AUDIT_LOGGER.debug(
-        "Session {} execute select into: {}", SESSION_MANAGER.getCurrSession(), statement);
-    if (queryPlan.isEnableTracing()) {
-      TRACING_MANAGER.setSeriesPathNum(queryId, queryPlan.getPaths().size());
-    }
-
-    try {
-      InsertTabletPlansIterator insertTabletPlansIterator =
-          new InsertTabletPlansIterator(
-              queryPlan,
-              serviceProvider.createQueryDataSet(context, queryPlan, fetchSize),
-              selectIntoPlan.getFromPath(),
-              selectIntoPlan.getIntoPaths(),
-              selectIntoPlan.isIntoPathsAligned());
-      while (insertTabletPlansIterator.hasNext()) {
-        List<InsertTabletPlan> insertTabletPlans = insertTabletPlansIterator.next();
-        if (insertTabletPlans.isEmpty()) {
-          continue;
-        }
-        TSStatus executionStatus = insertTabletsInternally(insertTabletPlans);
-        if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-          return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
-        }
-      }
-
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
-    } finally {
-      SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-      addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
-      long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
-        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
-      }
-    }
-  }
-
   private TSStatus insertTabletsInternally(List<InsertTabletPlan> insertTabletPlans) {
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
@@ -1051,11 +909,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
-      }
-
-      if (!SESSION_MANAGER.hasDataset(req.queryId)) {
-        return RpcUtils.getTSFetchResultsResp(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
       Future<TSFetchResultsResp> resp =
@@ -1155,11 +1008,8 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       int fetchSize,
       long timeout,
       long sessionId)
-      throws TException, SQLException, IoTDBException, IOException, InterruptedException,
-          QueryFilterOptimizationException {
-    return plan.isSelectInto()
-        ? executeSelectIntoStatement(statement, statementId, plan, fetchSize, timeout, sessionId)
-        : executeNonQueryStatement(plan);
+      throws InterruptedException {
+    throw new UnsupportedOperationException();
   }
 
   private TSExecuteStatementResp executeNonQueryStatement(PhysicalPlan plan) {
@@ -1167,7 +1017,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     return status != null
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
-            .setQueryId(SESSION_MANAGER.requestQueryId(false));
+            .setQueryId(SESSION_MANAGER.requestQueryId());
   }
 
   @Override

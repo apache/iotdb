@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.MqttClientSession;
-import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -87,13 +87,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       try {
         MqttClientSession session = new MqttClientSession(msg.getClientID());
-        BasicOpenSessionResp basicOpenSessionResp =
-            SESSION_MANAGER.login(
-                session,
-                msg.getUsername(),
-                new String(msg.getPassword()),
-                ZoneId.systemDefault().toString(),
-                TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+        SESSION_MANAGER.login(
+            session,
+            msg.getUsername(),
+            new String(msg.getPassword()),
+            ZoneId.systemDefault().toString(),
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
+            IoTDBConstant.ClientVersion.V_0_13);
         clientIdToSessionMap.put(msg.getClientID(), session);
       } catch (TException e) {
         throw new RuntimeException(e);
@@ -105,7 +105,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onDisconnect(InterceptDisconnectMessage msg) {
     MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
     if (null != session) {
-      SESSION_MANAGER.closeSession(session);
+      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
 
@@ -154,7 +154,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOG.warn(tsStatus.message);
         } else {
-          long queryId = SESSION_MANAGER.requestQueryId(false);
+          long queryId = SESSION_MANAGER.requestQueryId();
           ExecutionResult result =
               Coordinator.getInstance()
                   .execute(

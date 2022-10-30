@@ -28,8 +28,7 @@ import java.util.TimeZone;
 
 public abstract class IClientSession {
 
-  /** id is just used for keep compatible with v0.13 */
-  @Deprecated private long id;
+  private long id;
 
   private ClientVersion clientVersion;
 
@@ -103,19 +102,16 @@ public abstract class IClientSession {
     return logInTime;
   }
 
-  @Deprecated
   public long getId() {
     return id;
   }
 
-  @Deprecated
   public void setId(long id) {
     this.id = id;
   }
 
   public String toString() {
-    return String.format(
-        "%d-%s:%s:%d", getId(), getUsername(), getClientAddress(), getClientPort());
+    return String.format("%d-%s:%s", getId(), getUsername(), getConnectionId());
   }
 
   public TSConnectionInfo convertToTSConnectionInfo() {
@@ -129,5 +125,13 @@ public abstract class IClientSession {
    * For an IoTDBSession connection, each connection has a statement id.<br>
    * mqtt clients have no statement id.
    */
-  public abstract Set<Long> getStatementIds();
+  public abstract Iterable<Long> getStatementIds();
+
+  public abstract void addStatementId(long statementId);
+
+  public abstract Set<Long> removeStatementId(long statementId);
+
+  public abstract void addQueryId(Long statementId, long queryId);
+
+  public abstract void removeQueryId(Long statementId, Long queryId);
 }

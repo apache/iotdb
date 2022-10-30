@@ -55,12 +55,28 @@ public class MqttClientSession extends IClientSession {
     return clientID;
   }
 
-  public String toString() {
-    return String.format("%d-%s", getId(), getClientID());
-  }
-
   @Override
   public Set<Long> getStatementIds() {
     return Collections.emptySet();
+  }
+
+  @Override
+  public void addStatementId(long statementId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Set<Long> removeStatementId(long statementId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addQueryId(Long statementId, long queryId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void removeQueryId(Long statementId, Long queryId) {
+    throw new UnsupportedOperationException();
   }
 }

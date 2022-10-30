@@ -128,7 +128,6 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SESSION_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
@@ -202,7 +201,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -262,7 +262,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -320,7 +321,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
-      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, false);
+      long queryId =
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -404,9 +406,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setHasResultSet(hasResultSet);
         resp.setIsAlign(true);
         resp.setQueryResult(result);
-        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
         if (!hasResultSet) {
-          COORDINATOR.removeQueryExecution(req.queryId);
+          COORDINATOR.cleanupQueryExecution(req.queryId);
         }
         return resp;
       }
@@ -441,10 +442,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    SESSION_MANAGER.releaseSessionResource(
-        SESSION_MANAGER.getCurrSession(), this::cleanupQueryExecution);
     return new TSStatus(
-        !SESSION_MANAGER.closeSession(SESSION_MANAGER.getCurrSession())
+        !SESSION_MANAGER.closeSession(
+                SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -463,7 +463,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         req.statementId,
         req.isSetStatementId(),
         req.isSetQueryId(),
-        this::cleanupQueryExecution);
+        COORDINATOR::cleanupQueryExecution);
   }
 
   @Override
@@ -542,7 +542,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -587,7 +587,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -638,7 +638,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -687,7 +687,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -725,7 +725,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -771,7 +771,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -828,7 +828,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         QUERY_FREQUENCY_RECORDER.incrementAndGet();
         AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, s);
 
-        long queryId = SESSION_MANAGER.requestQueryId(false);
+        long queryId = SESSION_MANAGER.requestQueryId();
         long t2 = System.currentTimeMillis();
         // create and cache dataset
         ExecutionResult result =
@@ -886,9 +886,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
-        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
         if (!hasResultSet) {
-          COORDINATOR.removeQueryExecution(req.queryId);
+          COORDINATOR.cleanupQueryExecution(req.queryId);
         }
         return resp;
       }
@@ -931,7 +930,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -987,7 +986,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1043,7 +1042,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1098,7 +1097,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1145,7 +1144,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1192,7 +1191,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1245,7 +1244,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return status;
       }
 
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1324,7 +1323,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return status;
       }
 
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1383,7 +1382,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1468,7 +1467,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
           COORDINATOR.execute(
@@ -1549,7 +1548,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1626,7 +1625,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -1689,16 +1688,5 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       closeSession(req);
     }
     SyncService.getInstance().handleClientExit();
-  }
-
-  private void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
-        COORDINATOR.removeQueryExecution(queryId);
-      }
-    }
   }
 }

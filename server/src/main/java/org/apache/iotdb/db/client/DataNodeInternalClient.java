@@ -35,12 +35,10 @@ import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
-import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -76,7 +74,6 @@ public class DataNodeInternalClient {
     try {
       session = new InternalClientSession("SELECT_INTO");
 
-      SESSION_MANAGER.registerSession(session);
       SESSION_MANAGER.supplySession(
           session,
           sessionInfo.getUserName(),
@@ -100,7 +97,7 @@ public class DataNodeInternalClient {
       }
 
       // call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId(false);
+      long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
@@ -117,18 +114,6 @@ public class DataNodeInternalClient {
   }
 
   public void close() {
-    SESSION_MANAGER.releaseSessionResource(session, this::cleanupQueryExecution);
-    SESSION_MANAGER.closeSession(session);
-  }
-
-  private void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]");
-        queryExecution.stopAndCleanup();
-        COORDINATOR.removeQueryExecution(queryId);
-      }
-    }
+    SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
   }
 }

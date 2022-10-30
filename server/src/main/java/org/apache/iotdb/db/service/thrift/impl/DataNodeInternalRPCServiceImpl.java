@@ -856,7 +856,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
       long queryId =
-          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(session), false);
+          SESSION_MANAGER.requestQueryId(
+              SESSION_MANAGER.getCurrSession(), SESSION_MANAGER.requestStatementId(session));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -891,19 +892,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
-      SESSION_MANAGER.releaseSessionResource(session, this::cleanupQueryExecution);
-      SESSION_MANAGER.closeSession(session);
-    }
-  }
-
-  private void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
-        COORDINATOR.removeQueryExecution(queryId);
-      }
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
     }
   }
 

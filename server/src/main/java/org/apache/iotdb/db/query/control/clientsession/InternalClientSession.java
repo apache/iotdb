@@ -20,7 +20,9 @@ package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /** For Internal usage, like CQ and Select Into */
@@ -30,8 +32,7 @@ public class InternalClientSession extends IClientSession {
   // For Select Into, it will be SELECT_INTO constant string
   private final String clientID;
 
-  // TODO why we use copyOnWriteArraySet instead of HashSet??
-  private final Set<Long> statements = new CopyOnWriteArraySet<>();
+  private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
 
   public InternalClientSession(String clientID) {
     this.clientID = clientID;
@@ -61,12 +62,36 @@ public class InternalClientSession extends IClientSession {
     return clientID;
   }
 
-  public String toString() {
-    return String.format("%d-%s", getId(), getClientID());
+  @Override
+  public Set<Long> getStatementIds() {
+    return statementIdToQueryId.keySet();
   }
 
   @Override
-  public Set<Long> getStatementIds() {
-    return statements;
+  public void addStatementId(long statementId) {
+    statementIdToQueryId.computeIfAbsent(statementId, sid -> new CopyOnWriteArraySet<>());
+  }
+
+  @Override
+  public Set<Long> removeStatementId(long statementId) {
+    return statementIdToQueryId.remove(statementId);
+  }
+
+  @Override
+  public void addQueryId(Long statementId, long queryId) {
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    if (queryIds == null) {
+      throw new IllegalStateException(
+          "StatementId: " + statementId + "doesn't exist in this session " + this);
+    }
+    queryIds.add(queryId);
+  }
+
+  @Override
+  public void removeQueryId(Long statementId, Long queryId) {
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    if (queryIds != null) {
+      queryIds.remove(queryId);
+    }
   }
 }

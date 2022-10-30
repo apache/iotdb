@@ -22,7 +22,9 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /** Client Session is the only identity for a connection. */
@@ -30,8 +32,7 @@ public class ClientSession extends IClientSession {
 
   private final Socket clientSocket;
 
-  // TODO why we use copyOnWriteArraySet instead of HashSet??
-  private final Set<Long> statements = new CopyOnWriteArraySet<>();
+  private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
 
   public ClientSession(Socket clientSocket) {
     this.clientSocket = clientSocket;
@@ -59,7 +60,35 @@ public class ClientSession extends IClientSession {
 
   @Override
   public Set<Long> getStatementIds() {
-    return statements;
+    return statementIdToQueryId.keySet();
+  }
+
+  @Override
+  public void addStatementId(long statementId) {
+    statementIdToQueryId.computeIfAbsent(statementId, sid -> new CopyOnWriteArraySet<>());
+  }
+
+  @Override
+  public Set<Long> removeStatementId(long statementId) {
+    return statementIdToQueryId.remove(statementId);
+  }
+
+  @Override
+  public void addQueryId(Long statementId, long queryId) {
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    if (queryIds == null) {
+      throw new IllegalStateException(
+          "StatementId: " + statementId + "doesn't exist in this session " + this);
+    }
+    queryIds.add(queryId);
+  }
+
+  @Override
+  public void removeQueryId(Long statementId, Long queryId) {
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    if (queryIds != null) {
+      queryIds.remove(queryId);
+    }
   }
 
   /**
