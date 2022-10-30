@@ -23,19 +23,9 @@ echo Starting IoTDB Client Export Script
 echo ------------------------------------------
 
 
-if [ "x$IOTDB_INCLUDE" = "x" ]; then
-    # Locations (in order) to use when searching for an include file.
-    for include in "`dirname "$0"`/iotdb.in.sh" \
-                   "$HOME/.iotdb.in.sh" \
-                   /usr/share/iotdb/iotdb.in.sh \
-                   /etc/iotdb/iotdb.in.sh \
-                   /opt/iotdb/iotdb.in.sh; do
-        if [ -r "$include" ]; then
-            . "$include"
-            break
-        fi
-    done
-# ...otherwise, source the specified include.
+if [ -z "${IOTDB_INCLUDE}" ]; then
+  #do nothing
+  :
 elif [ -r "$IOTDB_INCLUDE" ]; then
     . "$IOTDB_INCLUDE"
 fi
