@@ -76,7 +76,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   @Override
   public void update(Procedure procedure) {
     UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    ProcedureFactory.ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
+    ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
     if (procedureType != null) {
       updateProcedurePlan.setProcedure(procedure);
     }

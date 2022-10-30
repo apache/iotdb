@@ -21,7 +21,12 @@ package org.apache.iotdb.commons.udf;
 
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,5 +102,37 @@ public class UDFTable {
 
   public boolean containsUDF(String udfName) {
     return udfInformationMap.containsKey(udfName);
+  }
+
+  @TestOnly
+  public Map<String, UDFInformation> getTable() {
+    return udfInformationMap;
+  }
+
+  public void serializeUDFTable(OutputStream outputStream) throws IOException {
+    List<UDFInformation> nonBuiltInUDFInformation = getAllNonBuiltInUDFInformation();
+    ReadWriteIOUtils.write(nonBuiltInUDFInformation.size(), outputStream);
+    for (UDFInformation udfInformation : nonBuiltInUDFInformation) {
+      ReadWriteIOUtils.write(udfInformation.serialize(), outputStream);
+    }
+  }
+
+  public void deserializeUDFTable(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      UDFInformation udfInformation = UDFInformation.deserialize(inputStream);
+      udfInformationMap.put(udfInformation.getFunctionName(), udfInformation);
+      size--;
+    }
+  }
+
+  // only clear external UDFs
+  public void clear() {
+    udfInformationMap.forEach(
+        (K, V) -> {
+          if (!V.isBuiltin()) {
+            udfInformationMap.remove(K);
+          }
+        });
   }
 }

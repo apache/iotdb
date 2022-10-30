@@ -133,10 +133,10 @@ public class ConfigNodeConfig {
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
-  private long heartbeatInterval = 1000;
+  private long heartbeatIntervalInMs = 1000;
 
   /** The unknown DataNode detect interval in milliseconds */
-  private long unknownDataNodeDetectInterval = heartbeatInterval;
+  private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
@@ -323,35 +323,35 @@ public class ConfigNodeConfig {
     this.timePartitionInterval = timePartitionInterval;
   }
 
-  public int getRpcMaxConcurrentClientNum() {
+  public int getCnRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
-  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+  public void setCnRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public boolean isRpcAdvancedCompressionEnable() {
+  public boolean isCnRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
 
-  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+  public void setCnRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
   }
 
-  public int getThriftMaxFrameSize() {
+  public int getCnThriftMaxFrameSize() {
     return thriftMaxFrameSize;
   }
 
-  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+  public void setCnThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 
-  public int getThriftDefaultBufferSize() {
+  public int getCnThriftDefaultBufferSize() {
     return thriftDefaultBufferSize;
   }
 
-  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+  public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
@@ -504,12 +504,12 @@ public class ConfigNodeConfig {
     this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
   }
 
-  public long getHeartbeatInterval() {
-    return heartbeatInterval;
+  public long getHeartbeatIntervalInMs() {
+    return heartbeatIntervalInMs;
   }
 
-  public void setHeartbeatInterval(long heartbeatInterval) {
-    this.heartbeatInterval = heartbeatInterval;
+  public void setHeartbeatIntervalInMs(long heartbeatIntervalInMs) {
+    this.heartbeatIntervalInMs = heartbeatIntervalInMs;
   }
 
   public long getUnknownDataNodeDetectInterval() {

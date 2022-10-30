@@ -27,11 +27,12 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
@@ -228,12 +229,12 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** only used in Test */
+  @TestOnly
   public Map<String, TriggerInformation> getRawTriggerTable() {
     return triggerTable.getTable();
   }
 
-  /** only used in Test */
+  @TestOnly
   public Map<String, String> getRawExistedJarToMD5() {
     return existedJarToMD5;
   }

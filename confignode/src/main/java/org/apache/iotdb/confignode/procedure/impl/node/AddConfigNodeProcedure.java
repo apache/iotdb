@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,7 +124,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.ADD_CONFIG_NODE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.ADD_CONFIG_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
   }

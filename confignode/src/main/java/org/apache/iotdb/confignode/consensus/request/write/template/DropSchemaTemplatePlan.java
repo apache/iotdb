@@ -46,7 +46,7 @@ public class DropSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DropSchemaTemplate.ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(templateName, stream);
   }
 

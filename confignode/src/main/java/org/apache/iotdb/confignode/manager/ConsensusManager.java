@@ -250,6 +250,9 @@ public class ConsensusManager {
                     new Peer(consensusGroupId, node.getConfigNodeId(), node.getConsensusEndPoint()))
             .collect(Collectors.toList());
 
+    LOGGER.info(
+        "addNewNodeToExistedGroup---, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
+
     ConsensusGenericResponse response =
         consensusImpl.addNewNodeToExistedGroup(consensusGroupId, newPeer, originalPeers);
     if (!response.isSuccess()) {
