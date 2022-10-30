@@ -47,14 +47,16 @@ import static org.junit.Assert.fail;
 @Category(ClusterIT.class)
 public class IoTDBTriggerExecutionIT {
 
-  private static final String TRIGGER_JAR_PREFIX =
-      "file:"
-          + System.getProperty("user.dir")
+  private static final String TRIGGER_COUNTER_PREFIX =
+      System.getProperty("user.dir")
           + File.separator
           + "target"
           + File.separator
           + "test-classes"
           + File.separator;
+
+  private static final String TRIGGER_JAR_PREFIX =
+      new File(TRIGGER_COUNTER_PREFIX).toURI().toString();
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
       "statelessTriggerBeforeInsertion_";
@@ -248,7 +250,7 @@ public class IoTDBTriggerExecutionIT {
   }
 
   private int getCounter(String counterName) throws IOException {
-    String counterFilePath = TRIGGER_JAR_PREFIX.substring(5) + counterName + ".txt";
+    String counterFilePath = TRIGGER_COUNTER_PREFIX + counterName + ".txt";
     int counter = 0;
     try (InputStreamReader Reader =
             new InputStreamReader(
