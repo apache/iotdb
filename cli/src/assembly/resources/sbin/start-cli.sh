@@ -18,23 +18,83 @@
 # under the License.
 #
 
+# this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
+# The command just parse IOTDB-prefixed variables and ignore all other variables
+checkEnvVaribles()
+{
+  string="$1"
+  array=`echo $string | tr '=' ' '`
+  case "${array[0]}" in
+          IOTDB_INCLUDE)
+               IOTDB_INCLUDE="${array[1]}"
+          ;;
+          IOTDB_CLI_CONF)
+              IOTDB_CLI_CONF="${array[1]}"
+          ;;
+          *)
+            #do nothing
+          ;;
+      esac
+}
+
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
+PARAMETERS="$@"
 
-if [ "x$IOTDB_INCLUDE" = "x" ]; then
-    # Locations (in order) to use when searching for an include file.
-    for include in "`dirname "$0"`/iotdb.in.sh" \
-                   "$HOME/.iotdb.in.sh" \
-                   /usr/share/iotdb/iotdb.in.sh \
-                   /etc/iotdb/iotdb.in.sh \
-                   /opt/iotdb/iotdb.in.sh; do
-        if [ -r "$include" ]; then
-            . "$include"
-            break
-        fi
-    done
-# ...otherwise, source the specified include.
+# if [ $# -eq 0 ]
+# then
+# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
+# fi
+
+# Added parameters when default parameters are missing
+user_param="-u root"
+passwd_param="-pw root"
+host_param="-h 127.0.0.1"
+port_param="-p 6667"
+
+while true; do
+    case "$1" in
+        -u)
+            user_param="-u $2"
+            shift 2
+            ;;
+        -pw)
+            passwd_param="-p $2"
+            shift 2
+        ;;
+        -h)
+            host_param="-h $2"
+            shift 2
+        ;;
+        -p)
+            port_param="-p $2"
+            shift 2
+        ;;
+        -D)
+            checkEnvVaribles $2
+            shift 2
+        ;;
+        -h)
+            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>]"
+            exit 0
+        ;;
+        "")
+              #if we do not use getopt, we then have to process the case that there is no argument.
+              shift
+              break
+              ;;
+        *)
+            #do nothing
+        ;;
+    esac
+done
+
+PARAMETERS="$host_param $port_param $user_param $passwd_param"
+
+if [ -z "${IOTDB_INCLUDE}" ]; then
+  #do nothing
+  :
 elif [ -r "$IOTDB_INCLUDE" ]; then
     . "$IOTDB_INCLUDE"
 fi
@@ -67,34 +127,7 @@ else
     JAVA=java
 fi
 
-PARAMETERS="$@"
 
-# if [ $# -eq 0 ]
-# then
-# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
-# fi
-
-# Added parameters when default parameters are missing
-
-# sh version
-case "$PARAMETERS" in
-*"-pw "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-pw root $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-u "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-u root $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-p "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-p 6667 $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-h "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-h 127.0.0.1 $PARAMETERS" ;;
-esac
-
-# echo $PARAMETERS
 
 set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-tool.xml"

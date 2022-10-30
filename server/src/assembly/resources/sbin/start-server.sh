@@ -18,42 +18,36 @@
 # under the License.
 #
 
-if [ "x$IOTDB_INCLUDE" = "x" ]; then
-    # Locations (in order) to use when searching for an include file.
-    for include in "`dirname "$0"`/iotdb.in.sh" \
-                   "$HOME/.iotdb.in.sh" \
-                   /usr/share/iotdb/iotdb.in.sh \
-                   /etc/iotdb/iotdb.in.sh \
-                   /opt/iotdb/iotdb.in.sh; do
-        if [ -r "$include" ]; then
-            . "$include"
-            break
-        fi
-    done
-# ...otherwise, source the specified include.
-elif [ -r "$IOTDB_INCLUDE" ]; then
-    . "$IOTDB_INCLUDE"
-fi
-
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/.."
-fi
-
-if [ -z "${IOTDB_DATA_HOME}" ]; then
-  export IOTDB_DATA_HOME=${IOTDB_HOME}
-fi
-
-if [ -z "${IOTDB_CONF}" ]; then
-  export IOTDB_CONF=${IOTDB_HOME}/conf
-fi
-
-if [ -z "${IOTDB_LOG_DIR}" ]; then
-  export IOTDB_LOG_DIR=${IOTDB_HOME}/logs
-fi
-
-
-IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
-
+# this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
+# The command just parse IOTDB-prefixed variables and ignore all other variables
+checkEnvVaribles()
+{
+  string="$1"
+  array=(`echo $string | tr '=' ' '` )
+  case "${array[0]}" in
+          IOTDB_INCLUDE)
+               IOTDB_INCLUDE="${array[1]}"
+          ;;
+          IOTDB_HOME)
+               IOTDB_HOME="${array[1]}"
+          ;;
+          IOTDB_DATA_HOME)
+             IOTDB_DATA_HOME="${array[1]}"
+          ;;
+          IOTDB_CONF)
+             IOTDB_CONF="${array[1]}"
+          ;;
+          IOTDB_LOG_DIR)
+             IOTDB_LOG_DIR="${array[1]}"
+          ;;
+          IOTDB_LOG_CONFIG)
+             IOTDB_LOG_CONFIG="${array[1]}"
+          ;;
+          *)
+            #do nothing
+          ;;
+      esac
+}
 
 # before, iotdb server runs on foreground by default
 foreground="yes"
@@ -96,6 +90,7 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
+            checkEnvVaribles $2
             shift 2
         ;;
         -X)
@@ -129,6 +124,37 @@ while true; do
         ;;
     esac
 done
+
+if [ -z "${IOTDB_INCLUDE}" ]; then
+  #do nothing
+  :
+elif [ -r "$IOTDB_INCLUDE" ]; then
+    . "$IOTDB_INCLUDE"
+fi
+
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="`dirname "$0"`/.."
+fi
+
+if [ -z "${IOTDB_DATA_HOME}" ]; then
+  export IOTDB_DATA_HOME=${IOTDB_HOME}
+fi
+
+if [ -z "${IOTDB_CONF}" ]; then
+  export IOTDB_CONF=${IOTDB_HOME}/conf
+fi
+
+if [ -z "${IOTDB_LOG_DIR}" ]; then
+  export IOTDB_LOG_DIR=${IOTDB_HOME}/logs
+fi
+
+if [ -z "${IOTDB_LOG_CONFIG}" ]; then
+  export IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
+fi
+
+
+
+
 
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
@@ -220,6 +246,7 @@ launch_service()
 
 	return $?
 }
+
 
 # Start up the service
 launch_service "$classname"
