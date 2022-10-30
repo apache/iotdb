@@ -252,7 +252,7 @@ public class TriggerManagementService {
             DigestUtils.md5Hex(
                 Files.newInputStream(
                     Paths.get(
-                        TriggerExecutableManager.getInstance().getLibRoot()
+                        TriggerExecutableManager.getInstance().getInstallDir()
                             + File.separator
                             + triggerInformation.getJarName())));
         // save the md5 in a txt under trigger temporary lib
@@ -273,7 +273,7 @@ public class TriggerManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      TriggerExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
+      TriggerExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
     }
   }
 

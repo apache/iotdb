@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
 // todo: add StandaloneIT.class when supporting trigger on Standalone
 @Category({ClusterIT.class})
 public class IoTDBTriggerManagementIT {
-  private static final String TRIGGER_JAR_PREFIX =
+  private static final String TRIGGER_COUNTER_PREFIX =
       System.getProperty("user.dir")
           + File.separator
           + "target"
@@ -54,6 +54,8 @@ public class IoTDBTriggerManagementIT {
           + "test-classes"
           + File.separator;
 
+  private static final String TRIGGER_JAR_PREFIX =
+      new File(TRIGGER_COUNTER_PREFIX).toURI().toString();
   private static final String TRIGGER_FILE_TIMES_COUNTER =
       "org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter";
 
@@ -204,14 +206,14 @@ public class IoTDBTriggerManagementIT {
       // create stateless triggers before insertion
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -220,14 +222,14 @@ public class IoTDBTriggerManagementIT {
       // create stateless triggers after insertion
       statement.execute(
           String.format(
-              "create stateless trigger %s after insert on root.test.stateless.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s after insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
       statement.execute(
           String.format(
-              "create stateless trigger %s after insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s after insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -236,14 +238,14 @@ public class IoTDBTriggerManagementIT {
       // create stateful triggers before insertion
       statement.execute(
           String.format(
-              "create stateful trigger %s before insert on root.test.stateful.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s before insert on root.test.stateful.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
       statement.execute(
           String.format(
-              "create stateful trigger %s before insert on root.test.stateful.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s before insert on root.test.stateful.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -252,14 +254,14 @@ public class IoTDBTriggerManagementIT {
       // create stateful triggers after insertion
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a"));
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -289,14 +291,14 @@ public class IoTDBTriggerManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -312,14 +314,14 @@ public class IoTDBTriggerManagementIT {
 
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -335,14 +337,14 @@ public class IoTDBTriggerManagementIT {
 
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "a",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -365,7 +367,7 @@ public class IoTDBTriggerManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -374,7 +376,7 @@ public class IoTDBTriggerManagementIT {
       try {
         statement.execute(
             String.format(
-                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
                 STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
                 TRIGGER_FILE_TIMES_COUNTER,
                 TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -394,7 +396,7 @@ public class IoTDBTriggerManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               "test",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -402,7 +404,7 @@ public class IoTDBTriggerManagementIT {
 
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               "Test",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -410,7 +412,7 @@ public class IoTDBTriggerManagementIT {
 
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               "TEST",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
@@ -428,28 +430,28 @@ public class IoTDBTriggerManagementIT {
       // create first
       statement.execute(
           String.format(
-              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateless trigger %s after insert on root.test.stateless.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateless trigger %s after insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATELESS_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateful trigger %s before insert on root.test.stateful.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s before insert on root.test.stateful.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
       statement.execute(
           String.format(
-              "create stateful trigger %s after insert on root.test.stateful.* as '%s' using file '%s' with (\"name\"=\"%s\")",
+              "create stateful trigger %s after insert on root.test.stateful.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all",
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",

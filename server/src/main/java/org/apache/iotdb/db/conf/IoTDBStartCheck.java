@@ -120,26 +120,26 @@ public class IoTDBStartCheck {
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
-  private static final String INTERNAL_ADDRESS = "internal_address";
+  private static final String INTERNAL_ADDRESS = "dn_internal_address";
   private static final String internalAddress = config.getInternalAddress();
 
-  private static final String INTERNAL_PORT = "internal_port";
+  private static final String INTERNAL_PORT = "dn_internal_port";
   private static final String internalPort = String.valueOf(config.getInternalPort());
 
-  private static final String RPC_ADDRESS = "rpc_address";
+  private static final String RPC_ADDRESS = "dn_rpc_address";
   private static final String rpcAddress = config.getRpcAddress();
 
-  private static final String RPC_PORT = "rpc_port";
+  private static final String RPC_PORT = "dn_rpc_port";
   private static final String rpcPort = String.valueOf(config.getRpcPort());
 
-  private static final String MPP_DATA_EXCHANGE_PORT = "mpp_data_exchange_port";
+  private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   private static final String mppDataExchangePort = String.valueOf(config.getMppDataExchangePort());
 
-  private static final String SCHEMA_REGION_CONSENSUS_PORT = "schema_region_consensus_port";
+  private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String schemaRegionConsensusPort =
       String.valueOf(config.getSchemaRegionConsensusPort());
 
-  private static final String DATA_REGION_CONSENSUS_PORT = "data_region_consensus_port";
+  private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
   private static final String dataRegionConsensusPort =
       String.valueOf(config.getDataRegionConsensusPort());
 

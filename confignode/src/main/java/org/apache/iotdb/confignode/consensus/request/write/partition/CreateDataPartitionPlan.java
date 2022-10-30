@@ -58,7 +58,7 @@ public class CreateDataPartitionPlan extends ConfigPhysicalPlan {
       TTransport transport = new TIOStreamTransport(stream);
       TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-      stream.writeInt(ConfigPhysicalPlanType.CreateDataPartition.ordinal());
+      stream.writeShort(getType().getPlanType());
 
       stream.writeInt(assignedDataPartition.size());
       for (Map.Entry<String, DataPartitionTable> dataPartitionTableEntry :

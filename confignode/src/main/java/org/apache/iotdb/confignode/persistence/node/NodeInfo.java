@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
@@ -379,15 +379,19 @@ public class NodeInfo implements SnapshotProcessor {
    * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
    */
   public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
-
-    // Log current NodeStatistics
-    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue());
+    if (!updateLoadStatisticsPlan.getNodeStatisticsMap().isEmpty()) {
+      synchronized (nodeStatisticsMap) {
+        // Update nodeStatisticsMap
+        nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
+        // Log current NodeStatistics
+        LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
+        for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
+          LOGGER.info(
+              "[UpdateLoadStatistics]\t {}={}",
+              "nodeId{" + nodeCacheEntry.getKey() + "}",
+              nodeCacheEntry.getValue());
+        }
+      }
     }
   }
 

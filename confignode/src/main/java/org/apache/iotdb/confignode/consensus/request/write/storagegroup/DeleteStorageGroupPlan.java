@@ -46,7 +46,7 @@ public class DeleteStorageGroupPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteStorageGroup.ordinal());
+    stream.writeShort(getType().getPlanType());
     BasicStructureSerDeUtil.write(name, stream);
   }
 

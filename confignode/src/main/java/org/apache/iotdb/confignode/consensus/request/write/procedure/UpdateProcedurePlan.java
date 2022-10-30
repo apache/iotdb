@@ -53,7 +53,7 @@ public class UpdateProcedurePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.UpdateProcedure.ordinal());
+    stream.writeShort(getType().getPlanType());
     if (procedure != null) {
       procedure.serialize(stream);
     }

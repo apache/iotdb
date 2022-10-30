@@ -37,11 +37,11 @@ public class RegionGroupStatisticsTest {
   public void RegionGroupStatisticsSerDeTest() throws IOException {
     Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      regionStatisticsMap.put(i, new RegionStatistics(i, false, RegionStatus.Unknown));
+      regionStatisticsMap.put(i, new RegionStatistics(RegionStatus.Unknown));
     }
 
     RegionGroupStatistics statistics0 =
-        new RegionGroupStatistics(-1, RegionGroupStatus.Disabled, regionStatisticsMap);
+        new RegionGroupStatistics(RegionGroupStatus.Disabled, regionStatisticsMap);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       statistics0.serialize(outputStream);
