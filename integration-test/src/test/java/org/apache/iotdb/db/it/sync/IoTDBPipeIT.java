@@ -86,7 +86,7 @@ public class IoTDBPipeIT {
       statement.execute(
           String.format("CREATE PIPESINK demo AS IoTDB (ip='%s',port='%d');", ip, port));
       statement.execute(
-          "CREATE PIPE p1 to demo FROM (select ** from root where time>=2022-03-30 00:00:00) WITH SyncDelOp=false;");
+          "CREATE PIPE p1 to demo FROM (select ** from root where time>=1648569600000) WITH SyncDelOp=false;");
       statement.execute("CREATE PIPE p2 to demo WITH SyncDelOp=true;");
       try {
         // check exception2: PIPE already exist
