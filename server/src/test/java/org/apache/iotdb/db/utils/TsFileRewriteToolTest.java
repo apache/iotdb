@@ -296,33 +296,34 @@ public class TsFileRewriteToolTest {
   protected void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
-      // add measurements into file schema
-      try {
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          for (String sensor : entry.getValue()) {
-            tsFileWriter.registerTimeseries(
-                new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+        // add measurements into file schema
+        try {
+          for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
+            String device = entry.getKey();
+            for (String sensor : entry.getValue()) {
+              tsFileWriter.registerTimeseries(
+                  new Path(device),
+                  new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+            }
           }
+        } catch (WriteProcessException e) {
+          Assert.fail(e.getMessage());
         }
-      } catch (WriteProcessException e) {
-        Assert.fail(e.getMessage());
-      }
 
-      for (long timestamp = 0; timestamp < maxTimestamp; timestamp += 1000) {
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          TSRecord tsRecord = new TSRecord(timestamp, device);
-          for (String sensor : entry.getValue()) {
-            DataPoint dataPoint = new LongDataPoint(sensor, timestamp + VALUE_OFFSET);
-            tsRecord.addTuple(dataPoint);
+        for (long timestamp = 0; timestamp < maxTimestamp; timestamp += 1000) {
+          for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
+            String device = entry.getKey();
+            TSRecord tsRecord = new TSRecord(timestamp, device);
+            for (String sensor : entry.getValue()) {
+              DataPoint dataPoint = new LongDataPoint(sensor, timestamp + VALUE_OFFSET);
+              tsRecord.addTuple(dataPoint);
+            }
+            tsFileWriter.write(tsRecord);
           }
-          tsFileWriter.write(tsRecord);
         }
+        tsFileWriter.flushAllChunkGroups();
       }
-      tsFileWriter.flushAllChunkGroups();
-      tsFileWriter.close();
     } catch (Throwable e) {
       Assert.fail(e.getMessage());
     }
