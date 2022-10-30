@@ -50,9 +50,9 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSessionInsertNulIT {
+public class IoTDBSessionInsertNullIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionInsertNulIT.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionInsertNullIT.class);
   private final int retry = 30;
 
   @Before
