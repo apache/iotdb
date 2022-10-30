@@ -16,36 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node;
+package org.apache.iotdb.confignode.manager.node.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 import java.util.LinkedList;
 
 /** All the statistic interfaces that provided by HeartbeatCache */
 public abstract class BaseNodeCache {
 
-  /** When the response time of heartbeat is more than 20s, the node is considered as down */
+  // When the response time of heartbeat is more than 20s, the Node is considered as down
   public static final int HEARTBEAT_TIMEOUT_TIME = 20_000;
 
-  /** Max heartbeat cache samples store size */
+  // Max heartbeat cache samples store size
   public static final int MAXIMUM_WINDOW_SIZE = 100;
 
-  /** SlidingWindow stores the heartbeat sample data */
+  // SlidingWindow stores the heartbeat sample data
   protected final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
 
-  protected volatile NodeStatistics statistics;
+  // The previous NodeStatistics, used for comparing with
+  // the current NodeStatistics to initiate notification when they are different
+  protected volatile NodeStatistics previousStatistics;
+  // The current NodeStatistics, used for providing statistics to other services
+  protected volatile NodeStatistics currentStatistics;
 
   /** Constructor for NodeCache with default NodeStatistics */
   protected BaseNodeCache() {
-    this.statistics = NodeStatistics.generateDefaultNodeStatistics();
+    this.previousStatistics = NodeStatistics.generateDefaultNodeStatistics();
+    this.currentStatistics = NodeStatistics.generateDefaultNodeStatistics();
   }
 
   /**
-   * Cache the newest HeartbeatSample
+   * Cache the newest NodeHeartbeatSample
    *
-   * @param newHeartbeatSample The newest HeartbeatSample
+   * @param newHeartbeatSample The newest NodeHeartbeatSample
    */
   public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
     synchronized (slidingWindow) {
@@ -62,8 +66,23 @@ public abstract class BaseNodeCache {
     }
   }
 
-  /** Invoking periodically to update Node's latest NodeStatistics */
-  public abstract void updateNodeStatistics();
+  /**
+   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics and
+   * compare with the previousStatistics, in order to detect whether the Node's statistics has
+   * changed
+   *
+   * @return True if the currentStatistics has changed recently(compare with the
+   *     previousStatistics), false otherwise
+   */
+  public boolean periodicUpdate() {
+    updateCurrentStatistics();
+    if (!currentStatistics.equals(previousStatistics)) {
+      previousStatistics = currentStatistics.deepCopy();
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   /**
    * Actively append a custom NodeHeartbeatSample to force a change in the NodeStatistics.
@@ -71,12 +90,22 @@ public abstract class BaseNodeCache {
    * <p>For example, this interface can be invoked in Node removing process to forcibly change the
    * corresponding Node's status to Removing without waiting for heartbeat sampling
    *
+   * <p>Notice: The ConfigNode-leader doesn't know the specified Node's statistics has changed even
+   * if this interface is invoked, since the ConfigNode-leader only detect cluster Nodes' statistics
+   * by periodicUpdate interface. However, other service can still read the update of
+   * currentStatistics by invoking getters below.
+   *
    * @param newHeartbeatSample A custom NodeHeartbeatSample that will lead to needed NodeStatistics
    */
   public void forceUpdate(NodeHeartbeatSample newHeartbeatSample) {
     cacheHeartbeatSample(newHeartbeatSample);
-    updateNodeStatistics();
+    updateCurrentStatistics();
   }
+
+  /**
+   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow
+   */
+  protected abstract void updateCurrentStatistics();
 
   /**
    * TODO: The loadScore of each Node will be changed to Double
@@ -84,25 +113,28 @@ public abstract class BaseNodeCache {
    * @return The latest load score of a node, the higher the score the higher the load
    */
   public long getLoadScore() {
-    return statistics.getLoadScore();
+    return currentStatistics.getLoadScore();
   }
 
   /** @return The current status of the Node */
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    return NodeStatus.parse(statistics.getStatus().getStatus());
+    return NodeStatus.parse(currentStatistics.getStatus().getStatus());
   }
 
   /** @return The reason why lead to current NodeStatus */
   public String getNodeStatusWithReason() {
-    if (statistics.getStatusReason() == null) {
-      return statistics.getStatus().getStatus();
+    if (currentStatistics.getStatusReason() == null) {
+      return currentStatistics.getStatus().getStatus();
     } else {
-      return statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
+      return currentStatistics.getStatus().getStatus()
+          + "("
+          + currentStatistics.getStatusReason()
+          + ")";
     }
   }
 
   public NodeStatistics getStatistics() {
-    return statistics;
+    return currentStatistics;
   }
 }

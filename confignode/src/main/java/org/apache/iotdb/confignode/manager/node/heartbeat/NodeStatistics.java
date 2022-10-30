@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence.node;
+package org.apache.iotdb.confignode.manager.node.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -97,6 +96,10 @@ public class NodeStatistics {
 
   public static NodeStatistics generateDefaultNodeStatistics() {
     return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
+  }
+
+  public NodeStatistics deepCopy() {
+    return new NodeStatistics(loadScore, status, statusReason);
   }
 
   public NodeHeartbeatSample convertToNodeHeartbeatSample() {

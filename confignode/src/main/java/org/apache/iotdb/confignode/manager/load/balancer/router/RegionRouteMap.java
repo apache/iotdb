@@ -50,6 +50,10 @@ public class RegionRouteMap {
     this.regionPriorityMap = new ConcurrentHashMap<>();
   }
 
+  /**
+   * @return DataNodeId where the specified RegionGroup's leader resides. And return -1 if the
+   *     leader is not recorded yet
+   */
   public int getLeader(TConsensusGroupId regionGroupId) {
     return regionLeaderMap.getOrDefault(regionGroupId, -1);
   }
@@ -158,15 +162,5 @@ public class RegionRouteMap {
   @Override
   public int hashCode() {
     return Objects.hash(regionLeaderMap, regionPriorityMap);
-  }
-
-  @Override
-  public String toString() {
-    return "RegionRouteMap{"
-        + "regionLeaderMap="
-        + regionLeaderMap
-        + ", regionPriorityMap="
-        + regionPriorityMap
-        + '}';
   }
 }

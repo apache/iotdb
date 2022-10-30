@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition;
+package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.apache.iotdb.confignode.manager.node.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME;
-import static org.apache.iotdb.confignode.manager.node.BaseNodeCache.MAXIMUM_WINDOW_SIZE;
+import static org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME;
+import static org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache.MAXIMUM_WINDOW_SIZE;
 
 public class RegionCache {
 

@@ -16,36 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node;
+package org.apache.iotdb.confignode.manager.node.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
+
+  /** Only get CURRENT_NODE_ID here due to initialization order */
+  public static final int CURRENT_NODE_ID =
+      ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
 
   public static final NodeStatistics CURRENT_NODE_STATISTICS =
       new NodeStatistics(0, NodeStatus.Running, null);
 
-  private final TConfigNodeLocation configNodeLocation;
+  private final int configNodeId;
 
   /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics */
-  public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
+  public ConfigNodeHeartbeatCache(int configNodeId) {
     super();
-    this.configNodeLocation = configNodeLocation;
+    this.configNodeId = configNodeId;
   }
 
-  /** Constructor that only used when ConfigNode-leader switched */
-  public ConfigNodeHeartbeatCache(
-      TConfigNodeLocation configNodeLocation, NodeStatistics nodeStatistics) {
-    this.configNodeLocation = configNodeLocation;
-    this.statistics = nodeStatistics;
+  /** Constructor only for ConfigNode-leader */
+  public ConfigNodeHeartbeatCache(int configNodeId, NodeStatistics statistics) {
+    super();
+    this.configNodeId = configNodeId;
+    this.previousStatistics = statistics;
+    this.currentStatistics = statistics;
   }
 
   @Override
-  public void updateNodeStatistics() {
+  protected void updateCurrentStatistics() {
     // Skip itself
-    if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
+    if (configNodeId == CURRENT_NODE_ID) {
       return;
     }
 
@@ -71,9 +75,9 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
-    if (!statistics.equals(newStatistics)) {
-      // Update NodeStatistics if necessary
-      statistics = newStatistics;
+    if (!currentStatistics.equals(newStatistics)) {
+      // Update the current NodeStatistics if necessary
+      currentStatistics = newStatistics;
     }
   }
 }

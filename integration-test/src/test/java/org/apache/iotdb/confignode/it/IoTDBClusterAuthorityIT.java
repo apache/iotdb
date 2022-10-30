@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBClusterAuthorizeIT {
+public class IoTDBClusterAuthorityIT {
 
   @Before
   public void setUp() throws Exception {

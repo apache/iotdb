@@ -16,18 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence.partition.statistics;
+package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
-import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +37,7 @@ public class RegionGroupStatistics {
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
 
   public RegionGroupStatistics() {
-    this.regionStatisticsMap = new HashMap<>();
+    this.regionStatisticsMap = new ConcurrentHashMap<>();
   }
 
   public RegionGroupStatistics(
@@ -64,16 +62,19 @@ public class RegionGroupStatistics {
         : RegionStatus.Unknown;
   }
 
-  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new HashMap<>());
+  public Map<Integer, RegionStatistics> getRegionStatisticsMap() {
+    return regionStatisticsMap;
   }
 
-  public Map<Integer, RegionHeartbeatSample> convertToRegionHeartbeatSampleMap() {
-    Map<Integer, RegionHeartbeatSample> result = new ConcurrentHashMap<>();
+  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
+    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new ConcurrentHashMap<>());
+  }
+
+  public RegionGroupStatistics deepCopy() {
+    Map<Integer, RegionStatistics> deepCopyMap = new ConcurrentHashMap<>();
     regionStatisticsMap.forEach(
-        (dataNodeId, regionStatistics) ->
-            result.put(dataNodeId, regionStatistics.convertToRegionHeartbeatSample()));
-    return result;
+        (dataNodeId, regionStatistics) -> deepCopyMap.put(dataNodeId, regionStatistics.deepCopy()));
+    return new RegionGroupStatistics(regionGroupStatus, deepCopyMap);
   }
 
   public void serialize(OutputStream stream) throws IOException {
@@ -129,11 +130,6 @@ public class RegionGroupStatistics {
 
   @Override
   public String toString() {
-    return "RegionGroupStatistics{"
-        + "regionGroupStatus="
-        + regionGroupStatus
-        + ", regionStatisticsMap="
-        + regionStatisticsMap
-        + '}';
+    return "RegionGroupStatistics{" + "regionGroupStatus=" + regionGroupStatus + '}';
   }
 }
