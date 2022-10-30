@@ -20,14 +20,11 @@ package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,24 +34,12 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
+// TODO no more PhysicalPlan
+@Ignore
 public class PipeDataTest {
   private static final Logger logger = LoggerFactory.getLogger(PipeDataTest.class);
   private static final String pipeLogPath = "target/pipelog";
-
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws IOException, StorageEngineException {
-    EnvironmentUtils.cleanEnv();
-    Files.deleteIfExists(Paths.get(pipeLogPath));
-  }
 
   @Test
   public void testSerializeAndDeserialize() {
