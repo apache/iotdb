@@ -46,8 +46,6 @@ import static org.junit.Assert.fail;
 // todo: refactor after redesign of non align?
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-// todo : add back when finishes new udf management
-@Ignore
 public class IoTDBUDTFNonAlignQueryIT {
 
   protected static final int ITERATION_TIMES = 10;
