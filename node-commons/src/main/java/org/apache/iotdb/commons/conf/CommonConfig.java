@@ -90,7 +90,7 @@ public class CommonConfig {
    * <p>Notice: if this property is changed, previous created storage group which are not set TTL
    * will also be affected. Unit: millisecond
    */
-  private long defaultTTL = Long.MAX_VALUE;
+  private long defaultTTLInMs = Long.MAX_VALUE;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -105,7 +105,7 @@ public class CommonConfig {
           : 1;
 
   /** whether to use thrift compression. */
-  private boolean isRpcThriftCompressionEnabled = false;
+  private boolean isCnRpcThriftCompressionEnabled = false;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -238,36 +238,36 @@ public class CommonConfig {
     this.systemFileStorageFs = systemFileStorageFs;
   }
 
-  public long getDefaultTTL() {
-    return defaultTTL;
+  public long getDefaultTTLInMs() {
+    return defaultTTLInMs;
   }
 
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
+  public void setDefaultTTLInMs(long defaultTTLInMs) {
+    this.defaultTTLInMs = defaultTTLInMs;
   }
 
-  public int getConnectionTimeoutInMS() {
+  public int getCnConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public void setCnConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getSelectorNumOfClientManager() {
+  public int getCnSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
 
-  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+  public void setCnSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isRpcThriftCompressionEnabled() {
-    return isRpcThriftCompressionEnabled;
+  public boolean isCnRpcThriftCompressionEnabled() {
+    return isCnRpcThriftCompressionEnabled;
   }
 
-  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
-    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  public void setCnRpcThriftCompressionEnabled(boolean cnRpcThriftCompressionEnabled) {
+    isCnRpcThriftCompressionEnabled = cnRpcThriftCompressionEnabled;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
