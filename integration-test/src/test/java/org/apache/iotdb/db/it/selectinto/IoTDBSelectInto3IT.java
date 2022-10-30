@@ -34,15 +34,13 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 @RunWith(IoTDBTestRunner.class)
 // TODO add LocalStandaloneIT back while deleting old standalone
 @Category({ClusterIT.class})
-public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
+public class IoTDBSelectInto3IT extends IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
     selectIntoInsertTabletPlanRowLimit =
         ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
-    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(8);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(5);
+    ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(5);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
@@ -52,6 +50,5 @@ public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
         .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
 }
