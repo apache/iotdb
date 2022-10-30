@@ -1105,6 +1105,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
+    queryStatement.setOrderByComponent(null);
 
     List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
     List<Expression> sourceColumns =
@@ -1152,6 +1153,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
+    queryStatement.setOrderByComponent(null);
 
     List<Expression> sourceColumns =
         outputExpressions.stream()

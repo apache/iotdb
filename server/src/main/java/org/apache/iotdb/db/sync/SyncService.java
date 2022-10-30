@@ -385,24 +385,28 @@ public class SyncService implements IService {
     }
   }
 
+  // TODO: Only used for LocalConfigNode. Delete it after delete LocalConfigNode.
   public List<TShowPipeInfo> showPipe(String pipeName) {
     boolean showAll = StringUtils.isEmpty(pipeName);
     List<TShowPipeInfo> list = new ArrayList<>();
     // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || pipeName.equals(pipe.getPipeName())) {
-        TShowPipeInfo tPipeInfo =
-            new TShowPipeInfo(
-                pipe.getCreateTime(),
-                pipe.getPipeName(),
-                SyncConstant.ROLE_SENDER,
-                pipe.getPipeSinkName(),
-                pipe.getStatus().name(),
-                pipe.getMessageType().name());
-        list.add(tPipeInfo);
+        list.add(pipe.getTShowPipeInfo());
       }
     }
-    // show pipe in receiver
+    list.addAll(showPipeForReceiver(pipeName));
+    return list;
+  }
+
+  /**
+   * // show pipe in receiver
+   *
+   * @param pipeName null means show all pipe
+   */
+  public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
+    boolean showAll = StringUtils.isEmpty(pipeName);
+    List<TShowPipeInfo> list = new ArrayList<>();
     for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
       if (showAll || pipeName.equals(identityInfo.getPipeName())) {
         TShowPipeInfo tPipeInfo =
@@ -412,6 +416,7 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
                 PipeStatus.RUNNING.name(),
+                String.format("storageGroup='%s'", identityInfo.getStorageGroup()),
                 // TODO: implement receiver message
                 PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);

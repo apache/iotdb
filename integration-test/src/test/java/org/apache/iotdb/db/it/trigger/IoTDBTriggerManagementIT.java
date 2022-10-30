@@ -46,15 +46,16 @@ import static org.junit.Assert.fail;
 // todo: add StandaloneIT.class when supporting trigger on Standalone
 @Category({ClusterIT.class})
 public class IoTDBTriggerManagementIT {
-  private static final String TRIGGER_JAR_PREFIX =
-      "file:"
-          + System.getProperty("user.dir")
+  private static final String TRIGGER_COUNTER_PREFIX =
+      System.getProperty("user.dir")
           + File.separator
           + "target"
           + File.separator
           + "test-classes"
           + File.separator;
 
+  private static final String TRIGGER_JAR_PREFIX =
+      new File(TRIGGER_COUNTER_PREFIX).toURI().toString();
   private static final String TRIGGER_FILE_TIMES_COUNTER =
       "org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter";
 

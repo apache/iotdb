@@ -54,7 +54,7 @@ public class UnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.UnsetTemplate.ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(templateId, stream);
     path.serialize(stream);
   }

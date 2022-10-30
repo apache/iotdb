@@ -65,14 +65,14 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   public void deserializeForProcedure(ByteBuffer buffer) throws IOException {
-    // to remove the ordinal of ConfigPhysicalPlanType
-    buffer.getInt();
+    // to remove the planType of ConfigPhysicalPlanType
+    buffer.getShort();
     this.deserializeImpl(buffer);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.CreateRegionGroups.ordinal());
+    stream.writeShort(getType().getPlanType());
 
     stream.writeInt(regionGroupMap.size());
     for (Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {

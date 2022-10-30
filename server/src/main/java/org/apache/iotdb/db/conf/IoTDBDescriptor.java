@@ -195,7 +195,7 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
-    conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
+    conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
 
     // TODO: Use FQDN  to identify our nodes afterwards
     try {
@@ -241,7 +241,8 @@ public class IoTDBDescriptor {
 
     conf.setRpcPort(
         Integer.parseInt(
-            properties.getProperty(IoTDBConstant.RPC_PORT, Integer.toString(conf.getRpcPort()))));
+            properties.getProperty(
+                IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))));
 
     conf.setEnableInfluxDBRpcService(
         Boolean.parseBoolean(
@@ -288,7 +289,7 @@ public class IoTDBDescriptor {
 
     loadWALProps(properties);
 
-    String systemDir = properties.getProperty("system_dir");
+    String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
       systemDir = properties.getProperty("base_dir");
       if (systemDir != null) {
@@ -305,11 +306,11 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
+    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
 
-    conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
+    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
-    conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+    conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
     int mlogBufferSize =
         Integer.parseInt(
@@ -328,7 +329,7 @@ public class IoTDBDescriptor {
 
     String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
-        properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+        properties.getProperty("dn_multi_dir_strategy", conf.getMultiDirStrategyClassName()));
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
@@ -1402,13 +1403,13 @@ public class IoTDBDescriptor {
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
-      String dataDirs = properties.getProperty("data_dirs", null);
+      String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
       // update dir strategy, must update after data dirs
-      String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
+      String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
@@ -1710,7 +1711,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
 
-    conf.setUdfDir(properties.getProperty("udf_root_dir", conf.getUdfDir()));
+    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
 
     String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
@@ -1829,7 +1830,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES);
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES);
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
@@ -1840,23 +1841,23 @@ public class IoTDBDescriptor {
     }
 
     conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
+        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty(
-                IoTDBConstant.INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
+                IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
             properties.getProperty(
-                "data_region_consensus_port",
+                "dn_data_region_consensus_port",
                 Integer.toString(conf.getDataRegionConsensusPort()))));
 
     conf.setSchemaRegionConsensusPort(
         Integer.parseInt(
             properties.getProperty(
-                "schema_region_consensus_port",
+                "dn_schema_region_consensus_port",
                 Integer.toString(conf.getSchemaRegionConsensusPort()))));
   }
 
@@ -1864,7 +1865,7 @@ public class IoTDBDescriptor {
     conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
-                "mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
+                "dn_mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
     conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
             properties.getProperty(

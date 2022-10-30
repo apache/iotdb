@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,7 +60,7 @@ public class UnsetTemplateProcedureTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
     Assert.assertEquals(
-        ProcedureFactory.ProcedureType.UNSET_TEMPLATE_PROCEDURE.ordinal(), byteBuffer.getInt());
+        ProcedureType.UNSET_TEMPLATE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
     UnsetTemplateProcedure deserializedProcedure = new UnsetTemplateProcedure();
     deserializedProcedure.deserialize(byteBuffer);

@@ -62,6 +62,8 @@ public interface ISession extends AutoCloseable {
 
   void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
 
+  void setTimeZoneOfSession(String zoneId);
+
   void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
