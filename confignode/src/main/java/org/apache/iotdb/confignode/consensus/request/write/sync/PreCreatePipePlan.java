@@ -45,7 +45,7 @@ public class PreCreatePipePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.PreCreatePipe.ordinal());
+    stream.writeShort(getType().getPlanType());
     pipeInfo.serialize(stream);
   }
 

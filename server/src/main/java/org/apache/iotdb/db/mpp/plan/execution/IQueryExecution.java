@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
 public interface IQueryExecution {
@@ -36,6 +37,8 @@ public interface IQueryExecution {
   ExecutionResult getStatus();
 
   Optional<TsBlock> getBatchResult() throws IoTDBException;
+
+  Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
 
   boolean hasNextResult();
 

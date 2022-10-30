@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -60,11 +62,6 @@ public class NodeStatistics {
     return statusReason;
   }
 
-  public void setRemoving() {
-    this.statusReason = null;
-    this.status = NodeStatus.Removing;
-  }
-
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(loadScore, stream);
     ReadWriteIOUtils.write(status.getStatus(), stream);
@@ -87,6 +84,7 @@ public class NodeStatistics {
     }
   }
 
+  // Deserializer for snapshot
   public void deserialize(InputStream inputStream) throws IOException {
     loadScore = ReadWriteIOUtils.readLong(inputStream);
     status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));
@@ -101,17 +99,21 @@ public class NodeStatistics {
     return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
   }
 
+  public NodeHeartbeatSample convertToNodeHeartbeatSample() {
+    long currentTime = System.currentTimeMillis();
+    return new NodeHeartbeatSample(
+        new THeartbeatResp(currentTime, status.getStatus()).setStatusReason(statusReason),
+        currentTime);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     NodeStatistics that = (NodeStatistics) o;
-    return status == that.status
-        && Objects.equals(statusReason, that.statusReason)
-        // In order to prevent the NodeStatistics from updating too fast.
-        // Here we consider the loadScore equal when the difference is small.
-        // TODO: optimize
-        && Math.abs(loadScore - that.loadScore) < 60 * 1000;
+    return loadScore == that.loadScore
+        && status == that.status
+        && Objects.equals(statusReason, that.statusReason);
   }
 
   @Override

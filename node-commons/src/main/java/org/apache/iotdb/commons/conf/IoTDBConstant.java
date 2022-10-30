@@ -50,14 +50,18 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  public static final String CONFIG_NODE_ID = "config_node_id";
-  public static final String DATA_NODE_ID = "data_node_id";
-  public static final String RPC_ADDRESS = "rpc_address";
-  public static final String RPC_PORT = "rpc_port";
-  public static final String INTERNAL_ADDRESS = "internal_address";
-  public static final String INTERNAL_PORT = "internal_port";
-  public static final String CONSENSUS_PORT = "consensus_port";
-  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+  public static final String DN_RPC_ADDRESS = "dn_rpc_address";
+  public static final String DN_RPC_PORT = "dn_rpc_port";
+
+  public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
+  public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
+
+  public static final String CN_INTERNAL_PORT = "cn_internal_port";
+  public static final String DN_INTERNAL_PORT = "dn_internal_port";
+  public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+
+  public static final String CN_TARGET_CONFIG_NODES = "cn_target_config_nodes";
+  public static final String DN_TARGET_CONFIG_NODES = "dn_target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()

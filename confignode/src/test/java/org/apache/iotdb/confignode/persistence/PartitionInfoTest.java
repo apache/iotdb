@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
+import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
@@ -147,7 +148,8 @@ public class PartitionInfoTest {
 
     partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
 
-    partitionInfo.updateRegionGroupStatistics(generateUpdateLoadStatisticsPlan());
+    partitionInfo.updateRegionGroupStatisticsAndRegionRouteMap(
+        generateUpdateLoadStatisticsPlan(schemaRegionReplicaSet, dataRegionReplicaSet));
 
     partitionInfo.processTakeSnapshot(snapshotDir);
 
@@ -276,17 +278,36 @@ public class PartitionInfoTest {
     return offerPlan;
   }
 
-  private UpdateLoadStatisticsPlan generateUpdateLoadStatisticsPlan() {
+  private UpdateLoadStatisticsPlan generateUpdateLoadStatisticsPlan(
+      TRegionReplicaSet schemaRegionReplicaSet, TRegionReplicaSet dataRegionReplicaSet) {
     UpdateLoadStatisticsPlan updateLoadStatisticsPlan = new UpdateLoadStatisticsPlan();
+
+    // Build RegionGroupStatistics
     for (int i = 0; i < 10; i++) {
       Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
       for (int j = 0; j < 3; j++) {
-        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
+        regionStatisticsMap.put(j, new RegionStatistics(RegionStatus.Unknown));
       }
       updateLoadStatisticsPlan.putRegionGroupStatistics(
           new TConsensusGroupId(DataRegion, i),
-          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
+          new RegionGroupStatistics(RegionGroupStatus.Available, regionStatisticsMap));
     }
+
+    // Build RegionRouteMap
+    RegionRouteMap regionRouteMap = new RegionRouteMap();
+
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    regionLeaderMap.put(schemaRegionReplicaSet.getRegionId(), 0);
+    regionLeaderMap.put(dataRegionReplicaSet.getRegionId(), 1);
+    regionRouteMap.setRegionLeaderMap(regionLeaderMap);
+
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new HashMap<>();
+    regionPriorityMap.put(schemaRegionReplicaSet.getRegionId(), schemaRegionReplicaSet);
+    regionPriorityMap.put(dataRegionReplicaSet.getRegionId(), dataRegionReplicaSet);
+    regionRouteMap.setRegionPriorityMap(regionPriorityMap);
+
+    updateLoadStatisticsPlan.setRegionRouteMap(regionRouteMap);
+
     return updateLoadStatisticsPlan;
   }
 

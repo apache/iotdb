@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -29,11 +30,9 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupStatistics {
-
-  // The DataNode where the leader resides
-  private int leaderDataNodeId;
 
   private RegionGroupStatus regionGroupStatus;
 
@@ -44,16 +43,9 @@ public class RegionGroupStatistics {
   }
 
   public RegionGroupStatistics(
-      int leaderDataNodeId,
-      RegionGroupStatus regionGroupStatus,
-      Map<Integer, RegionStatistics> regionStatisticsMap) {
-    this.leaderDataNodeId = leaderDataNodeId;
+      RegionGroupStatus regionGroupStatus, Map<Integer, RegionStatistics> regionStatisticsMap) {
     this.regionGroupStatus = regionGroupStatus;
     this.regionStatisticsMap = regionStatisticsMap;
-  }
-
-  public int getLeaderDataNodeId() {
-    return leaderDataNodeId;
   }
 
   public RegionGroupStatus getRegionGroupStatus() {
@@ -73,11 +65,18 @@ public class RegionGroupStatistics {
   }
 
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-    return new RegionGroupStatistics(-1, RegionGroupStatus.Disabled, new HashMap<>());
+    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new HashMap<>());
+  }
+
+  public Map<Integer, RegionHeartbeatSample> convertToRegionHeartbeatSampleMap() {
+    Map<Integer, RegionHeartbeatSample> result = new ConcurrentHashMap<>();
+    regionStatisticsMap.forEach(
+        (dataNodeId, regionStatistics) ->
+            result.put(dataNodeId, regionStatistics.convertToRegionHeartbeatSample()));
+    return result;
   }
 
   public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(leaderDataNodeId, stream);
     ReadWriteIOUtils.write(regionGroupStatus.getStatus(), stream);
 
     ReadWriteIOUtils.write(regionStatisticsMap.size(), stream);
@@ -90,7 +89,6 @@ public class RegionGroupStatistics {
 
   // Deserializer for snapshot
   public void deserialize(InputStream inputStream) throws IOException {
-    this.leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
     this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(inputStream));
 
     int regionNum = ReadWriteIOUtils.readInt(inputStream);
@@ -104,7 +102,6 @@ public class RegionGroupStatistics {
 
   // Deserializer for consensus-write
   public void deserialize(ByteBuffer buffer) {
-    this.leaderDataNodeId = buffer.getInt();
     this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(buffer));
 
     int regionNum = buffer.getInt();
@@ -121,22 +118,19 @@ public class RegionGroupStatistics {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroupStatistics that = (RegionGroupStatistics) o;
-    return leaderDataNodeId == that.leaderDataNodeId
-        && regionGroupStatus == that.regionGroupStatus
+    return regionGroupStatus == that.regionGroupStatus
         && regionStatisticsMap.equals(that.regionStatisticsMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(leaderDataNodeId, regionGroupStatus, regionStatisticsMap);
+    return Objects.hash(regionGroupStatus, regionStatisticsMap);
   }
 
   @Override
   public String toString() {
     return "RegionGroupStatistics{"
-        + "leaderDataNodeId="
-        + leaderDataNodeId
-        + ", regionGroupStatus="
+        + "regionGroupStatus="
         + regionGroupStatus
         + ", regionStatisticsMap="
         + regionStatisticsMap
