@@ -26,6 +26,8 @@ import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.junit._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
+// TODO move it to integration-test
+@Ignore
 class IoTDBTest extends FunSuite with BeforeAndAfterAll {
   private var daemon: IoTDB = _
 

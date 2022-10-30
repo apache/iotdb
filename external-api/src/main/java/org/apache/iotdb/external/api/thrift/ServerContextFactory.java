@@ -16,32 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cq;
+package org.apache.iotdb.external.api.thrift;
 
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.writelog.SingleFileLogReader;
+import org.apache.thrift.protocol.TProtocol;
 
-import java.io.File;
-import java.io.IOException;
+import java.net.Socket;
 
-public class CQLogReader implements AutoCloseable {
-
-  private final SingleFileLogReader logReader;
-
-  public CQLogReader(File logFile) throws IOException {
-    logReader = new SingleFileLogReader(logFile);
-  }
-
-  public boolean hasNext() {
-    return !logReader.isFileCorrupted() && logReader.hasNext();
-  }
-
-  public PhysicalPlan next() {
-    return logReader.next();
-  }
-
-  @Override
-  public void close() {
-    logReader.close();
-  }
+public interface ServerContextFactory {
+  JudgableServerContext newServerContext(TProtocol out, Socket socket);
 }

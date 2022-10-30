@@ -56,7 +56,6 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -350,7 +349,6 @@ public class DataNode implements DataNodeMBean {
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
     // registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());

@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -567,7 +567,7 @@ public class IoTDBConfig {
   private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
-  private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
+  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;

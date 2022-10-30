@@ -113,7 +113,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId(true);
+      final long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -176,7 +176,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId(true);
+      final long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -233,7 +233,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           return response;
         }
 
-        final long queryId = SESSION_MANAGER.requestQueryId(true);
+        final long queryId = SESSION_MANAGER.requestQueryId();
         // create and cache dataset
         ExecutionResult result =
             COORDINATOR.execute(

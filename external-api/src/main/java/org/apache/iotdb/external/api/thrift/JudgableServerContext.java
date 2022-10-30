@@ -16,30 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.handler;
+package org.apache.iotdb.external.api.thrift;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
+import org.apache.thrift.server.ServerContext;
 
-/** Generate the corresponding QueryHandler object according to the configuration */
-public class QueryHandlerFactory {
+public interface JudgableServerContext extends ServerContext {
 
   /**
-   * get QueryHandler object according to the configuration
+   * this method will be called when a client connects to the IoTDB server.
    *
-   * @return QueryHandler object
+   * @return false if we do not allow this connection
    */
-  public static AbstractQueryHandler getInstance() {
-    if (IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getRpcImplClassName()
-        .equals(ClientRPCServiceImpl.class.getName())) {
-      if ("Tag".equals(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
-        return new TagQueryHandler();
-      }
-      return new NewQueryHandler();
-    } else {
-      throw new UnsupportedOperationException();
-    }
+  boolean whenConnect();
+
+  /** @return false if we do not allow this connection */
+  boolean whenDisconnect();
+
+  @Override
+  default <T> T unwrap(Class<T> iface) {
+    return null;
   }
+
+  @Override
+  default boolean isWrapperFor(Class<?> iface) {
+    return false;
+  };
 }
