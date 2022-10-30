@@ -79,18 +79,11 @@ or
 Windows 系统启动命令如下：
 
 ```
-<<<<<<< HEAD
 > sbin\start-server.bat 
 ```
 
 Windows 系统支持 -c, -v, -f, -b 四个参数。
 
-=======
-> sbin\start-server.bat -c <conf_path>
-```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
->>>>>>> origin/rel/0.13
 
 #### 使用 Cli 工具
 
