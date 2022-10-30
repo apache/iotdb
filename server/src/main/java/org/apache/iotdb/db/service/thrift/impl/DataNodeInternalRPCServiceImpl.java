@@ -890,6 +890,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 
