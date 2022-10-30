@@ -23,7 +23,7 @@
 checkEnvVaribles()
 {
   string="$1"
-  array=(`echo $string | tr '=' ' '` )
+  array=`echo $string | tr '=' ' '`
   case "${array[0]}" in
           IOTDB_INCLUDE)
                IOTDB_INCLUDE="${array[1]}"
@@ -105,6 +105,10 @@ while true; do
             SHOW_VERSION="yes"
             break
         ;;
+        printgc)
+            PRINT_GC="yes"
+            shift
+        ;;
         --)
             shift
             #all others are args to the program
@@ -184,13 +188,6 @@ fi
 echo ---------------------
 echo Starting IoTDB
 echo ---------------------
-
-## this is for being compatibile with v0.13, can be removed from v0.14 on.
-data=($*)
-if [ "x${data[0]}" == "xprintgc" ]; then
-  PRINT_GC="yes"
-fi
-## end
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
     if [ "x$PRINT_GC" != "x" ]; then
