@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.AbstractEnv;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -172,6 +173,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
     // Switch the current ConfigNode-Leader
     switchLeader();
+    // Ensure the ConfigNode-leader receive all Nodes' heartbeat
+    ((AbstractEnv) EnvFactory.getEnv()).testWorking();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
