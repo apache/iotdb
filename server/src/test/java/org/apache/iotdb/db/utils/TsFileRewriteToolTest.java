@@ -54,6 +54,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -65,7 +66,6 @@ import java.util.Map;
 
 public class TsFileRewriteToolTest {
 
-  private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
   protected final long maxTimestamp = 100000000L;
   protected final String folder = "target" + File.separator + "split";
@@ -92,6 +92,7 @@ public class TsFileRewriteToolTest {
     originEnablePartition = config.isEnablePartition();
     originPartitionInterval = config.getTimePartitionIntervalForStorage();
 
+    boolean newEnablePartition = true;
     config.setEnablePartition(newEnablePartition);
     config.setTimePartitionIntervalForStorage(newPartitionInterval);
 
@@ -166,6 +167,7 @@ public class TsFileRewriteToolTest {
     splitFileAndQueryCheck(deviceSensorsMap);
   }
 
+  @Ignore
   @Test
   public void loadFileTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
