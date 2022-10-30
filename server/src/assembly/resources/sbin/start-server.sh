@@ -216,16 +216,18 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 
-  if [ "x$pidpath" != "x" ]; then
-     iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidpath"
+  if [ "x$pidfile" != "x" ]; then
+     iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"
   fi
 
   # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
   if [ "x$foreground" == "xyes" ]; then
       iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
       if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
+        [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
           exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
       else
+          [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
           exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
       fi
   # Startup IoTDB, background it, and write the pid.
