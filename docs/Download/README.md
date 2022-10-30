@@ -198,7 +198,7 @@ In previous versions of syntax conventions, we introduced some ambiguity to main
 
 ### Issues related to identifier
 
-In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 1.0, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
+In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 1.0, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores.**
 
 ### Issues related to node name
 
@@ -265,7 +265,7 @@ In version 0.13, the restrictions on using path nodes in non-SQL interfaces are 
 
 #### Inconsistent handling of string escaping between SQL and Session interfaces
 
-In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings. For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter). **
+In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings. For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter).**
 
 The following are examples of inconsistencies in the old syntax conventions:
 
