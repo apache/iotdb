@@ -113,6 +113,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_PIPE_ROLE = "role";
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_ATTRIBUTES = "attributes";
   public static final String COLUMN_PIPE_MESSAGE = "message";
 
   // column names for select into
@@ -285,6 +286,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
