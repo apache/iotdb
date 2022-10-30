@@ -40,7 +40,7 @@ checkEnvVaribles()
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
-PARAMETERS="$@"
+PARAMETERS=""
 
 # if [ $# -eq 0 ]
 # then
@@ -60,7 +60,7 @@ while true; do
             shift 2
             ;;
         -pw)
-            passwd_param="-p $2"
+            passwd_param="-pw $2"
             shift 2
         ;;
         -h)
@@ -75,8 +75,8 @@ while true; do
             checkEnvVaribles $2
             shift 2
         ;;
-        -h)
-            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>]"
+        --help)
+            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql] [-maxPRC <PRC size>]"
             exit 0
         ;;
         "")
@@ -85,12 +85,13 @@ while true; do
               break
               ;;
         *)
-            #do nothing
+            PARAMETERS="$PARAMETERS $1"
+            shift
         ;;
     esac
 done
 
-PARAMETERS="$host_param $port_param $user_param $passwd_param"
+PARAMETERS="$host_param $port_param $user_param $passwd_param $PARAMETERS"
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
   #do nothing
