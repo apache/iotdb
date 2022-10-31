@@ -46,11 +46,11 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -513,7 +513,9 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final TCreateTriggerInstanceReq request =
         new TCreateTriggerInstanceReq(triggerInformation.serialize());
-    request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
+    if (jarFile != null) {
+      request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
+    }
 
     AsyncClientHandler<TCreateTriggerInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(

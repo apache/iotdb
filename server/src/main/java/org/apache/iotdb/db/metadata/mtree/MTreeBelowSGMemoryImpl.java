@@ -555,6 +555,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         && node.getChildren().isEmpty();
   }
 
+  @Override
   public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
@@ -573,11 +574,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
-  /**
-   * Get all the devices of pre-deleted timeseries matched by given pathPattern. For example, given
-   * path pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the
-   * result set is {root.sg.d1, root.sg.d2}.
-   */
+  @Override
   public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
@@ -1210,6 +1207,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return leafMNodes;
   }
 
+  @Override
   public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
       throws MetadataException {
     List<IMeasurementMNode> result = new ArrayList<>();

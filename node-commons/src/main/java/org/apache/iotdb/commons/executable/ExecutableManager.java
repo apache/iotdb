@@ -190,6 +190,10 @@ public class ExecutableManager {
     return libRoot + File.separator + name;
   }
 
+  public String getFileStringUnderInstallByName(String name) {
+    return libRoot + File.separator + INSTALL_DIR + File.separator + name;
+  }
+
   private File getFileByFullPath(String path) {
     return FSFactoryProducer.getFSFactory().getFile(path);
   }
@@ -220,11 +224,13 @@ public class ExecutableManager {
   }
 
   protected void saveToDir(ByteBuffer byteBuffer, String destination) throws IOException {
-    Path path = Paths.get(destination);
-    Files.deleteIfExists(path);
-    Files.createFile(path);
-    try (FileOutputStream outputStream = new FileOutputStream(destination)) {
-      outputStream.getChannel().write(byteBuffer);
+    try {
+      Path path = Paths.get(destination);
+      Files.deleteIfExists(path);
+      Files.createFile(path);
+      try (FileOutputStream outputStream = new FileOutputStream(destination)) {
+        outputStream.getChannel().write(byteBuffer);
+      }
     } catch (IOException e) {
       LOGGER.warn(
           "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);

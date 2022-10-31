@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
@@ -93,7 +93,7 @@ public class TriggerManager {
    * @return status of create this trigger
    */
   public TSStatus createTrigger(TCreateTriggerReq req) {
-    boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
+    final boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
     TDataNodeLocation dataNodeLocation = null;
     if (isStateful) {
       Optional<TDataNodeLocation> targetDataNode =
@@ -104,12 +104,15 @@ public class TriggerManager {
         return new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       }
     }
+    final String triggerName = req.getTriggerName();
+    final boolean isUsingURI = req.isIsUsingURI(),
+        needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
     TriggerInformation triggerInformation =
         new TriggerInformation(
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
-            req.getTriggerName(),
+            triggerName,
             req.getClassName(),
-            req.isIsUsingURI(),
+            isUsingURI,
             req.getJarName(),
             req.getAttributes(),
             TriggerEvent.construct(req.triggerEvent),
@@ -120,7 +123,7 @@ public class TriggerManager {
             req.getJarMD5());
     return configManager
         .getProcedureManager()
-        .createTrigger(triggerInformation, new Binary(req.getJarFile()));
+        .createTrigger(triggerInformation, needToSaveJar ? new Binary(req.getJarFile()) : null);
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {

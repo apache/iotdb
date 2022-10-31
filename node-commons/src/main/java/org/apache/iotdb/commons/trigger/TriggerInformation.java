@@ -102,7 +102,10 @@ public class TriggerInformation {
     ReadWriteIOUtils.write(triggerName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(isUsingURI, outputStream);
-    ReadWriteIOUtils.write(jarName, outputStream);
+    if (isUsingURI) {
+      ReadWriteIOUtils.write(jarName, outputStream);
+      ReadWriteIOUtils.write(jarFileMD5, outputStream);
+    }
     ReadWriteIOUtils.write(attributes, outputStream);
     ReadWriteIOUtils.write(event.getId(), outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
@@ -111,7 +114,6 @@ public class TriggerInformation {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
     ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
-    ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -120,7 +122,10 @@ public class TriggerInformation {
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
-    triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+    if (triggerInformation.isUsingURI) {
+      triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+      triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    }
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
     triggerInformation.event = TriggerEvent.construct(ReadWriteIOUtils.readByte(byteBuffer));
     triggerInformation.triggerState =
@@ -133,7 +138,6 @@ public class TriggerInformation {
     }
     triggerInformation.failureStrategy =
         FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
-    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
 

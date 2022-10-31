@@ -106,6 +106,8 @@ import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
+import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -786,18 +788,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req) {
+    // Operate PIPE on DataNode for rollback, createTime in req is required.
+    switch (SyncOperation.values()[req.getOperation()]) {
+      case START_PIPE:
+        SyncService.getInstance().startPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case STOP_PIPE:
+        SyncService.getInstance().stopPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      case DROP_PIPE:
+        SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
+        break;
+      default:
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+            .setMessage("Unsupported operation.");
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
   public TSStatus executeCQ(TExecuteCQ req) {
 
-    long sessionId =
-        SESSION_MANAGER.requestSessionId(
-            req.username, req.zoneId, IoTDBConstant.ClientVersion.V_0_13);
+    IClientSession session = new InternalClientSession(req.cqId);
+
+    SESSION_MANAGER.registerSession(session);
+
+    SESSION_MANAGER.supplySession(
+        session, req.getUsername(), req.getZoneId(), IoTDBConstant.ClientVersion.V_0_13);
+
     String executedSQL = req.queryBody;
 
     try {
       QueryStatement s =
-          (QueryStatement)
-              StatementGenerator.createStatement(
-                  req.queryBody, SESSION_MANAGER.getZoneId(sessionId));
+          (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
         return RpcUtils.getStatus(
             TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
@@ -819,7 +843,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.setWhereCondition(new WhereCondition(timeFilter));
       }
 
-      // 2. add time rage in group by time
+      // 2. add time range in group by time
       if (s.getGroupByTimeComponent() != null) {
         s.getGroupByTimeComponent().setStartTime(req.startTime);
         s.getGroupByTimeComponent().setEndTime(req.endTime);
@@ -830,13 +854,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
       long queryId =
-          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.requestStatementId(sessionId), true);
+          SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
               queryId,
-              SESSION_MANAGER.getSessionInfo(sessionId),
+              SESSION_MANAGER.getSessionInfo(session),
               executedSQL,
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -865,19 +889,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
-      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
-      SESSION_MANAGER.closeSession(sessionId);
-    }
-  }
-
-  private void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-    if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
-        COORDINATOR.removeQueryExecution(queryId);
-      }
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 

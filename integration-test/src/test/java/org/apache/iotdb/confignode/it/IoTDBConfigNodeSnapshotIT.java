@@ -28,12 +28,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -79,7 +82,7 @@ public class IoTDBConfigNodeSnapshotIT {
   protected static String originalConfigNodeConsensusProtocolClass;
 
   protected static int originalRatisSnapshotTriggerThreshold;
-  private static final int testRatisSnapshotTriggerThreshold = 10;
+  private static final int testRatisSnapshotTriggerThreshold = 100;
 
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
@@ -124,6 +127,7 @@ public class IoTDBConfigNodeSnapshotIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       List<TCreateTriggerReq> createTriggerReqs = createTrigger(client);
+      List<TCreateFunctionReq> createFunctionReqs = createUDF(client);
 
       Set<TCQEntry> expectedCQEntries = createCQs(client);
 
@@ -194,6 +198,7 @@ public class IoTDBConfigNodeSnapshotIT {
       }
 
       assertTriggerInformation(createTriggerReqs, client.getTriggerTable());
+      assertUDFInformation(createFunctionReqs, client.getUDFTable());
 
       TShowCQResp showCQResp = client.showCQ();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), showCQResp.getStatus().getCode());
@@ -243,11 +248,11 @@ public class IoTDBConfigNodeSnapshotIT {
             .setJarFile(jarFile);
 
     assertEquals(
-        client.createTrigger(createTriggerReq1).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq1).getCode());
     assertEquals(
-        client.createTrigger(createTriggerReq2).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq2).getCode());
 
     List<TCreateTriggerReq> result = new ArrayList<>();
     result.add(createTriggerReq2);
@@ -274,6 +279,56 @@ public class IoTDBConfigNodeSnapshotIT {
       assertEquals(
           PathDeserializeUtil.deserialize(ByteBuffer.wrap(createTriggerReq.getPathPattern())),
           triggerInformation.getPathPattern());
+    }
+  }
+
+  private List<TCreateFunctionReq> createUDF(SyncConfigNodeIServiceClient client)
+      throws TException, IOException {
+    final String jarName = "udf-example.jar";
+    final String triggerPath =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + jarName;
+    ByteBuffer jarFile = TriggerExecutableManager.transferToBytebuffer(triggerPath);
+    final String jarMD5 = DigestUtils.md5Hex(jarFile.array());
+
+    TCreateFunctionReq createFunctionReq1 =
+        new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
+
+    TCreateFunctionReq createFunctionReq2 =
+        new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq1).getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq2).getCode());
+
+    List<TCreateFunctionReq> result = new ArrayList<>();
+    result.add(createFunctionReq1);
+    result.add(createFunctionReq2);
+    return result;
+  }
+
+  private void assertUDFInformation(List<TCreateFunctionReq> req, TGetUDFTableResp resp) {
+    for (int i = 0; i < req.size(); i++) {
+      TCreateFunctionReq createFunctionReq = req.get(i);
+      UDFInformation udfInformation =
+          UDFInformation.deserialize(resp.getAllUDFInformation().get(i));
+
+      assertEquals(createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
+      assertEquals(createFunctionReq.getClassName(), udfInformation.getClassName());
+      assertEquals(createFunctionReq.getJarName(), udfInformation.getJarName());
+      assertEquals(createFunctionReq.getJarMD5(), udfInformation.getJarMD5());
     }
   }
 

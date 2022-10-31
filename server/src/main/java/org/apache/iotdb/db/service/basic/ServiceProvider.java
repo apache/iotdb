@@ -95,7 +95,6 @@ public abstract class ServiceProvider {
 
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
-    SESSION_MANAGER.setDataset(context.getQueryId(), queryDataSet);
     return queryDataSet;
   }
 }

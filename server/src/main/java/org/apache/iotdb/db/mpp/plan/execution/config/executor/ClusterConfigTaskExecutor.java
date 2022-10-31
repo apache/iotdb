@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -114,6 +115,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
@@ -127,6 +129,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -290,7 +293,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
         String uriString = createFunctionStatement.getUriString();
-        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        jarFileName = new File(createFunctionStatement.getUriString()).getName();
         if (!new URI(uriString).getScheme().equals("file")) {
           try {
             // download executable
@@ -322,7 +325,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getRawPath();
+          libRoot = new File(new URI(uriString)).getAbsolutePath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
@@ -441,7 +444,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createTriggerStatement.isUsingURI()) {
         String uriString = createTriggerStatement.getUriString();
-        jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+        jarFileName = new File(createTriggerStatement.getUriString()).getName();
         if (!new URI(uriString).getScheme().equals("file")) {
           try {
             // download executable
@@ -474,7 +477,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } else {
           // libRoot should be the path of the specified jar
-          libRoot = new URI(uriString).getRawPath();
+          libRoot = new File(new URI(uriString)).getAbsolutePath();
           // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
           // ConfigNode.
           jarFile = ExecutableManager.transferToBytebuffer(libRoot);
@@ -982,6 +985,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  @Override
+  public SettableFuture<ConfigTaskResult> dropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      TSStatus tsStatus =
+          configNodeClient.dropSchemaTemplate(dropSchemaTemplateStatement.getTemplateName());
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute drop schema template {} in config node, status is {}.",
+            dropSchemaTemplateStatement.getTemplateName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
   private ByteBuffer serializePatternListToByteBuffer(List<PartialPath> patternList) {
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath pathPattern : patternList) {
@@ -1204,7 +1232,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
       }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      ShowPipeTask.buildTSBlock(resp.getPipeInfoList(), future);
+      List<TShowPipeInfo> tShowPipeInfoList =
+          SyncService.getInstance().showPipeForReceiver(showPipeStatement.getPipeName());
+      tShowPipeInfoList.addAll(resp.getPipeInfoList());
+      ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);
     }

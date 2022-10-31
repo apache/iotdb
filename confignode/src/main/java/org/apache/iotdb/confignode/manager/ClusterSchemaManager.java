@@ -32,8 +32,8 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -601,6 +602,38 @@ public class ClusterSchemaManager {
 
   public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
     return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
+  }
+
+  public synchronized TSStatus dropSchemaTemplate(String templateName) {
+
+    // check template existence
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateInfoResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateInfoResp.getStatus();
+    } else if (templateInfoResp.getTemplateList() == null
+        || templateInfoResp.getTemplateList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+          String.format("Undefined template name: %s", templateName));
+    }
+
+    // check is template set on some path, block all template set operation
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return pathInfoResp.getStatus();
+    } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.METADATA_ERROR.getStatusCode(),
+          String.format(
+              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+    }
+
+    // execute drop template
+    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
   private NodeManager getNodeManager() {

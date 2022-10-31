@@ -33,7 +33,7 @@ public class DataNodeMetricsHelper {
       MetricService.getInstance().addMetricSet(new LogbackMetrics());
       MetricService.getInstance().addMetricSet(new FileMetrics());
       MetricService.getInstance().addMetricSet(new ProcessMetrics());
-      MetricService.getInstance().addMetricSet(new SystemMetrics());
+      MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     }
   }
 }

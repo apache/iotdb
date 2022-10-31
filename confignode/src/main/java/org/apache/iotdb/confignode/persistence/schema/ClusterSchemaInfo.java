@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -78,6 +79,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
 
 /**
  * The ClusterSchemaInfo stores cluster schema. The cluster schema including: 1. StorageGroupSchema
@@ -591,7 +595,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TemplateInfoResp result = new TemplateInfoResp();
     List<Template> list = new ArrayList<>();
     try {
-      list.add(templateTable.getTemplate(getSchemaTemplatePlan.getTemplateName()));
+      String templateName = getSchemaTemplatePlan.getTemplateName();
+      if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)) {
+        list.addAll(templateTable.getAllTemplate());
+      } else {
+        list.add(templateTable.getTemplate(templateName));
+      }
       result.setTemplateList(list);
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (MetadataException e) {
@@ -651,7 +660,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     PathInfoResp pathInfoResp = new PathInfoResp();
     TSStatus status;
     try {
-      int templateId = templateTable.getTemplate(getPathsSetTemplatePlan.getName()).getId();
+      String templateName = getPathsSetTemplatePlan.getName();
+      int templateId;
+      if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)) {
+        templateId = ALL_TEMPLATE;
+      } else {
+        templateId = templateTable.getTemplate(templateName).getId();
+      }
       pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, false));
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -760,6 +775,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return StatusUtils.OK;
     } catch (MetadataException e) {
       LOGGER.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus dropSchemaTemplate(DropSchemaTemplatePlan dropSchemaTemplatePlan) {
+    try {
+      templateTable.dropTemplate(dropSchemaTemplatePlan.getTemplateName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }

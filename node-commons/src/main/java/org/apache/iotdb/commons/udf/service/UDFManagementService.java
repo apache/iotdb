@@ -186,7 +186,7 @@ public class UDFManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      UDFExecutableManager.getInstance().saveToLibDir(byteBuffer, jarName);
+      UDFExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
     }
   }
 
@@ -197,9 +197,8 @@ public class UDFManagementService {
   public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
-    try {
-      UDFClassLoader currentActiveClassLoader =
-          UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
+    try (UDFClassLoader currentActiveClassLoader =
+        UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       updateAllRegisteredClasses(currentActiveClassLoader);
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
@@ -268,8 +267,18 @@ public class UDFManagementService {
     }
 
     if (!information.isBuiltin()) {
-      Thread.currentThread()
-          .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
+      try {
+        Thread.currentThread()
+            .setContextClassLoader(
+                UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader());
+      } catch (IOException e) {
+        String errorMessage =
+            String.format(
+                "Failed to set UDFClassLoader for UDF %s(%s) , because %s",
+                functionName, information.getClassName(), e);
+        LOGGER.warn(errorMessage, e);
+        throw new RuntimeException(e);
+      }
     }
 
     try {

@@ -54,7 +54,7 @@ public class CreateFunctionPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
 
     udfInformation.serialize(stream);
     if (jarFile == null) {

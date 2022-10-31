@@ -22,10 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
-import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -60,31 +60,24 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
-    // Update RegionGroupCache
+    // Update RegionGroupCache And leaderCache
     heartbeatResp
         .getJudgedLeaders()
-        .keySet()
         .forEach(
-            consensusGroupId ->
-                regionGroupCacheMap
-                    .computeIfAbsent(
-                        consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
-                    .cacheHeartbeatSample(
-                        dataNodeLocation.getDataNodeId(),
-                        new RegionHeartbeatSample(
-                            heartbeatResp.getHeartbeatTimestamp(),
-                            receiveTime,
-                            // Region will inherit DataNode's status
-                            RegionStatus.parse(heartbeatResp.getStatus()))));
+            (regionGroupId, isLeader) -> {
+              regionGroupCacheMap
+                  .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
+                  .cacheHeartbeatSample(
+                      dataNodeLocation.getDataNodeId(),
+                      new RegionHeartbeatSample(
+                          heartbeatResp.getHeartbeatTimestamp(),
+                          receiveTime,
+                          // Region will inherit DataNode's status
+                          RegionStatus.parse(heartbeatResp.getStatus())));
 
-    // Update leaderCache
-    heartbeatResp
-        .getJudgedLeaders()
-        .forEach(
-            (consensusGroupId, isLeader) -> {
               if (isLeader) {
                 routeBalancer.cacheLeaderSample(
-                    consensusGroupId,
+                    regionGroupId,
                     new Pair<>(
                         heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
               }

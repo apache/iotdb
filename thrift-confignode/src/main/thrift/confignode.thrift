@@ -502,7 +502,8 @@ struct TShowPipeInfo {
   3: required string role
   4: required string remote
   5: required string status
-  6: required string message
+  6: required string attributes
+  7: required string message
 }
 
 struct TGetAllPipeInfoResp{
@@ -959,6 +960,11 @@ service IConfigNodeRPCService {
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
+
+  /**
+     * Drop schema template
+     */
+    common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
