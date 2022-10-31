@@ -228,7 +228,7 @@ public class AuthUtils {
     try {
       PartialPath partialPathA = new PartialPath(pathA);
       PartialPath partialPathB = new PartialPath(pathB);
-      return partialPathB.matchFullPath(partialPathA) || partialPathA.matchFullPath(partialPathB);
+      return partialPathA.matchFullPath(partialPathB);
     } catch (IllegalPathException e) {
       throw new AuthException(e);
     }
