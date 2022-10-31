@@ -71,7 +71,7 @@ public class ClusterEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty("partition_interval_", String.valueOf(partitionInterval));
+    engineProperties.setProperty("time_partition_interval_for_storage", String.valueOf(partitionInterval));
     return this;
   }
 
