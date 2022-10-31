@@ -271,7 +271,7 @@ public interface BaseConfig {
     return 4000;
   }
 
-  default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+  default BaseConfig setCompactionThreadCount(int compactionThreadCount) {
     return this;
   }
 
