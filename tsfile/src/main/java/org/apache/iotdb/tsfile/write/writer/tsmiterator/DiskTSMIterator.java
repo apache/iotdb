@@ -119,7 +119,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
     updateCurrentPos();
     return new Pair<>(
-        new Path(currentDevice, measurementUid),
+        new Path(currentDevice, measurementUid, false),
         constructOneTimeseriesMetadata(measurementUid, chunkMetadataList));
   }
 

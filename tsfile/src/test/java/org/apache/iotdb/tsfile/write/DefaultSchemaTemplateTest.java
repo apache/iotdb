@@ -95,7 +95,7 @@ public class DefaultSchemaTemplateTest {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s1", true));
 
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);

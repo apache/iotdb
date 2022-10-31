@@ -40,7 +40,7 @@ import static org.junit.Assert.fail;
 public class TSPlanContextAuthorTest {
 
   private static Path[] emptyPaths = new Path[] {};
-  private static Path[] testPaths = new Path[] {new Path("root.node1.a", "b")};
+  private static Path[] testPaths = new Path[] {new Path("root.node1.a", "b", true)};
 
   private String inputSQL;
   private Path[] paths;

@@ -340,7 +340,7 @@ public class TsFileRewriteToolTest {
         String device = entry.getKey();
         for (String sensor : entry.getValue()) {
           totalSensorCount++;
-          paths.add(new Path(device, sensor));
+          paths.add(new Path(device, sensor, true));
         }
       }
 
@@ -438,7 +438,7 @@ public class TsFileRewriteToolTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
         TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path(device, sensor));
+      paths.add(new Path(device, sensor, true));
 
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
