@@ -151,44 +151,49 @@ public class IoTDBDescriptor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
-    if (url == null) {
-      logger.warn("Couldn't load the configuration from any of the known sources.");
-    }
     Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
-
-      logger.info("Start to read config file {}", url);
-      commonProperties.load(inputStream);
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        logger.info("Start to read config file {}", url);
+        commonProperties.load(inputStream);
+      } catch (FileNotFoundException e) {
+        logger.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        logger.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        logger.warn("Incorrect format in config file, use default configuration", e);
+      }
+    } else {
+      logger.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          CommonConfig.CONFIG_NAME);
     }
-
     url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    try (InputStream inputStream = url.openStream()) {
-      logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      commonProperties.putAll(properties);
-      loadProperties(commonProperties);
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
-    } finally {
-      // update all data seriesPath
-      conf.updatePath();
-      commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
-      MetricConfigDescriptor.getInstance()
-          .getMetricConfig()
-          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        logger.info("Start to read config file {}", url);
+        Properties properties = new Properties();
+        properties.load(inputStream);
+        commonProperties.putAll(properties);
+        loadProperties(commonProperties);
+      } catch (FileNotFoundException e) {
+        logger.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        logger.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        logger.warn("Incorrect format in config file, use default configuration", e);
+      } finally {
+        // update all data seriesPath
+        conf.updatePath();
+        commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+        MetricConfigDescriptor.getInstance()
+            .getMetricConfig()
+            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+      }
+    } else {
+      logger.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          IoTDBConfig.CONFIG_NAME);
     }
   }
 
