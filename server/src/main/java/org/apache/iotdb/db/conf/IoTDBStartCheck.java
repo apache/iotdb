@@ -189,7 +189,8 @@ public class IoTDBStartCheck {
 
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(timePartitionIntervalForStorage));
+    systemProperties.put(
+        PARTITION_INTERVAL_STRING, String.valueOf(timePartitionIntervalForStorage));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
@@ -377,7 +378,8 @@ public class IoTDBStartCheck {
       throwException(ENABLE_PARTITION_STRING, enablePartition);
     }
 
-    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != timePartitionIntervalForStorage) {
+    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
+        != timePartitionIntervalForStorage) {
       throwException(PARTITION_INTERVAL_STRING, timePartitionIntervalForStorage);
     }
 
