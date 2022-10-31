@@ -287,21 +287,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Filter globalTimeFilter = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
-      Expression predicate = queryStatement.getWhereCondition().getPredicate();
       WhereCondition whereCondition = queryStatement.getWhereCondition();
+      Expression predicate = whereCondition.getPredicate();
+
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
+      globalTimeFilter = resultPair.left;
+      hasValueFilter = resultPair.right;
+
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
 
-      // set where condition to null if predicate is true
-      if (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
-          && Boolean.parseBoolean(predicate.getExpressionString())) {
+      // set where condition to null if predicate is true or time filter.
+      if (!hasValueFilter
+          || (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
+              && Boolean.parseBoolean(predicate.getExpressionString()))) {
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
       }
-      globalTimeFilter = resultPair.left;
-      hasValueFilter = resultPair.right;
     }
     if (queryStatement.isGroupByTime()) {
       GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
