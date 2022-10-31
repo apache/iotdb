@@ -41,6 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_ONLINE;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_UNKNOWN;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_DATA_NODE;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_CONFIG_NODE;
 
 /** This class collates metrics about loadManager */
 public class LoadManagerMetrics implements IMetricSet {
@@ -207,7 +209,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "ConfigNode")
+              METRIC_CONFIG_NODE)
           .set(1);
     }
     return runningConfigNodes.size();
@@ -230,7 +232,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "DataNode")
+              METRIC_DATA_NODE)
           .set(1);
     }
     return runningDataNodes.size();
@@ -252,7 +254,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "ConfigNode")
+              METRIC_CONFIG_NODE)
           .set(0);
     }
     return unknownConfigNodes.size();
@@ -275,7 +277,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "DataNode")
+              METRIC_DATA_NODE)
           .set(0);
     }
     return unknownDataNodes.size();
