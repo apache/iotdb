@@ -86,17 +86,18 @@ public class UDFManager {
 
       final UDFInformation udfInformation =
           new UDFInformation(udfName, req.getClassName(), false, isUsingURI, jarName, jarMD5);
+      final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
-      LOGGER.info("Start to create UDF [{}] on Data Nodes", udfName);
+      LOGGER.info(
+          "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
 
       final TSStatus dataNodesStatus =
           RpcUtils.squashResponseStatusList(
-              createFunctionOnDataNodes(udfInformation, req.getJarFile()));
+              createFunctionOnDataNodes(udfInformation, needToSaveJar ? jarFile : null));
       if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return dataNodesStatus;
       }
 
-      final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
@@ -107,10 +108,7 @@ public class UDFManager {
                     udfName));
       }
 
-      LOGGER.info(
-          "Start to add UDF [{}] in UDF_Table on Config Nodes, needToSaveJar[{}]",
-          udfName,
-          needToSaveJar);
+      LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
 
       return configManager.getConsensusManager().write(createFunctionPlan).getStatus();
     } catch (Exception e) {
