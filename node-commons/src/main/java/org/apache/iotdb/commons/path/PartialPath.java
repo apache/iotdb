@@ -501,6 +501,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return dp[nodes1.length][nodes2.length];
   }
 
+  /**
+   * A partial path presents a set of paths. two partial paths' overlap path is the partial path
+   * whose path set is the intersection set of these two partial paths. This function can return the
+   * overlap path with another partial path. e.g. "root.**" and "root.sg.**" will return
+   * "root.sg.**", "root.**.s1.d1" and "root.s1.d1.**" will return "root.s1.d1.**.s1.d1".
+   *
+   * @param path another path
+   * @return the intersection path
+   */
   public PartialPath getOverlapPathWith(PartialPath path) {
     String[] lNodes = nodes.clone();
     String[] rNodes = path.nodes.clone();
