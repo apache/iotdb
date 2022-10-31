@@ -11,22 +11,13 @@ public class KDTreeUtil {
   private Node kdtree;
 
   private static class Node {
-    // 分割的维度
     int partitiondimension;
-    // 分割的值
     double partitionValue;
-    // 如果为非叶子节点，该属性为空
-    // 否则为数据
     ArrayList<Double> value;
-    // 是否为叶子
     boolean isLeaf = false;
-    // 左树
     Node left;
-    // 右树
     Node right;
-    // 每个维度的最小值
     ArrayList<Double> min;
-    // 每个维度的最大值
     ArrayList<Double> max;
   }
 
@@ -46,7 +37,6 @@ public class KDTreeUtil {
       node.value = data.get(0);
       return;
     }
-    // 选择方差最大的维度
     node.partitiondimension = -1;
     double var = -1;
     double tmpvar;
@@ -57,14 +47,13 @@ public class KDTreeUtil {
         node.partitiondimension = i;
       }
     }
-    // 如果方差=0，表示所有数据都相同，判定为叶子节点
+
     if (var == 0d) {
       node.isLeaf = true;
       node.value = data.get(0);
       return;
     }
 
-    // 选择分割的值
     node.partitionValue = UtilZ.median(data, node.partitiondimension);
 
     ArrayList<ArrayList<Double>> maxmin = UtilZ.maxmin(data, dimensions);
@@ -167,11 +156,6 @@ public class KDTreeUtil {
           nearest.add(node.value);
         }
       } else {
-        /*
-         * 得到该节点代表的超矩形中点到查找点的最小距离mindistance
-         * 如果mindistance<distance表示有可能在这个节点的子节点上找到更近的点
-         * 否则不可能找到
-         */
         double mindistance = UtilZ.mindistance(input, node.max, node.min, std);
         if (mindistance < distance) {
           while (!node.isLeaf) {
@@ -290,7 +274,6 @@ public class KDTreeUtil {
       ArrayList<ArrayList<Double>> mm = new ArrayList<>();
       ArrayList<Double> min_v = new ArrayList<>();
       ArrayList<Double> max_v = new ArrayList<>();
-      // 初始化 第一行为min，第二行为max
       for (int i = 0; i < dimensions; i++) {
         double min_temp = Double.MAX_VALUE;
         double max_temp = Double.MIN_VALUE;
