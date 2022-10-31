@@ -95,4 +95,15 @@
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
   </subpackage>
+  <subpackage name="tool.it">
+    <allow class="org.apache.commons.csv.CSVParser" />
+    <allow class="org.apache.commons.csv.CSVRecord" />
+    <allow class="org.apache.iotdb.session.ISession" />
+    <allow class="org.apache.iotdb.tsfile.read.TsFileReader" />
+    <allow class="org.apache.iotdb.tsfile.read.TsFileSequenceReader" />
+    <allow class="org.apache.iotdb.tsfile.read.common.Path" />
+    <allow class="org.apache.iotdb.tsfile.read.common.RowRecord" />
+    <allow class="org.apache.iotdb.tsfile.read.expression.QueryExpression" />
+    <allow class="org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet" />
+  </subpackage>
 </import-control>

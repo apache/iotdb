@@ -17,23 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.cross.tests.tools.importCsv;
+package org.apache.iotdb.tool.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -43,19 +45,9 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
 public class ImportCsvTestIT extends AbstractScript {
-
-  private static final String[] sqls =
-      new String[] {
-        "SET STORAGE GROUP TO root.fit.d1",
-        "SET STORAGE GROUP TO root.fit.d2",
-        "SET STORAGE GROUP TO root.fit.p",
-        "CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE",
-        "CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN",
-        "CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE",
-        "CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE",
-        "CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE",
-      };
 
   private final String[] noDataOutput = {
     "````````````````````````````````````````````````",
@@ -80,9 +72,9 @@ public class ImportCsvTestIT extends AbstractScript {
   };
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     // start an IotDB server environment
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
     // choose an execute command by system.
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
@@ -103,28 +95,12 @@ public class ImportCsvTestIT extends AbstractScript {
   @After
   public void tearDown() throws Exception {
     // shutdown IotDB server environment
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
-
-  private static void createSchema() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : sqls) {
-        statement.execute(sql);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
   /**
    * test the situation that the schema has not been created and CSV file has no records
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testImportNoRecordsCSV() throws IOException {
@@ -140,7 +116,7 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the CSV file has no headers
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testNoHeader() throws IOException {
@@ -152,7 +128,7 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the CSV file is an empty file
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testEmptyCSV() throws IOException {
@@ -164,24 +140,18 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the schema has been created and CSV file has no problem
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
-  public void test() throws IOException, ClassNotFoundException {
+  public void test() throws IOException {
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);
     File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root.**")) {
-        ResultSet resultSet = statement.getResultSet();
-        testResult(resultSet, 6, 3);
-        resultSet.close();
-      }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      testResult(resultSet, 6, 3);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -193,25 +163,19 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the schema has been created and CSV file has no problem
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
-  public void testAligned() throws IOException, ClassNotFoundException {
+  public void testAligned() throws IOException {
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE, "-aligned "};
     testMethod(params, null);
     File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("show devices")) {
-        ResultSet resultSet = statement.getResultSet();
-        while (resultSet.next()) {
-          assertTrue("true".equals(resultSet.getString(2)));
-        }
-        resultSet.close();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show devices")) {
+      while (resultSet.next()) {
+        assertEquals("true", resultSet.getString(2));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -224,24 +188,18 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the schema has not been created and CSV file has no problem
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
-  public void testWithoutCreateSchema() throws IOException, ClassNotFoundException {
+  public void testWithoutCreateSchema() throws IOException {
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);
     File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root.**")) {
-        ResultSet resultSet = statement.getResultSet();
-        testResult(resultSet, 6, 3);
-        resultSet.close();
-      }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      testResult(resultSet, 6, 3);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -253,25 +211,18 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the schema has not been created and CSV file has no data type
    *
-   * @throws IOException
-   * @throws ClassNotFoundException
+   * @throws java.io.IOException
    */
   @Test
-  public void testWithDataType() throws IOException, ClassNotFoundException {
+  public void testWithDataType() throws IOException {
     assertTrue(generateTestCSV(false, false, false, false, true));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);
     File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("select * from root.**")) {
-        ResultSet resultSet = statement.getResultSet();
-        testResult(resultSet, 6, 3);
-        resultSet.close();
-      }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      testResult(resultSet, 6, 3);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -283,25 +234,18 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test the situation that the schema has not been created and CSV file has no data type
    *
-   * @throws IOException
-   * @throws ClassNotFoundException
+   * @throws java.io.IOException
    */
   @Test
-  public void testWithException() throws IOException, ClassNotFoundException {
+  public void testWithException() throws IOException {
     assertTrue(generateTestCSV(false, false, false, true, true));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);
     File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("select ** from root")) {
-        ResultSet resultSet = statement.getResultSet();
-        testResult(resultSet, 6, 3);
-        resultSet.close();
-      }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select ** from root")) {
+      testResult(resultSet, 6, 3);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -323,7 +267,7 @@ public class ImportCsvTestIT extends AbstractScript {
   /**
    * test whether the shape of data is correct
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   private static void testResult(
       ResultSet resultSet, int expectedColumnNumber, int expectedRowNumber) throws SQLException {

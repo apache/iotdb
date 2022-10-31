@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cross.tests.tools.tsfile;
+package org.apache.iotdb.tool.it;
 
-import org.apache.iotdb.cross.tests.tools.importCsv.AbstractScript;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,6 +36,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,11 +46,13 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
 public class ExportTsFileTestIT extends AbstractScript {
 
   @Before
-  public void setUp() {
-    EnvironmentUtils.envSetUp();
+  public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       command =
@@ -66,7 +71,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -98,9 +103,7 @@ public class ExportTsFileTestIT extends AbstractScript {
   }
 
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = null;
-    try {
-      session = new Session("127.0.0.1", 6667, "root", "root");
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.open();
 
       String deviceId = "root.test.t2";
@@ -114,11 +117,6 @@ public class ExportTsFileTestIT extends AbstractScript {
       values.add("bbbbb");
       values.add("abbes");
       session.insertRecord(deviceId, 1L, measurements, values);
-
-    } finally {
-      if (session != null) {
-        session.close();
-      }
     }
   }
 }

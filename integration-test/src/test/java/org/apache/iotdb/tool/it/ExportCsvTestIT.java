@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cross.tests.tools.importCsv;
+package org.apache.iotdb.tool.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.ISession;
 
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -30,6 +32,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,11 +42,13 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
 public class ExportCsvTestIT extends AbstractScript {
 
   @Before
-  public void setUp() {
-    EnvironmentUtils.envSetUp();
+  public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       command =
@@ -61,7 +67,7 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -70,15 +76,16 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] params = {"-td", "target/", "-q", "select c1,c2,c3 from root.test.t1"};
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0_0.csv");
-    String[] realRecords = {
-      "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
-    };
-    List<CSVRecord> records = parser.getRecords();
-    for (int i = 0; i < records.size(); i++) {
-      String record = StringUtils.join(records.get(i).toList(), ',');
-      record = record.substring(record.indexOf(',') + 1);
-      assertEquals(realRecords[i], record);
+    try (CSVParser parser = readCsvFile("target/dump0_0.csv")) {
+      String[] realRecords = {
+        "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
+      };
+      List<CSVRecord> records = parser.getRecords();
+      for (int i = 0; i < records.size(); i++) {
+        String record = StringUtils.join(records.get(i).toList(), ',');
+        record = record.substring(record.indexOf(',') + 1);
+        assertEquals(realRecords[i], record);
+      }
     }
   }
 
@@ -90,16 +97,17 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0_0.csv");
-    String[] realRecords = {
-      "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
-      "1.0,\"\"abc\",aa\",\"abbe's\""
-    };
-    List<CSVRecord> records = parser.getRecords();
-    for (int i = 0; i < records.size(); i++) {
-      String record = StringUtils.join(records.get(i).toList(), ',');
-      record = record.substring(record.indexOf(',') + 1);
-      assertEquals(realRecords[i], record);
+    try (CSVParser parser = readCsvFile("target/dump0_0.csv")) {
+      String[] realRecords = {
+        "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
+        "1.0,\"\"abc\",aa\",\"abbe's\""
+      };
+      List<CSVRecord> records = parser.getRecords();
+      for (int i = 0; i < records.size(); i++) {
+        String record = StringUtils.join(records.get(i).toList(), ',');
+        record = record.substring(record.indexOf(',') + 1);
+        assertEquals(realRecords[i], record);
+      }
     }
   }
 
@@ -111,21 +119,20 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0_0.csv");
-    String[] realRecords = {
-      "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
-    };
-    List<CSVRecord> records = parser.getRecords();
-    for (int i = 0; i < records.size(); i++) {
-      String record = StringUtils.join(records.get(i).toList(), ',');
-      assertEquals(realRecords[i], record);
+    try (CSVParser parser = readCsvFile("target/dump0_0.csv")) {
+      String[] realRecords = {
+        "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
+      };
+      List<CSVRecord> records = parser.getRecords();
+      for (int i = 0; i < records.size(); i++) {
+        String record = StringUtils.join(records.get(i).toList(), ',');
+        assertEquals(realRecords[i], record);
+      }
     }
   }
 
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = null;
-    try {
-      session = new Session("127.0.0.1", 6667, "root", "root");
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.open();
 
       String deviceId = "root.test.t1";
@@ -139,10 +146,6 @@ public class ExportCsvTestIT extends AbstractScript {
       values.add("\"abc\",aa");
       values.add("abbe's");
       session.insertRecord(deviceId, 1L, measurements, values);
-    } finally {
-      if (session != null) {
-        session.close();
-      }
     }
   }
 }

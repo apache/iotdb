@@ -16,12 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cross.tests.tools.importCsv;
+package org.apache.iotdb.tool.it;
+
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.thrift.annotation.Nullable;
+import org.junit.runner.RunWith;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,6 +39,7 @@ import java.util.Properties;
 
 import static org.junit.Assert.assertTrue;
 
+@RunWith(IoTDBTestRunner.class)
 public abstract class AbstractScript {
   protected String[] command;
   protected final String CSV_FILE = "target" + File.separator + "test.csv";
@@ -105,7 +110,16 @@ public abstract class AbstractScript {
   protected void testMethod(@Nullable String[] params, @Nullable String[] output)
       throws IOException {
     String[] basicParams =
-        new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root"};
+        new String[] {
+          "-h",
+          EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIp(),
+          "-p",
+          String.valueOf(EnvFactory.getEnv().getDataNodeWrapperList().get(0).getPort()),
+          "-u",
+          "root",
+          "-pw",
+          "root"
+        };
     command = ArrayUtils.addAll(command, basicParams);
     command = ArrayUtils.addAll(command, params);
     if (params != null) {
