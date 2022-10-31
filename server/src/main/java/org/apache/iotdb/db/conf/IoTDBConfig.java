@@ -861,6 +861,9 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
+  /** maximum number of logged pages before log erased */
+  private int schemaFileLogSize = 16384;
+
   /** Internal address for data node */
   private String internalAddress = "0.0.0.0";
 
@@ -2891,6 +2894,14 @@ public class IoTDBConfig {
 
   public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
+  }
+
+  public int getSchemaFileLogSize() {
+    return schemaFileLogSize;
+  }
+
+  public void setSchemaFileLogSize(int schemaFileLogSize) {
+    this.schemaFileLogSize = schemaFileLogSize;
   }
 
   public String getInternalAddress() {

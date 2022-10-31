@@ -14,25 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.protocol.mpprest.filter;
+package org.apache.iotdb.db.protocol.rest.filter;
 
-public class User {
-  private String username;
-  private String password;
+import javax.ws.rs.core.SecurityContext;
 
-  public String getPassword() {
-    return password;
+import java.security.Principal;
+
+public class BasicSecurityContext implements SecurityContext {
+
+  private final User user;
+  private final boolean secure;
+
+  public BasicSecurityContext(User user, boolean secure) {
+    this.user = user;
+    this.secure = secure;
   }
 
-  public void setPassword(String password) {
-    this.password = password;
+  @Override
+  public Principal getUserPrincipal() {
+    return user::getUsername;
   }
 
-  public String getUsername() {
-    return username;
+  public User getUser() {
+    return user;
   }
 
-  public void setUsername(String username) {
-    this.username = username;
+  @Override
+  public boolean isUserInRole(String role) {
+    return true;
+  }
+
+  @Override
+  public boolean isSecure() {
+    return secure;
+  }
+
+  @Override
+  public String getAuthenticationScheme() {
+    return BASIC_AUTH;
   }
 }

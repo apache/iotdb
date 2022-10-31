@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.handler;
+package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
-import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;

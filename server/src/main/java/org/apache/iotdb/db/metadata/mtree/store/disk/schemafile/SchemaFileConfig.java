@@ -25,7 +25,10 @@ public class SchemaFileConfig {
 
   // region SchemaFile Configuration
 
-  // folder to store .pmt files
+  // current version of schema file
+  public static final int SCHEMA_FILE_VERSION = 1;
+
+  // folder to store .pst files
   public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
@@ -34,6 +37,15 @@ public class SchemaFileConfig {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .getPageCacheSizeInSchemaFile(); // size of page cache
+
+  // size of page within one redo log, restricting log around 1GB
+  public static final int SCHEMA_FILE_LOG_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaFileLogSize();
+
+  // marks to note the state of schema file log
+  public static final byte SF_PREPARE_MARK = (byte) 0xfe;
+  public static final byte SF_COMMIT_MARK = (byte) 0xff;
+
   // endregion
 
   // region Page Configuration
@@ -59,7 +71,7 @@ public class SchemaFileConfig {
   public static final int SEG_HEADER_SIZE = 25; // in bytes
   public static final short SEG_OFF_DIG =
       2; // length of short, which is the type of segment offset and index
-  public static final short SEG_MAX_SIZ = (short) (16 * 1024 - PAGE_HEADER_SIZE - SEG_OFF_DIG);
+  public static final short SEG_MAX_SIZ = (short) (PAGE_LENGTH - PAGE_HEADER_SIZE - SEG_OFF_DIG);
   public static final short SEG_MIN_SIZ =
       IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile() > SEG_MAX_SIZ
           ? SEG_MAX_SIZ
@@ -68,8 +80,16 @@ public class SchemaFileConfig {
   public static final int SEG_INDEX_DIGIT = 16; // for type short in bits
   public static final long SEG_INDEX_MASK = 0xffffL; // help to translate address
 
-  public static final short[] SEG_SIZE_METRIC = {300, 150, 75, 40, 20};
-  public static final short[] SEG_SIZE_LST = {1024, 2 * 1024, 4 * 1024, 8 * 1024, SEG_MAX_SIZ};
+  public static final short[] SEG_SIZE_METRIC = {20, 40, 75, 150, 300};
+
+  // formula: (PAGE_LENGTH-PAGE_HEADER)/n - SEG_OFF_DIG
+  public static final short[] SEG_SIZE_LST = {
+    (PAGE_LENGTH - PAGE_HEADER_SIZE) / 16 - SEG_OFF_DIG,
+    (PAGE_LENGTH - PAGE_HEADER_SIZE) / 8 - SEG_OFF_DIG,
+    (PAGE_LENGTH - PAGE_HEADER_SIZE) / 4 - SEG_OFF_DIG,
+    (PAGE_LENGTH - PAGE_HEADER_SIZE) / 2 - SEG_OFF_DIG,
+    SEG_MAX_SIZ
+  };
 
   // endregion
 
