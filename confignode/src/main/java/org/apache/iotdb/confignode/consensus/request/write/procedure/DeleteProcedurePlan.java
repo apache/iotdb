@@ -45,7 +45,7 @@ public class DeleteProcedurePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.DeleteProcedure.ordinal());
     stream.writeLong(procId);
   }
 

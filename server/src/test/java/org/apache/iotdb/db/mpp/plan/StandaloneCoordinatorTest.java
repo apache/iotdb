@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
@@ -117,7 +116,7 @@ public class StandaloneCoordinatorTest {
             put("tag2", "v2");
           }
         });
-    executeStatement(createTimeSeriesStatement);
+    executeStatement(createTimeSeriesStatement, false);
   }
 
   @Test
@@ -125,7 +124,7 @@ public class StandaloneCoordinatorTest {
 
     String insertSql = "insert into root.sg.d1(time,s1,s2) values (100,222,333)";
     Statement insertStmt = StatementGenerator.createStatement(insertSql, ZoneId.systemDefault());
-    executeStatement(insertStmt);
+    executeStatement(insertStmt, false);
   }
 
   @Test
@@ -133,16 +132,16 @@ public class StandaloneCoordinatorTest {
     String createUserSql = "create user username 'password'";
     Statement createStmt =
         StatementGenerator.createStatement(createUserSql, ZoneId.systemDefault());
-    executeStatement(createStmt);
+    executeStatement(createStmt, false);
   }
 
-  private void executeStatement(Statement statement) {
-    long queryId = SessionManager.getInstance().requestQueryId();
+  private void executeStatement(Statement statement, boolean isDataQuery) {
+    long queryId = SessionManager.getInstance().requestQueryId(isDataQuery);
     ExecutionResult executionResult =
         coordinator.execute(
             statement,
             queryId,
-            new SessionInfo(0, "root", "+5:00"),
+            null,
             "",
             partitionFetcher,
             schemaFetcher,
@@ -151,7 +150,9 @@ public class StandaloneCoordinatorTest {
       int statusCode = executionResult.status.getCode();
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
     } finally {
-      coordinator.cleanupQueryExecution(queryId);
+      if (isDataQuery) {
+        coordinator.getQueryExecution(queryId).stopAndCleanup();
+      }
     }
   }
 }

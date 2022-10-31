@@ -373,7 +373,7 @@ public class ConfigMTreeTest {
     }
 
     try {
-      List<String> pathList = root.getPathsSetOnTemplate(0, false);
+      List<String> pathList = root.getPathsSetOnTemplate(0);
       Assert.assertTrue(pathList.contains("root.a.template0"));
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {

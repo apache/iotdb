@@ -39,10 +39,13 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getSegIndex;
 
 public class BTreePageManager extends PageManager {
+  private BTreePageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
+    super(channel, lpi);
+  }
 
-  public BTreePageManager(FileChannel channel, int lastPageIndex, String logPath)
+  public static IPageManager getBTreePageManager(FileChannel channel, int lastPageIdx)
       throws IOException, MetadataException {
-    super(channel, lastPageIndex, logPath);
+    return new BTreePageManager(channel, lastPageIdx);
   }
 
   @Override

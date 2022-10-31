@@ -117,7 +117,7 @@ public class ClusterNode {
       clusterConfig.putAll(clusterProperties);
       clusterConfig.store(new FileWriter(clusterConfigPath), null);
 
-      // iotdb-common.properties part
+      // iotdb-datanode.properties part
       String engineConfigPath =
           this.path
               + File.separator
@@ -129,7 +129,7 @@ public class ClusterNode {
 
       Properties engineConfig = new Properties();
       engineConfig.load(new FileInputStream(engineConfigPath));
-      engineConfig.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(this.rpcPort));
+      engineConfig.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(this.rpcPort));
       engineConfig.setProperty("enable_influxdb_rpc_service", Boolean.toString(false));
       engineConfig.putAll(engineProperties);
       engineConfig.store(new FileWriter(engineConfigPath), null);

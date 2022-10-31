@@ -49,20 +49,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
-    properties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internal_address);
-    properties.setProperty(IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
-    properties.setProperty("dn_mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
+    properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(super.getPort()));
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, this.internal_address);
+    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
+    properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(
-        "dn_data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
+        "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
-        "dn_schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+        "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("mqtt_host", super.getIp());
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES, this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
     properties.setProperty("max_tsblock_size_in_bytes", "1024");
     properties.setProperty("page_size_in_byte", "1024");
@@ -70,12 +70,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("conf", "iotdb-datanode.properties");
-  }
-
-  @Override
-  protected String getCommonConfigPath() {
-    return workDirFilePath("conf", "iotdb-common.properties");
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-datanode.properties");
   }
 
   @Override
@@ -85,7 +80,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void addStartCmdParams(List<String> params) {
-    final String workDir = getNodePath();
+    final String workDir = getNodePath() + File.separator + "datanode";
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(

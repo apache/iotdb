@@ -20,38 +20,26 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
-import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -121,12 +109,10 @@ public class UDFInfo implements SnapshotProcessor {
     try {
       final UDFInformation udfInformation = physicalPlan.getUdfInformation();
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
-      if (udfInformation.isUsingURI()) {
-        existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
-        if (physicalPlan.getJarFile() != null) {
-          udfExecutableManager.saveToInstallDir(
-              ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
-        }
+      existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+      if (physicalPlan.getJarFile() != null) {
+        udfExecutableManager.writeToLibDir(
+            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
@@ -146,24 +132,6 @@ public class UDFInfo implements SnapshotProcessor {
         udfTable.getAllNonBuiltInUDFInformation());
   }
 
-  public JarResp getUDFJar(GetUDFJarPlan physicalPlan) {
-    List<ByteBuffer> jarList = new ArrayList<>();
-    try {
-      for (String jarName : physicalPlan.getJarNames()) {
-        jarList.add(
-            ExecutableManager.transferToBytebuffer(
-                UDFExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
-      }
-    } catch (Exception e) {
-      LOGGER.error("Get UDF_Jar failed", e);
-      return new JarResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
-          Collections.emptyList());
-    }
-    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
-  }
-
   public TSStatus dropFunction(DropFunctionPlan req) {
     String udfName = req.getFunctionName();
     if (udfTable.containsUDF(udfName)) {
@@ -173,81 +141,14 @@ public class UDFInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  @TestOnly
-  public Map<String, UDFInformation> getRawUDFTable() {
-    return udfTable.getTable();
-  }
-
-  @TestOnly
-  public Map<String, String> getRawExistedJarToMD5() {
-    return existedJarToMD5;
-  }
-
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
-          snapshotFile.getAbsolutePath());
-      return false;
-    }
-
-    acquireUDFTableLock();
-    try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-
-      serializeExistedJarToMD5(fileOutputStream);
-
-      udfTable.serializeUDFTable(fileOutputStream);
-
-      return true;
-    } finally {
-      releaseUDFTableLock();
-    }
+    // todo: implementation
+    return true;
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
-    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
-          snapshotFile.getAbsolutePath());
-      return;
-    }
-
-    acquireUDFTableLock();
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
-
-      clear();
-
-      deserializeExistedJarToMD5(fileInputStream);
-
-      udfTable.deserializeUDFTable(fileInputStream);
-    } finally {
-      releaseUDFTableLock();
-    }
-  }
-
-  public void serializeExistedJarToMD5(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(existedJarToMD5.size(), outputStream);
-    for (Map.Entry<String, String> entry : existedJarToMD5.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-  }
-
-  public void deserializeExistedJarToMD5(InputStream inputStream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      existedJarToMD5.put(
-          ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readString(inputStream));
-      size--;
-    }
-  }
-
-  public void clear() {
-    existedJarToMD5.clear();
-    udfTable.clear();
+    // todo: implementation
   }
 }

@@ -88,9 +88,4 @@ public class NodePathsConvertNode extends ProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new NodePathsConvertNode(planNodeId);
   }
-
-  @Override
-  public String toString() {
-    return String.format("NodePathsConvertNode-%s", this.getPlanNodeId());
-  }
 }

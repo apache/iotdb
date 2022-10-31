@@ -80,7 +80,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
+  protected void remove(MetricType type, MetricInfo metricInfo) {
     // do nothing
   }
 

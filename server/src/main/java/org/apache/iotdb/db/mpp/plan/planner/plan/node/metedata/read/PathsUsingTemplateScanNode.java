@@ -102,11 +102,4 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new PathsUsingTemplateScanNode(planNodeId, pathPatternList, templateId);
   }
-
-  @Override
-  public String toString() {
-    return String.format(
-        "PathsUsingTemplateScanNode-%s:[DataRegion: %s]",
-        this.getPlanNodeId(), this.getRegionReplicaSet());
-  }
 }

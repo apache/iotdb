@@ -555,7 +555,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         && node.getChildren().isEmpty();
   }
 
-  @Override
   public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
@@ -574,7 +573,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
-  @Override
+  /**
+   * Get all the devices of pre-deleted timeseries matched by given pathPattern. For example, given
+   * path pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the
+   * result set is {root.sg.d1, root.sg.d2}.
+   */
   public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
@@ -1207,7 +1210,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return leafMNodes;
   }
 
-  @Override
   public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
       throws MetadataException {
     List<IMeasurementMNode> result = new ArrayList<>();
@@ -1745,29 +1747,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         };
     collector.traverse();
     return result;
-  }
-
-  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    CounterTraverser counterTraverser =
-        new CounterTraverser(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            return false;
-          }
-
-          @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
-              count++;
-            }
-            return false;
-          }
-        };
-    counterTraverser.traverse();
-    return counterTraverser.getCount();
   }
 
   // endregion

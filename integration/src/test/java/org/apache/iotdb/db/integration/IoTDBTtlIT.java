@@ -322,7 +322,7 @@ public class IoTDBTtlIT {
 
   @Test
   public void testDefaultTTL() throws SQLException {
-    CommonDescriptor.getInstance().getConfig().setDefaultTTLInMs(10000);
+    CommonDescriptor.getInstance().getConfig().setDefaultTTL(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
@@ -333,7 +333,7 @@ public class IoTDBTtlIT {
           result.equals("root.group1,10000\n" + "root.group2,10000\n")
               || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
     } finally {
-      CommonDescriptor.getInstance().getConfig().setDefaultTTLInMs(Long.MAX_VALUE);
+      CommonDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
     }
   }
 

@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
@@ -43,7 +42,6 @@ import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
-import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -55,10 +53,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class SyncManager {
@@ -68,13 +65,9 @@ public class SyncManager {
   private final IManager configManager;
   private final ClusterSyncInfo clusterSyncInfo;
 
-  private final OperatePipeProcedureRollbackProcessor rollbackProcessor;
-
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
-    this.rollbackProcessor =
-        new OperatePipeProcedureRollbackProcessor(configManager.getNodeManager());
   }
 
   public void lockSyncMetadata() {
@@ -135,7 +128,7 @@ public class SyncManager {
   }
 
   public TSStatus preCreatePipe(PipeInfo pipeInfo) {
-    pipeInfo.setStatus(PipeStatus.PARTIAL_CREATE);
+    pipeInfo.setStatus(PipeStatus.PREPARE_CREATE);
     return getConsensusManager().write(new PreCreatePipePlan(pipeInfo)).getStatus();
   }
 
@@ -187,18 +180,12 @@ public class SyncManager {
    * @param pipeName name of PIPE
    * @param operation only support {@link SyncOperation#START_PIPE}, {@link SyncOperation#STOP_PIPE}
    *     and {@link SyncOperation#DROP_PIPE}
-   * @return Map key is DataNodeId and value is TSStatus
+   * @return list of TSStatus
    */
-  public Map<Integer, TSStatus> operatePipeOnDataNodes(String pipeName, SyncOperation operation) {
+  public List<TSStatus> operatePipeOnDataNodes(String pipeName, SyncOperation operation) {
     NodeManager nodeManager = configManager.getNodeManager();
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    nodeManager
-        .filterDataNodeThroughStatus(NodeStatus.Running)
-        .forEach(
-            dataNodeConfiguration ->
-                dataNodeLocationMap.put(
-                    dataNodeConfiguration.getLocation().getDataNodeId(),
-                    dataNodeConfiguration.getLocation()));
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
     final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal());
 
@@ -206,74 +193,28 @@ public class SyncManager {
         new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
-    return clientHandler.getResponseMap();
-  }
-
-  /**
-   * Broadcast DataNodes to operate PIPE operation for roll back procedure.
-   *
-   * @param pipeName name of PIPE
-   * @param createTime specifies the version of the pipe that needs to be rolled back to avoid
-   *     concurrent errors caused by retry requests
-   * @param operation only support {@link SyncOperation#START_PIPE}, {@link SyncOperation#STOP_PIPE}
-   *     and {@link SyncOperation#DROP_PIPE}
-   * @param dataNodeIds target DataNodeId set
-   */
-  public void operatePipeOnDataNodesForRollback(
-      String pipeName, long createTime, SyncOperation operation, Set<Integer> dataNodeIds) {
-    NodeManager nodeManager = configManager.getNodeManager();
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    nodeManager.filterDataNodeThroughStatus(NodeStatus.Running).stream()
-        .filter(
-            dataNodeConfiguration ->
-                dataNodeIds.contains(dataNodeConfiguration.getLocation().dataNodeId))
-        .forEach(
-            dataNodeConfiguration ->
-                dataNodeLocationMap.put(
-                    dataNodeConfiguration.getLocation().getDataNodeId(),
-                    dataNodeConfiguration.getLocation()));
-    final TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq(pipeName, (byte) operation.ordinal())
-            .setCreateTime(createTime);
-
-    AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-
-    List<Integer> failedRollbackDataNodeId = new ArrayList<>();
-    for (Map.Entry<Integer, TSStatus> responseEntry : clientHandler.getResponseMap().entrySet()) {
-      if (responseEntry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failedRollbackDataNodeId.add(responseEntry.getKey());
-      }
-    }
-    rollbackProcessor.retryRollbackReq(failedRollbackDataNodeId, request);
+    return clientHandler.getResponseList();
   }
 
   /**
    * Broadcast DataNodes to pre create PIPE
    *
    * @param pipeInfo pipeInfo
-   * @return Map key is DataNodeId and value is TSStatus
+   * @return list of TSStatus
    */
-  public Map<Integer, TSStatus> preCreatePipeOnDataNodes(PipeInfo pipeInfo) {
+  public List<TSStatus> preCreatePipeOnDataNodes(PipeInfo pipeInfo) {
     NodeManager nodeManager = configManager.getNodeManager();
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    nodeManager
-        .filterDataNodeThroughStatus(NodeStatus.Running)
-        .forEach(
-            dataNodeConfiguration ->
-                dataNodeLocationMap.put(
-                    dataNodeConfiguration.getLocation().getDataNodeId(),
-                    dataNodeConfiguration.getLocation()));
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TCreatePipeOnDataNodeReq request =
         new TCreatePipeOnDataNodeReq(pipeInfo.serializeToByteBuffer());
 
     AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PRE_CREATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-
-    return clientHandler.getResponseMap();
+    return dataNodeResponseStatus;
   }
 
   // endregion

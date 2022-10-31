@@ -111,7 +111,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
-    long queryId = SessionManager.getInstance().requestQueryId();
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     try {
       ExecutionResult executionResult =
           coordinator.execute(
@@ -152,7 +152,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return result;
       }
     } finally {
-      coordinator.cleanupQueryExecution(queryId);
+      coordinator.removeQueryExecution(queryId);
     }
   }
 
@@ -512,7 +512,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private ExecutionResult executeStatement(Statement statement) {
-    long queryId = SessionManager.getInstance().requestQueryId();
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     return coordinator.execute(
         statement,
         queryId,

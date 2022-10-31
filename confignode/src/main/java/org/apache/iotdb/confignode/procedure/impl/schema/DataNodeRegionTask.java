@@ -68,7 +68,7 @@ abstract class DataNodeRegionTask<T> {
         executeOnAllReplicaset
             ? getAllReplicaDataNodeRegionGroupMap(targetSchemaRegionGroup)
             : getLeaderDataNodeRegionGroupMap(
-                env.getConfigManager().getLoadManager().getLatestRegionLeaderMap(),
+                env.getConfigManager().getPartitionManager().getAllLeadership(),
                 targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
@@ -124,7 +124,7 @@ abstract class DataNodeRegionTask<T> {
       Map<TDataNodeLocation, List<TConsensusGroupId>> failedDataNodeConsensusGroupIdMap,
       Set<TDataNodeLocation> allFailedDataNodeSet) {
     Map<TConsensusGroupId, Integer> leaderMap =
-        env.getConfigManager().getLoadManager().getLatestRegionLeaderMap();
+        env.getConfigManager().getPartitionManager().getAllLeadership();
     Map<TDataNodeLocation, List<TConsensusGroupId>> availableDataNodeLocation = new HashMap<>();
     for (List<TConsensusGroupId> consensusGroupIdList :
         failedDataNodeConsensusGroupIdMap.values()) {

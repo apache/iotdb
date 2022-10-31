@@ -47,13 +47,13 @@ public abstract class AbstractMetricManager {
   /** Is metric service enabled */
   protected static boolean isEnableMetric;
   /** metric name -> tag keys */
-  protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
+  protected Map<String, MetricInfo.MetaInfo> nameToTagInfo;
   /** metric type -> metric name -> metric info */
   protected Map<MetricInfo, IMetric> metrics;
 
   public AbstractMetricManager() {
     isEnableMetric = METRIC_CONFIG.getEnableMetric();
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    nameToTagInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
   }
 
@@ -75,7 +75,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Counter counter = createCounter(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return counter;
             });
     if (metric instanceof Counter) {
@@ -110,7 +110,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -140,7 +140,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createGauge(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -169,7 +169,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Rate rate = createRate(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return rate;
             });
     if (metric instanceof Rate) {
@@ -198,7 +198,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Histogram histogram = createHistogram(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return histogram;
             });
     if (metric instanceof Histogram) {
@@ -227,7 +227,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Timer timer = createTimer(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return timer;
             });
     if (metric instanceof Timer) {
@@ -415,20 +415,22 @@ public abstract class AbstractMetricManager {
   public void remove(MetricType type, String name, String... tags) {
     if (isEnableMetric()) {
       MetricInfo metricInfo = new MetricInfo(type, name, tags);
-      if (metrics.containsKey(metricInfo)) {
-        if (type == metricInfo.getMetaInfo().getType()) {
-          nameToMetaInfo.remove(metricInfo.getName());
-          metrics.remove(metricInfo);
-          removeMetric(type, metricInfo);
-        } else {
-          throw new IllegalArgumentException(
-              metricInfo + " failed to remove because the mismatch of type. ");
+      if (nameToTagInfo.containsKey(metricInfo.getName())) {
+        MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo.getName());
+        if (metaInfo.hasSameKey(tags)) {
+          if (type == metaInfo.getType()) {
+            remove(metricInfo);
+            remove(type, metricInfo);
+          } else {
+            throw new IllegalArgumentException(
+                metricInfo + " failed to remove because the mismatch of type. ");
+          }
         }
       }
     }
   }
 
-  protected abstract void removeMetric(MetricType type, MetricInfo metricInfo);
+  protected abstract void remove(MetricType type, MetricInfo metricInfo);
 
   // endregion
 
@@ -447,7 +449,7 @@ public abstract class AbstractMetricManager {
   protected boolean stop() {
     isEnableMetric = METRIC_CONFIG.getEnableMetric();
     metrics = new ConcurrentHashMap<>();
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    nameToTagInfo = new ConcurrentHashMap<>();
     return stopFramework();
   }
 
@@ -457,11 +459,16 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return false;
     }
-    if (!nameToMetaInfo.containsKey(name)) {
+    if (!nameToTagInfo.containsKey(name)) {
       return true;
     }
-    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
+    MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(name);
     return metaInfo.hasSameKey(tags);
+  }
+
+  private void remove(MetricInfo metricInfo) {
+    nameToTagInfo.remove(metricInfo.getName());
+    metrics.remove(metricInfo);
   }
 
   @Override

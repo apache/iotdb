@@ -81,13 +81,7 @@ public class TsFilePipeInfo extends PipeInfo {
   @Override
   public TShowPipeInfo getTShowPipeInfo() {
     return new TShowPipeInfo(
-        createTime,
-        pipeName,
-        "sender",
-        pipeSinkName,
-        status.name(),
-        String.format("syncDelOp=%s,dataStartTimestamp=%s", syncDelOp, dataStartTimestamp),
-        messageType.name());
+        createTime, pipeName, "sender", pipeSinkName, status.name(), messageType.name());
   }
 
   @Override

@@ -76,7 +76,7 @@ public class SelectComponent extends StatementNode {
     this.aliasToColumnMap = aliasToColumnMap;
   }
 
-  public boolean hasLast() {
+  public boolean isHasLast() {
     return hasLast;
   }
 
@@ -86,24 +86,5 @@ public class SelectComponent extends StatementNode {
 
   public void setHasBuiltInAggregationFunction(boolean hasBuiltInAggregationFunction) {
     this.hasBuiltInAggregationFunction = hasBuiltInAggregationFunction;
-  }
-
-  public String toSQLString() {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("SELECT").append(' ');
-    if (hasLast()) {
-      sqlBuilder.append("LAST").append(' ');
-    }
-    for (int i = 0; i < resultColumns.size(); i++) {
-      ResultColumn resultColumn = resultColumns.get(i);
-      sqlBuilder.append(resultColumn.getExpression().toString());
-      if (resultColumn.hasAlias()) {
-        sqlBuilder.append('(').append(resultColumn.getAlias()).append(')');
-      }
-      if (i < resultColumns.size() - 1) {
-        sqlBuilder.append(", ");
-      }
-    }
-    return sqlBuilder.toString();
   }
 }

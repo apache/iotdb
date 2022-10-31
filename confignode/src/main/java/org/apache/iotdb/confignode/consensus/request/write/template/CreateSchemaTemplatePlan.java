@@ -55,7 +55,7 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.CreateSchemaTemplate.ordinal());
     stream.writeInt(templateData.length);
     stream.write(templateData);
   }

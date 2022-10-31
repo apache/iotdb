@@ -19,13 +19,11 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -106,24 +104,25 @@ public class IoTDBDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl(String configFileName) {
+  public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (urlString != null) {
-        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configFileName;
+        urlString =
+            urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + configFileName);
+        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
         if (uri != null) {
           return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
-            configFileName);
+            IoTDBConfig.CONFIG_NAME);
         // update all data seriesPath
         conf.updatePath();
         return null;
@@ -132,7 +131,7 @@ public class IoTDBDescriptor {
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
     else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + configFileName);
+      urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
@@ -150,31 +149,19 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
-    }
-    Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
-
-      logger.info("Start to read config file {}", url);
-      commonProperties.load(inputStream);
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
+      return;
     }
 
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
     try (InputStream inputStream = url.openStream()) {
+
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      commonProperties.putAll(properties);
-      loadProperties(commonProperties);
+
+      loadProperties(properties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -194,7 +181,7 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
-    conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
+    conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
 
     // TODO: Use FQDN  to identify our nodes afterwards
     try {
@@ -240,8 +227,7 @@ public class IoTDBDescriptor {
 
     conf.setRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))));
+            properties.getProperty(IoTDBConstant.RPC_PORT, Integer.toString(conf.getRpcPort()))));
 
     conf.setEnableInfluxDBRpcService(
         Boolean.parseBoolean(
@@ -288,7 +274,7 @@ public class IoTDBDescriptor {
 
     loadWALProps(properties);
 
-    String systemDir = properties.getProperty("dn_system_dir");
+    String systemDir = properties.getProperty("system_dir");
     if (systemDir == null) {
       systemDir = properties.getProperty("base_dir");
       if (systemDir != null) {
@@ -305,11 +291,11 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
+    conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
-    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
+    conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
-    conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
+    conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
     int mlogBufferSize =
         Integer.parseInt(
@@ -328,7 +314,7 @@ public class IoTDBDescriptor {
 
     String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
-        properties.getProperty("dn_multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+        properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
@@ -858,14 +844,9 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
 
     conf.setPageCacheSizeInSchemaFile(
-        Integer.parseInt(
+        Short.parseShort(
             properties.getProperty(
                 "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
-
-    conf.setSchemaFileLogSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
     // mqtt
     loadMqttProps(properties);
@@ -1407,13 +1388,13 @@ public class IoTDBDescriptor {
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
-      String dataDirs = properties.getProperty("dn_data_dirs", null);
+      String dataDirs = properties.getProperty("data_dirs", null);
       if (dataDirs != null) {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
       // update dir strategy, must update after data dirs
-      String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
+      String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
@@ -1519,33 +1500,17 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
 
-    Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
-      logger.info("Start to reload config file {}", url);
-      commonProperties.load(inputStream);
-    } catch (Exception e) {
-      logger.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
-
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    if (url == null) {
-      logger.warn("Couldn't load the configuration from any of the known sources.");
-      return;
-    }
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      commonProperties.putAll(properties);
-      loadHotModifiedProps(commonProperties);
+      loadHotModifiedProps(properties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
@@ -1715,7 +1680,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
 
-    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
+    conf.setUdfDir(properties.getProperty("udf_root_dir", conf.getUdfDir()));
 
     String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
@@ -1834,7 +1799,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES);
+    String configNodeUrls = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES);
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
@@ -1845,23 +1810,23 @@ public class IoTDBDescriptor {
     }
 
     conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
+        properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty(
-                IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
+                IoTDBConstant.INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
             properties.getProperty(
-                "dn_data_region_consensus_port",
+                "data_region_consensus_port",
                 Integer.toString(conf.getDataRegionConsensusPort()))));
 
     conf.setSchemaRegionConsensusPort(
         Integer.parseInt(
             properties.getProperty(
-                "dn_schema_region_consensus_port",
+                "schema_region_consensus_port",
                 Integer.toString(conf.getSchemaRegionConsensusPort()))));
   }
 
@@ -1869,7 +1834,7 @@ public class IoTDBDescriptor {
     conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
-                "dn_mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
+                "mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
     conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1970,10 +1935,6 @@ public class IoTDBDescriptor {
 
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
-  }
-
-  public void loadCQConfig(TCQConfig cqConfig) {
-    conf.setCqMinEveryIntervalInMs(cqConfig.getCqMinEveryIntervalInMs());
   }
 
   public void reclaimConsensusMemory() {

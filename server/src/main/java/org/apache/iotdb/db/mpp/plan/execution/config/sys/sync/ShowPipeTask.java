@@ -70,8 +70,7 @@ public class ShowPipeTask implements IConfigTask {
       builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getRole()));
       builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getRemote()));
       builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getStatus()));
-      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getAttributes()));
-      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getMessage()));
+      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getMessage()));
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

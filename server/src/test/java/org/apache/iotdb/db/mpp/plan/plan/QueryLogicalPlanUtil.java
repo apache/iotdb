@@ -153,7 +153,7 @@ public class QueryLogicalPlanUtil {
 
   /* Simple Query */
   static {
-    String sql = "SELECT ** FROM root.sg.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
+    String sql = "SELECT ** FROM root.sg.d2 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
@@ -175,15 +175,6 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), Ordering.ASC));
-
-    for (PlanNode sourceNode : sourceNodeList) {
-      if (sourceNode instanceof SeriesScanNode) {
-        ((SeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
-      } else if (sourceNode instanceof AlignedSeriesScanNode) {
-        ((AlignedSeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
-      }
-    }
-
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);

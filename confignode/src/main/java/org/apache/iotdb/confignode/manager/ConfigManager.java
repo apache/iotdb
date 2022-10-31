@@ -40,18 +40,18 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
@@ -76,7 +76,6 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
-import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -84,7 +83,6 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
-import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -92,7 +90,6 @@ import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -100,12 +97,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -114,6 +108,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -122,7 +118,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -130,12 +125,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,7 +156,7 @@ public class ConfigManager implements IManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
-  private volatile ConsensusManager consensusManager;
+  private ConsensusManager consensusManager;
 
   /** Manage cluster node */
   private final NodeManager nodeManager;
@@ -190,9 +183,6 @@ public class ConfigManager implements IManager {
   /** Sync */
   private final SyncManager syncManager;
 
-  /** CQ */
-  private final CQManager cqManager;
-
   private final PartitionRegionStateMachine stateMachine;
 
   public ConfigManager() throws IOException {
@@ -205,7 +195,6 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
-    CQInfo cqInfo = new CQInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -217,8 +206,7 @@ public class ConfigManager implements IManager {
             procedureInfo,
             udfInfo,
             triggerInfo,
-            syncInfo,
-            cqInfo);
+            syncInfo);
     this.stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -231,7 +219,6 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
-    this.cqManager = new CQManager(this);
   }
 
   public void initConsensusManager() throws IOException {
@@ -250,16 +237,13 @@ public class ConfigManager implements IManager {
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       triggerManager.getTriggerInfo().acquireTriggerTableLock();
-      udfManager.getUdfInfo().acquireUDFTableLock();
       try {
         dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
         dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
-        dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
-        udfManager.getUdfInfo().releaseUDFTableLock();
       }
     } else {
       dataSet = new DataNodeRegisterResp();
@@ -746,7 +730,7 @@ public class ConfigManager implements IManager {
     if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
-    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
@@ -835,14 +819,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? udfManager.getUDFJar(req)
-        : new TGetJarInListResp(status, Collections.emptyList());
-  }
-
-  @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -883,11 +859,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
+  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerJar(req)
-        : new TGetJarInListResp(status, Collections.emptyList());
+        : new TGetTriggerJarResp(status, Collections.emptyList());
   }
 
   @Override
@@ -997,11 +973,6 @@ public class ConfigManager implements IManager {
   @Override
   public ProcedureManager getProcedureManager() {
     return procedureManager;
-  }
-
-  @Override
-  public CQManager getCQManager() {
-    return cqManager;
   }
 
   /**
@@ -1119,36 +1090,6 @@ public class ConfigManager implements IManager {
     }
 
     return procedureManager.deactivateTemplate(req.getQueryId(), templateSetInfo);
-  }
-
-  @Override
-  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
-    }
-    Pair<TSStatus, Template> checkResult =
-        clusterSchemaManager.checkIsTemplateSetOnPath(req.getTemplateName(), req.getPath());
-    if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      try {
-        return procedureManager.unsetSchemaTemplate(
-            req.getQueryId(), checkResult.right, new PartialPath(req.getPath()));
-      } catch (IllegalPathException e) {
-        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-      }
-    } else {
-      return checkResult.left;
-    }
-  }
-
-  @Override
-  public TSStatus dropSchemaTemplate(String templateName) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.dropSchemaTemplate(templateName);
-    } else {
-      return status;
-    }
   }
 
   @Override
@@ -1275,30 +1216,6 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
-  }
-
-  @Override
-  public TSStatus createCQ(TCreateCQReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? cqManager.createCQ(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus dropCQ(TDropCQReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? cqManager.dropCQ(req)
-        : status;
-  }
-
-  @Override
-  public TShowCQResp showCQ() {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? cqManager.showCQ()
-        : new TShowCQResp(status, Collections.emptyList());
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

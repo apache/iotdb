@@ -55,8 +55,7 @@ public class IoTDBStorageGroupIT {
 
   @Before
   public void setUp() throws Exception {
-    // Init 1C0D environment
-    EnvFactory.getEnv().initClusterEnvironment(1, 0);
+    EnvFactory.getEnv().initBeforeClass();
   }
 
   @After

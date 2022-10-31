@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +77,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           }
         case REMOVE_DATA_NODE_PREPARE:
           // mark the datanode as removing status and broadcast region route map
-          env.markDataNodeAsRemovingAndBroadcast(disableDataNodeLocation);
+          env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
           execDataNodeRegionIds =
               env.getDataNodeRemoveHandler().getDataNodeRegionIds(disableDataNodeLocation);
           LOG.info(
@@ -152,7 +152,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.REMOVE_DATA_NODE_PROCEDURE.getTypeCode());
+    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_DATA_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(disableDataNodeLocation, stream);
     stream.writeInt(execDataNodeRegionIds.size());

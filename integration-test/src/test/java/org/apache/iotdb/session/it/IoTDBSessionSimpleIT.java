@@ -31,6 +31,10 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.template.InternalNode;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateNode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,12 +49,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -983,7 +989,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertIllegalPathTest() {
+  public void insertIlligalPathTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String msg = "[%s] Exception occurred: %s failed. %s is not a legal path";
       String deviceId = "root.sg..d1";
@@ -1318,6 +1324,184 @@ public class IoTDBSessionSimpleIT {
         assertEquals(excepted[index], next.toString());
         index++;
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Ignore
+  public void insertDeleteWithTemplateTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      initTreeTemplate(session, "root.sg.loc1");
+      List<String> measurements = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+      String deviceId = "root.sg.loc1.sector.GPS";
+      Set<String> checkSet = new HashSet<>();
+      SessionDataSet dataSet;
+
+      // insert record set using template
+      measurements.add("x");
+      measurements.add("y");
+      values.add("1.0");
+      values.add("2.0");
+
+      checkSet.add("root.sg.loc1.sector.GPS.x");
+      checkSet.add("root.sg.loc1.sector.GPS.y");
+      checkSet.add("root.sg.loc1.sector.y");
+      checkSet.add("root.sg.loc1.sector.x");
+      checkSet.add("root.sg.loc1.sector.vehicle.x");
+      checkSet.add("root.sg.loc1.sector.vehicle.y");
+      checkSet.add("root.sg.loc1.sector.vehicle.GPS.x");
+      checkSet.add("root.sg.loc1.sector.vehicle.GPS.y");
+
+      session.insertRecord(deviceId, 1L, measurements, values);
+      dataSet = session.executeQueryStatement("show timeseries");
+      while (dataSet.hasNext()) {
+        checkSet.remove(dataSet.next().getFields().get(0).toString());
+      }
+      assertTrue(checkSet.isEmpty());
+
+      // insert aligned under unaligned node
+      try {
+        session.insertAlignedRecord("root.sg.loc1.sector.GPS", 3L, measurements, values);
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "303: Timeseries under path [root.sg.loc1.sector.GPS] is not aligned , please set InsertPlan.isAligned() = false",
+            e.getMessage());
+      }
+
+      // insert overlap unmatched series
+      measurements.set(1, "speed");
+      try {
+        session.insertRecord(deviceId, 5L, measurements, values);
+        fail();
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "327: Path [root.sg.loc1.sector.GPS.speed] overlaps with [treeTemplate] on [GPS]",
+            e.getMessage());
+      }
+
+      // insert tablets
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
+      schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
+      Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
+
+      long timestamp = System.currentTimeMillis();
+
+      for (long row = 0; row < 10; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue(
+            schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextFloat());
+        tablet.addValue(
+            schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextFloat());
+        timestamp++;
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertAlignedTablet(tablet);
+        tablet.reset();
+      }
+
+      dataSet = session.executeQueryStatement("select count(*) from root");
+
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(10L, rowRecord.getFields().get(0).getLongV());
+        assertEquals(10L, rowRecord.getFields().get(1).getLongV());
+      }
+
+      // delete series inside template
+      try {
+        session.deleteTimeseries("root.sg.loc1.sector.x");
+        fail();
+      } catch (StatementExecutionException e) {
+        assertTrue(
+            e.getMessage()
+                .contains("Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void initTreeTemplate(ISession session, String path)
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    Template sessionTemplate = new Template("treeTemplate", true);
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
+        new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    TemplateNode mNodeY =
+        new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    iNodeGPS.addChild(mNodeX);
+    iNodeGPS.addChild(mNodeY);
+
+    iNodeV.addChild(mNodeX);
+    iNodeV.addChild(mNodeY);
+    iNodeV.addChild(iNodeGPS);
+
+    sessionTemplate.addToTemplate(iNodeGPS);
+    sessionTemplate.addToTemplate(iNodeV);
+    sessionTemplate.addToTemplate(mNodeX);
+    sessionTemplate.addToTemplate(mNodeY);
+
+    session.setStorageGroup(path);
+    session.createSchemaTemplate(sessionTemplate);
+    session.setSchemaTemplate("treeTemplate", path);
+  }
+
+  @Test
+  @Category({ClusterIT.class})
+  public void countWithTemplateTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      initTreeTemplate(session, "root.sg.loc");
+
+      List<String> measurements = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+      Set<String> checkSet = new HashSet<>();
+      SessionDataSet dataSet;
+
+      // invoke template template
+
+      measurements.add("x");
+      measurements.add("y");
+      values.add("1.0");
+      values.add("2.0");
+
+      session.insertAlignedRecord("root.sg.loc.area", 1L, measurements, values);
+      session.insertAlignedRecord("root.sg.loc", 1L, measurements, values);
+
+      dataSet = session.executeQueryStatement("show timeseries");
+
+      checkSet.add("root.sg.loc.x");
+      checkSet.add("root.sg.loc.y");
+      checkSet.add("root.sg.loc.GPS.x");
+      checkSet.add("root.sg.loc.GPS.y");
+      checkSet.add("root.sg.loc.vehicle.GPS.x");
+      checkSet.add("root.sg.loc.vehicle.GPS.y");
+      checkSet.add("root.sg.loc.vehicle.x");
+      checkSet.add("root.sg.loc.vehicle.x");
+
+      checkSet.add("root.sg.loc.area.x");
+      checkSet.add("root.sg.loc.area.y");
+      checkSet.add("root.sg.loc.area.GPS.x");
+      checkSet.add("root.sg.loc.area.GPS.y");
+      checkSet.add("root.sg.loc.area.vehicle.GPS.x");
+      checkSet.add("root.sg.loc.area.vehicle.GPS.y");
+      checkSet.add("root.sg.loc.area.vehicle.x");
+      checkSet.add("root.sg.loc.area.vehicle.x");
+
+      while (dataSet.hasNext()) {
+        checkSet.remove(dataSet.next().getFields().get(0).toString());
+      }
+
+      assertTrue(checkSet.isEmpty());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -151,6 +151,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -670,30 +671,27 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateContinuousQuery(IoTDBSqlParser.CreateContinuousQueryContext ctx) {
     CreateContinuousQueryOperator createContinuousQueryOperator =
         new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
-    createContinuousQueryOperator.setContinuousQueryName(parseIdentifier(ctx.cqId.getText()));
+
+    createContinuousQueryOperator.setQuerySql(ctx.getText());
+
+    createContinuousQueryOperator.setContinuousQueryName(
+        parseIdentifier(ctx.continuousQueryName.getText()));
 
     if (ctx.resampleClause() != null) {
       parseResampleClause(ctx.resampleClause(), createContinuousQueryOperator);
     }
 
-    if (ctx.timeoutPolicyClause() != null) {
-      throw new SQLParserException("CQ: CQ does not support to set timeout policy before v0.14.");
-    }
-
-    parseCqSelectIntoClause(ctx.selectStatement(), createContinuousQueryOperator);
+    parseCqSelectIntoClause(ctx.cqSelectIntoClause(), createContinuousQueryOperator);
 
     StringBuilder sb = new StringBuilder();
     sb.append("select ");
-    sb.append(ctx.selectStatement().selectClause().getText().substring(6));
+    sb.append(ctx.cqSelectIntoClause().selectClause().getText().substring(6));
     sb.append(" from ");
-    sb.append(ctx.selectStatement().fromClause().prefixPath(0).getText());
+    sb.append(ctx.cqSelectIntoClause().fromClause().prefixPath(0).getText());
 
     sb.append(" group by ([now() - ");
     String groupByInterval =
-        ((IoTDBSqlParser.GroupByTimeStatementContext) ctx.selectStatement().specialClause())
-            .groupByTimeClause()
-            .interval
-            .getText();
+        ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION_LITERAL().getText();
     if (createContinuousQueryOperator.getForInterval() == 0) {
       sb.append(groupByInterval);
     } else {
@@ -733,7 +731,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   public void parseCqSelectIntoClause(
-      IoTDBSqlParser.SelectStatementContext ctx,
+      IoTDBSqlParser.CqSelectIntoClauseContext ctx,
       CreateContinuousQueryOperator createContinuousQueryOperator) {
     queryOp = new GroupByQueryOperator();
 
@@ -747,7 +745,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new SQLParserException("CQ: CQ currently does not support multiple series.");
     }
 
-    parseCqGroupByTimeClause(ctx.specialClause(), createContinuousQueryOperator);
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), createContinuousQueryOperator);
 
     if (queryOp.isGroupByLevel()) {
       int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
@@ -757,36 +755,29 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
 
-    createContinuousQueryOperator.setTargetPath(parseIntoPath(ctx.intoClause().intoPath(0)));
+    createContinuousQueryOperator.setTargetPath(parseIntoPath(ctx.intoPath()));
     createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
   public void parseCqGroupByTimeClause(
-      IoTDBSqlParser.SpecialClauseContext ctx,
-      CreateContinuousQueryOperator createContinuousQueryOperator) {
-    if (!(ctx instanceof IoTDBSqlParser.GroupByTimeStatementContext)) {
-      throw new SQLParserException("CQ: Query body in CQ must be group by time query.");
-    }
-    IoTDBSqlParser.GroupByTimeClauseContext groupByCtx =
-        ((IoTDBSqlParser.GroupByTimeStatementContext) ctx).groupByTimeClause();
-
+      CqGroupByTimeClauseContext ctx, CreateContinuousQueryOperator createContinuousQueryOperator) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
 
     long groupByInterval =
-        parseTimeUnitOrSlidingStep(groupByCtx.interval.getText(), true, groupByClauseComponent);
+        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent);
     groupByClauseComponent.setUnit(groupByInterval);
     createContinuousQueryOperator.setGroupByTimeInterval(groupByInterval);
-    createContinuousQueryOperator.setGroupByTimeIntervalString(groupByCtx.interval.getText());
+    createContinuousQueryOperator.setGroupByTimeIntervalString(ctx.DURATION_LITERAL().getText());
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
     groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
 
     groupByClauseComponent.setLeftCRightO(true);
 
-    if (groupByCtx.LEVEL() != null && groupByCtx.INTEGER_LITERAL() != null) {
-      int[] levels = new int[groupByCtx.INTEGER_LITERAL().size()];
-      for (int i = 0; i < groupByCtx.INTEGER_LITERAL().size(); i++) {
-        levels[i] = Integer.parseInt(groupByCtx.INTEGER_LITERAL().get(i).getText());
+    if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
+      int[] levels = new int[ctx.INTEGER_LITERAL().size()];
+      for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
+        levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
       }
       groupByClauseComponent.setLevels(levels);
     }
@@ -796,10 +787,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
-    if (ctx.RANGE() != null) {
-      throw new SQLParserException("CQ: CQ does not support to set RANGE before v0.14.");
-    }
-
     if (ctx.DURATION_LITERAL().size() == 1) {
       if (ctx.EVERY() != null) {
         operator.setEveryInterval(
@@ -816,8 +803,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     if (ctx.BOUNDARY() != null) {
-      operator.setFirstExecutionTimeBoundary(
-          parseTimeValue(ctx.timeValue(), DateTimeUtils.currentTime()));
+      operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
     }
   }
 
@@ -950,7 +936,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitDropContinuousQuery(IoTDBSqlParser.DropContinuousQueryContext ctx) {
     DropContinuousQueryOperator dropContinuousQueryOperator =
         new DropContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_DROP);
-    dropContinuousQueryOperator.setContinuousQueryName(parseIdentifier(ctx.cqId.getText()));
+    dropContinuousQueryOperator.setContinuousQueryName(
+        parseIdentifier(ctx.continuousQueryName.getText()));
     return dropContinuousQueryOperator;
   }
 

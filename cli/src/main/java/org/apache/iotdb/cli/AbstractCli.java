@@ -19,6 +19,7 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -554,7 +555,7 @@ public abstract class AbstractCli {
             }
           }
           // output tracing activity
-          if (((IoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
+          if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
             maxSizeList = new ArrayList<>(2);
             lists = cacheTracingInfo(resultSet, maxSizeList);
             outputTracingInfo(lists, maxSizeList);
@@ -580,7 +581,7 @@ public abstract class AbstractCli {
    * @param columnCount the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
    * @param zoneId your time zone
-   * @return {@literal List<List<String>> result}
+   * @return List<List<String>> result
    * @throws SQLException throw exception
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -681,8 +682,8 @@ public abstract class AbstractCli {
     maxSizeList.add(0, ACTIVITY_STR.length());
     maxSizeList.add(1, ELAPSED_TIME_STR.length());
 
-    List<String> activityList = ((IoTDBJDBCResultSet) resultSet).getActivityList();
-    List<Long> elapsedTimeList = ((IoTDBJDBCResultSet) resultSet).getElapsedTimeList();
+    List<String> activityList = ((AbstractIoTDBJDBCResultSet) resultSet).getActivityList();
+    List<Long> elapsedTimeList = ((AbstractIoTDBJDBCResultSet) resultSet).getElapsedTimeList();
     String[] statisticsInfoList = {
       "seriesPathNum", "seqFileNum", "unSeqFileNum", "seqChunkInfo", "unSeqChunkInfo", "pageNumInfo"
     };
@@ -692,7 +693,7 @@ public abstract class AbstractCli {
       if (i == activityList.size() - 1) {
         // cache Statistics
         for (String infoName : statisticsInfoList) {
-          String info = ((IoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
+          String info = ((AbstractIoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
           lists.get(0).add(info);
           lists.get(1).add("");
           if (info.length() > maxSizeList.get(0)) {

@@ -46,9 +46,9 @@ public class ClientPoolFactory {
           new SyncDataNodeInternalServiceClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isCnRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getCnSelectorNumOfClientManager())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
           new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
     }
@@ -63,9 +63,9 @@ public class ClientPoolFactory {
           new AsyncDataNodeInternalServiceClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isCnRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getCnSelectorNumOfClientManager())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
               ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
@@ -81,9 +81,9 @@ public class ClientPoolFactory {
           new AsyncConfigNodeHeartbeatServiceClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isCnRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getCnSelectorNumOfClientManager())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
               ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeHeartbeatServiceClient>()
@@ -101,9 +101,9 @@ public class ClientPoolFactory {
           new AsyncDataNodeHeartbeatServiceClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isCnRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getCnSelectorNumOfClientManager())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
               ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeHeartbeatServiceClient>()

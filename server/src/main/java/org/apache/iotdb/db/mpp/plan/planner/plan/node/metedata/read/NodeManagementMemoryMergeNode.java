@@ -110,9 +110,4 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new NodeManagementMemoryMergeNode(planNodeId, data);
   }
-
-  @Override
-  public String toString() {
-    return String.format("NodeManagementMemoryMergeNode-%s", this.getPlanNodeId());
-  }
 }

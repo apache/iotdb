@@ -39,7 +39,5 @@ public interface IRouter {
    *     sorting result have higher priority.
    */
   Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
-      List<TRegionReplicaSet> replicaSets,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Map<Integer, Long> dataNodeLoadScoreMap);
+      List<TRegionReplicaSet> replicaSets);
 }

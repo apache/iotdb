@@ -94,9 +94,4 @@ public class DoubleLiteral extends Literal {
   public Binary getBinary() {
     return new Binary(String.valueOf(value));
   }
-
-  @Override
-  public String toString() {
-    return String.valueOf(value);
-  }
 }

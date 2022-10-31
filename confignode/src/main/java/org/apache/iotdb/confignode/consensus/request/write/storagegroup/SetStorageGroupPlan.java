@@ -48,7 +48,7 @@ public class SetStorageGroupPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.SetStorageGroup.ordinal());
     ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(schema, stream);
   }
 

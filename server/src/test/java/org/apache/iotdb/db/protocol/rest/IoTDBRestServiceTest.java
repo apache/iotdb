@@ -37,7 +37,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
@@ -53,8 +52,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-// Move it to integration-test
-@Ignore
 @FixMethodOrder(MethodSorters.JVM)
 public class IoTDBRestServiceTest {
   @Before

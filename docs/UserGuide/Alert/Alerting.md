@@ -372,7 +372,7 @@ by `org.apache.iotdb.trigger.ClusterAlertingExample` java class.
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
   AS "org.apache.iotdb.trigger.AlertingExample"
-  USING URI 'http://jar/ClusterAlertingExample.jar'
+  USING FILE '/jar/ClusterAlertingExample.jar'
 ```
 
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -68,7 +68,7 @@ public class IoTDBTracingIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("tracing select s1 from root.sg_tracing.d1");
-      IoTDBJDBCResultSet resultSet = (IoTDBJDBCResultSet) statement.getResultSet();
+      AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
       Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));

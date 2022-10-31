@@ -24,17 +24,13 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class UDFInformation {
 
   private String functionName;
   private String className;
   private boolean isBuiltin;
-
-  private boolean isUsingURI;
 
   private String jarName;
   private String jarMD5;
@@ -46,25 +42,17 @@ public class UDFInformation {
     this.className = className;
   }
 
-  public UDFInformation(
-      String functionName, String className, boolean isBuiltin, boolean isUsingURI) {
+  public UDFInformation(String functionName, String className, boolean isBuiltin) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
-    this.isUsingURI = isUsingURI;
   }
 
   public UDFInformation(
-      String functionName,
-      String className,
-      boolean isBuiltin,
-      boolean isUsingURI,
-      String jarName,
-      String jarMD5) {
+      String functionName, String className, boolean isBuiltin, String jarName, String jarMD5) {
     this.functionName = functionName.toUpperCase();
     this.className = className;
     this.isBuiltin = isBuiltin;
-    this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.jarMD5 = jarMD5;
   }
@@ -89,10 +77,6 @@ public class UDFInformation {
     return jarMD5;
   }
 
-  public boolean isUsingURI() {
-    return isUsingURI;
-  }
-
   public void setFunctionName(String functionName) {
     this.functionName = functionName.toUpperCase();
   }
@@ -113,10 +97,6 @@ public class UDFInformation {
     this.jarMD5 = jarMD5;
   }
 
-  public void setUsingURI(boolean usingURI) {
-    isUsingURI = usingURI;
-  }
-
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -128,11 +108,8 @@ public class UDFInformation {
     ReadWriteIOUtils.write(functionName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(isBuiltin, outputStream);
-    ReadWriteIOUtils.write(isUsingURI, outputStream);
-    if (isUsingURI) {
-      ReadWriteIOUtils.write(jarName, outputStream);
-      ReadWriteIOUtils.write(jarMD5, outputStream);
-    }
+    ReadWriteIOUtils.write(jarName, outputStream);
+    ReadWriteIOUtils.write(jarMD5, outputStream);
   }
 
   public static UDFInformation deserialize(ByteBuffer byteBuffer) {
@@ -140,34 +117,8 @@ public class UDFInformation {
     udfInformation.setFunctionName(ReadWriteIOUtils.readString(byteBuffer));
     udfInformation.setClassName(ReadWriteIOUtils.readString(byteBuffer));
     udfInformation.setBuiltin(ReadWriteIOUtils.readBool(byteBuffer));
-    boolean isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
-    udfInformation.setUsingURI(isUsingURI);
-    if (isUsingURI) {
-      udfInformation.setJarName(ReadWriteIOUtils.readString(byteBuffer));
-      udfInformation.setJarMD5(ReadWriteIOUtils.readString(byteBuffer));
-    }
+    udfInformation.setJarName(ReadWriteIOUtils.readString(byteBuffer));
+    udfInformation.setJarMD5(ReadWriteIOUtils.readString(byteBuffer));
     return udfInformation;
-  }
-
-  public static UDFInformation deserialize(InputStream inputStream) throws IOException {
-    return deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    UDFInformation that = (UDFInformation) o;
-    return isBuiltin == that.isBuiltin
-        && Objects.equals(functionName, that.functionName)
-        && Objects.equals(className, that.className)
-        && Objects.equals(jarName, that.jarName)
-        && Objects.equals(jarMD5, that.jarMD5);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(functionName);
   }
 }

@@ -104,7 +104,7 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public String toString() {
     return String.format(
-        "SchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
+        "SchemaFetchScan-%s:[StorageGroup: %s, DataRegion: %s]",
         this.getPlanNodeId(),
         storageGroup,
         PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));

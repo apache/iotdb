@@ -59,7 +59,7 @@ public class UpdateRegionLocationPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.UpdateRegionLocation.ordinal());
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(oldNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(newNode, stream);

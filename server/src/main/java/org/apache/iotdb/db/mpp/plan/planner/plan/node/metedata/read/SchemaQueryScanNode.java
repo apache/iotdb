@@ -139,7 +139,7 @@ public abstract class SchemaQueryScanNode extends SourceNode {
   @Override
   public String toString() {
     return String.format(
-        "SchemaQueryScanNode-%s:[Path: %s, DataRegion: %s]",
+        "SchemaQueryScan-%s:[Path: %s, DataRegion: %s]",
         this.getPlanNodeId(), path, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 

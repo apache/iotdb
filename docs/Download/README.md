@@ -100,143 +100,22 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
-## About Version 1.0
+## About 0.14.0-preview1
 
-**After we release version 1.0, how to upgrade from v.13.x to v1.0.x?**
+- 0.14.0-preview1 is a preview release for the new IoTDB cluster, which you could download and have a try.
+  We DO NOT recommend using preview release on-line, and DO NOT upgrade 0.13 to a preview release.
+  - The UserGuide of 0.14.0-preview is still in the **latest**.
+
+**<font color=red>NOTE: Do not use the stop-confignode.bat/sh script, which has a bug that may kill other process</font>**:
+ 
+
+- **After we release 0.14.0, how to upgrade from v.13.x to v0.14.x?**
   
-  - **Version 1.0 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual)**.
-  - In order to ensure the stability of UDF-related APIs, in version 1.0, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
-
-### Detailed description of Syntax Conventions in version 1.0 that are different from older versions
-
-In previous versions of syntax conventions, we introduced some ambiguity to maintain compatibility. To avoid ambiguity, we have designed new syntax conventions, and this chapter will explain the issues with the old syntax conventions and why we made the change.
-
-#### Issues related to identifier
-
-In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 1.0, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores.**
-
-#### Issues related to node name
-
-In previous versions of syntax conventions, when do you need to add quotation marks to the node name, and the rules for using single and double quotation marks or backquotes are complicated. We have unified usage of quotation marks in the new syntax conventions. For details, please refer to the relevant chapters of this document.
-
-##### When to use single and double quotes and backquotes
-
-In previous versions of syntax conventions, path node names were defined as identifiers, but when the path separator . was required in the path node name, single or double quotes were required. This goes against the rule that identifiers are quoted using backquotes.
-
-```SQL
-# In the previous syntax convention, if you need to create a time series root.sg.`www.baidu.com`, you need to use the following statement:
-create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
-
-# The time series created by this statement is actually root.sg.'www.baidu.com', that is, the quotation marks are stored together. The three nodes of the time series are {"root","sg","'www.baidu.com'"}.
-
-# In the query statement, if you want to query the data of the time series, the query statement is as follows:
-select 'www.baidu.com' from root.sg;
-```
-
-**In the 1.0 syntax conventions, special node names are uniformly quoted using backquotes:**
-
-```SQL
-# In the new syntax convention, if you need to create a time series root.sg.`www.baidu.com`, the syntax is as follows:
-create root.sg.`www.baidu.com` with 'datatype' = 'BOOLEAN', 'encoding' = 'PLAIN'
-
-#To query the time series, you can use the following statement:
-select `www.baidu.com` from root.sg;
-```
-
-##### The issues of using quotation marks inside node names
-
-In previous versions of syntax conventions, when single quotes ' and double quotes " are used in path node names, they need to be escaped with a backslash \, and the backslashes will be stored as part of the path node name. Other identifiers do not have this restriction, causing inconsistency.
-
-```SQL
-# Create time series root.sg.\"a
-create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
-
-# Query time series root.sg.\"a
-select `\"a` from root.sg;
-+-----------------------------+-----------+
-|                         Time|root.sg.\"a|
-+-----------------------------+-----------+
-|1970-01-01T08:00:00.004+08:00|       test|
-+-----------------------------+-----------+
-```
-
-**In the 1.0 syntax convention, special path node names are uniformly referenced with backquotes.** When single and double quotes are used in path node names, there is no need to add backslashes to escape, and backquotes need to be double-written. For details, please refer to the relevant chapters of the new syntax conventions.
-
-#### Issues related to session API
-
-##### Session API syntax restrictions
-
-In version 0.13, the restrictions on using path nodes in non-SQL interfaces are as follows:
-
-- The node names in path or path prefix as parameter:
-  - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
-  - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
-  - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
-
-**In version 1.0, restrictions on using path nodes in non-SQL interfaces were enhanced:**
-
-- **The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement, escaping is required here.**
-- **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
-
-##### Inconsistent handling of string escaping between SQL and Session interfaces
-
-**In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings.** For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter).**
-
-The following are examples of inconsistencies in the old syntax conventions:
-
-Use Session's insertRecord method to insert data into the time series root.sg.a
-
-```Java
-// session insert
-String deviceId = "root.sg";
-List<String> measurements = new ArrayList<>();
-measurements.add("a");
-String[] values = new String[]{"\\\\", "\\t", "\\\"", "\\u96d5"};
-for(int i = 0; i <= values.length; i++){
-  List<String> valueList = new ArrayList<>();
-  valueList.add(values[i]);
-  session.insertRecord(deviceId, i + 1, measurements, valueList);
-  }
-```
-
-Query the data of root.sg.a, you can see that there is no unescaping:
-
-```Plain%20Text
-// query result
-+-----------------------------+---------+
-|                         Time|root.sg.a|
-+-----------------------------+---------+
-|1970-01-01T08:00:00.001+08:00|       \\|
-|1970-01-01T08:00:00.002+08:00|       \t|
-|1970-01-01T08:00:00.003+08:00|       \"|
-|1970-01-01T08:00:00.004+08:00|   \u96d5|
-+-----------------------------+---------+
-```
-
-Instead use SQL to insert data into root.sg.a:
-
-```SQL
-# SQL insert
-insert into root.sg(time, a) values(1, "\\")
-insert into root.sg(time, a) values(2, "\t")
-insert into root.sg(time, a) values(3, "\"")
-insert into root.sg(time, a) values(4, "\u96d5")
-```
-
-Query the data of root.sg.a, you can see that the string is unescaped:
-
-```Plain%20Text
-// query result
-+-----------------------------+---------+
-|                         Time|root.sg.a|
-+-----------------------------+---------+
-|1970-01-01T08:00:00.001+08:00|        \|
-|1970-01-01T08:00:00.002+08:00|         |
-|1970-01-01T08:00:00.003+08:00|        "|
-|1970-01-01T08:00:00.004+08:00|       雕|
-+-----------------------------+---------+
-```
-
+  - **Version 0.14 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual), the incompatibilities are as follows:**
+    - **Identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. If the above occurs in an identifier, use backquotes to enclose the identifier.**
+    - **Identifiers no longer support quoting with single and double quotes, please use backquotes instead.**
+    - **When using the path node name in the Session API, it needs to be consistent with that in the SQL statement. If the path node is a pure number 111, it needs to be enclosed in backquotes in the SQL statement and written as \`111\`, then when using the Session API, the corresponding parameter also needs to be written as \`111\`.**
+  - In order to ensure the stability of UDF-related APIs, in version 0.14, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
 
 ## How to Upgrade
 
@@ -312,6 +191,7 @@ Query the data of root.sg.a, you can see that the string is unescaped:
   directories point to the folders set in v0.8.x (or the backup folder). 
   You can also modify other settings if you want. 
   * Stop IoTDB v0.8 instance, and start v0.9.x, then the IoTDB will upgrade data file format automatically.
+
 
 
 ​       

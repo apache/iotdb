@@ -51,27 +51,25 @@ public class SystemMetrics implements IMetricSet {
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Set<FileStore> fileStores = new HashSet<>();
-  private boolean isDataNode = false;
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
-  public SystemMetrics(boolean isDataNode) {
-    this.isDataNode = isDataNode;
-    this.osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  public SystemMetrics() {
+    osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     collectSystemCpuInfo(metricService);
+    collectSystemDiskInfo(metricService);
     collectSystemMemInfo(metricService);
 
-    // register disk related metrics and start to collect the value of metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture && isDataNode) {
-      collectSystemDiskInfo(metricService);
+    // finally start to update the value of some metrics in async way
+    if (metricService.isEnable() && null == currentServiceFuture) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
-              this::collectDiskMetrics,
+              this::collect,
               1,
               MetricConfigDescriptor.getInstance()
                   .getMetricConfig()
@@ -83,15 +81,13 @@ public class SystemMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
-    if (currentServiceFuture != null && isDataNode) {
+    if (currentServiceFuture != null) {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
 
     removeSystemCpuInfo(metricService);
-    if (isDataNode) {
-      removeSystemDiskInfo(metricService);
-    }
+    removeSystemDiskInfo(metricService);
     removeSystemMemInfo(metricService);
   }
 
@@ -226,7 +222,7 @@ public class SystemMetrics implements IMetricSet {
         MetricType.GAUGE, Metric.SYS_DISK_FREE_SPACE.toString(), Tag.NAME.toString(), "system");
   }
 
-  private void collectDiskMetrics() {
+  private void collect() {
     long sysTotalSpace = 0L;
     long sysFreeSpace = 0L;
 

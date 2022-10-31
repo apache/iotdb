@@ -60,4 +60,4 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          cd client-py && pytest .
+          cd client-py && pytest --ignore=tests/test_template.py

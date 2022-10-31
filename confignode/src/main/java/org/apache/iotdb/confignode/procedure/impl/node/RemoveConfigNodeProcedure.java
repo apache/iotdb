@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +116,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.getTypeCode());
+    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(removedConfigNode, stream);
   }

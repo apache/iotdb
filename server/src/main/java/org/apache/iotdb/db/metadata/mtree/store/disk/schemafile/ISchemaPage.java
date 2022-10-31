@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundExceptio
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -114,8 +113,6 @@ public interface ISchemaPage {
   void syncPageBuffer();
 
   void flushPageToChannel(FileChannel channel) throws IOException;
-
-  void flushPageToStream(OutputStream stream) throws IOException;
 
   String inspect() throws SegmentNotFoundException;
 

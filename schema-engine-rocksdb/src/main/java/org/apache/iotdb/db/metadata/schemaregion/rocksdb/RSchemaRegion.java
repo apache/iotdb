@@ -2052,12 +2052,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     throw new UnsupportedOperationException();
   }

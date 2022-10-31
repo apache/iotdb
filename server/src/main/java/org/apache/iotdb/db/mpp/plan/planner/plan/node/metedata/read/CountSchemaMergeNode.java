@@ -58,9 +58,4 @@ public class CountSchemaMergeNode extends AbstractSchemaMergeNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitCountMerge(this, context);
   }
-
-  @Override
-  public String toString() {
-    return String.format("CountSchemaMergeNode-%s", this.getPlanNodeId());
-  }
 }

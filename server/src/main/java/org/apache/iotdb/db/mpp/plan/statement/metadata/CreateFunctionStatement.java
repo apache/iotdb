@@ -34,26 +34,19 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
   private final String udfName;
   private final String className;
 
-  private String uriString;
+  private final String jarPath;
 
+  /** usingURI == true indicates that jarPath is a URI */
   private final boolean usingURI;
 
-  public CreateFunctionStatement(String udfName, String className, boolean usingURI) {
-    super();
-    statementType = StatementType.CREATE_FUNCTION;
-    this.udfName = udfName;
-    this.className = className;
-    this.usingURI = usingURI;
-  }
-
   public CreateFunctionStatement(
-      String udfName, String className, boolean usingURI, String uriString) {
+      String udfName, String className, String jarPath, boolean usingURI) {
     super();
     statementType = StatementType.CREATE_FUNCTION;
     this.udfName = udfName;
     this.className = className;
+    this.jarPath = jarPath;
     this.usingURI = usingURI;
-    this.uriString = uriString;
   }
 
   public String getUdfName() {
@@ -64,8 +57,8 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
     return className;
   }
 
-  public String getUriString() {
-    return uriString;
+  public String getJarPath() {
+    return jarPath;
   }
 
   public boolean isUsingURI() {

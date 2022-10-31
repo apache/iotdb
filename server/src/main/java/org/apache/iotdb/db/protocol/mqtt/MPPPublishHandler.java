@@ -18,7 +18,6 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,7 +32,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.control.clientsession.MqttClientSession;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -59,9 +58,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
-      new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Long> clientIdToSessionIdMap = new ConcurrentHashMap<>();
   private final PayloadFormatter payloadFormat;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -84,17 +81,15 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
-    if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
+    if (!clientIdToSessionIdMap.containsKey(msg.getClientID())) {
       try {
-        MqttClientSession session = new MqttClientSession(msg.getClientID());
-        SESSION_MANAGER.login(
-            session,
-            msg.getUsername(),
-            new String(msg.getPassword()),
-            ZoneId.systemDefault().toString(),
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-            IoTDBConstant.ClientVersion.V_0_13);
-        clientIdToSessionMap.put(msg.getClientID(), session);
+        BasicOpenSessionResp basicOpenSessionResp =
+            SESSION_MANAGER.openSession(
+                msg.getUsername(),
+                new String(msg.getPassword()),
+                ZoneId.systemDefault().toString(),
+                TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+        clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
       } catch (TException e) {
         throw new RuntimeException(e);
       }
@@ -103,19 +98,19 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
-    if (null != session) {
-      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+    Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
+    if (null != sessionId) {
+      SESSION_MANAGER.closeSession(sessionId);
     }
   }
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
-    if (!clientIdToSessionMap.containsKey(clientId)) {
+    if (!clientIdToSessionIdMap.containsKey(clientId)) {
       return;
     }
-    MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
+    long sessionId = clientIdToSessionIdMap.get(msg.getClientID());
     ByteBuf payload = msg.getPayload();
     String topic = msg.getTopicName();
     String username = msg.getUsername();
@@ -150,17 +145,17 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         statement.setNeedInferType(true);
         statement.setAligned(false);
 
-        tsStatus = AuthorityChecker.checkAuthority(statement, session);
+        tsStatus = AuthorityChecker.checkAuthority(statement, sessionId);
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOG.warn(tsStatus.message);
         } else {
-          long queryId = SESSION_MANAGER.requestQueryId();
+          long queryId = SESSION_MANAGER.requestQueryId(false);
           ExecutionResult result =
               Coordinator.getInstance()
                   .execute(
                       statement,
                       queryId,
-                      SESSION_MANAGER.getSessionInfo(session),
+                      SESSION_MANAGER.getSessionInfo(sessionId),
                       "",
                       partitionFetcher,
                       schemaFetcher,

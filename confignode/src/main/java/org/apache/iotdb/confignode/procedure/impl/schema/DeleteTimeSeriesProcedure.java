@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -220,7 +220,7 @@ public class DeleteTimeSeriesProcedure
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
         getLeaderDataNodeRegionGroupMap(
-            env.getConfigManager().getLoadManager().getLatestRegionLeaderMap(),
+            env.getConfigManager().getPartitionManager().getAllLeadership(),
             relatedSchemaRegionGroup);
 
     // fetch schema black list by dataNode
@@ -468,7 +468,7 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode());
+    stream.writeInt(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);

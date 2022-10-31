@@ -589,7 +589,7 @@ public class DateTimeUtils {
           res *= 30 * 86_400_000L;
         } else {
           Calendar calendar = Calendar.getInstance();
-          calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
           calendar.add(Calendar.MONTH, (int) (value));
           res = calendar.getTimeInMillis() - currentTime;
@@ -744,7 +744,7 @@ public class DateTimeUtils {
    */
   public static long calcIntervalByMonth(long startTime, long numMonths) {
     Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     boolean isLastDayOfMonth =
         calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);

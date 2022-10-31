@@ -96,7 +96,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
+  protected void remove(MetricType type, MetricInfo metricInfo) {
     Meter.Type meterType = transformType(type);
     Meter.Id id =
         new Meter.Id(

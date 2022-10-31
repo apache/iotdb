@@ -42,8 +42,4 @@ public class HavingCondition extends StatementNode {
   public void setPredicate(Expression predicate) {
     this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
   }
-
-  public String toSQLString() {
-    return "HAVING " + predicate.toString();
-  }
 }

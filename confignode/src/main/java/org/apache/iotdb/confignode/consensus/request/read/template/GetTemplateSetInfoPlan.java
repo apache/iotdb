@@ -50,7 +50,7 @@ public class GetTemplateSetInfoPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(getType().getPlanType(), stream);
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.GetTemplateSetInfo.ordinal(), stream);
     ReadWriteIOUtils.write(patternList.size(), stream);
     for (PartialPath pattern : patternList) {
       pattern.serialize(stream);

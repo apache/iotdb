@@ -22,6 +22,6 @@ public class PipeSinkBeingUsedException extends PipeSinkException {
   public PipeSinkBeingUsedException(String pipeSinkName, String pipeName) {
     super(
         String.format(
-            "Can not drop PIPESINK [%s], because PIPE [%s] is using it.", pipeSinkName, pipeName));
+            "Can not drop PIPESINK %s, because PIPE %s is using it.", pipeSinkName, pipeName));
   }
 }

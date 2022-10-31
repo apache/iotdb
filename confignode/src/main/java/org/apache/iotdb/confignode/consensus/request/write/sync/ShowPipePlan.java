@@ -45,7 +45,7 @@ public class ShowPipePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.ShowPipe.ordinal());
     BasicStructureSerDeUtil.write(pipeName, stream);
   }
 

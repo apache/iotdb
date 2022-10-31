@@ -259,20 +259,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void setSchemaTemplateId(int schemaTemplateId) {}
 
   @Override
-  public void preUnsetSchemaTemplate() {}
-
-  @Override
-  public void rollbackUnsetSchemaTemplate() {}
-
-  @Override
-  public boolean isSchemaTemplatePreUnset() {
-    return false;
-  }
-
-  @Override
-  public void unsetSchemaTemplate() {}
-
-  @Override
   public void setUseTemplate(boolean useTemplate) {}
 
   @Override

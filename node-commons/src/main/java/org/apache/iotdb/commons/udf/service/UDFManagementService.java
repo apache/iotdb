@@ -128,11 +128,11 @@ public class UDFManagementService {
       LOGGER.warn(errorMessage);
       throw new UDFManagementException(errorMessage);
     } else {
-      if (UDFExecutableManager.getInstance().hasFileUnderInstallDir(udfInformation.getJarName())
+      if (UDFExecutableManager.getInstance().hasFileUnderLibRoot(udfInformation.getJarName())
           && isLocalJarConflicted(udfInformation)) {
         String errorMessage =
             String.format(
-                "Failed to register function %s, "
+                "Failed to registered function %s, "
                     + "because existed md5 of jar file for function %s is different from the new jar file. ",
                 functionName, functionName);
         LOGGER.warn(errorMessage);
@@ -165,7 +165,7 @@ public class UDFManagementService {
             DigestUtils.md5Hex(
                 Files.newInputStream(
                     Paths.get(
-                        UDFExecutableManager.getInstance().getInstallDir()
+                        UDFExecutableManager.getInstance().getLibRoot()
                             + File.separator
                             + udfInformation.getJarName())));
         // save the md5 in a txt under trigger temporary lib
@@ -186,7 +186,7 @@ public class UDFManagementService {
 
   private void saveJarFile(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
-      UDFExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
+      UDFExecutableManager.getInstance().writeToLibDir(byteBuffer, jarName);
     }
   }
 
@@ -197,8 +197,9 @@ public class UDFManagementService {
   public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
-    try (UDFClassLoader currentActiveClassLoader =
-        UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+    try {
+      UDFClassLoader currentActiveClassLoader =
+          UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
       updateAllRegisteredClasses(currentActiveClassLoader);
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
@@ -267,18 +268,8 @@ public class UDFManagementService {
     }
 
     if (!information.isBuiltin()) {
-      try {
-        Thread.currentThread()
-            .setContextClassLoader(
-                UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader());
-      } catch (IOException e) {
-        String errorMessage =
-            String.format(
-                "Failed to set UDFClassLoader for UDF %s(%s) , because %s",
-                functionName, information.getClassName(), e);
-        LOGGER.warn(errorMessage, e);
-        throw new RuntimeException(e);
-      }
+      Thread.currentThread()
+          .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
     }
 
     try {

@@ -23,9 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -64,6 +67,7 @@ public class NodeInfoTest {
   public void testSnapshot() throws TException, IOException {
     registerConfigNodes();
     registerDataNodes();
+    recordNodeStatistics();
     nodeInfo.processTakeSnapshot(snapshotDir);
 
     NodeInfo nodeInfo1 = new NodeInfo();
@@ -105,5 +109,14 @@ public class NodeInfoTest {
         new TEndPoint("127.0.0.1", 8800 + flag),
         new TEndPoint("127.0.0.1", 9900 + flag),
         new TEndPoint("127.0.0.1", 11000 + flag));
+  }
+
+  private void recordNodeStatistics() {
+    UpdateLoadStatisticsPlan updateLoadStatisticsPlan = new UpdateLoadStatisticsPlan();
+    for (int i = 0; i < 6; i++) {
+      updateLoadStatisticsPlan.putNodeStatistics(
+          i, new NodeStatistics(i, NodeStatus.Running, null));
+    }
+    nodeInfo.updateNodeStatistics(updateLoadStatisticsPlan);
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -156,11 +157,15 @@ import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTarg
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
   private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
+  private final MPPQueryContext context;
 
-  public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+  public AnalyzeVisitor(
+      IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher, MPPQueryContext context) {
+    this.context = context;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
   }
@@ -287,24 +292,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Filter globalTimeFilter = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
+      Expression predicate = queryStatement.getWhereCondition().getPredicate();
       WhereCondition whereCondition = queryStatement.getWhereCondition();
-      Expression predicate = whereCondition.getPredicate();
-
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
-      globalTimeFilter = resultPair.left;
-      hasValueFilter = resultPair.right;
-
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
 
-      // set where condition to null if predicate is true or time filter.
-      if (!hasValueFilter
-          || (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
-              && Boolean.parseBoolean(predicate.getExpressionString()))) {
+      // set where condition to null if predicate is true
+      if (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
+          && Boolean.parseBoolean(predicate.getExpressionString())) {
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
       }
+      globalTimeFilter = resultPair.left;
+      hasValueFilter = resultPair.right;
     }
     if (queryStatement.isGroupByTime()) {
       GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
@@ -1056,11 +1058,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
       throw new SemanticException("Group by month doesn't support order by time desc now.");
     }
-    if (!queryStatement.isCqQueryBody()
-        && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
-      throw new SemanticException(
-          "The query time range should be specified in the GROUP BY TIME clause.");
-    }
     analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
   }
 
@@ -1108,7 +1105,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
 
     List<PartialPath> sourceDevices = new ArrayList<>(deviceSet);
     List<Expression> sourceColumns =
@@ -1156,7 +1152,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isSelectInto()) {
       return;
     }
-    queryStatement.setOrderByComponent(null);
 
     List<Expression> sourceColumns =
         outputExpressions.stream()
@@ -1704,7 +1699,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new VerifyMetadataException(
             String.format("Sg level %d is longer than device %s.", sgLevel, device));
       }
-      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
+      for (int i = 0; i < sgLevel; i++) {
+        sgNodes[i] = nodes[i];
+      }
       PartialPath sgPath = new PartialPath(sgNodes);
       sgSet.add(sgPath);
     }
@@ -1717,7 +1714,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void executeSetStorageGroupStatement(Statement statement) throws LoadFileException {
-    long queryId = SessionManager.getInstance().requestQueryId();
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult result =
         Coordinator.getInstance()
             .execute(

@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -218,7 +218,7 @@ public class RegionMigrateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.REGION_MIGRATE_PROCEDURE.getTypeCode());
+    stream.writeInt(ProcedureFactory.ProcedureType.REGION_MIGRATE_PROCEDURE.ordinal());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(originalDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);

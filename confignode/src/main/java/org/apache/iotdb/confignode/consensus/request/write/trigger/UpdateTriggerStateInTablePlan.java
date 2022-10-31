@@ -61,7 +61,7 @@ public class UpdateTriggerStateInTablePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(getType().ordinal());
 
     ReadWriteIOUtils.write(triggerName, stream);
     ReadWriteIOUtils.write(triggerState.getValue(), stream);

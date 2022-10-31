@@ -35,12 +35,9 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -59,7 +56,6 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -485,33 +481,6 @@ public class RegionWriteExecutor {
         }
       } else {
         return super.visitInternalCreateTimeSeries(node, context);
-      }
-    }
-
-    @Override
-    public RegionExecutionResult visitActivateTemplate(
-        ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
-      // activate template operation shall be blocked by unset template check
-      context.getRegionWriteValidationRWLock().readLock().lock();
-      try {
-        Pair<Template, PartialPath> templateSetInfo =
-            ClusterTemplateManager.getInstance().checkTemplateSetInfo(node.getActivatePath());
-        if (templateSetInfo == null) {
-          // The activation has already been validated during analyzing.
-          // That means the template is being unset during the activation plan transport.
-          RegionExecutionResult result = new RegionExecutionResult();
-          result.setAccepted(false);
-          String message =
-              String.format(
-                  "Template is being unsetting from path %s. Please try activating later.",
-                  node.getPathSetTemplate());
-          result.setMessage(message);
-          result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
-          return result;
-        }
-        return super.visitActivateTemplate(node, context);
-      } finally {
-        context.getRegionWriteValidationRWLock().readLock().unlock();
       }
     }
   }

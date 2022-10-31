@@ -143,11 +143,4 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     return new TimeSeriesCountNode(
         planNodeId, path, isPrefixPath, key, value, isContains, templateMap);
   }
-
-  @Override
-  public String toString() {
-    return String.format(
-        "TimeSeriesCountNode-%s:[DataRegion: %s]",
-        this.getPlanNodeId(), this.getRegionReplicaSet());
-  }
 }

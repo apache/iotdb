@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
 
@@ -70,19 +69,5 @@ public class IntoItem extends StatementNode {
 
   public List<PartialPath> getIntoPaths() {
     return intoMeasurements.stream().map(intoDevice::concatNode).collect(Collectors.toList());
-  }
-
-  public String toSQLString() {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append(intoDevice);
-    sqlBuilder.append('(');
-    for (int i = 0; i < intoMeasurements.size(); i++) {
-      sqlBuilder.append(intoMeasurements.get(i));
-      if (i < intoMeasurements.size() - 1) {
-        sqlBuilder.append(',').append(SPACE);
-      }
-    }
-    sqlBuilder.append(')');
-    return sqlBuilder.toString();
   }
 }

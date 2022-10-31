@@ -58,7 +58,7 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
-    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 
   @SuppressWarnings("resource")
@@ -72,7 +72,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -110,7 +110,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 123 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -127,7 +127,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 123 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -144,7 +144,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 123.133 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -161,7 +161,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 123.456 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -178,7 +178,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < false and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -195,7 +195,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 'abcde' and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -212,7 +212,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < \"abcde\" and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
@@ -228,7 +228,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01", argument.getValue().getStatement());
   }
@@ -243,7 +243,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE time > 1233",
         argument.getValue().getStatement());
@@ -259,7 +259,7 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE time > 2017-11-01T00:13:00",
         argument.getValue().getStatement());
@@ -277,7 +277,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE status = '134' and temperature = 1333",
         argument.getValue().getStatement());
@@ -296,7 +296,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE status = '\\044e' || temperature = -1323.0",
         argument.getValue().getStatement());
@@ -320,7 +320,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(12324,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
@@ -344,7 +344,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,\"abc\")",
         argument.getValue().getStatement());
@@ -367,7 +367,7 @@ public class IoTDBPreparedStatementTest {
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
-    verify(client).executeStatementV2(argument.capture());
+    verify(client).executeStatement(argument.capture());
     assertEquals(
         "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
         argument.getValue().getStatement());

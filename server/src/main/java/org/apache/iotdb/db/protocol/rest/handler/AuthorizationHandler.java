@@ -18,9 +18,9 @@
 package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -28,10 +28,10 @@ import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 
-  public Response checkAuthority(SecurityContext securityContext, Statement statement) {
-    String userName = securityContext.getUserPrincipal().getName();
+  public Response checkAuthority(SecurityContext securityContext, PhysicalPlan physicalPlan) {
     try {
-      if (!AuthorityChecker.checkAuthorization(statement, userName)) {
+      if (!SessionManager.getInstance()
+          .checkAuthorization(physicalPlan, securityContext.getUserPrincipal().getName())) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()

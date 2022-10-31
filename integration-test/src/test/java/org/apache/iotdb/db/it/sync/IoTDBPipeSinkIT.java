@@ -56,7 +56,7 @@ public class IoTDBPipeSinkIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String expectedHeader = ColumnHeaderConstant.COLUMN_PIPESINK_TYPE + ",";
-      String[] expectedRetSet = new String[] {"IoTDB,"};
+      String[] expectedRetSet = new String[] {"IoTDB,", "ExternalPipe,"};
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINKTYPE")) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }

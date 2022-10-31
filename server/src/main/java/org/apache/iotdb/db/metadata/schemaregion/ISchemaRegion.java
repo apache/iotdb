@@ -443,8 +443,6 @@ public interface ISchemaRegion {
 
   void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
 
-  int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
-
   // endregion
 
   // region Interfaces for Trigger

@@ -218,23 +218,17 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public void changeConfig(Properties properties) {
     try {
-      String commonConfigPath = getCommonConfigPath();
-      Properties commonConfigProperties = new Properties();
-      try (InputStream confInput = Files.newInputStream(Paths.get(commonConfigPath))) {
-        commonConfigProperties.load(confInput);
-      }
       String configPath = getConfigPath();
       Properties configProperties = new Properties();
       try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
         configProperties.load(confInput);
       }
-      commonConfigProperties.putAll(configProperties);
-      updateConfig(commonConfigProperties);
+      updateConfig(configProperties);
       if (properties != null && !properties.isEmpty()) {
-        commonConfigProperties.putAll(properties);
+        configProperties.putAll(properties);
       }
       try (FileWriter confOutput = new FileWriter(configPath)) {
-        commonConfigProperties.store(confOutput, null);
+        configProperties.store(confOutput, null);
       }
     } catch (IOException ex) {
       fail("Change the config of data node failed. " + ex);
@@ -269,8 +263,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected abstract String getConfigPath();
-
-  protected abstract String getCommonConfigPath();
 
   protected abstract void updateConfig(Properties properties);
 

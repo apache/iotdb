@@ -22,14 +22,16 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.apache.thrift.TException;
 
-import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +52,7 @@ public class SessionDataSet implements AutoCloseable {
       long statementId,
       IClientRPCService.Iface client,
       long sessionId,
-      List<ByteBuffer> queryResult,
+      TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -59,12 +61,11 @@ public class SessionDataSet implements AutoCloseable {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            true,
             queryId,
             statementId,
             client,
             sessionId,
-            queryResult,
+            queryDataSet,
             SessionConfig.DEFAULT_FETCH_SIZE,
             0);
   }
@@ -78,7 +79,7 @@ public class SessionDataSet implements AutoCloseable {
       long statementId,
       IClientRPCService.Iface client,
       long sessionId,
-      List<ByteBuffer> queryResult,
+      TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp,
       long timeout) {
     this.ioTDBRpcDataSet =
@@ -88,12 +89,11 @@ public class SessionDataSet implements AutoCloseable {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            true,
             queryId,
             statementId,
             client,
             sessionId,
-            queryResult,
+            queryDataSet,
             SessionConfig.DEFAULT_FETCH_SIZE,
             timeout);
   }
@@ -134,31 +134,32 @@ public class SessionDataSet implements AutoCloseable {
               - START_INDEX;
 
       if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
+        byte[] valueBytes = ioTDBRpcDataSet.values[loc];
         TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);
         switch (dataType) {
           case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(datasetColumnIndex);
+            boolean booleanValue = BytesUtils.bytesToBool(valueBytes);
             field.setBoolV(booleanValue);
             break;
           case INT32:
-            int intValue = ioTDBRpcDataSet.getInt(datasetColumnIndex);
+            int intValue = BytesUtils.bytesToInt(valueBytes);
             field.setIntV(intValue);
             break;
           case INT64:
-            long longValue = ioTDBRpcDataSet.getLong(datasetColumnIndex);
+            long longValue = BytesUtils.bytesToLong(valueBytes);
             field.setLongV(longValue);
             break;
           case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(datasetColumnIndex);
+            float floatValue = BytesUtils.bytesToFloat(valueBytes);
             field.setFloatV(floatValue);
             break;
           case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(datasetColumnIndex);
+            double doubleValue = BytesUtils.bytesToDouble(valueBytes);
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
+            field.setBinaryV(new Binary(valueBytes));
             break;
           default:
             throw new UnSupportedDataTypeException(
@@ -171,7 +172,7 @@ public class SessionDataSet implements AutoCloseable {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.getTimestamp().getTime(), outFields);
+    return new RowRecord(BytesUtils.bytesToLong(ioTDBRpcDataSet.time), outFields);
   }
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {

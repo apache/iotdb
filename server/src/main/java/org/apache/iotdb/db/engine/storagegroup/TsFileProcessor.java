@@ -182,9 +182,7 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode =
-        WALManager.getInstance()
-            .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
@@ -206,9 +204,7 @@ public class TsFileProcessor {
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode =
-        WALManager.getInstance()
-            .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);

@@ -159,6 +159,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, temperature) aligned values (5000, 20.1)");
       statement.execute(
           "insert into root.t1.wf01.wt01(time, temperature) aligned values (6000, 22)");
+      statement.close();
 
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());

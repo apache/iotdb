@@ -477,7 +477,7 @@ public class SchemaFileTest {
     sf.writeMNode(ent1);
 
     Assert.assertEquals(
-        1020, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
+        1024, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
 
     ent1.getChildren().clear();
 
@@ -877,12 +877,11 @@ public class SchemaFileTest {
   // endregion
 
   // region IMNode Shortcut
-  // open for package
-  static void addMeasurementChild(IMNode par, String mid) {
+  private void addMeasurementChild(IMNode par, String mid) {
     par.addChild(getMeasurementNode(par, mid, mid + "alias"));
   }
 
-  static IMeasurementSchema getSchema(String id) {
+  private IMeasurementSchema getSchema(String id) {
     return new MeasurementSchema(id, TSDataType.FLOAT);
   }
 
@@ -897,33 +896,33 @@ public class SchemaFileTest {
     return cur;
   }
 
-  static IMNode getInternalWithSegAddr(IMNode par, String name, long segAddr) {
+  private IMNode getInternalWithSegAddr(IMNode par, String name, long segAddr) {
     IMNode node = new EntityMNode(par, name);
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(segAddr);
     return node;
   }
 
-  static IMNode getMeasurementNode(IMNode par, String name, String alias) {
+  private IMNode getMeasurementNode(IMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
     IMeasurementMNode mNode =
         MeasurementMNode.getMeasurementMNode(par.getAsEntityMNode(), name, schema, alias);
     return mNode;
   }
 
-  static void addNodeToUpdateBuffer(IMNode par, IMNode child) {
+  private static void addNodeToUpdateBuffer(IMNode par, IMNode child) {
     ICachedMNodeContainer.getCachedMNodeContainer(par).remove(child.getName());
     ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(child);
     ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(child.getName());
     ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(child.getName());
   }
 
-  static void moveToUpdateBuffer(IMNode par, String childName) {
+  private static void moveToUpdateBuffer(IMNode par, String childName) {
     ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(par.getChild(childName));
     ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(childName);
     ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(childName);
   }
 
-  static long getSegAddrInContainer(IMNode par) {
+  private static long getSegAddrInContainer(IMNode par) {
     return ICachedMNodeContainer.getCachedMNodeContainer(par).getSegmentAddress();
   }
 
@@ -931,7 +930,7 @@ public class SchemaFileTest {
 
   // region Tree Constructor
 
-  static IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
+  private IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
     String[] sgPathNodes = PathUtils.splitPathToDetachedNodes(sgPath);
     IMNode upperNode = null;
     for (String name : sgPathNodes) {
@@ -973,7 +972,7 @@ public class SchemaFileTest {
     return internalNode;
   }
 
-  static IMNode getFlatTree(int flatSize, String id) {
+  private IMNode getFlatTree(int flatSize, String id) {
     IMNode root = new InternalMNode(null, "root");
     IMNode test = new InternalMNode(root, "test");
     IMNode internalNode = new StorageGroupEntityMNode(null, "vRoot1", 0L);
@@ -991,7 +990,7 @@ public class SchemaFileTest {
     return internalNode;
   }
 
-  static IMNode getVerticalTree(int height, String id) {
+  private IMNode getVerticalTree(int height, String id) {
     IMNode trueRoot = new InternalMNode(null, "root");
     trueRoot.addChild(new InternalMNode(trueRoot, "sgvt"));
     IMNode root = new StorageGroupEntityMNode(null, "vt", 0L);
@@ -1006,7 +1005,7 @@ public class SchemaFileTest {
     return root;
   }
 
-  static Iterator<IMNode> getTreeBFT(IMNode root) {
+  private Iterator<IMNode> getTreeBFT(IMNode root) {
     return new Iterator<IMNode>() {
       Queue<IMNode> queue = new LinkedList<IMNode>();
 

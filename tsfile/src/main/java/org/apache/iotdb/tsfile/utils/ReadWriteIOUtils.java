@@ -35,12 +35,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
@@ -860,32 +858,6 @@ public class ReadWriteIOUtils {
     write(size, outputStream);
     for (String s : list) {
       write(s, outputStream);
-    }
-  }
-
-  /** read integer set with self define length. */
-  public static Set<Integer> readIntegerSet(ByteBuffer buffer) {
-    int size = readInt(buffer);
-    if (size <= 0) {
-      return Collections.emptySet();
-    }
-    Set<Integer> set = new HashSet<>();
-    for (int i = 0; i < size; i++) {
-      set.add(readInt(buffer));
-    }
-    return set;
-  }
-
-  /** write integer set with self define length. */
-  public static void writeIntegerSet(Set<Integer> set, OutputStream outputStream)
-      throws IOException {
-    if (set == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
-    }
-    int size = set.size();
-    write(size, outputStream);
-    for (int i : set) {
-      write(i, outputStream);
     }
   }
 

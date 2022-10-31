@@ -83,7 +83,7 @@ public class TsFileLoader implements ILoader {
       statement.setVerifySchema(true);
       statement.setAutoCreateSchema(true);
 
-      long queryId = SessionManager.getInstance().requestQueryId();
+      long queryId = SessionManager.getInstance().requestQueryId(false);
       ExecutionResult result =
           Coordinator.getInstance()
               .execute(

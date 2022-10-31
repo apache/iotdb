@@ -429,8 +429,9 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         } catch (Exception e) {
           logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
-              configNodeWrapper.getIpAndPortString());
+              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
+              configNodeWrapper.getIpAndPortString(),
+              e);
         }
 
         // Sleep 1s before next retry

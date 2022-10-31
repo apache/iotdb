@@ -150,7 +150,6 @@ public class SyncService implements IService {
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
       throws PipeSinkException {
-    logger.info("Add PIPESINK {}", createPipeSinkStatement);
     TSStatus status = syncInfoFetcher.addPipeSink(createPipeSinkStatement);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
@@ -158,7 +157,6 @@ public class SyncService implements IService {
   }
 
   public void dropPipeSink(String name) throws PipeSinkException {
-    logger.info("Execute DROP PIPESINK {}", name);
     TSStatus status = syncInfoFetcher.dropPipeSink(name);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
@@ -174,7 +172,7 @@ public class SyncService implements IService {
   // region Interfaces and Implementation of Pipe
 
   public synchronized void addPipe(PipeInfo pipeInfo) throws PipeException {
-    logger.info("Execute CREATE PIPE {}", pipeInfo);
+    logger.info("Execute CREATE PIPE {}", pipeInfo.getPipeName());
     long currentTime = DateTimeUtils.currentTime();
     if (pipeInfo instanceof TsFilePipeInfo) {
       // TODO(sync): move check logic to PipeInfo#validate()
@@ -234,28 +232,6 @@ public class SyncService implements IService {
     }
   }
 
-  // only used for roll back
-  public synchronized void stopPipe(String pipeName, long createTime) {
-    Pipe runningPipe;
-    try {
-      runningPipe = getPipe(pipeName);
-      if (runningPipe.getCreateTime() == createTime) {
-        stopPipe(pipeName);
-      } else {
-        logger.warn(
-            "Skip execute stop PIPE {} with createTime {} because of createTime mismatch.",
-            pipeName,
-            createTime);
-      }
-    } catch (PipeException e) {
-      logger.warn(
-          "Skip execute stop PIPE {} with createTime {} because {}",
-          pipeName,
-          createTime,
-          e.getMessage());
-    }
-  }
-
   public synchronized void startPipe(String pipeName) throws PipeException {
     logger.info("Execute start PIPE {}", pipeName);
     Pipe runningPipe = getPipe(pipeName);
@@ -270,28 +246,6 @@ public class SyncService implements IService {
     TSStatus status = syncInfoFetcher.startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.message);
-    }
-  }
-
-  // only used for roll back
-  public synchronized void startPipe(String pipeName, long createTime) {
-    Pipe runningPipe;
-    try {
-      runningPipe = getPipe(pipeName);
-      if (runningPipe.getCreateTime() == createTime) {
-        startPipe(pipeName);
-      } else {
-        logger.warn(
-            "Skip execute start PIPE {} with createTime {} because of createTime mismatch.",
-            pipeName,
-            createTime);
-      }
-    } catch (PipeException e) {
-      logger.warn(
-          "Skip execute start PIPE {} with createTime {} because {}",
-          pipeName,
-          createTime,
-          e.getMessage());
     }
   }
 
@@ -322,33 +276,11 @@ public class SyncService implements IService {
     }
   }
 
-  // only used for roll back
-  public synchronized void dropPipe(String pipeName, long createTime) {
-    Pipe runningPipe;
-    try {
-      runningPipe = getPipe(pipeName);
-      if (runningPipe.getCreateTime() == createTime) {
-        dropPipe(pipeName);
-      } else {
-        logger.warn(
-            "Skip execute drop PIPE {} with createTime {} because of createTime mismatch.",
-            pipeName,
-            createTime);
-      }
-    } catch (PipeException e) {
-      logger.warn(
-          "Skip execute drop PIPE {} with createTime {} because {}",
-          pipeName,
-          createTime,
-          e.getMessage());
-    }
-  }
-
   public List<PipeInfo> getAllPipeInfos() {
     return syncInfoFetcher.getAllPipeInfos();
   }
 
-  private Pipe getPipe(String pipeName) throws PipeNotExistException {
+  private Pipe getPipe(String pipeName) throws PipeException {
     if (!pipes.containsKey(pipeName)) {
       throw new PipeNotExistException(pipeName);
     } else {
@@ -385,28 +317,24 @@ public class SyncService implements IService {
     }
   }
 
-  // TODO: Only used for LocalConfigNode. Delete it after delete LocalConfigNode.
   public List<TShowPipeInfo> showPipe(String pipeName) {
     boolean showAll = StringUtils.isEmpty(pipeName);
     List<TShowPipeInfo> list = new ArrayList<>();
     // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || pipeName.equals(pipe.getPipeName())) {
-        list.add(pipe.getTShowPipeInfo());
+        TShowPipeInfo tPipeInfo =
+            new TShowPipeInfo(
+                pipe.getCreateTime(),
+                pipe.getPipeName(),
+                SyncConstant.ROLE_SENDER,
+                pipe.getPipeSinkName(),
+                pipe.getStatus().name(),
+                pipe.getMessageType().name());
+        list.add(tPipeInfo);
       }
     }
-    list.addAll(showPipeForReceiver(pipeName));
-    return list;
-  }
-
-  /**
-   * // show pipe in receiver
-   *
-   * @param pipeName null means show all pipe
-   */
-  public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
-    boolean showAll = StringUtils.isEmpty(pipeName);
-    List<TShowPipeInfo> list = new ArrayList<>();
+    // show pipe in receiver
     for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
       if (showAll || pipeName.equals(identityInfo.getPipeName())) {
         TShowPipeInfo tPipeInfo =
@@ -416,7 +344,6 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
                 PipeStatus.RUNNING.name(),
-                String.format("storageGroup='%s'", identityInfo.getStorageGroup()),
                 // TODO: implement receiver message
                 PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);
@@ -603,8 +530,8 @@ public class SyncService implements IService {
           "Recover PIPE [{}] whose status is {}",
           pipeInfo.getPipeName(),
           pipeInfo.getStatus().name());
-      if (PipeStatus.PARTIAL_CREATE.equals(pipeInfo.getStatus())
-          || PipeStatus.DROP.equals(pipeInfo.getStatus())) {
+      if (PipeStatus.PREPARE_CREATE.equals(pipeInfo.getStatus())
+          || PipeStatus.PREPARE_DROP.equals(pipeInfo.getStatus())) {
         // skip
         logger.info(
             "Skip PIPE [{}] because its status is {}",
@@ -621,12 +548,12 @@ public class SyncService implements IService {
           pipe.start();
           break;
         case STOP:
-        case PARTIAL_START:
-        case PARTIAL_STOP:
+        case PREPARE_START:
+        case PREPARE_STOP:
           pipe.stop();
           break;
-        case PARTIAL_CREATE:
-        case DROP:
+        case PREPARE_CREATE:
+        case PREPARE_DROP:
           throw new PipeException("Unexpected status " + pipeInfo.getStatus().name());
         default:
           throw new IOException(

@@ -113,7 +113,6 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_PIPE_ROLE = "role";
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_ATTRIBUTES = "attributes";
   public static final String COLUMN_PIPE_MESSAGE = "message";
 
   // column names for select into
@@ -121,11 +120,6 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_SOURCE_COLUMN = "source column";
   public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
   public static final String COLUMN_WRITTEN = "written";
-
-  // column names for show cq
-  public static final String COLUMN_CQ_ID = "cq id";
-  public static final String COLUMN_QUERY = "query";
-  public static final String COLUMN_STATE = "state";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -286,7 +280,6 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
@@ -310,10 +303,4 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32));
-
-  public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
-      ImmutableList.of(
-          new ColumnHeader(COLUMN_CQ_ID, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_QUERY, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STATE, TSDataType.TEXT));
 }

@@ -35,10 +35,10 @@ import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.control.clientsession.IClientSession;
-import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -60,7 +60,7 @@ public class DataNodeInternalClient {
 
   private final ISchemaFetcher SCHEMA_FETCHER;
 
-  private final IClientSession session;
+  private final long sessionId;
 
   public DataNodeInternalClient(SessionInfo sessionInfo) {
     if (config.isClusterMode()) {
@@ -72,15 +72,13 @@ public class DataNodeInternalClient {
     }
 
     try {
-      session = new InternalClientSession("SELECT_INTO");
+      sessionId =
+          SESSION_MANAGER.requestSessionId(
+              sessionInfo.getUserName(),
+              sessionInfo.getZoneId(),
+              IoTDBConstant.ClientVersion.V_0_13);
 
-      SESSION_MANAGER.supplySession(
-          session,
-          sessionInfo.getUserName(),
-          sessionInfo.getZoneId(),
-          IoTDBConstant.ClientVersion.V_0_13);
-
-      LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), session);
+      LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), sessionId);
     } catch (Exception e) {
       LOGGER.warn("User {} opens internal Session failed.", sessionInfo.getUserName(), e);
       throw new IntoProcessException(
@@ -91,18 +89,18 @@ public class DataNodeInternalClient {
   public TSStatus insertTablets(InsertMultiTabletsStatement statement) {
     try {
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, session);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
 
       // call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId();
+      long queryId = SESSION_MANAGER.requestQueryId(false);
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
               queryId,
-              SESSION_MANAGER.getSessionInfo(session),
+              SESSION_MANAGER.getSessionInfo(sessionId),
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
@@ -114,6 +112,18 @@ public class DataNodeInternalClient {
   }
 
   public void close() {
-    SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+    SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
+    SESSION_MANAGER.closeSession(sessionId);
+  }
+
+  private void cleanupQueryExecution(Long queryId) {
+    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+    if (queryExecution != null) {
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.info("[CleanUpQuery]");
+        queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
+      }
+    }
   }
 }

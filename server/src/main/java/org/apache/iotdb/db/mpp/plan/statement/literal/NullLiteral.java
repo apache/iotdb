@@ -69,9 +69,4 @@ public class NullLiteral extends Literal {
   public int hashCode() {
     return getClass().hashCode();
   }
-
-  @Override
-  public String toString() {
-    return "null";
-  }
 }

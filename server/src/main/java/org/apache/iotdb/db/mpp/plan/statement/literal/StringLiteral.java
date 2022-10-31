@@ -82,9 +82,4 @@ public class StringLiteral extends Literal {
   public int hashCode() {
     return Objects.hash(value);
   }
-
-  @Override
-  public String toString() {
-    return String.format("\"%s\"", value.replace("\"", "'"));
-  }
 }

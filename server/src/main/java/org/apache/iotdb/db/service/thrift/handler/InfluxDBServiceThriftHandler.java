@@ -26,8 +26,7 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
-    implements TServerEventHandler {
+public class InfluxDBServiceThriftHandler implements TServerEventHandler {
   private final IInfluxDBServiceWithHandler impl;
 
   public InfluxDBServiceThriftHandler(IInfluxDBServiceWithHandler impl) {
@@ -40,16 +39,16 @@ public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
   }
 
   @Override
-  public ServerContext createContext(TProtocol in, TProtocol out) {
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
     // nothing
-    return super.createContext(in, out);
+    return null;
   }
 
   @Override
-  public void deleteContext(ServerContext serverContext, TProtocol in, TProtocol out) {
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
     // release resources.
     impl.handleClientExit();
-    super.deleteContext(serverContext, in, out);
   }
 
   @Override

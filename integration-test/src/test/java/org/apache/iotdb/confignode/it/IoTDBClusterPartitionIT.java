@@ -384,7 +384,6 @@ public class IoTDBClusterPartitionIT {
     }
   }
 
-  // TODO: Optimize in IOTDB-4334
   @Test
   public void testPartitionDurable() throws IOException, TException, InterruptedException {
     final int testDataNodeId = 0;

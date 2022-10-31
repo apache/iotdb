@@ -19,21 +19,14 @@
 package org.apache.iotdb.confignode.procedure.state;
 
 public enum CreateRegionGroupsState {
-
   // Create RegionGroups on remote DataNodes
   CREATE_REGION_GROUPS,
-
   // Shunt the RegionReplicas, including:
   // 1. Persist successfully created RegionGroups' record
-  // 2. Add recreate RegionReplicas task in RegionMaintainer
-  // for those RegionReplicas that failed to create, when
-  // there are more than half of RegionReplicas created successfully on the same RegionGroup
+  // 2. Recreate RegionReplicas that failed to create, when there are more than half of
+  // RegionReplicas created successfully on the same RegionGroup
   // 3. Delete redundant RegionReplicas in contrast to case 2.
   SHUNT_REGION_REPLICAS,
-
-  // Mark RegionGroupCache as available for those RegionGroups that created successfully.
-  // For DataRegionGroups that use multi-leader consensus protocol, select leader by the way
-  ACTIVATE_REGION_GROUPS,
-
+  BUILD_REGION_GROUP_CACHE,
   CREATE_REGION_GROUPS_FINISH
 }

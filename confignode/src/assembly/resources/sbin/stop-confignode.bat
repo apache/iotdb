@@ -22,17 +22,17 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^internal_port"
 %superior_dir%\conf\iotdb-confignode.properties') do (
-  set cn_internal_port=%%i
+  set internal_port=%%i
 )
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "internal_address"
 %superior_dir%\conf\iotdb-confignode.properties') do (
-  set cn_internal_address=%%i
+  set internal_address=%%i
 )
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port%') do (
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr %internal_address%:%internal_port%') do (
   taskkill /f /pid %%a
 )
 rem ps ax | grep -i 'confignode.ConfigNode' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM

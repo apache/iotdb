@@ -19,12 +19,143 @@
 
 -->
 
+# Syntax Conventions
 
-# Literal Values
+## Issues with syntax conventions in 0.13 and earlier version
+
+In previous versions of syntax conventions, we introduced some ambiguity to maintain compatibility. To avoid ambiguity, we have designed new syntax conventions, and this chapter will explain the issues with the old syntax conventions and why we made the change.
+
+### Issues related to identifier
+
+In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 0.14, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
+
+### Issues related to node name
+
+In previous versions of syntax conventions, when do you need to add quotation marks to the node name, and the rules for using single and double quotation marks or backquotes are complicated. We have unified usage of quotation marks in the new syntax conventions. For details, please refer to the relevant chapters of this document.
+
+#### When to use single and double quotes and backquotes
+
+In previous versions of syntax conventions, path node names were defined as identifiers, but when the path separator . was required in the path node name, single or double quotes were required. This goes against the rule that identifiers are quoted using backquotes.
+
+```SQL
+# In the previous syntax convention, if you need to create a time series root.sg.`www.baidu.com`, you need to use the following statement:
+create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
+
+# The time series created by this statement is actually root.sg.'www.baidu.com', that is, the quotation marks are stored together. The three nodes of the time series are {"root","sg","'www.baidu.com'"}.
+
+# In the query statement, if you want to query the data of the time series, the query statement is as follows:
+select 'www.baidu.com' from root.sg;
+```
+
+In the new syntax conventions, special node names are uniformly quoted using backquotes:
+
+```SQL
+# In the new syntax convention, if you need to create a time series root.sg.`www.baidu.com`, the syntax is as follows:
+create root.sg.`www.baidu.com` with 'datatype' = 'BOOLEAN', 'encoding' = 'PLAIN'
+
+#To query the time series, you can use the following statement:
+select `www.baidu.com` from root.sg;
+```
+
+#### The issues of using quotation marks inside node names
+
+In previous versions of syntax conventions, when single quotes ' and double quotes " are used in path node names, they need to be escaped with a backslash \, and the backslashes will be stored as part of the path node name. Other identifiers do not have this restriction, causing inconsistency.
+
+```SQL
+# Create time series root.sg.\"a
+create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
+
+# Query time series root.sg.\"a
+select `\"a` from root.sg;
++-----------------------------+-----------+
+|                         Time|root.sg.\"a|
++-----------------------------+-----------+
+|1970-01-01T08:00:00.004+08:00|       test|
++-----------------------------+-----------+
+```
+
+In the new syntax convention, special path node names are uniformly referenced with backquotes. When single and double quotes are used in path node names, there is no need to add backslashes to escape, and backquotes need to be double-written. For details, please refer to the relevant chapters of the new syntax conventions.
+
+### Issues related to session API
+
+#### Session API syntax restrictions
+
+In version 0.13, the restrictions on using path nodes in non-SQL interfaces are as follows:
+
+- The node names in path or path prefix as parameter:
+  - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+  - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+  - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+
+**In version 0.14, restrictions on using path nodes in non-SQL interfaces were enhanced:**
+
+- **The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement, escaping is required here.**
+- **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+
+#### Inconsistent handling of string escaping between SQL and Session interfaces
+
+In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings. For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter). **
+
+The following are examples of inconsistencies in the old syntax conventions:
+
+Use Session's insertRecord method to insert data into the time series root.sg.a
+
+```Java
+// session insert
+String deviceId = "root.sg";
+List<String> measurements = new ArrayList<>();
+measurements.add("a");
+String[] values = new String[]{"\\\\", "\\t", "\\\"", "\\u96d5"};
+for(int i = 0; i <= values.length; i++){
+  List<String> valueList = new ArrayList<>();
+  valueList.add(values[i]);
+  session.insertRecord(deviceId, i + 1, measurements, valueList);
+  }
+```
+
+Query the data of root.sg.a, you can see that there is no unescaping:
+
+```Plain%20Text
+// query result
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|       \\|
+|1970-01-01T08:00:00.002+08:00|       \t|
+|1970-01-01T08:00:00.003+08:00|       \"|
+|1970-01-01T08:00:00.004+08:00|   \u96d5|
++-----------------------------+---------+
+```
+
+Instead use SQL to insert data into root.sg.a:
+
+```SQL
+# SQL insert
+insert into root.sg(time, a) values(1, "\\")
+insert into root.sg(time, a) values(2, "\t")
+insert into root.sg(time, a) values(3, "\"")
+insert into root.sg(time, a) values(4, "\u96d5")
+```
+
+Query the data of root.sg.a, you can see that the string is unescaped:
+
+```Plain%20Text
+// query result
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|        \|
+|1970-01-01T08:00:00.002+08:00|         |
+|1970-01-01T08:00:00.003+08:00|        "|
+|1970-01-01T08:00:00.004+08:00|       雕|
++-----------------------------+---------+
+```
+
+## Literal Values
 
 This section describes how to write literal values in IoTDB. These include strings, numbers, timestamp values, boolean values, and NULL.
 
-## String Literals
+### String Literals
 
 > We refer to MySQL's definition of string：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
 
@@ -111,7 +242,7 @@ Usages of string literals:
 - The key/value of an attribute can be String Literal and identifier, more details can be found at **key-value pair** part. 
 
 
-### How to use quotation marks in String Literals
+#### How to use quotation marks in String Literals
 
 There are several ways to include quote characters within a string:
 
@@ -132,7 +263,7 @@ The following examples demonstrate how quoting and escaping work:
 """string"  // "string
 ```
 
-## Numeric Literals
+### Numeric Literals
 
 Number literals include integer (exact-value) literals and floating-point (approximate-value) literals.
 
@@ -146,27 +277,27 @@ The `FLOAT` and `DOUBLE` data types are floating-point types and calculations ar
 
 An integer may be used in floating-point context; it is interpreted as the equivalent floating-point number.
 
-## Timestamp Literals
+### Timestamp Literals
 
 The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps in IoTDB. For information about timestamp support in IoTDB, see [Data Type Doc](../Data-Concept/Data-Type.md).
 
 Specially, `NOW()` represents a constant timestamp that indicates the system time at which the statement began to execute.
 
-## Boolean Literals
+### Boolean Literals
 
 The constants `TRUE` and `FALSE` evaluate to 1 and 0, respectively. The constant names can be written in any lettercase.
 
-## NULL Values
+### NULL Values
 
 The `NULL` value means “no data.” `NULL` can be written in any lettercase.
 
-# Identifiers
+## Identifiers
 
-## Usage scenarios
+### Usage scenarios
 
 Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE`,`Pipe`,`PipeSink`,`alias` and other object names are known as identifiers.
 
-## Constraints
+### Constraints
 
 Below are basic constraints of identifiers, specific identifiers may have other constraints, for example, `user` should consists of more than 4 characters. 
 
@@ -182,7 +313,7 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 - Identifier contains special characters.
 - Identifier that is a real number.
 
-## How to use quotations marks in quoted identifiers
+### How to use quotations marks in quoted identifiers
 
 `'` and `"` can be used directly in quoted identifiers.
 
@@ -198,7 +329,7 @@ create schema template `t1``t`
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
-## Examples
+### Examples
 
 Examples of case in which quoted identifier is used ：
 
@@ -279,11 +410,11 @@ Examples of case in which quoted identifier is used ：
 - The key/value of an attribute can be String Literal and identifier, more details can be found at **key-value pair** part. 
 
 
-# Node Names in Path
+## Node Names in Path
 
 Node name is a special identifier, it can also be wildcard `*` and `**`. When creating timeseries, node name can not be wildcard. In query statment, you can use wildcard to match one or more nodes of path.
 
-## Wildcard
+### Wildcard
 
 `*` represents one node. For example, `root.vehicle.*.sensor1` represents a 4-node path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
@@ -315,7 +446,7 @@ select a*b from root.sg
 |Time|root.sg.a * root.sg.b|
 ```
 
-## Identifier
+### Identifier
 
 When node name is not wildcard, it is a identifier, which means the constraints on it is the same as described in Identifier part.
 
@@ -378,7 +509,7 @@ Results:
 +-----------------------------+-----------+
 ```
 
-# Key-Value Pair
+## Key-Value Pair
 
 **The key/value of an attribute can be constant(including string) and identifier. **
 
@@ -477,13 +608,13 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
 ```
 
-# Keywords and Reserved Words
+## Keywords and Reserved Words
 
 Keywords are words that have significance in SQL. Keywords can be used as an identifier. Certain keywords, such as TIME/TIMESTAMP and ROOT, are reserved and cannot use as identifiers.
 
 [Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB.
 
-# Session、TsFile API
+## Session、TsFile API
 
 When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, storage group, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand. Code example could be found at: `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
@@ -582,7 +713,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-# Detailed Definitions of Lexical and Grammar
+## Detailed Definitions of Lexical and Grammar
 
 Please read the lexical and grammar description files in our code repository:
 

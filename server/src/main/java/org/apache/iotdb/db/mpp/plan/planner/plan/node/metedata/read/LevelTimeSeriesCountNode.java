@@ -144,11 +144,4 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), level);
   }
-
-  @Override
-  public String toString() {
-    return String.format(
-        "LevelTimeSeriesCountNode-%s:[DataRegion: %s]",
-        this.getPlanNodeId(), this.getRegionReplicaSet());
-  }
 }

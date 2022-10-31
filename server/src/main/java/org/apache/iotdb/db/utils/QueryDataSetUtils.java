@@ -38,7 +38,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -372,32 +371,6 @@ public class QueryDataSetUtils {
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
-  }
-
-  // To fetch required amounts of data and combine them through List
-  public static List<ByteBuffer> convertQueryResultByFetchSize(
-      IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
-    int rowCount = 0;
-    List<ByteBuffer> res = new ArrayList<>();
-    while (rowCount < fetchSize) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
-      if (!optionalByteBuffer.isPresent()) {
-        break;
-      }
-      ByteBuffer byteBuffer = optionalByteBuffer.get();
-      byteBuffer.mark();
-      int valueColumnCount = byteBuffer.getInt();
-      for (int i = 0; i < valueColumnCount; i++) {
-        byteBuffer.get();
-      }
-      int positionCount = byteBuffer.getInt();
-      byteBuffer.reset();
-      if (positionCount != 0) {
-        res.add(byteBuffer);
-      }
-      rowCount += positionCount;
-    }
-    return res;
   }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {

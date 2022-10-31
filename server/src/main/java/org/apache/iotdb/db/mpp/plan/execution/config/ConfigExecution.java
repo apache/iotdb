@@ -37,7 +37,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -47,8 +46,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -70,8 +67,6 @@ public class ConfigExecution implements IQueryExecution {
   private final IConfigTask task;
   private IConfigTaskExecutor configTaskExecutor;
 
-  private static final TsBlockSerde serde = new TsBlockSerde();
-
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
     this.executor = executor;
@@ -80,10 +75,7 @@ public class ConfigExecution implements IQueryExecution {
     this.task =
         statement.accept(
             new ConfigTaskVisitor(),
-            new ConfigTaskVisitor.TaskContext(
-                context.getQueryId().getId(),
-                context.getSql(),
-                context.getSession() == null ? null : context.getSession().getUserName()));
+            new ConfigTaskVisitor.TaskContext(context.getQueryId().getId()));
     this.resultSetConsumed = false;
     if (config.isClusterMode()) {
       configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
@@ -176,19 +168,6 @@ public class ConfigExecution implements IQueryExecution {
     if (!resultSetConsumed) {
       resultSetConsumed = true;
       return Optional.of(resultSet);
-    }
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
-    if (!resultSetConsumed) {
-      resultSetConsumed = true;
-      try {
-        return Optional.of(serde.serialize(resultSet));
-      } catch (IOException e) {
-        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
-      }
     }
     return Optional.empty();
   }

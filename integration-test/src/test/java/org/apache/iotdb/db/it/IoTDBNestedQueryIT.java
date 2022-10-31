@@ -68,7 +68,8 @@ public class IoTDBNestedQueryIT {
     EnvFactory.getEnv().initBeforeClass();
     createTimeSeries();
     generateData();
-    registerUDF();
+    // todo : add back when finishes new udf management
+    // registerUDF();
   }
 
   @AfterClass

@@ -25,7 +25,6 @@ import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -437,14 +436,6 @@ public class Session implements ISession {
   public synchronized void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     defaultSessionConnection.setTimeZone(zoneId);
-    this.zoneId = ZoneId.of(zoneId);
-  }
-
-  /** Only changes the member variable of the Session object without sending it to server. */
-  @Override
-  public void setTimeZoneOfSession(String zoneId) {
-    defaultSessionConnection.setTimeZoneOfSession(zoneId);
-    this.zoneId = ZoneId.of(zoneId);
   }
 
   @Override
@@ -3256,11 +3247,6 @@ public class Session implements ISession {
   @Override
   public void setEnableRedirection(boolean enableRedirection) {
     this.enableRedirection = enableRedirection;
-  }
-
-  @Override
-  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
-    return defaultSessionConnection.fetchAllConnections();
   }
 
   public static class Builder {

@@ -29,8 +29,6 @@ import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
-
-  public static final String CONFIG_NAME = "iotdb-common.properties";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -90,7 +88,7 @@ public class CommonConfig {
    * <p>Notice: if this property is changed, previous created storage group which are not set TTL
    * will also be affected. Unit: millisecond
    */
-  private long defaultTTLInMs = Long.MAX_VALUE;
+  private long defaultTTL = Long.MAX_VALUE;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -105,7 +103,7 @@ public class CommonConfig {
           : 1;
 
   /** whether to use thrift compression. */
-  private boolean isCnRpcThriftCompressionEnabled = false;
+  private boolean isRpcThriftCompressionEnabled = false;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -238,36 +236,36 @@ public class CommonConfig {
     this.systemFileStorageFs = systemFileStorageFs;
   }
 
-  public long getDefaultTTLInMs() {
-    return defaultTTLInMs;
+  public long getDefaultTTL() {
+    return defaultTTL;
   }
 
-  public void setDefaultTTLInMs(long defaultTTLInMs) {
-    this.defaultTTLInMs = defaultTTLInMs;
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 
-  public int getCnConnectionTimeoutInMS() {
+  public int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
 
-  public void setCnConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getCnSelectorNumOfClientManager() {
+  public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
 
-  public void setCnSelectorNumOfClientManager(int selectorNumOfClientManager) {
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isCnRpcThriftCompressionEnabled() {
-    return isCnRpcThriftCompressionEnabled;
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
   }
 
-  public void setCnRpcThriftCompressionEnabled(boolean cnRpcThriftCompressionEnabled) {
-    isCnRpcThriftCompressionEnabled = cnRpcThriftCompressionEnabled;
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {

@@ -36,6 +36,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 @Category({ClusterIT.class})
 public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
 
+  private static int numOfPointsPerPage;
+
   @BeforeClass
   public static void setUp() throws Exception {
     selectIntoInsertTabletPlanRowLimit =

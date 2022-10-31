@@ -55,7 +55,7 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(getType().ordinal());
 
     stream.writeInt(storageGroupPathPattern.length);
     for (String node : storageGroupPathPattern) {

@@ -165,6 +165,10 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public void removeQueryExecution(Long queryId) {
+    queryExecutionMap.remove(queryId);
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
@@ -187,17 +191,6 @@ public class Coordinator {
 
   public QueryId createQueryId() {
     return queryIdGenerator.createNextQueryId();
-  }
-
-  public void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
-    if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
-        queryExecutionMap.remove(queryId);
-      }
-    }
   }
 
   public static Coordinator getInstance() {

@@ -70,7 +70,7 @@ public class IoTDBDatabaseMetadataTest {
     when(connection.createStatement())
         .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
     databaseMetaData = new IoTDBDatabaseMetadata(connection, client, sessionId);
-    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.getProperties()).thenReturn(properties);
     when(execStatementResp.getStatus()).thenReturn(successStatus);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
@@ -129,7 +129,7 @@ public class IoTDBDatabaseMetadataTest {
     columnsList.add("storage group");
     Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
     columnNameIndexMap.put("storage group", 0);
-    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
+    when(client.executeQueryStatement(any(TSExecuteStatementReq.class)))
         .thenReturn(execStatementResp);
     when(execStatementResp.getStatus()).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     when(execStatementResp.getQueryId()).thenReturn(queryId);

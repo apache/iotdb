@@ -39,7 +39,7 @@ public class InfluxDBMetaManagerFactory {
       }
       return NewInfluxDBMetaManager.getInstance();
     } else {
-      throw new UnsupportedOperationException();
+      return InfluxDBMetaManager.getInstance();
     }
   }
 }

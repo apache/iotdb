@@ -20,13 +20,16 @@
 package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public class UDFExecutableManager extends ExecutableManager {
 
@@ -34,6 +37,36 @@ public class UDFExecutableManager extends ExecutableManager {
 
   private UDFExecutableManager(String temporaryLibRoot, String udfLibRoot) {
     super(temporaryLibRoot, udfLibRoot);
+  }
+
+  public void removeUDFJarFromExtLibDir(String functionName) {
+    FileUtils.deleteQuietly(getDirUnderLibRootByName(functionName));
+  }
+
+  private void downloadExecutableResources(String functionName, String className, List<String> uris)
+      throws UDFManagementException {
+    if (uris.isEmpty()) {
+      return;
+    }
+
+    try {
+      final ExecutableResource resource = request(uris);
+      try {
+        removeUDFJarFromExtLibDir(functionName);
+        moveTempDirToExtLibDir(resource, functionName);
+      } catch (Exception innerException) {
+        removeUDFJarFromExtLibDir(functionName);
+        removeFromTemporaryLibRoot(resource);
+        throw innerException;
+      }
+    } catch (Exception outerException) {
+      String errorMessage =
+          String.format(
+              "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
+              functionName.toUpperCase(), className, uris);
+      LOGGER.warn(errorMessage, outerException);
+      throw new UDFManagementException(errorMessage, outerException);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +80,6 @@ public class UDFExecutableManager extends ExecutableManager {
     if (INSTANCE == null) {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(udfLibRoot);
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(udfLibRoot + File.separator + INSTALL_DIR);
       INSTANCE = new UDFExecutableManager(temporaryLibRoot, udfLibRoot);
     }
     return INSTANCE;

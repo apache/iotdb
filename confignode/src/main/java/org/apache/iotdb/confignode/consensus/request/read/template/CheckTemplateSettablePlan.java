@@ -52,7 +52,7 @@ public class CheckTemplateSettablePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.CheckTemplateSettable.ordinal());
     ReadWriteIOUtils.write(name, stream);
     ReadWriteIOUtils.write(path, stream);
   }

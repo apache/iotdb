@@ -74,8 +74,8 @@ public class IoTDBStartCheck {
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
   private static String timestampPrecision = config.getTimestampPrecision();
 
-  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval_for_storage";
-  private static long timePartitionIntervalForStorage = config.getTimePartitionIntervalForStorage();
+  private static final String PARTITION_INTERVAL_STRING = "partition_interval";
+  private static long partitionInterval = config.getTimePartitionIntervalForStorage();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
@@ -120,26 +120,26 @@ public class IoTDBStartCheck {
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
-  private static final String INTERNAL_ADDRESS = "dn_internal_address";
+  private static final String INTERNAL_ADDRESS = "internal_address";
   private static final String internalAddress = config.getInternalAddress();
 
-  private static final String INTERNAL_PORT = "dn_internal_port";
+  private static final String INTERNAL_PORT = "internal_port";
   private static final String internalPort = String.valueOf(config.getInternalPort());
 
-  private static final String RPC_ADDRESS = "dn_rpc_address";
+  private static final String RPC_ADDRESS = "rpc_address";
   private static final String rpcAddress = config.getRpcAddress();
 
-  private static final String RPC_PORT = "dn_rpc_port";
+  private static final String RPC_PORT = "rpc_port";
   private static final String rpcPort = String.valueOf(config.getRpcPort());
 
-  private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
+  private static final String MPP_DATA_EXCHANGE_PORT = "mpp_data_exchange_port";
   private static final String mppDataExchangePort = String.valueOf(config.getMppDataExchangePort());
 
-  private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
+  private static final String SCHEMA_REGION_CONSENSUS_PORT = "schema_region_consensus_port";
   private static final String schemaRegionConsensusPort =
       String.valueOf(config.getSchemaRegionConsensusPort());
 
-  private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
+  private static final String DATA_REGION_CONSENSUS_PORT = "data_region_consensus_port";
   private static final String dataRegionConsensusPort =
       String.valueOf(config.getDataRegionConsensusPort());
 
@@ -178,19 +178,18 @@ public class IoTDBStartCheck {
     }
 
     if (!enablePartition) {
-      timePartitionIntervalForStorage = Long.MAX_VALUE;
+      partitionInterval = Long.MAX_VALUE;
     }
 
     // check partition interval
-    if (timePartitionIntervalForStorage <= 0) {
+    if (partitionInterval <= 0) {
       logger.error("Partition interval must larger than 0!");
       System.exit(-1);
     }
 
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    systemProperties.put(
-        PARTITION_INTERVAL_STRING, String.valueOf(timePartitionIntervalForStorage));
+    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
@@ -378,9 +377,8 @@ public class IoTDBStartCheck {
       throwException(ENABLE_PARTITION_STRING, enablePartition);
     }
 
-    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
-        != timePartitionIntervalForStorage) {
-      throwException(PARTITION_INTERVAL_STRING, timePartitionIntervalForStorage);
+    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
+      throwException(PARTITION_INTERVAL_STRING, partitionInterval);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {

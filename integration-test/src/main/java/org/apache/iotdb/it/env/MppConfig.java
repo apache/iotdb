@@ -80,8 +80,7 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty(
-        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
+    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 

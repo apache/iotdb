@@ -103,8 +103,8 @@ public class LoadManagerMetrics implements IMetricSet {
   private Integer getLeadershipCountByDatanode(int dataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
-    getLoadManager()
-        .getLatestRegionLeaderMap()
+    getPartitionManager()
+        .getAllLeadership()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
     return idToCountMap.get(dataNodeId);
   }
@@ -185,10 +185,6 @@ public class LoadManagerMetrics implements IMetricSet {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
-  }
-
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
   }
 
   private int getRunningConfigNodesNum(AbstractMetricService metricService) {

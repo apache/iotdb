@@ -43,10 +43,6 @@
         <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
         <!--        </fileSet>-->
         <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
             <outputDirectory>grafana-metrics-example</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
         </fileSet>

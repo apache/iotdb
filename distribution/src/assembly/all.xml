@@ -56,10 +56,6 @@
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>

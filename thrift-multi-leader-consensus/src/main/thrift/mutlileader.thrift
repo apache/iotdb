@@ -81,16 +81,6 @@ struct TSendSnapshotFragmentReq {
   5: required binary fileChunk
 }
 
-struct TWaitSyncLogCompleteReq {
-  1: required common.TConsensusGroupId consensusGroupId
-}
-
-struct TWaitSyncLogCompleteRes {
-  1: required bool complete
-  2: required i64 searchIndex
-  3: required i64 safeIndex
-}
-
 struct TSendSnapshotFragmentRes {
   1: required common.TSStatus status
 }
@@ -119,7 +109,6 @@ service MultiLeaderConsensusIService {
   TActivatePeerRes activatePeer(TActivatePeerReq req)
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
   TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)
-  TWaitSyncLogCompleteRes waitSyncLogComplete(TWaitSyncLogCompleteReq req)
   TSendSnapshotFragmentRes sendSnapshotFragment(TSendSnapshotFragmentReq req)
   TTriggerSnapshotLoadRes triggerSnapshotLoad(TTriggerSnapshotLoadReq req)
   TCleanupTransferredSnapshotRes cleanupTransferredSnapshot(TCleanupTransferredSnapshotReq req)

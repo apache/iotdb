@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -91,7 +90,6 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
-        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
@@ -106,7 +104,7 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always set ConfigNodeId before initConsensusManager */
+        // Init consensusGroup
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
@@ -202,7 +200,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
+    MetricService.getInstance().addMetricSet(new SystemMetrics());
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -219,7 +217,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSchemaRegionConsensusProtocolClass(),
             CONF.getSeriesPartitionSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
             CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
@@ -250,7 +248,6 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
@@ -292,15 +289,6 @@ public class ConfigNode implements ConfigNodeMBean {
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
     System.exit(-1);
-  }
-
-  public ConfigManager getConfigManager() {
-    return configManager;
-  }
-
-  @TestOnly
-  public void setConfigManager(ConfigManager configManager) {
-    this.configManager = configManager;
   }
 
   private static class ConfigNodeHolder {

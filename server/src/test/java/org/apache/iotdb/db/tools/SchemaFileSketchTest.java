@@ -63,7 +63,7 @@ public class SchemaFileSketchTest {
   public void tearDown() throws Exception {
     File sketch = new File("sketch_schemafile.txt");
     sketch.deleteOnExit();
-    EnvironmentUtils.cleanEnv();
+    // EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());

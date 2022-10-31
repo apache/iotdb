@@ -42,8 +42,10 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFJarResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -63,7 +66,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.rest.RestService;
+import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -218,7 +221,6 @@ public class DataNode implements DataNodeMBean {
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
-          IoTDBDescriptor.getInstance().loadCQConfig(dataNodeRegisterResp.cqConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
@@ -349,6 +351,7 @@ public class DataNode implements DataNodeMBean {
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
     // registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
+    registerManager.register(ContinuousQueryService.getInstance());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
@@ -419,7 +422,6 @@ public class DataNode implements DataNodeMBean {
   private void initUDFRelatedInstance() throws StartupException {
     try {
       UDFExecutableManager.setupAndGetInstance(config.getUdfTemporaryLibDir(), config.getUdfDir());
-      UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir());
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -467,14 +469,14 @@ public class DataNode implements DataNodeMBean {
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
-      TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
+      TGetUDFJarResp resp = configNodeClient.getUDFJar(new TGetUDFJarReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
         throw new StartupException("Failed to get UDF jar from config node.");
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < udfInformationList.size(); i++) {
         UDFExecutableManager.getInstance()
-            .saveToInstallDir(jarList.get(i), udfInformationList.get(i).getJarName());
+            .writeToLibDir(jarList.get(i), udfInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -485,21 +487,17 @@ public class DataNode implements DataNodeMBean {
   private List<UDFInformation> getJarListForUDF() {
     List<UDFInformation> res = new ArrayList<>();
     for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-      if (udfInformation.isUsingURI()) {
-        // jar does not exist, add current triggerInformation to list
-        if (!UDFExecutableManager.getInstance()
-            .hasFileUnderInstallDir(udfInformation.getJarName())) {
-          res.add(udfInformation);
-        } else {
-          try {
-            // local jar has conflicts with jar on config node, add current triggerInformation to
-            // list
-            if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
-              res.add(udfInformation);
-            }
-          } catch (UDFManagementException e) {
+      // jar does not exist, add current triggerInformation to list
+      if (!UDFExecutableManager.getInstance().hasFileUnderLibRoot(udfInformation.getJarName())) {
+        res.add(udfInformation);
+      } else {
+        try {
+          // local jar has conflicts with jar on config node, add current triggerInformation to list
+          if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
             res.add(udfInformation);
           }
+        } catch (UDFManagementException e) {
+          res.add(udfInformation);
         }
       }
     }
@@ -578,14 +576,14 @@ public class DataNode implements DataNodeMBean {
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)
               .collect(Collectors.toList());
-      TGetJarInListResp resp = configNodeClient.getTriggerJar(new TGetJarInListReq(jarNameList));
+      TGetTriggerJarResp resp = configNodeClient.getTriggerJar(new TGetTriggerJarReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
         throw new StartupException("Failed to get trigger jar from config node.");
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .writeToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -597,21 +595,18 @@ public class DataNode implements DataNodeMBean {
     List<TriggerInformation> res = new ArrayList<>();
     for (TriggerInformation triggerInformation :
         resourcesInformationHolder.getTriggerInformationList()) {
-      if (triggerInformation.isUsingURI()) {
-        // jar does not exist, add current triggerInformation to list
-        if (!TriggerExecutableManager.getInstance()
-            .hasFileUnderInstallDir(triggerInformation.getJarName())) {
-          res.add(triggerInformation);
-        } else {
-          try {
-            // local jar has conflicts with jar on config node, add current triggerInformation to
-            // list
-            if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
-              res.add(triggerInformation);
-            }
-          } catch (TriggerManagementException e) {
+      // jar does not exist, add current triggerInformation to list
+      if (!TriggerExecutableManager.getInstance()
+          .hasFileUnderLibRoot(triggerInformation.getJarName())) {
+        res.add(triggerInformation);
+      } else {
+        try {
+          // local jar has conflicts with jar on config node, add current triggerInformation to list
+          if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
             res.add(triggerInformation);
           }
+        } catch (TriggerManagementException e) {
+          res.add(triggerInformation);
         }
       }
     }
@@ -664,7 +659,7 @@ public class DataNode implements DataNodeMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestService.getInstance());
+      registerManager.register(MPPRestService.getInstance());
     }
   }
 

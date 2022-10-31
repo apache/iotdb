@@ -49,9 +49,9 @@ public class InternalMNode extends MNode {
   /**
    * This field is mainly used in cluster schema template features. In InternalMNode of ConfigMTree,
    * this field represents the template set on this node. In EntityMNode of MTree in SchemaRegion,
-   * this field represents the template activated on this node. The normal usage value range is [0,
+   * this field represents the template activated on this node. The value range is [0,
    * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
-   * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
+   * NON_TEMPLATE
    */
   protected int schemaTemplateId = NON_TEMPLATE;
 
@@ -214,43 +214,12 @@ public class InternalMNode extends MNode {
 
   @Override
   public int getSchemaTemplateId() {
-    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
+    return schemaTemplateId;
   }
 
   @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     this.schemaTemplateId = schemaTemplateId;
-  }
-
-  /**
-   * In InternalMNode, schemaTemplateId represents the template set on this node. The pre unset
-   * mechanism is implemented by making this value negative. Since value 0 and -1 are all occupied,
-   * the available negative value range is [Int.MIN_VALUE, -2]. The value of a pre unset case equals
-   * the negative normal value minus 2. For example, if the id of set template is 0, then - 0 - 2 =
-   * -2 represents the pre unset operation of this template on this node.
-   */
-  @Override
-  public void preUnsetSchemaTemplate() {
-    if (this.schemaTemplateId > -1) {
-      this.schemaTemplateId = -schemaTemplateId - 2;
-    }
-  }
-
-  @Override
-  public void rollbackUnsetSchemaTemplate() {
-    if (schemaTemplateId < -1) {
-      schemaTemplateId = -schemaTemplateId - 2;
-    }
-  }
-
-  @Override
-  public boolean isSchemaTemplatePreUnset() {
-    return schemaTemplateId < -1;
-  }
-
-  @Override
-  public void unsetSchemaTemplate() {
-    this.schemaTemplateId = -1;
   }
 
   @Override

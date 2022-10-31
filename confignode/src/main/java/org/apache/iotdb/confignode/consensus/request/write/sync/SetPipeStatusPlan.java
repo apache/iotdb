@@ -59,7 +59,7 @@ public class SetPipeStatusPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(ConfigPhysicalPlanType.SetPipeStatus.ordinal());
     ReadWriteIOUtils.write(pipeName, stream);
     ReadWriteIOUtils.write((byte) pipeStatus.ordinal(), stream);
   }

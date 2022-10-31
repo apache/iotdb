@@ -21,7 +21,7 @@
 
 # 关键字和保留字
 
-以下为 IoTDB 的关键字，其中保留字用 **(R)** 标志。
+以下为 IoTDB 0.13 版本的关键字，其中保留字用 **(R)** 标志。
 
 - 一般关键字
     - ADD
@@ -32,21 +32,19 @@
     - ALL
     - ALTER
     - ANY
-    - APPEND
     - AS
     - ASC
     - ATTRIBUTES
+    - AUTOREGISTER
     - BEFORE
     - BEGIN
-    - BLOCKED
-    - BOUNDARY
     - BY
     - CACHE
     - CHILD
     - CLEAR
-    - CLUSTER
+    - COMPRESSION
+    - COMPRESSOR
     - CONCAT
-    - CONFIGNODES
     - CONFIGURATION
     - CONTINUOUS
     - COUNT
@@ -54,9 +52,7 @@
     - CQ
     - CQS
     - CREATE
-    - DATA
-    - DATANODES
-    - DEACTIVATE
+    - DATATYPE
     - DEBUG
     - DELETE
     - DESC
@@ -64,14 +60,12 @@
     - DEVICE
     - DEVICES
     - DISABLE
-    - DISCARD
     - DROP
+    - ENCODING
     - END
-    - ENDTIME
     - EVERY
     - EXPLAIN
     - FILL
-    - FILE
     - FLUSH
     - FOR
     - FROM
@@ -81,7 +75,6 @@
     - GLOBAL
     - GRANT
     - GROUP
-    - HAVING
     - INDEX
     - INFO
     - INSERT
@@ -97,72 +90,52 @@
     - LINK
     - LIST
     - LOAD
-    - LOCAL
     - LOCK
     - MERGE
     - METADATA
     - NODES
-    - NONE
     - NOW
     - OF
     - OFF
     - OFFSET
     - ON
     - ORDER
-    - ONSUCCESS
     - PARTITION
     - PASSWORD
     - PATHS
-    - PIPE
-    - PIPES
-    - PIPESINK
-    - PIPESINKS
-    - PIPESINKTYPE
-    - POLICY
     - PREVIOUS
     - PREVIOUSUNTILLAST
     - PRIVILEGES
     - PROCESSLIST
     - PROPERTY
-    - PRUNE
     - QUERIES
     - QUERY
-    - RANGE
     - READONLY
     - REGEXP
-    - REGIONID
-    - REGIONS
     - REMOVE
     - RENAME
     - RESAMPLE
-    - RESOURCE
     - REVOKE
     - ROLE
     - ROOT **(R)**
-    - RUNNING
     - SCHEMA
     - SELECT
-    - SERIESSLOTID
     - SET
     - SETTLE
     - SGLEVEL
     - SHOW
     - SLIMIT
+    - SNAPSHOT
     - SOFFSET
     - STORAGE
     - START
-    - STARTTIME
-    - STATELESS
-    - STATEFUL
     - STOP
     - SYSTEM
     - TAGS
     - TASK
     - TEMPLATE
     - TIME **(R)**
-    - TIMEOUT
     - TIMESERIES
-    - TIMESLOTID
     - TIMESTAMP **(R)**
     - TO
     - TOLERANCE
@@ -176,7 +149,6 @@
     - UNSET
     - UPDATE
     - UPSERT
-    - URI
     - USER
     - USING
     - VALUES
@@ -189,12 +161,10 @@
     - WRITABLE
 - 权限类型
     - SET_STORAGE_GROUP
-    - DELETE_STORAGE_GROUP
     - CREATE_TIMESERIES
     - INSERT_TIMESERIES
     - READ_TIMESERIES
     - DELETE_TIMESERIES
-    - ALTER_TIMESERIES
     - CREATE_USER
     - DELETE_USER
     - MODIFY_PASSWORD
@@ -216,7 +186,3 @@
     - STOP_TRIGGER
     - CREATE_CONTINUOUS_QUERY
     - DROP_CONTINUOUS_QUERY
-    - APPLY_TEMPLATE
-    - UPDATE_TEMPLATE
-    - READ_TEMPLATE
-    - READ_TEMPLATE_APPLICATION

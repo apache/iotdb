@@ -40,9 +40,6 @@ public class TriggerInformation {
   private PartialPath pathPattern;
   private String triggerName;
   private String className;
-
-  private boolean isUsingURI;
-
   private String jarName;
 
   private Map<String, String> attributes;
@@ -66,7 +63,6 @@ public class TriggerInformation {
       PartialPath pathPattern,
       String triggerName,
       String className,
-      boolean isUsingURI,
       String jarName,
       Map<String, String> attributes,
       TriggerEvent event,
@@ -78,7 +74,6 @@ public class TriggerInformation {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
     this.className = className;
-    this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.attributes = attributes;
     this.event = event;
@@ -101,11 +96,7 @@ public class TriggerInformation {
     pathPattern.serialize(outputStream);
     ReadWriteIOUtils.write(triggerName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
-    ReadWriteIOUtils.write(isUsingURI, outputStream);
-    if (isUsingURI) {
-      ReadWriteIOUtils.write(jarName, outputStream);
-      ReadWriteIOUtils.write(jarFileMD5, outputStream);
-    }
+    ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(attributes, outputStream);
     ReadWriteIOUtils.write(event.getId(), outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
@@ -114,6 +105,7 @@ public class TriggerInformation {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
     ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
+    ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -121,11 +113,7 @@ public class TriggerInformation {
     triggerInformation.pathPattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
-    triggerInformation.isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
-    if (triggerInformation.isUsingURI) {
-      triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
-      triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    }
+    triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
     triggerInformation.event = TriggerEvent.construct(ReadWriteIOUtils.readByte(byteBuffer));
     triggerInformation.triggerState =
@@ -138,6 +126,7 @@ public class TriggerInformation {
     }
     triggerInformation.failureStrategy =
         FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
+    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
 
@@ -190,14 +179,6 @@ public class TriggerInformation {
 
   public void setClassName(String className) {
     this.className = className;
-  }
-
-  public boolean isUsingURI() {
-    return isUsingURI;
-  }
-
-  public void setUsingURI(boolean usingURI) {
-    isUsingURI = usingURI;
   }
 
   public TriggerEvent getEvent() {

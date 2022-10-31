@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -634,10 +633,8 @@ public class TsFileWriteApiTest {
           reader.readChunkMetadataInDevice(deviceId).values()) {
         for (ChunkMetadata chunkMetadata : chunkMetadatas) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
-          ChunkReader chunkReader = new ChunkReader(chunk, null);
           ByteBuffer chunkDataBuffer = chunk.getData();
           ChunkHeader chunkHeader = chunk.getHeader();
-          chunkDataBuffer.flip();
           int pageNum = 0;
           while (chunkDataBuffer.remaining() > 0) {
             // deserialize a PageHeader from chunkDataBuffer
@@ -648,9 +645,11 @@ public class TsFileWriteApiTest {
             } else {
               pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
             }
-            ByteBuffer compressedPageData = reader.readCompressedPage(pageHeader);
-            chunkDataBuffer.position(chunkDataBuffer.position() + pageHeader.getCompressedSize());
-            chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
+            int compressedPageBodyLength = pageHeader.getCompressedSize();
+            byte[] compressedPageBody = new byte[compressedPageBodyLength];
+            chunkDataBuffer.get(compressedPageBody);
+            chunkWriter.writePageHeaderAndDataIntoBuff(
+                ByteBuffer.wrap(compressedPageBody), pageHeader);
             if (++pageNum % 2 == 0) {
               chunkWriter.writeToFileWriter(tsFileIOWriter);
             }
@@ -661,7 +660,8 @@ public class TsFileWriteApiTest {
       tsFileIOWriter.endFile();
 
       // read file
-      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+      TsFileReader tsFileReader =
+          new TsFileReader(new TsFileSequenceReader(file.getAbsolutePath()));
 
       QueryExpression queryExpression =
           QueryExpression.create(

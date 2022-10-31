@@ -93,10 +93,6 @@ BEGIN
     : B E G I N
     ;
 
-BLOCKED
-    : B L O C K E D
-    ;
-
 BOUNDARY
     : B O U N D A R Y
     ;
@@ -198,10 +194,6 @@ DISABLE
     : D I S A B L E
     ;
 
-DISCARD
-    : D I S C A R D
-    ;
-
 DROP
     : D R O P
     ;
@@ -217,6 +209,7 @@ ENDTIME
 EVERY
     : E V E R Y
     ;
+
 
 EXPLAIN
     : E X P L A I N
@@ -414,10 +407,6 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
-POLICY
-    : P O L I C Y
-    ;
-
 PREVIOUS
     : P R E V I O U S
     ;
@@ -450,8 +439,8 @@ QUERY
     : Q U E R Y
     ;
 
-RANGE
-    : R A N G E
+RUNNING
+    : R U N N I N G
     ;
 
 READONLY
@@ -496,10 +485,6 @@ ROLE
 
 ROOT
     : R O O T
-    ;
-
-RUNNING
-    : R U N N I N G
     ;
 
 SCHEMA
@@ -584,10 +569,6 @@ TEMPLATES
 
 TIME
     : T I M E
-    ;
-
-TIMEOUT
-    : T I M E O U T
     ;
 
 TIMESERIES

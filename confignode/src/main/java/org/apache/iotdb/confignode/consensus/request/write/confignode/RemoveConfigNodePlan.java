@@ -48,7 +48,7 @@ public class RemoveConfigNodePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(getType().getPlanType(), stream);
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.RemoveConfigNode.ordinal(), stream);
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }

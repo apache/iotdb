@@ -21,9 +21,6 @@ package org.apache.iotdb.db.protocol.influxdb.meta;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.control.clientsession.IClientSession;
-import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -61,8 +58,6 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   public void recover() {
     long sessionID = 0;
     try {
-      IClientSession clientSession = new InternalClientSession("InfluxDB-Recovery");
-      SessionManager.getInstance().registerSession(clientSession);
       TSOpenSessionResp tsOpenSessionResp =
           clientRPCService.openSession(
               new TSOpenSessionReq()
@@ -104,7 +99,6 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
       throw new InfluxDBException(e.getMessage());
     } finally {
       clientRPCService.closeSession(new TSCloseSessionReq().setSessionId(sessionID));
-      SessionManager.getInstance().removeCurrSession();
     }
   }
 

@@ -570,42 +570,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
-      throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath(node));
-            }
-          }
-        };
-    collector.setResultSet(result);
-    collector.setShouldTraverseTemplate(false);
-    collector.traverse();
-    return result;
-  }
-
-  @Override
-  public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
-      throws MetadataException {
-    Set<PartialPath> result = new HashSet<>();
-    MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath(node).getDevicePath());
-            }
-          }
-        };
-    collector.traverse();
-    return result;
-  }
-
-  @Override
   public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
     store.setAlias(measurementMNode, alias);
   }
@@ -1255,23 +1219,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         unPinMNode(queue.poll());
       }
     }
-  }
-
-  @Override
-  public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
-      throws MetadataException {
-    List<IMeasurementMNode> result = new ArrayList<>();
-    MeasurementCollector<List<IMeasurementMNode>> collector =
-        new MeasurementCollector<List<IMeasurementMNode>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            pinMNode(node);
-            result.add(node);
-          }
-        };
-    collector.setShouldTraverseTemplate(false);
-    collector.traverse();
-    return result;
   }
 
   // endregion

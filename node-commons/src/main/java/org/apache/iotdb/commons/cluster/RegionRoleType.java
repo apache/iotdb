@@ -25,13 +25,13 @@ public enum RegionRoleType {
   // Region role type : Follower
   Follower("Follower");
 
-  private final String roleType;
+  private final String status;
 
-  RegionRoleType(String roleType) {
-    this.roleType = roleType;
+  RegionRoleType(String status) {
+    this.status = status;
   }
 
-  public String getRoleType() {
-    return roleType;
+  public String getStatus() {
+    return status;
   }
 }

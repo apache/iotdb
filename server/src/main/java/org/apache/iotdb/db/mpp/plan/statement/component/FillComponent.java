@@ -45,16 +45,4 @@ public class FillComponent extends StatementNode {
   public void setFillValue(Literal fillValue) {
     this.fillValue = fillValue;
   }
-
-  public String toSQLString() {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("FILL(");
-    if (fillPolicy != FillPolicy.VALUE) {
-      sqlBuilder.append(fillPolicy.toString());
-    } else {
-      sqlBuilder.append(fillValue.toString());
-    }
-    sqlBuilder.append(')');
-    return sqlBuilder.toString();
-  }
 }

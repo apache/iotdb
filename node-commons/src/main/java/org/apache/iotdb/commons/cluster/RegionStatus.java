@@ -51,9 +51,4 @@ public enum RegionStatus {
     }
     throw new RuntimeException(String.format("RegionStatus %s doesn't exist.", status));
   }
-
-  public static boolean isNormalStatus(RegionStatus status) {
-    // Currently, the only normal status is Running
-    return status != null && status.equals(RegionStatus.Running);
-  }
 }

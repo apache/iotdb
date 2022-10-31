@@ -142,7 +142,7 @@ public abstract class IFill {
 
   protected long slideMonth(long startTime, int monthNum) {
     Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     calendar.add(Calendar.MONTH, monthNum);
     return calendar.getTimeInMillis();

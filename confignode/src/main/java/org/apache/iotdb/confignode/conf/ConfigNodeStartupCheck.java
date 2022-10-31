@@ -56,7 +56,7 @@ public class ConfigNodeStartupCheck {
         && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
             || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          IoTDBConstant.CN_TARGET_CONFIG_NODES,
+          IoTDBConstant.TARGET_CONFIG_NODES,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }

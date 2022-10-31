@@ -258,7 +258,7 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
-    TSExecuteStatementResp execResp = client.executeStatementV2(execReq);
+    TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
@@ -268,7 +268,7 @@ public class IoTDBStatement implements Statement {
     deepCopyResp(execResp);
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
-      if (execResp.queryResult == null) {
+      if (execResp.queryDataSet == null) {
         BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
         this.resultSet =
             new IoTDBNonAlignJDBCResultSet(
@@ -299,7 +299,7 @@ public class IoTDBStatement implements Statement {
                 sql,
                 queryId,
                 sessionId,
-                execResp.queryResult,
+                execResp.queryDataSet,
                 execResp.tracingInfo,
                 execReq.timeout,
                 true);
@@ -406,7 +406,7 @@ public class IoTDBStatement implements Statement {
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
-    TSExecuteStatementResp execResp = client.executeQueryStatementV2(execReq);
+    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -421,7 +421,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
       aliasColumn = listToBitSet(execResp.getAliasColumns());
     }
-    if (execResp.queryResult == null) {
+    if (execResp.queryDataSet == null) {
       this.resultSet =
           new IoTDBNonAlignJDBCResultSet(
               this,
@@ -451,7 +451,7 @@ public class IoTDBStatement implements Statement {
               sql,
               queryId,
               sessionId,
-              execResp.queryResult,
+              execResp.queryDataSet,
               execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
@@ -476,21 +476,9 @@ public class IoTDBStatement implements Statement {
 
     if (Objects.nonNull(tsQueryDataSet)) {
       deepCopyTsQueryDataSet(tsQueryDataSet);
-    } else if (Objects.nonNull(nonAlignDataSet)) {
-      deepCopyNonAlignQueryDataSet(nonAlignDataSet);
     } else {
-      deepCopyQueryResult(queryRes);
+      deepCopyNonAlignQueryDataSet(nonAlignDataSet);
     }
-  }
-
-  private void deepCopyQueryResult(TSExecuteStatementResp queryRes) {
-    List<ByteBuffer> queryResult = queryRes.getQueryResult();
-    if (queryResult == null) {
-      return;
-    }
-    final List<ByteBuffer> queryResultCopy =
-        queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
-    queryRes.setQueryResult(queryResultCopy);
   }
 
   private void deepCopyNonAlignQueryDataSet(TSQueryNonAlignDataSet nonAlignDataSet) {

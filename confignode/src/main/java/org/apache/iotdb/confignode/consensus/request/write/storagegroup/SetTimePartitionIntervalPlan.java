@@ -53,7 +53,7 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+    stream.writeInt(getType().ordinal());
 
     BasicStructureSerDeUtil.write(storageGroup, stream);
     stream.writeLong(timePartitionInterval);

@@ -68,7 +68,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -161,11 +160,6 @@ public class QueryExecution implements IQueryExecution {
             }
           }
         });
-  }
-
-  @FunctionalInterface
-  interface ISourceHandleSupplier<T> {
-    T get() throws IoTDBException;
   }
 
   public void start() {
@@ -347,7 +341,8 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
-  private <T> Optional<T> getResult(ISourceHandleSupplier<T> dataSupplier) throws IoTDBException {
+  @Override
+  public Optional<TsBlock> getBatchResult() throws IoTDBException {
     checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
@@ -363,6 +358,9 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
+          // Once the resultHandle is finished, we should transit the state of this query to
+          // FINISHED.
+          // So that the corresponding cleanup work could be triggered.
           logger.info("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
@@ -371,8 +369,7 @@ public class QueryExecution implements IQueryExecution {
         ListenableFuture<?> blocked = resultHandle.isBlocked();
         blocked.get();
         if (!resultHandle.isFinished()) {
-          // use the getSerializedTsBlock instead of receive to get ByteBuffer result
-          T res = dataSupplier.get();
+          TsBlock res = resultHandle.receive();
           if (res == null) {
             continue;
           }
@@ -398,24 +395,6 @@ public class QueryExecution implements IQueryExecution {
         throw t;
       }
     }
-  }
-
-  @Override
-  public Optional<TsBlock> getBatchResult() throws IoTDBException {
-    return getResult(this::getDeserializedTsBlock);
-  }
-
-  private TsBlock getDeserializedTsBlock() {
-    return resultHandle.receive();
-  }
-
-  @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
-    return getResult(this::getSerializedTsBlock);
-  }
-
-  private ByteBuffer getSerializedTsBlock() throws IoTDBException {
-    return resultHandle.getSerializedTsBlock();
   }
 
   /** @return true if there is more tsblocks, otherwise false */

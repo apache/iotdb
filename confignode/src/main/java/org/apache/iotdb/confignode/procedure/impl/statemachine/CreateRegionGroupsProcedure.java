@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,9 +148,9 @@ public class CreateRegionGroupsProcedure
 
         env.persistAndBroadcastRegionGroup(persistPlan);
         env.getConfigManager().getConsensusManager().write(offerPlan);
-        setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
+        setNextState(CreateRegionGroupsState.BUILD_REGION_GROUP_CACHE);
         break;
-      case ACTIVATE_REGION_GROUPS:
+      case BUILD_REGION_GROUP_CACHE:
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
         createRegionGroupsPlan
             .getRegionGroupMap()
@@ -168,15 +168,12 @@ public class CreateRegionGroupsProcedure
 
                           if (!failedRegionReplicaSets.containsKey(
                               regionReplicaSet.getRegionId())) {
-                            // All RegionReplicas created successfully
-                            // All RegionStatus are Running
-                            env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
+                            env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
                           } else {
                             TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
                             if (failedRegionReplicas.getDataNodeLocationsSize()
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
-                              // Replace the RegionStatus of those RegionReplicas to Unknown
                               failedRegionReplicas
                                   .getDataNodeLocations()
                                   .forEach(
@@ -184,7 +181,7 @@ public class CreateRegionGroupsProcedure
                                           statusMap.replace(
                                               dataNodeLocation.getDataNodeId(),
                                               RegionStatus.Unknown));
-                              env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
+                              env.buildRegionGroupCache(regionReplicaSet.getRegionId(), statusMap);
                             }
                           }
                         }));
@@ -221,8 +218,8 @@ public class CreateRegionGroupsProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    // must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
-    stream.writeShort(ProcedureType.CREATE_REGION_GROUPS.getTypeCode());
+    // must serialize CREATE_REGION_GROUPS.ordinal() firstly
+    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
     super.serialize(stream);
     stream.writeInt(consensusGroupType.getValue());
     createRegionGroupsPlan.serializeForProcedure(stream);

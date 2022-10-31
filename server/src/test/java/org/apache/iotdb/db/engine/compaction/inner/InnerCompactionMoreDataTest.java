@@ -50,7 +50,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -61,8 +60,6 @@ import java.util.Collections;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-// TODO don't use old standalone style
-@Ignore
 public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   protected int measurementNum = 3000;

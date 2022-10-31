@@ -23,34 +23,26 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(StopPipeProcedure.class);
 
   private String pipeName;
-  private PipeInfo pipeInfo;
-  private Set<Integer> executedDataNodeIds = new HashSet<>();
 
   public StopPipeProcedure() {
     super();
@@ -61,24 +53,10 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     this.pipeName = pipeName;
   }
 
-  @TestOnly
-  public void setPipeInfo(PipeInfo pipeInfo) {
-    this.pipeInfo = pipeInfo;
-  }
-
-  @TestOnly
-  public void setExecutedDataNodeIds(Set<Integer> executedDataNodeIds) {
-    this.executedDataNodeIds = executedDataNodeIds;
-  }
-
   @Override
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to stop PIPE [{}]", pipeName);
-    pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
-    if (pipeInfo.getStatus().equals(PipeStatus.DROP)) {
-      throw new PipeException(
-          String.format("PIPE [%s] has been dropped and cannot be stopped again.", pipeName));
-    }
+    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
     return pipeInfo.getStatus().equals(PipeStatus.STOP);
   }
 
@@ -86,7 +64,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to pre-stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_STOP);
+        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PREPARE_STOP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(status.getMessage());
     }
@@ -95,23 +73,15 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
-    Map<Integer, TSStatus> responseMap =
-        env.getConfigManager()
-            .getSyncManager()
-            .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE);
-    TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
-    executedDataNodeIds.addAll(responseMap.keySet());
+    TSStatus status =
+        RpcUtils.squashResponseStatusList(
+            env.getConfigManager()
+                .getSyncManager()
+                .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Fail to stop PIPE [%s] because %s.",
-              pipeName,
-              StringUtils.join(
-                  responseMap.values().stream()
-                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                      .map(TSStatus::getMessage)
-                      .toArray(),
-                  ", ")));
+              "Fail to stop PIPE [%s] on Data Nodes because %s", pipeName, status.getMessage()));
     }
   }
 
@@ -131,65 +101,22 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
   }
 
   @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    switch (state) {
-      case OPERATE_CHECK:
-      case PRE_OPERATE_PIPE_CONFIGNODE:
-      case OPERATE_PIPE_DATANODE:
-        return true;
-    }
-    return false;
-  }
-
-  @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back StopPipeProcedure at STATE [{}]", state);
-    switch (state) {
-      case OPERATE_CHECK:
-        env.getConfigManager().getSyncManager().unlockSyncMetadata();
-        break;
-      case PRE_OPERATE_PIPE_CONFIGNODE:
-        TSStatus status =
-            env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new ProcedureException(
-              String.format(
-                  "Failed to stop pipe and failed to roll back because %s. Please execute [STOP PIPE %s] manually.",
-                  status.getMessage(), pipeName));
-        }
-        break;
-      case OPERATE_PIPE_DATANODE:
-        env.getConfigManager()
-            .getSyncManager()
-            .operatePipeOnDataNodesForRollback(
-                pipeName, pipeInfo.getCreateTime(), SyncOperation.START_PIPE, executedDataNodeIds);
-        break;
-      default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
-    }
+    env.getConfigManager().getSyncManager().unlockSyncMetadata();
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.STOP_PIPE_PROCEDURE.getTypeCode());
+    stream.writeInt(ProcedureFactory.ProcedureType.STOP_PIPE_PROCEDURE.ordinal());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
-    ReadWriteIOUtils.write(pipeInfo != null, stream);
-    if (pipeInfo != null) {
-      pipeInfo.serialize(stream);
-    }
-    ReadWriteIOUtils.writeIntegerSet(executedDataNodeIds, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
-    }
-    executedDataNodeIds = ReadWriteIOUtils.readIntegerSet(byteBuffer);
   }
 
   @Override
@@ -197,13 +124,11 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StopPipeProcedure that = (StopPipeProcedure) o;
-    return Objects.equals(pipeName, that.pipeName)
-        && Objects.equals(pipeInfo, that.pipeInfo)
-        && Objects.equals(executedDataNodeIds, that.executedDataNodeIds);
+    return Objects.equals(pipeName, that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, pipeInfo, executedDataNodeIds);
+    return Objects.hash(pipeName);
   }
 }
