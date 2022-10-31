@@ -1350,7 +1350,7 @@ public class LocalConfigNode {
   public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
     try {
       syncService.addPipe(
-          SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
+          SyncPipeUtil.parseCreatePipeStatementAsPipeInfo(
               createPipeStatement, System.currentTimeMillis()));
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
