@@ -308,7 +308,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
-      throws WriteProcessException {
+      throws WriteProcessException, IOException {
     // initial ChunkGroupWriter of this device in the TSRecord
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(record.deviceId, isAligned);
 
@@ -348,7 +348,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
-      throws WriteProcessException {
+      throws WriteProcessException, IOException {
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.deviceId, isAligned);
 
     Path devicePath = new Path(tablet.deviceId);
