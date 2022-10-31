@@ -296,7 +296,7 @@ public class AuthorInfo implements SnapshotProcessor {
         continue;
       }
       for (String path : plan.getNodeNameList()) {
-        if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())) {
+        if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)) {
           rolePrivilegesSet.add(pathPrivilege.toString());
         }
       }
@@ -341,7 +341,7 @@ public class AuthorInfo implements SnapshotProcessor {
           continue;
         }
         for (String path : plan.getNodeNameList()) {
-          if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)
               && !userPrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add("");
             userPrivilegeSet.add(pathPrivilege.toString());
@@ -363,7 +363,7 @@ public class AuthorInfo implements SnapshotProcessor {
             continue;
           }
           for (String path : plan.getNodeNameList()) {
-            if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)
                 && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
               rolePrivileges.add(roleN);
               rolePrivilegeSet.add(pathPrivilege.toString());
