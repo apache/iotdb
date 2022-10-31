@@ -51,7 +51,7 @@ import java.util.Iterator;
 /**
  * This class is mainly aimed to manage space all over the file.
  *
- * <p>This class is meant to open a .pmt(Persistent MTree) file, and maintains the header of the
+ * <p>This class is meant to open a .pst(Persistent mTree) file, and maintains the header of the
  * file. It Loads or writes a page length bytes at once, with an 32 bits int to index a page inside
  * a file. Use SlottedFile to manipulate segment(sp) inside a page(an array of bytes).
  */
@@ -61,6 +61,7 @@ public class SchemaFile implements ISchemaFile {
 
   // attributes for this schema file
   private String filePath;
+  private String logPath;
   private String storageGroupName;
   private long dataTTL;
   private boolean isEntity;
@@ -79,16 +80,12 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
+    String folderPath =
+        SchemaFileConfig.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId;
 
     this.storageGroupName = sgName;
-    filePath =
-        SchemaFileConfig.SCHEMA_FOLDER
-            + File.separator
-            + sgName
-            + File.separator
-            + schemaRegionId
-            + File.separator
-            + MetadataConstant.SCHEMA_FILE_NAME;
+    this.filePath = folderPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
+    this.logPath = folderPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -103,19 +100,13 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder =
-          SystemFileFactory.INSTANCE.getFile(
-              SchemaFileConfig.SCHEMA_FOLDER
-                  + File.separator
-                  + sgName
-                  + File.separator
-                  + schemaRegionId);
+      File folder = SystemFileFactory.INSTANCE.getFile(folderPath);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
 
-    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
+    this.channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    this.headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
@@ -124,7 +115,11 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private SchemaFile(File file) throws IOException, MetadataException {
-    // only be called to sketch a schema file so an arbitrary file object is necessary
+    // only used to sketch a schema file so a file object is necessary while
+    //  components of log manipulations are not.
+    pmtFile = file;
+    filePath = pmtFile.getPath();
+    logPath = file.getParent() + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
@@ -243,6 +238,7 @@ public class SchemaFile implements ISchemaFile {
   public void close() throws IOException {
     updateHeader();
     pageManager.flushDirtyPages();
+    pageManager.close();
     channel.close();
   }
 
@@ -255,6 +251,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void clear() throws IOException, MetadataException {
     pageManager.clear();
+    pageManager.close();
     channel.close();
     if (pmtFile.exists()) {
       Files.delete(Paths.get(pmtFile.toURI()));
@@ -302,6 +299,8 @@ public class SchemaFile implements ISchemaFile {
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
    *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
+   *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
+   *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
    * </ul>
    *
@@ -315,8 +314,9 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
       ReadWriteIOUtils.write(templateHash, headerContent);
+      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = BTreePageManager.getBTreePageManager(channel, -1);
+      pageManager = new BTreePageManager(channel, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
@@ -325,7 +325,13 @@ public class SchemaFile implements ISchemaFile {
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       templateHash = ReadWriteIOUtils.readInt(headerContent);
       lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
-      pageManager = BTreePageManager.getBTreePageManager(channel, lastPageIndex);
+
+      if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
+        channel.close();
+        throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
+      }
+
+      pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
     }
   }
 
@@ -337,6 +343,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(isEntity, headerContent);
     ReadWriteIOUtils.write(templateHash, headerContent);
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
+    ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);

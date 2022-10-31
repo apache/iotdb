@@ -287,21 +287,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Filter globalTimeFilter = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
-      Expression predicate = queryStatement.getWhereCondition().getPredicate();
       WhereCondition whereCondition = queryStatement.getWhereCondition();
+      Expression predicate = whereCondition.getPredicate();
+
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
+      globalTimeFilter = resultPair.left;
+      hasValueFilter = resultPair.right;
+
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
 
-      // set where condition to null if predicate is true
-      if (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
-          && Boolean.parseBoolean(predicate.getExpressionString())) {
+      // set where condition to null if predicate is true or time filter.
+      if (!hasValueFilter
+          || (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
+              && Boolean.parseBoolean(predicate.getExpressionString()))) {
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
       }
-      globalTimeFilter = resultPair.left;
-      hasValueFilter = resultPair.right;
     }
     if (queryStatement.isGroupByTime()) {
       GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
@@ -1701,9 +1704,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new VerifyMetadataException(
             String.format("Sg level %d is longer than device %s.", sgLevel, device));
       }
-      for (int i = 0; i < sgLevel; i++) {
-        sgNodes[i] = nodes[i];
-      }
+      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
       PartialPath sgPath = new PartialPath(sgNodes);
       sgSet.add(sgPath);
     }
@@ -1716,7 +1717,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void executeSetStorageGroupStatement(Statement statement) throws LoadFileException {
-    long queryId = SessionManager.getInstance().requestQueryId(false);
+    long queryId = SessionManager.getInstance().requestQueryId();
     ExecutionResult result =
         Coordinator.getInstance()
             .execute(

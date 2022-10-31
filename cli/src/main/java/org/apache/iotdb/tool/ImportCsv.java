@@ -745,8 +745,8 @@ public class ImportCsv extends AbstractCsvTool {
    * read data from the CSV file
    *
    * @param path
-   * @return
-   * @throws IOException
+   * @return CSVParser csv parser
+   * @throws IOException when reading the csv file failed.
    */
   private static CSVParser readCsvFile(String path) throws IOException {
     return CSVFormat.Builder.create(CSVFormat.DEFAULT)

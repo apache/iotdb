@@ -113,6 +113,7 @@ public class RestService implements IService {
       LOGGER.warn("RestService failed to start: {}", e.getMessage());
       server.destroy();
     }
+    LOGGER.info("start RestService successfully");
   }
 
   @Override

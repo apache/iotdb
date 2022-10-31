@@ -136,10 +136,7 @@ public enum ConfigPhysicalPlanType {
   ACTIVE_CQ((short) 1101),
   ADD_CQ((short) 1102),
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
-  SHOW_CQ((short) 1104),
-
-  // TODO: DELETE IT
-  UpdateLoadStatistics((short) 6666);
+  SHOW_CQ((short) 1104);
 
   private final short planType;
 

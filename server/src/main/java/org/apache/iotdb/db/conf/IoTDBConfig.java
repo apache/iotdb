@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -567,7 +567,7 @@ public class IoTDBConfig {
   private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
-  private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
+  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -746,7 +746,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /** Time partition interval for storage in milliseconds */
   private long timePartitionIntervalForStorage = 604_800_000;
@@ -860,6 +860,9 @@ public class IoTDBConfig {
 
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
+
+  /** maximum number of logged pages before log erased */
+  private int schemaFileLogSize = 16384;
 
   /** Internal address for data node */
   private String internalAddress = "0.0.0.0";
@@ -2891,6 +2894,14 @@ public class IoTDBConfig {
 
   public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
+  }
+
+  public int getSchemaFileLogSize() {
+    return schemaFileLogSize;
+  }
+
+  public void setSchemaFileLogSize(int schemaFileLogSize) {
+    this.schemaFileLogSize = schemaFileLogSize;
   }
 
   public String getInternalAddress() {

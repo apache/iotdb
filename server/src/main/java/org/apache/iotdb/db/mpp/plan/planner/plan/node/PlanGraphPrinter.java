@@ -86,6 +86,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -98,6 +99,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }

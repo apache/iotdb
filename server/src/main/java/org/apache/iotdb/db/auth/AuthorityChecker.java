@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -149,9 +150,9 @@ public class AuthorityChecker {
   }
 
   /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, long sessionId) {
+  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     try {
-      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+      if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation, please add privilege "
