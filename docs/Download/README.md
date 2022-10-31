@@ -115,7 +115,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     - **Identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. If the above occurs in an identifier, use backquotes to enclose the identifier.**
     - **Identifiers no longer support quoting with single and double quotes, please use backquotes instead.**
     - **When using the path node name in the Session API, it needs to be consistent with that in the SQL statement. If the path node is a pure number 111, it needs to be enclosed in backquotes in the SQL statement and written as \`111\`, then when using the Session API, the corresponding parameter also needs to be written as \`111\`.**
-  - I
+  - In order to ensure the stability of UDF-related APIs, in version 0.14, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
 
 ### Detailed description of Syntax Conventions in version 1.0 that are different from older versions
 
