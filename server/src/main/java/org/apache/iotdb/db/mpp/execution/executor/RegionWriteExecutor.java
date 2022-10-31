@@ -354,6 +354,7 @@ public class RegionWriteExecutor {
             int removedNum = 0;
             for (Integer index : failingMeasurementIndexList) {
               entry.getValue().removeMeasurement(index - removedNum);
+              removedNum++;
               LOGGER.error("Metadata error: ", failingMeasurementMap.get(index));
               failingStatus.add(
                   RpcUtils.getStatus(
