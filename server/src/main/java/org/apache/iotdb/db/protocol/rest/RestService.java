@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.protocol.mpprest;
+package org.apache.iotdb.db.protocol.rest;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.protocol.mpprest.filter.ApiOriginFilter;
+import org.apache.iotdb.db.protocol.rest.filter.ApiOriginFilter;
 
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -41,9 +41,9 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class MPPRestService implements IService {
+public class RestService implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MPPRestService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RestService.class);
 
   private static Server server;
 
@@ -97,7 +97,7 @@ public class MPPRestService implements IService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.protocol.mpprest");
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.protocol.rest");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
@@ -149,14 +149,14 @@ public class MPPRestService implements IService {
     return ServiceType.REST_SERVICE;
   }
 
-  public static MPPRestService getInstance() {
-    return MPPRestServiceHolder.INSTANCE;
+  public static RestService getInstance() {
+    return RestServiceHolder.INSTANCE;
   }
 
-  private static class MPPRestServiceHolder {
+  private static class RestServiceHolder {
 
-    private static final MPPRestService INSTANCE = new MPPRestService();
+    private static final RestService INSTANCE = new RestService();
 
-    private MPPRestServiceHolder() {}
+    private RestServiceHolder() {}
   }
 }

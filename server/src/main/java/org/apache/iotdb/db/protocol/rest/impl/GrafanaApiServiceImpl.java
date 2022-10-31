@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.impl;
+package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,15 +33,15 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
-import org.apache.iotdb.db.protocol.mpprest.GrafanaApiService;
-import org.apache.iotdb.db.protocol.mpprest.NotFoundException;
-import org.apache.iotdb.db.protocol.mpprest.handler.AuthorizationHandler;
-import org.apache.iotdb.db.protocol.mpprest.handler.ExceptionHandler;
-import org.apache.iotdb.db.protocol.mpprest.handler.QueryDataSetHandler;
-import org.apache.iotdb.db.protocol.mpprest.handler.RequestValidationHandler;
-import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
-import org.apache.iotdb.db.protocol.mpprest.model.ExpressionRequest;
-import org.apache.iotdb.db.protocol.mpprest.model.SQL;
+import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
+import org.apache.iotdb.db.protocol.rest.NotFoundException;
+import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
+import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
+import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
+import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
+import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
+import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
