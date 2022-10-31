@@ -761,22 +761,28 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     int preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
-        // Given pathPatterns may match one timeseries multi times, which may results in the
-        // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
-        // purpose is to check whether there's timeseries to be deleted.
-        try {
-          preDeletedNum++;
-          measurementMNode.setPreDeleted(true);
-          mtree.updateMNode(measurementMNode);
-          if (!isRecovering) {
-            logWriter.write(
-                SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
-                    measurementMNode.getPartialPath()));
+      List<IMeasurementMNode> measurementMNodeList = mtree.getMatchedMeasurementMNode(pathPattern);
+      try {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
+          // Given pathPatterns may match one timeseries multi times, which may results in the
+          // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the
+          // main
+          // purpose is to check whether there's timeseries to be deleted.
+          try {
+            preDeletedNum++;
+            measurementMNode.setPreDeleted(true);
+            mtree.updateMNode(measurementMNode);
+            if (!isRecovering) {
+              logWriter.write(
+                  SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+                      measurementMNode.getPartialPath()));
+            }
+          } catch (IOException e) {
+            throw new MetadataException(e);
           }
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        } finally {
+        }
+      } finally {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
           mtree.unPinMNode(measurementMNode);
         }
       }
