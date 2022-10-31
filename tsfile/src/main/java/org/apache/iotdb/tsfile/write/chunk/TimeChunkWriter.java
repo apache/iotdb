@@ -182,7 +182,6 @@ public class TimeChunkWriter {
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
         this.firstPageStatistics = header.getStatistics();
-        this.sizeWithoutStatistic = 0;
         this.sizeWithoutStatistic +=
             ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
         this.sizeWithoutStatistic +=
@@ -228,6 +227,7 @@ public class TimeChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = new TimeStatistics();
   }

@@ -606,21 +606,21 @@ public class TsFileWriteApiTest {
   public void writeTsFileByFlushingPageDirectly() throws IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
 
-    // create a tsfile with two pages in one timeseries
+    // create a tsfile with four pages in one timeseries
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerTimeseries(tsFileWriter);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
-      writeMeasurementScheams.add(measurementSchemas.get(0));
+      List<MeasurementSchema> writeMeasurementSchemas = new ArrayList<>();
+      writeMeasurementSchemas.add(measurementSchemas.get(0));
 
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 0, 0, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 30, 30, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 30, 30, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 60, 60, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 60, 60, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 90, 90, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 90, 90, false);
     }
 
     ChunkWriterImpl chunkWriter = new ChunkWriterImpl(measurementSchemas.get(0));
