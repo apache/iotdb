@@ -1762,10 +1762,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     for (int i = 0; i < insertMultiValues.size(); i++) {
       // parse timestamp
       long timestamp;
+      List<String> valueList = new ArrayList<>();
+
       if (insertMultiValues.get(i).timeValue() != null) {
         if (isTimeDefault) {
-          throw new SQLParserException(
-              "the measurementList's size is not consistent with the valueList's size");
+          if (insertMultiValues.size() != 1) {
+            throw new SQLParserException("need timestamps when insert multi rows");
+          }
+          valueList.add(insertMultiValues.get(i).timeValue().getText());
+          timestamp = DateTimeUtils.currentTime();
+        } else {
+          timestamp =
+              parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
         }
         timestamp =
             parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
@@ -1782,7 +1790,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       timeArray[i] = timestamp;
 
       // parse values
-      List<String> valueList = new ArrayList<>();
       List<IoTDBSqlParser.MeasurementValueContext> values =
           insertMultiValues.get(i).measurementValue();
       for (IoTDBSqlParser.MeasurementValueContext value : values) {
