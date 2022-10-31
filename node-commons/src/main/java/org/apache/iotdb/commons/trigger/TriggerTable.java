@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -88,6 +89,11 @@ public class TriggerTable {
         .collect(Collectors.toList());
   }
 
+  public TDataNodeLocation getTriggerLocation(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.get(triggerName);
+    return triggerInformation == null ? null : triggerInformation.getDataNodeLocation();
+  }
+
   public List<String> getTransferringTriggers() {
     return triggerTable.values().stream()
         .filter(
@@ -122,6 +128,7 @@ public class TriggerTable {
     return triggerTable.isEmpty();
   }
 
+  @TestOnly
   public Map<String, TriggerInformation> getTable() {
     return triggerTable;
   }

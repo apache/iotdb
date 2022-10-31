@@ -46,29 +46,30 @@ Apache NiFi includes the following capabilities:
     * Multi-tenant authorization and policy management
     * Standard protocols for encrypted communication including TLS and SSH
 
-## PutIoTDB
+## PutIoTDBRecord
 
 This is a processor that reads the content of the incoming FlowFile as individual records using the configured 'Record Reader' and writes them to Apache IoTDB using native interface.
 
-### Properties of PutIoTDB
+### Properties of PutIoTDBRecord
 
-| property      | description                                                  | default value | necessary |
-| ------------- | ------------------------------------------------------------ | ------------- | --------- |
-| Host          | The host of IoTDB.                                           | null          | true      |
-| Port          | The port of IoTDB.                                           | 6667          | true      |
-| Username      | Username to access the IoTDB.                                | null          | true      |
-| Password      | Password to access the IoTDB.                                | null          | true      |
-| Record Reader | Specifies the type of Record Reader controller service to use <br />for parsing the incoming data and determining the schema. | null          | true      |
+| property      | description                                                                                                                                                                                                                                                                                                   | default value | necessary |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ------------- | --------- |
+| Host          | The host of IoTDB.                                                                                                                                                                                                                                                                                            | null          | true      |
+| Port          | The port of IoTDB.                                                                                                                                                                                                                                                                                            | 6667          | true      |
+| Username      | Username to access the IoTDB.                                                                                                                                                                                                                                                                                 | null          | true      |
+| Password      | Password to access the IoTDB.                                                                                                                                                                                                                                                                                 | null          | true      |
+| Prefix        | The Prefix begin with root. that will be add to the tsName in data.  <br /> It can be updated by expression language.                                                                                                                                                                                                | null          | true      |
+| Record Reader | Specifies the type of Record Reader controller service to use <br />for parsing the incoming data and determining the schema.                                                                                                                                                                                 | null          | true      |
 | Schema        | The schema that IoTDB needs doesn't support good by NiFi.<br/>Therefore, you can define the schema here. <br />Besides, you can set encoding type and compression type by this method.<br />If you don't set this property, the inferred schema will be used.<br /> It can be updated by expression language. | null          | false     |
-| Aligned       | Whether using aligned interface?  It can be updated by expression language. | false         | false     |
-| MaxRowNumber  | Specifies the max row number of each tablet.  It can be updated by expression language. | 1024          | false     |
+| Aligned       | Whether using aligned interface?  It can be updated by expression language.                                                                                                                                                                                                                                   | false         | false     |
+| MaxRowNumber  | Specifies the max row number of each tablet.  It can be updated by expression language.                                                                                                                                                                                                                       | 1024          | false     |
 
 ### Inferred Schema of Flowfile
 
 There are a couple of rules about flowfile:
 
 1. The flowfile can be read by `Record Reader`.
-2. The schema of flowfile must contains a field `Time`, and it must be the first.
+2. The schema of flowfile must contain a field `Time`, and it must be the first.
 3. The data type of time must be `STRING` or `LONG`.
 4. Fields excepted time must start with `root.`.
 5. The supported data types are `INT`, `LONG`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
@@ -83,12 +84,12 @@ The structure of property `Schema`:
 {
 	"timeType": "LONG",
 	"fields": [{
-		"tsName": "root.sg.d1.s1",
+		"tsName": "s1",
 		"dataType": "INT32",
 		"encoding": "RLE",
 		"compressionType": "GZIP"
 	}, {
-		"tsName": "root.sg.d1.s2",
+		"tsName": "s2",
 		"dataType": "INT64",
 		"encoding": "RLE",
 		"compressionType": "GZIP"
@@ -102,10 +103,35 @@ The structure of property `Schema`:
 1. The JSON of schema must contain `timeType` and `fields`.
 2. There are only two options `LONG` and `STRING` for `timeType`.
 3. The columns `tsName` and `dataType` must be set.
-4. The tsName must start with `root.`.
+4. The property `Prefix` will be added to tsName as the field name when add data to IoTDB.
 5. The supported `dataTypes` are `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
 6. The supported `encoding` are `PLAIN`, `DICTIONARY`, `RLE`, `DIFF`, `TS_2DIFF`, `BITMAP`, `GORILLA_V1`, `REGULAR`, `GORILLA`.
 7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`.
+
+## Relationships
+
+| relationship | description                                          |
+| ------------ | ---------------------------------------------------- |
+| success      | Data can be written correctly or flow file is empty. |
+| failure      | The shema or flow file is abnormal.                  |
+
+
+## QueryIoTDBRecord
+
+This is a processor that reads the sql query from the incoming FlowFile and using it to query the result from IoTDB using native interface. Then it use the configured 'Record Writer' to generate the flowfile
+
+### Properties of QueryIoTDBRecord
+
+| property      | description                                                                                                                                                                                                                                                                                                | default value | necessary |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------| --------- |
+| Host          | The host of IoTDB.                                                                                                                                                                                                                                                                                         | null      | true      |
+| Port          | The port of IoTDB.                                                                                                                                                                                                                                                                                         | 6667      | true      |
+| Username      | Username to access the IoTDB.                                                                                                                                                                                                                                                                              | null      | true      |
+| Password      | Password to access the IoTDB.                                                                                                                                                                                                                                                                              | null      | true      |
+| Record Writer | Specifies the Controller Service to use for writing results to a FlowFile. The Record Writer may use Inherit Schema to emulate the inferred schema behavior, i.e. An explicit schema need not be defined in the writer, and will be supplied by the same logic used to infer the schema from the column types. | null      | true      |
+| iotdb-query        | The IoTDB query to execute. <bbr> Note: If there are incoming connections, then the query is created from incoming FlowFile's content otherwise"it is created from this property.                                                                                                                          | null      | false     |
+| iotdb-query-chunk-size  | Chunking can be used to return results in a stream of smaller batches (each has a partial results up to a chunk size) rather than as a single response. Chunking queries can return an unlimited number of rows. Note: Chunking is enable when result chunk size is greater than 0                         | 0         | false     |
+
 
 ## Relationships
 

@@ -135,8 +135,6 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 ### 1.3.4. IoTDB 预定义指标集
 
-用户可以在`iotdb-metric.yml`文件中，修改`predefinedMetrics`的值来启用预定义指标集，目前有`JVM`、`LOGBACK`、`FILE`、`PROCESS`、`SYSYTEM`这五种。
-
 #### 1.3.4.1. JVM
 
 ##### 1.3.4.1.1. 线程
@@ -258,11 +256,6 @@ monitorType: MICROMETER
 
 # 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
-
-# 预定义的指标集, 可选参数: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - FILE
 
 # Prometheus Reporter 使用的端口
 prometheusExporterPort: 9091

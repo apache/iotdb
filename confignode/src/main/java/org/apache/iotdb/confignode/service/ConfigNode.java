@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -39,7 +39,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.ProcessMetrics;
+import org.apache.iotdb.db.service.metrics.SystemMetrics;
+import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -88,6 +91,7 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
@@ -102,7 +106,7 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        // Init consensusGroup
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
@@ -191,12 +195,15 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     // Setup UDFService
-    registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(CONF.getTemporaryLibDir(), CONF.getUdfLibDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
-    registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
     registerManager.register(MetricService.getInstance());
+    // bind predefined metric sets
+    MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(new LogbackMetrics());
+    MetricService.getInstance().addMetricSet(new ProcessMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
+
     LOGGER.info("Successfully setup internal services.");
   }
 
@@ -212,7 +219,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSchemaRegionConsensusProtocolClass(),
             CONF.getSeriesPartitionSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
             CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
@@ -243,6 +250,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
@@ -284,6 +292,15 @@ public class ConfigNode implements ConfigNodeMBean {
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
     System.exit(-1);
+  }
+
+  public ConfigManager getConfigManager() {
+    return configManager;
+  }
+
+  @TestOnly
+  public void setConfigManager(ConfigManager configManager) {
+    this.configManager = configManager;
   }
 
   private static class ConfigNodeHolder {

@@ -39,7 +39,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -95,7 +95,7 @@ public class EnvironmentUtils {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldSeqTsFileSize = config.getSeqTsFileSize();
@@ -180,7 +180,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

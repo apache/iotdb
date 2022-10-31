@@ -24,7 +24,7 @@
 ## 概览
 IoTDB 告警功能预计支持两种模式：
 
-* 写入触发：用户写入原始数据到原始时间序列，每插入一条数据都会触发 `trigger` 的判断逻辑，
+* 写入触发：用户写入原始数据到原始时间序列，每插入一条数据都会触发 `Trigger` 的判断逻辑，
 若满足告警要求则发送告警到下游数据接收器，
 数据接收器再转发告警到外部终端。这种模式：
     * 适合需要即时监控每一条数据的场景。
@@ -32,15 +32,14 @@ IoTDB 告警功能预计支持两种模式：
 
 * 持续查询：用户写入原始数据到原始时间序列，
 `ContinousQuery` 定时查询原始时间序列，将查询结果写入新的时间序列，
-每一次写入触发 `trigger` 的判断逻辑，
+每一次写入触发 `Trigger` 的判断逻辑，
 若满足告警要求则发送告警到下游数据接收器，
 数据接收器再转发告警到外部终端。这种模式：
     * 适合需要定时查询数据在某一段时间内的情况的场景。
     * 适合需要将原始数据降采样并持久化的场景。
     * 由于定时查询几乎不影响原始时间序列的写入，适合对原始数据写入性能敏感的场景。
 
-随着 `trigger` 模块和 `sink` 模块的引入，
-目前用户使用这两个模块，配合 `AlertManager` 可以实现写入触发模式的告警。
+随着 `Trigger` 模块的引入，可以实现写入触发模式的告警。
 
 ## 部署 AlertManager 
 
@@ -244,23 +243,36 @@ inhibit_rules:
 ### 编写 trigger 类
 
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
-具体配置流程以及 Sink 模块提供的 `AlertManagerSink` 相关工具类的使用方法参见 [Triggers](Triggers.md)。
+具体配置流程参见 [Triggers](Triggers.md)。
 
-下面的示例创建了 `org.apache.iotdb.trigger.AlertingExample` 类，
+下面的示例创建了 `org.apache.iotdb.trigger.ClusterAlertingExample` 类，
 其 `alertManagerHandler` 
 成员变量可发送告警至地址为 `http://127.0.0.1:9093/` 的 AlertManager 实例。
 
 当 `value > 100.0` 时，发送 `severity` 为 `critical` 的告警；
 当  `50.0 < value <= 100.0` 时，发送 `severity` 为 `warning` 的告警。
 
-````java
+```java
 package org.apache.iotdb.trigger;
 
-/*
-此处省略包的引入
-*/
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerEvent;
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerHandler;
+import org.apache.iotdb.trigger.api.Trigger;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class AlertingExample implements Trigger {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+
+public class ClusterAlertingExample implements Trigger {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAlertingExample.class);
 
   private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
@@ -275,8 +287,6 @@ public class AlertingExample implements Trigger {
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
-    alertManagerHandler.open(alertManagerConfiguration);
-
     alertname = "alert_test";
 
     labels.put("series", "root.ln.wf01.wt01.temperature");
@@ -285,6 +295,8 @@ public class AlertingExample implements Trigger {
 
     annotations.put("summary", "high temperature");
     annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+
+    alertManagerHandler.open(alertManagerConfiguration);
   }
 
   @Override
@@ -293,65 +305,49 @@ public class AlertingExample implements Trigger {
   }
 
   @Override
-  public void onStart() {
-    alertManagerHandler.open(alertManagerConfiguration);
-  }
-
-  @Override
-  public void onStop() throws Exception {
-    alertManagerHandler.close();
-  }
-
-  @Override
-  public Double fire(long timestamp, Double value) throws Exception {
-    if (value > 100.0) {
-      labels.put("value", String.valueOf(value));
-      labels.put("severity", "critical");
-      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-      alertManagerHandler.onEvent(alertManagerEvent);
-    } else if (value > 50.0) {
-      labels.put("value", String.valueOf(value));
-      labels.put("severity", "warning");
-      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-      alertManagerHandler.onEvent(alertManagerEvent);
-    }
-
-    return value;
-  }
-
-  @Override
-  public double[] fire(long[] timestamps, double[] values) throws Exception {
-    for (double value : values) {
-      if (value > 100.0) {
-        labels.put("value", String.valueOf(value));
-        labels.put("severity", "critical");
-        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-        alertManagerHandler.onEvent(alertManagerEvent);
-      } else if (value > 50.0) {
-        labels.put("value", String.valueOf(value));
-        labels.put("severity", "warning");
-        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-        alertManagerHandler.onEvent(alertManagerEvent);
+  public boolean fire(Tablet tablet) throws Exception {
+    List<MeasurementSchema> measurementSchemaList = tablet.getSchemas();
+    for (int i = 0, n = measurementSchemaList.size(); i < n; i++) {
+      if (measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)) {
+        // for example, we only deal with the columns of Double type
+        double[] values = (double[]) tablet.values[i];
+        for (double value : values) {
+          if (value > 100.0) {
+            LOGGER.info("trigger value > 100");
+            labels.put("value", String.valueOf(value));
+            labels.put("severity", "critical");
+            AlertManagerEvent alertManagerEvent =
+                new AlertManagerEvent(alertname, labels, annotations);
+            alertManagerHandler.onEvent(alertManagerEvent);
+          } else if (value > 50.0) {
+            LOGGER.info("trigger value > 50");
+            labels.put("value", String.valueOf(value));
+            labels.put("severity", "warning");
+            AlertManagerEvent alertManagerEvent =
+                new AlertManagerEvent(alertname, labels, annotations);
+            alertManagerHandler.onEvent(alertManagerEvent);
+          }
+        }
       }
     }
-    return values;
+    return true;
   }
 }
-
-````
+```
 
 ### 创建 trigger
 
 如下的 sql 语句在 `root.ln.wf01.wt01.temperature` 
 时间序列上注册了名为 `root-ln-wf01-wt01-alert`、
-运行逻辑由 `org.apache.iotdb.trigger.AlertingExample` 
+运行逻辑由 `org.apache.iotdb.trigger.ClusterAlertingExample` 
 类定义的触发器。
 
 ``` sql
-  CREATE TRIGGER `root-ln-wf01-wt01-alert`
+  CREATE STATELESS TRIGGER `root-ln-wf01-wt01-alert`
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
-  AS "org.apache.iotdb.trigger.AlertingExample"
+  AS "org.apache.iotdb.trigger.ClusterAlertingExample"
+  USING URI 'http://jar/ClusterAlertingExample.jar'
 ```
 
 ## 写入数据

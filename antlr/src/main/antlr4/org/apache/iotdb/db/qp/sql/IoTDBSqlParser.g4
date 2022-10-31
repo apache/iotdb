@@ -39,7 +39,7 @@ ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
     | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
+    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
@@ -118,7 +118,11 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL (USING uri (COMMA uri)*)?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    ;
+
+uriClasue
+    : USING URI uri
     ;
 
 uri
@@ -127,7 +131,7 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL uriClasue? triggerAttributeClause?
     ;
 
 triggerType
@@ -136,10 +140,6 @@ triggerType
 
 triggerEventClause
     : (BEFORE | AFTER) (INSERT | DELETE)
-    ;
-
-jarLocation
-    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause
@@ -152,20 +152,24 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=identifier resampleClause? cqSelectIntoClause
-    ;
-
-cqSelectIntoClause
-    : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
-    ;
-
-cqGroupByTimeClause
-    : GROUP BY TIME LR_BRACKET DURATION_LITERAL RR_BRACKET
-      (COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
+    : CREATE (CONTINUOUS QUERY | CQ) cqId=identifier
+        resampleClause?
+        timeoutPolicyClause?
+        BEGIN
+            selectStatement
+        END
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?
+    : RESAMPLE
+        (EVERY everyInterval=DURATION_LITERAL)?
+        (FOR DURATION_LITERAL)?
+        (BOUNDARY boundaryTime=timeValue)?
+        (RANGE startTimeOffset=DURATION_LITERAL (COMMA endTimeOffset=DURATION_LITERAL)?)?
+    ;
+
+timeoutPolicyClause
+    : TIMEOUT POLICY (BLOCKED | DISCARD)
     ;
 
 // Alter Timeseries
@@ -206,6 +210,11 @@ deletePartition
     : DELETE PARTITION prefixPath INTEGER_LITERAL(COMMA INTEGER_LITERAL)*
     ;
 
+// Delete Timeseries of Schema Template
+deleteTimeseriesOfSchemaTemplate
+    : (DELETE TIMESERIES OF | DEACTIVATE) SCHEMA? TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    ;
+
 // Drop Function
 dropFunction
     : DROP FUNCTION udfName=identifier
@@ -218,7 +227,7 @@ dropTrigger
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
+    : DROP (CONTINUOUS QUERY|CQ) cqId=identifier
     ;
 
 // Drop Schema Template
@@ -361,7 +370,7 @@ showPathsSetSchemaTemplate
 
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group
@@ -423,7 +432,7 @@ specialClause
     | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
     | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
     | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
-    | groupByTagClause orderByClause? #groupByTagStatement
+    | groupByTagClause havingClause? orderByClause? specialLimit? #groupByTagStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -467,15 +476,15 @@ sortKey
     ;
 
 groupByTimeClause
-    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? fillClause? RR_BRACKET
-    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? fillClause? RR_BRACKET
+    | GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     COMMA LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)* fillClause?
-    | GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    | GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     COMMA TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeRange COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
+    : GROUP BY TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     fillClause
     ;
 

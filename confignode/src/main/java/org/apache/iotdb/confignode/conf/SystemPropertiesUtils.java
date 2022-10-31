@@ -68,31 +68,33 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
-    String internalAddress = systemProperties.getProperty("internal_address", null);
+    String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
     } else if (!internalAddress.equals(conf.getInternalAddress())) {
       throw new ConfigurationException(
-          "internal_address", conf.getInternalAddress(), internalAddress);
+          "cn_internal_address", conf.getInternalAddress(), internalAddress);
     }
 
-    if (systemProperties.getProperty("internal_port", null) == null) {
+    if (systemProperties.getProperty("cn_internal_port", null) == null) {
       needReWrite = true;
     } else {
-      int internalPort = Integer.parseInt(systemProperties.getProperty("internal_port"));
+      int internalPort = Integer.parseInt(systemProperties.getProperty("cn_internal_port"));
       if (internalPort != conf.getInternalPort()) {
         throw new ConfigurationException(
-            "internal_port", String.valueOf(conf.getInternalPort()), String.valueOf(internalPort));
+            "cn_internal_port",
+            String.valueOf(conf.getInternalPort()),
+            String.valueOf(internalPort));
       }
     }
 
-    if (systemProperties.getProperty("consensus_port", null) == null) {
+    if (systemProperties.getProperty("cn_consensus_port", null) == null) {
       needReWrite = true;
     } else {
-      int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
+      int consensusPort = Integer.parseInt(systemProperties.getProperty("cn_consensus_port"));
       if (consensusPort != conf.getConsensusPort()) {
         throw new ConfigurationException(
-            "consensus_port",
+            "cn_consensus_port",
             String.valueOf(conf.getConsensusPort()),
             String.valueOf(consensusPort));
       }
@@ -197,9 +199,9 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
 
     // Startup configuration
-    systemProperties.setProperty("internal_address", String.valueOf(conf.getInternalAddress()));
-    systemProperties.setProperty("internal_port", String.valueOf(conf.getInternalPort()));
-    systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
+    systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
+    systemProperties.setProperty("cn_internal_port", String.valueOf(conf.getInternalPort()));
+    systemProperties.setProperty("cn_consensus_port", String.valueOf(conf.getConsensusPort()));
 
     // Consensus protocol configuration
     systemProperties.setProperty(

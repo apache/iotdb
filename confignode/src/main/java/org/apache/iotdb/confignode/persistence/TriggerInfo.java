@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -26,20 +27,23 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
-import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
+import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -132,11 +136,13 @@ public class TriggerInfo implements SnapshotProcessor {
     try {
       TriggerInformation triggerInformation = physicalPlan.getTriggerInformation();
       triggerTable.addTriggerInformation(triggerInformation.getTriggerName(), triggerInformation);
-      existedJarToMD5.put(triggerInformation.getJarName(), triggerInformation.getJarFileMD5());
-      if (physicalPlan.getJarFile() != null) {
-        triggerExecutableManager.writeToLibDir(
-            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()),
-            triggerInformation.getJarName());
+      if (triggerInformation.isUsingURI()) {
+        existedJarToMD5.put(triggerInformation.getJarName(), triggerInformation.getJarFileMD5());
+        if (physicalPlan.getJarFile() != null) {
+          triggerExecutableManager.saveToInstallDir(
+              ByteBuffer.wrap(physicalPlan.getJarFile().getValues()),
+              triggerInformation.getJarName());
+        }
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
@@ -176,25 +182,38 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
-  public TriggerJarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
+  public DataSet getTriggerLocation(GetTriggerLocationPlan req) {
+    TDataNodeLocation dataNodeLocation = triggerTable.getTriggerLocation(req.getTriggerName());
+    if (dataNodeLocation != null) {
+      return new TriggerLocationResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), dataNodeLocation);
+    } else {
+      return new TriggerLocationResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(String.format("Fail to get Location trigger[%s]", req.getTriggerName())),
+          null);
+    }
+  }
+
+  public JarResp getTriggerJar(GetTriggerJarPlan physicalPlan) {
     List<ByteBuffer> jarList = new ArrayList<>();
     try {
       for (String jarName : physicalPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
-                TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarName)));
+                TriggerExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
       }
     } catch (Exception e) {
       LOGGER.error("Get TriggerJar failed", e);
-      return new TriggerJarResp(
+      return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage("Get TriggerJar failed, because " + e.getMessage()),
           Collections.emptyList());
     }
-    return new TriggerJarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
   }
 
-  public TransferringTriggersResp getTransferringTriggers(GetTransferringTriggersPlan req) {
+  public TransferringTriggersResp getTransferringTriggers() {
     return new TransferringTriggersResp(triggerTable.getTransferringTriggers());
   }
 
@@ -210,12 +229,12 @@ public class TriggerInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** only used in Test */
+  @TestOnly
   public Map<String, TriggerInformation> getRawTriggerTable() {
     return triggerTable.getTable();
   }
 
-  /** only used in Test */
+  @TestOnly
   public Map<String, String> getRawExistedJarToMD5() {
     return existedJarToMD5;
   }
@@ -239,7 +258,6 @@ public class TriggerInfo implements SnapshotProcessor {
       triggerTable.serializeTriggerTable(fileOutputStream);
 
       fileOutputStream.flush();
-
       fileOutputStream.close();
 
       return tmpFile.renameTo(snapshotFile);

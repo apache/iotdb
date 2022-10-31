@@ -51,4 +51,21 @@ public class GroupByLevelComponent extends StatementNode {
   public boolean isCountStar(int i) {
     return isCountStar.get(i);
   }
+
+  public String toSQLString(boolean hasGroupByTime) {
+    StringBuilder sqlBuilder = new StringBuilder();
+    if (hasGroupByTime) {
+      sqlBuilder.append(", ");
+    } else {
+      sqlBuilder.append("GROUP BY ");
+    }
+    sqlBuilder.append("LEVEL = ");
+    for (int i = 0; i < levels.length; i++) {
+      sqlBuilder.append(levels[i]);
+      if (i < levels.length - 1) {
+        sqlBuilder.append(',').append(' ');
+      }
+    }
+    return sqlBuilder.toString();
+  }
 }

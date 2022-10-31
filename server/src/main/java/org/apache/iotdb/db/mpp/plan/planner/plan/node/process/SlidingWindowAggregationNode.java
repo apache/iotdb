@@ -28,8 +28,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SlidingWindowAggregationNode extends ProcessNode {
+public class SlidingWindowAggregationNode extends SingleChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
@@ -48,8 +46,6 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   private final GroupByTimeParameter groupByTimeParameter;
 
   protected Ordering scanOrder;
-
-  private PlanNode child;
 
   public SlidingWindowAggregationNode(
       PlanNodeId id,
@@ -68,8 +64,10 @@ public class SlidingWindowAggregationNode extends ProcessNode {
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
-    this.child = child;
+    super(id, child);
+    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -86,25 +84,6 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   public Ordering getScanOrder() {
     return scanOrder;
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
   }
 
   @Override
@@ -189,13 +168,12 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     }
     SlidingWindowAggregationNode that = (SlidingWindowAggregationNode) o;
     return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
-        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
-        && Objects.equals(child, that.child);
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter, child);
+    return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter);
   }
 
   public String toString() {
