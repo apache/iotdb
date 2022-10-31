@@ -168,7 +168,7 @@ public class LoadTsFileScheduler implements IScheduler {
             null,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
-                queryContext.getSession());
+            queryContext.getSession());
     instance.setDataRegionAndHost(replicaSet);
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(Collections.singletonList(instance));
