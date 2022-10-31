@@ -74,6 +74,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -435,6 +436,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     // todo implement this
     throw new UnsupportedOperationException(
         "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public ISchemaReader getSchemaReader() {
+    throw new UnsupportedOperationException();
   }
 
   // endregion

@@ -79,6 +79,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -555,6 +556,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             metadataException);
       }
     }
+  }
+
+  @Override
+  public ISchemaReader getSchemaReader() {
+    return new ISchemaReader() {
+    };
   }
 
   // endregion

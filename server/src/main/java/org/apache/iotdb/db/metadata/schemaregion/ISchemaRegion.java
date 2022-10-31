@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -107,6 +108,8 @@ public interface ISchemaRegion {
 
   void loadSnapshot(File latestSnapshotRootDir);
   // endregion
+
+  ISchemaReader getSchemaReader();
 
   // region Interfaces for Timeseries operation
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;

@@ -58,6 +58,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
@@ -239,6 +240,11 @@ public class RSchemaRegion implements ISchemaRegion {
     // todo implement this
     throw new UnsupportedOperationException(
         "Rocksdb mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public ISchemaReader getSchemaReader() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
