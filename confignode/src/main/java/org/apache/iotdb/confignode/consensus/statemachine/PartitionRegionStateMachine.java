@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -118,6 +120,46 @@ public class PartitionRegionStateMachine
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      if (logFile.length() > FILE_MAX_SIZE) {
+        try {
+          logWriter.force();
+        } catch (IOException e) {
+          LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
+        }
+        for (int retry = 0; retry < 5; retry++) {
+          try {
+            logWriter.close();
+          } catch (IOException e) {
+            LOGGER.warn(
+                "Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
+                logFile.getAbsolutePath(),
+                retry);
+            try {
+              // Sleep 1s and retry
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e2) {
+              Thread.currentThread().interrupt();
+              LOGGER.warn("Unexpected interruption during the close method of logWriter");
+            }
+            continue;
+          }
+          break;
+        }
+        createLogFile(logFileId + 1);
+      }
+
+      try {
+        ByteBuffer buffer = plan.serializeToByteBuffer();
+        // The method logWriter.write will execute flip() firstly, so we must make position==limit
+        buffer.position(buffer.limit());
+        logWriter.write(buffer);
+      } catch (IOException e) {
+        LOGGER.error(
+            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+      }
     }
 
     return result;
@@ -212,7 +254,11 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      initStandAloneConfigNode();
+    }
+  }
 
   @Override
   public void stop() {
