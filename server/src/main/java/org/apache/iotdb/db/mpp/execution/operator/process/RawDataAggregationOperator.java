@@ -53,7 +53,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       Operator child,
       boolean ascending,
       long maxReturnSize) {
-    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
     this.windowManager = new TimeWindowManager(timeRangeIterator);
   }
 

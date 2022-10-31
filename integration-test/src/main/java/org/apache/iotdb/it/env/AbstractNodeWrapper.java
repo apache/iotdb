@@ -86,11 +86,15 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final int jmxPort;
   private final String TAB = "  ";
   private Process instance;
+  private String node_address;
+  private int node_port;
 
   public AbstractNodeWrapper(String testClassName, String testMethodName, int[] portList) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
+    this.node_address = "127.0.0.1";
+    this.node_port = portList[0];
     jmxPort = this.portList[portList.length - 1];
   }
 
@@ -214,17 +218,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public void changeConfig(Properties properties) {
     try {
+      String commonConfigPath = getCommonConfigPath();
+      Properties commonConfigProperties = new Properties();
+      try (InputStream confInput = Files.newInputStream(Paths.get(commonConfigPath))) {
+        commonConfigProperties.load(confInput);
+      }
       String configPath = getConfigPath();
       Properties configProperties = new Properties();
       try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
         configProperties.load(confInput);
       }
-      updateConfig(configProperties);
+      commonConfigProperties.putAll(configProperties);
+      updateConfig(commonConfigProperties);
       if (properties != null && !properties.isEmpty()) {
-        configProperties.putAll(properties);
+        commonConfigProperties.putAll(properties);
       }
       try (FileWriter confOutput = new FileWriter(configPath)) {
-        configProperties.store(confOutput, null);
+        commonConfigProperties.store(confOutput, null);
       }
     } catch (IOException ex) {
       fail("Change the config of data node failed. " + ex);
@@ -233,12 +243,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public final String getIp() {
-    return "127.0.0.1";
+    return this.node_address;
+  }
+
+  public void setIp(String ip) {
+    this.node_address = ip;
   }
 
   @Override
   public final int getPort() {
-    return portList[0];
+    return this.node_port;
+  }
+
+  public void setPort(int port) {
+    this.node_port = port;
   }
 
   @Override
@@ -252,6 +270,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract String getConfigPath();
 
+  protected abstract String getCommonConfigPath();
+
   protected abstract void updateConfig(Properties properties);
 
   protected abstract void addStartCmdParams(List<String> params);
@@ -260,7 +280,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
-  private String getLogDirPath() {
+  protected String getLogDirPath() {
     return System.getProperty("user.dir")
         + File.separator
         + "target"
@@ -356,4 +376,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     }
     return testClassName + "_" + testMethodName;
   }
+
+  protected abstract void renameFile();
 }

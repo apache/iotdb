@@ -19,68 +19,58 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.function;
 
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CreateFunctionPlan extends ConfigPhysicalPlan {
 
-  private String functionName;
-  private String className;
-  private List<String> uris;
+  private UDFInformation udfInformation;
+  private Binary jarFile;
 
   public CreateFunctionPlan() {
     super(ConfigPhysicalPlanType.CreateFunction);
   }
 
-  public CreateFunctionPlan(String functionName, String className, List<String> uris) {
+  public CreateFunctionPlan(UDFInformation udfInformation, Binary jarFile) {
     super(ConfigPhysicalPlanType.CreateFunction);
-    this.functionName = functionName;
-    this.className = className;
-    this.uris = uris;
+    this.udfInformation = udfInformation;
+    this.jarFile = jarFile;
   }
 
-  public String getFunctionName() {
-    return functionName;
+  public UDFInformation getUdfInformation() {
+    return udfInformation;
   }
 
-  public String getClassName() {
-    return className;
-  }
-
-  public List<String> getUris() {
-    return uris;
+  public Binary getJarFile() {
+    return jarFile;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
 
-    ReadWriteIOUtils.write(functionName, stream);
-    ReadWriteIOUtils.write(className, stream);
-
-    final int size = uris.size();
-    ReadWriteIOUtils.write(size, stream);
-    for (String uri : uris) {
-      ReadWriteIOUtils.write(uri, stream);
+    udfInformation.serialize(stream);
+    if (jarFile == null) {
+      ReadWriteIOUtils.write(true, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+      ReadWriteIOUtils.write(jarFile, stream);
     }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    functionName = ReadWriteIOUtils.readString(buffer);
-    className = ReadWriteIOUtils.readString(buffer);
-
-    final int size = ReadWriteIOUtils.readInt(buffer);
-    uris = new ArrayList<>(size);
-    for (int i = 0; i < size; ++i) {
-      uris.add(ReadWriteIOUtils.readString(buffer));
+    udfInformation = UDFInformation.deserialize(buffer);
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      return;
     }
+    jarFile = ReadWriteIOUtils.readBinary(buffer);
   }
 }

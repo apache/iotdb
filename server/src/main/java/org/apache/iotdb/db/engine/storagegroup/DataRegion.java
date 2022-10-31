@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -87,7 +88,6 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
@@ -3765,6 +3765,10 @@ public class DataRegion {
 
   public List<Long> getTimePartitions() {
     return new ArrayList<>(partitionMaxFileVersions.keySet());
+  }
+
+  public Long getLatestTimePartition() {
+    return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
   }
 
   public String getInsertWriteLockHolder() {

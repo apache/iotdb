@@ -133,10 +133,10 @@ public class ConfigNodeConfig {
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
-  private long heartbeatInterval = 1000;
+  private long heartbeatIntervalInMs = 1000;
 
   /** The unknown DataNode detect interval in milliseconds */
-  private long unknownDataNodeDetectInterval = heartbeatInterval;
+  private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
@@ -169,6 +169,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -187,6 +188,11 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
+  /** CQ related */
+  private int cqSubmitThread = 2;
+
+  private long cqMinEveryIntervalInMs = 1_000;
 
   /** RatisConsensus protocol, request timeout for ratis client */
   private long dataRegionRatisRequestTimeoutMs = 10000L;
@@ -317,35 +323,35 @@ public class ConfigNodeConfig {
     this.timePartitionInterval = timePartitionInterval;
   }
 
-  public int getRpcMaxConcurrentClientNum() {
+  public int getCnRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
-  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+  public void setCnRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public boolean isRpcAdvancedCompressionEnable() {
+  public boolean isCnRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
 
-  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+  public void setCnRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
   }
 
-  public int getThriftMaxFrameSize() {
+  public int getCnThriftMaxFrameSize() {
     return thriftMaxFrameSize;
   }
 
-  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+  public void setCnThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 
-  public int getThriftDefaultBufferSize() {
+  public int getCnThriftDefaultBufferSize() {
     return thriftDefaultBufferSize;
   }
 
-  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+  public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
@@ -498,12 +504,12 @@ public class ConfigNodeConfig {
     this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
   }
 
-  public long getHeartbeatInterval() {
-    return heartbeatInterval;
+  public long getHeartbeatIntervalInMs() {
+    return heartbeatIntervalInMs;
   }
 
-  public void setHeartbeatInterval(long heartbeatInterval) {
-    this.heartbeatInterval = heartbeatInterval;
+  public void setHeartbeatIntervalInMs(long heartbeatIntervalInMs) {
+    this.heartbeatIntervalInMs = heartbeatIntervalInMs;
   }
 
   public long getUnknownDataNodeDetectInterval() {
@@ -695,6 +701,15 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
+  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
+    return partitionRegionStandAloneLogSegmentSizeMax;
+  }
+
+  public void setPartitionRegionStandAloneLogSegmentSizeMax(
+      long partitionRegionStandAloneLogSegmentSizeMax) {
+    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
+  }
+
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
     return schemaRegionRatisGrpcFlowControlWindow;
   }
@@ -722,6 +737,22 @@ public class ConfigNodeConfig {
       long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
     this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
         schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public int getCqSubmitThread() {
+    return cqSubmitThread;
+  }
+
+  public void setCqSubmitThread(int cqSubmitThread) {
+    this.cqSubmitThread = cqSubmitThread;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
 
   public long getDataRegionRatisRequestTimeoutMs() {

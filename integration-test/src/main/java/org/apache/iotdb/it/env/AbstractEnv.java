@@ -393,6 +393,14 @@ public abstract class AbstractEnv implements BaseEnv {
     this.dataNodeWrapperList = dataNodeWrapperList;
   }
 
+  /**
+   * Get connection to ConfigNode-Leader in ClusterIT environment
+   *
+   * <p>Notice: The caller should always use try-with-resource to invoke this interface in order to
+   * return client to ClientPool automatically
+   *
+   * @return SyncConfigNodeIServiceClient that connects to the ConfigNode-Leader
+   */
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws IOException, InterruptedException {
@@ -402,23 +410,27 @@ public abstract class AbstractEnv implements BaseEnv {
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-        try (SyncConfigNodeIServiceClient client =
-            clientManager.borrowClient(
-                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
+        try {
+          SyncConfigNodeIServiceClient client =
+              clientManager.borrowClient(
+                  new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
           TShowClusterResp resp = client.showCluster();
-          // Only the ConfigNodeClient who connects to the ConfigNode-leader
-          // will respond the SUCCESS_STATUS
+
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // Only the ConfigNodeClient who connects to the ConfigNode-leader
+            // will respond the SUCCESS_STATUS
             logger.info(
                 "Successfully get connection to the leader ConfigNode: {}",
                 configNodeWrapper.getIpAndPortString());
             return client;
+          } else {
+            // Return client otherwise
+            client.close();
           }
         } catch (Exception e) {
           logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
-              configNodeWrapper.getIpAndPortString(),
-              e);
+              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
+              configNodeWrapper.getIpAndPortString());
         }
 
         // Sleep 1s before next retry

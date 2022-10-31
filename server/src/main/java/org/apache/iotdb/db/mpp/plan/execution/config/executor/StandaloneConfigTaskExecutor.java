@@ -41,6 +41,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -55,10 +57,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -202,16 +206,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris) {
+      CreateFunctionStatement createFunctionStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String udfName = createFunctionStatement.getUdfName();
+    String className = createFunctionStatement.getClassName();
     try {
       UDFManagementService.getInstance().register(new UDFInformation(udfName, className));
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
-          String.format(
-              "Failed to create function %s(%s), URI: %s, because %s.",
-              udfName, className, uris, e.getMessage());
+          String.format("Failed to create function %s(%s), because %s.", udfName, className, e);
       LOGGER.error(message, e);
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
@@ -223,7 +227,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      UDFManagementService.getInstance().deregister(udfName);
+      UDFManagementService.getInstance().deregister(udfName, false);
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
@@ -232,6 +236,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showFunctions() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show functions in standalone mode is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 
@@ -492,6 +506,28 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> dropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing drop schema template is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> unsetSchemaTemplate(
+      String queryId, UnsetSchemaTemplateStatement unsetSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing unset schema template is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createPipeSink(
       CreatePipeSinkStatement createPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -628,6 +664,51 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing getTimeSlotList is not supported in standalone mode",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createContinuousQuery(
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      // todo: implementation
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format(
+              "Failed to create continuous query %s, because %s.",
+              createContinuousQueryStatement.getCqId(), e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      // todo: implementation
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format("Failed to continuous query trigger %s, because %s.", cqId, e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showContinuousQueries() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show continuous queries in standalone mode is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }

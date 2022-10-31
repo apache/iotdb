@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,17 +36,16 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
+import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -165,9 +165,10 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(SettleService.getINSTANCE());
     }
     registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
+    // bind predefined metrics
+    DataNodeMetricsHelper.bind();
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
@@ -181,7 +182,7 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(MPPRestService.getInstance());
+      registerManager.register(RestService.getInstance());
     }
   }
 

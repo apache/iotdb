@@ -28,6 +28,7 @@
   <allow pkg="java.util" />
   <allow pkg="java.math" />
   <allow pkg="java.sql" />
+  <allow pkg="java.time" />
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.rpc.*" regex="true"/>
@@ -61,7 +62,10 @@
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
+    <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
+    <allow class="org.apache.iotdb.commons.cq.CQState" />
     <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
+    <allow class="org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils" />
     <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true" />
@@ -71,16 +75,19 @@
     <allow pkg="org\.apache\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.trigger\.api\.enums.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.confignode\.it\.utils\.ConfigNodeTestUtils.*" regex="true"/>
   </subpackage>
   <subpackage name="session.it">
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
-    <allow class="org.apache.iotdb.session.ISession" />
-    <allow class="org.apache.iotdb.session.SessionDataSet" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
     <allow class="org.apache.iotdb.db.conf.OperationType" />
     <allow class="org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService" />
     <allow class="org.apache.iotdb.db.exception.TriggerManagementException" />
+    <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
+    <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />

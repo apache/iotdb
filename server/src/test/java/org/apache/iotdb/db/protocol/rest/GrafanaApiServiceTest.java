@@ -34,6 +34,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -46,6 +47,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+// move to integration-test
+@Ignore
 public class GrafanaApiServiceTest {
   @Before
   public void setUp() throws Exception {

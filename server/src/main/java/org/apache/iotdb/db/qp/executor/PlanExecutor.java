@@ -47,14 +47,12 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
@@ -146,7 +144,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -211,12 +208,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS_TYPES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COLUMN;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_BOUNDARY;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_QUERY_SQL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_TARGET_PATH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
@@ -508,13 +499,21 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance()
-        .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    try {
+      UDFManagementService.getInstance()
+          .register(new UDFInformation(plan.getUdfName(), plan.getClassName()));
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
   private boolean operateDropFunction(DropFunctionPlan plan) throws UDFManagementException {
-    UDFManagementService.getInstance().deregister(plan.getUdfName());
+    try {
+      UDFManagementService.getInstance().deregister(plan.getUdfName(), false);
+    } catch (Exception e) {
+      throw new UDFManagementException(e.getMessage());
+    }
     return true;
   }
 
@@ -596,14 +595,12 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan)
-      throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().register(plan, true);
+  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) {
+    throw new UnsupportedOperationException();
   }
 
-  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan)
-      throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().deregister(plan, true);
+  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) {
+    throw new UnsupportedOperationException();
   }
 
   public static void flushSpecifiedStorageGroups(FlushPlan plan)
@@ -723,7 +720,7 @@ public class PlanExecutor implements IPlanExecutor {
       case TRIGGERS:
         return processShowTriggers();
       case CONTINUOUS_QUERY:
-        return processShowContinuousQueries();
+        throw new UnsupportedOperationException();
       case SCHEMA_TEMPLATE:
         return processShowSchemaTemplates();
       case NODES_IN_SCHEMA_TEMPLATE:
@@ -1088,15 +1085,15 @@ public class PlanExecutor implements IPlanExecutor {
       String functionType = "";
       try {
         if (info.isBuiltin()) {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_BUILTIN_UDAF;
           }
         } else {
-          if (info.isUDTF()) {
+          if (UDFManagementService.getInstance().isUDTF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-          } else if (info.isUDAF()) {
+          } else if (UDFManagementService.getInstance().isUDAF(info.getFunctionName())) {
             functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
           }
         }
@@ -1110,41 +1107,6 @@ public class PlanExecutor implements IPlanExecutor {
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
-  }
-
-  private QueryDataSet processShowContinuousQueries() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_NAME, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_BOUNDARY, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_QUERY_SQL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_TARGET_PATH, false)),
-            Arrays.asList(
-                TSDataType.TEXT,
-                TSDataType.INT64,
-                TSDataType.INT64,
-                TSDataType.INT64,
-                TSDataType.TEXT,
-                TSDataType.TEXT));
-
-    List<ShowContinuousQueriesResult> continuousQueriesList =
-        ContinuousQueryService.getInstance().getShowContinuousQueriesResultList();
-
-    for (ShowContinuousQueriesResult result : continuousQueriesList) {
-      RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(result.getContinuousQueryName()), TSDataType.TEXT);
-      record.addField(result.getEveryInterval(), TSDataType.INT64);
-      record.addField(result.getForInterval(), TSDataType.INT64);
-      record.addField(result.getBoundary(), TSDataType.INT64);
-      record.addField(Binary.valueOf(result.getQuerySql()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(result.getTargetPath().getFullPath()), TSDataType.TEXT);
-      listDataSet.putRecord(record);
-    }
-
-    return listDataSet;
   }
 
   private QueryDataSet processShowSchemaTemplates() {
