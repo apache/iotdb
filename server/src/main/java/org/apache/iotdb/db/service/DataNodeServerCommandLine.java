@@ -72,7 +72,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     }
 
     DataNode dataNode = DataNode.getInstance();
-    // check config of iotdb,and set some configs in cluster mode
+    // Check config of IoTDB, and set some configs in cluster mode
     try {
       dataNode.serverCheckAndInit();
     } catch (ConfigurationException | IOException e) {
@@ -82,13 +82,13 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     String mode = args[0];
     LOGGER.info("Running mode {}", mode);
 
-    // initialize the current node and its services
+    // Initialize the current node and its services
     if (!dataNode.initLocalEngines()) {
       LOGGER.error("Init local engines error, stop process!");
       return -1;
     }
 
-    // we start IoTDB kernel first. then we start the cluster module.
+    // Start IoTDB kernel first, then start the cluster module
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
@@ -129,9 +129,9 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }
       LOGGER.info(
-          "Submit remove-datanode request successfully, "
+          "Submit remove-datanode request successfully, but the process may fail. "
               + "more details are shown in the logs of confignode-leader and removed-datanode, "
-              + "and after the process of removing datanode is over, "
+              + "and after the process of removing datanode ends successfully, "
               + "you are supposed to delete directory and data of the removed-datanode manually");
     }
   }

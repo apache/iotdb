@@ -55,7 +55,8 @@ public class IoTDBStorageGroupIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    // Init 1C0D environment
+    EnvFactory.getEnv().initClusterEnvironment(1, 0);
   }
 
   @After
@@ -64,7 +65,8 @@ public class IoTDBStorageGroupIT {
   }
 
   @Test
-  public void testSetAndQueryStorageGroup() throws IOException, TException, IllegalPathException {
+  public void testSetAndQueryStorageGroup()
+      throws IOException, TException, IllegalPathException, InterruptedException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -155,7 +157,7 @@ public class IoTDBStorageGroupIT {
   }
 
   @Test
-  public void testDeleteStorageGroup() throws TException, IOException {
+  public void testDeleteStorageGroup() throws TException, IOException, InterruptedException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";

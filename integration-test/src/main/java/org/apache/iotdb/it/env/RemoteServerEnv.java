@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
@@ -148,7 +152,14 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
-    return null;
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    try (SyncConfigNodeIServiceClient client =
+        clientManager.borrowClient(new TEndPoint(ip_addr, 22277))) {
+      return client;
+    }
   }
 
   @Override
@@ -156,6 +167,11 @@ public class RemoteServerEnv implements BaseEnv {
     Session session = new Session(ip_addr, Integer.parseInt(port));
     session.open();
     return session;
+  }
+
+  @Override
+  public int getLeaderConfigNodeIndex() throws IOException {
+    return -1;
   }
 
   @Override
@@ -176,5 +192,10 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public void shutdownDataNode(int index) {
     getDataNodeWrapperList().get(index).stop();
+  }
+
+  @Override
+  public int getMqttPort() {
+    throw new UnsupportedOperationException();
   }
 }

@@ -44,7 +44,7 @@
         <!--        </fileSet>-->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>grafana-metrics-example</outputDirectory>
@@ -80,6 +80,10 @@
             <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/datanode-env.sh</source>
             <destName>conf/datanode-env.sh</destName>
             <fileMode>0755</fileMode>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf/iotdb-datanode-metric.yml</source>
+            <destName>conf/iotdb-datanode-metric.yml</destName>
         </file>
     </files>
     <componentDescriptors>

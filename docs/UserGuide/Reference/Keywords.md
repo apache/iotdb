@@ -21,7 +21,7 @@
 
 # Keywords and Reserved Words
 
-The following list shows the keywords and reserved words in IoTDB 0.13. Reserved keywords are marked with **(R)**.
+The following list shows the keywords and reserved words in IoTDB. Reserved keywords are marked with **(R)**.
 
 - Common Keywords
   - ADD
@@ -32,19 +32,21 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - ALL
   - ALTER
   - ANY
+  - APPEND
   - AS
   - ASC
   - ATTRIBUTES
-  - AUTOREGISTER
   - BEFORE
   - BEGIN
+  - BLOCKED
+  - BOUNDARY
   - BY
   - CACHE
   - CHILD
   - CLEAR
-  - COMPRESSION
-  - COMPRESSOR
+  - CLUSTER
   - CONCAT
+  - CONFIGNODES
   - CONFIGURATION
   - CONTINUOUS
   - COUNT
@@ -52,7 +54,9 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - CQ
   - CQS
   - CREATE
-  - DATATYPE
+  - DATA
+  - DATANODES
+  - DEACTIVATE
   - DEBUG
   - DELETE
   - DESC
@@ -60,12 +64,14 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - DEVICE
   - DEVICES
   - DISABLE
+  - DISCARD
   - DROP
-  - ENCODING
   - END
+  - ENDTIME
   - EVERY
   - EXPLAIN
   - FILL
+  - FILE
   - FLUSH
   - FOR
   - FROM
@@ -75,6 +81,7 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - GLOBAL
   - GRANT
   - GROUP
+  - HAVING
   - INDEX
   - INFO
   - INSERT
@@ -90,52 +97,72 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - LINK
   - LIST
   - LOAD
+  - LOCAL
   - LOCK
   - MERGE
   - METADATA
   - NODES
+  - NONE
   - NOW
   - OF
   - OFF
   - OFFSET
   - ON
   - ORDER
+  - ONSUCCESS
   - PARTITION
   - PASSWORD
   - PATHS
+  - PIPE
+  - PIPES
+  - PIPESINK
+  - PIPESINKS
+  - PIPESINKTYPE
+  - POLICY
   - PREVIOUS
   - PREVIOUSUNTILLAST
   - PRIVILEGES
   - PROCESSLIST
   - PROPERTY
+  - PRUNE
   - QUERIES
   - QUERY
+  - RANGE
   - READONLY
   - REGEXP
+  - REGIONID
+  - REGIONS
   - REMOVE
   - RENAME
   - RESAMPLE
+  - RESOURCE
   - REVOKE
   - ROLE
   - ROOT **(R)**
+  - RUNNING
   - SCHEMA
   - SELECT
+  - SERIESSLOTID
   - SET
   - SETTLE
   - SGLEVEL
   - SHOW
   - SLIMIT
-  - SNAPSHOT
   - SOFFSET
   - STORAGE
   - START
+  - STARTTIME
+  - STATELESS
+  - STATEFUL
   - STOP
   - SYSTEM
   - TAGS
   - TASK
   - TEMPLATE
   - TIME **(R)**
+  - TIMEOUT
   - TIMESERIES
+  - TIMESLOTID
   - TIMESTAMP **(R)**
   - TO
   - TOLERANCE
@@ -149,6 +176,7 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - UNSET
   - UPDATE
   - UPSERT
+  - URI
   - USER
   - USING
   - VALUES
@@ -159,12 +187,14 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - WITH
   - WITHOUT
   - WRITABLE
-- Privileges Keywords
+- Privilege Keywords
   - SET_STORAGE_GROUP
+  - DELETE_STORAGE_GROUP
   - CREATE_TIMESERIES
   - INSERT_TIMESERIES
   - READ_TIMESERIES
   - DELETE_TIMESERIES
+  - ALTER_TIMESERIES
   - CREATE_USER
   - DELETE_USER
   - MODIFY_PASSWORD
@@ -186,3 +216,7 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
   - STOP_TRIGGER
   - CREATE_CONTINUOUS_QUERY
   - DROP_CONTINUOUS_QUERY
+  - APPLY_TEMPLATE
+  - UPDATE_TEMPLATE
+  - READ_TEMPLATE
+  - READ_TEMPLATE_APPLICATION

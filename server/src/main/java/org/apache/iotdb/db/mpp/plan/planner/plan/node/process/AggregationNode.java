@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends MultiChildNode {
+public class AggregationNode extends MultiChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
   // of
@@ -74,8 +74,10 @@ public class AggregationNode extends MultiChildNode {
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
-    this.children = children;
+    super(id, children);
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -89,21 +91,6 @@ public class AggregationNode extends MultiChildNode {
 
   public Ordering getScanOrder() {
     return scanOrder;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override

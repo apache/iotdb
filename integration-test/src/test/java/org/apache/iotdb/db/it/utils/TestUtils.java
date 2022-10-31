@@ -258,4 +258,14 @@ public class TestUtils {
     }
     assertEquals(expectedRetArray.length, cnt);
   }
+
+  public static void executeNonQuery(String sql) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

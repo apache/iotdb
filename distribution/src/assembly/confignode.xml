@@ -38,10 +38,6 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
             <fileMode>0755</fileMode>
@@ -50,12 +46,22 @@
             <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
+        </fileSet>
         <!--    <fileSet>-->
         <!--      <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/tools</directory>-->
         <!--      <outputDirectory>tools</outputDirectory>-->
         <!--      <fileMode>0755</fileMode>-->
         <!--    </fileSet>-->
     </fileSets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf/iotdb-confignode-metric.yml</source>
+            <destName>conf/iotdb-confignode-metric.yml</destName>
+        </file>
+    </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
     </componentDescriptors>

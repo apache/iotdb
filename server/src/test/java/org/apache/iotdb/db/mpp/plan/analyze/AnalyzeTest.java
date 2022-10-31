@@ -604,7 +604,8 @@ public class AnalyzeTest {
             "select s1, s2 into ::(t1, t1, t2, t2) from root.sg.*;",
             "select s1, s2 into root.sg_copy.::(::) from root.sg.*;",
             "select s1, s2 into root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}) from root.sg.d1, root.sg.d2;",
-            "select d1.s1, d1.s2, d2.s1, d2.s2 into ::(s1_1, s2_2), root.sg.d2_2(s3_3), root.backup_${1}.::(s4) from root.sg");
+            "select d1.s1, d1.s2, d2.s1, d2.s2 into ::(s1_1, s2_2), root.sg.d2_2(s3_3), root.backup_${1}.::(s4) from root.sg",
+            "select s1, s2 into root.sg_bk.new_d1(::) from root.sg.d1;");
     List<List<Pair<String, PartialPath>>> results =
         Arrays.asList(
             Arrays.asList(
@@ -661,7 +662,10 @@ public class AnalyzeTest {
                 new Pair("root.sg.d1.s1", new PartialPath("root.sg.d1.s1_1")),
                 new Pair("root.sg.d1.s2", new PartialPath("root.sg.d1.s2_2")),
                 new Pair("root.sg.d2.s1", new PartialPath("root.sg.d2_2.s3_3")),
-                new Pair("root.sg.d2.s2", new PartialPath("root.backup_sg.d2.s4"))));
+                new Pair("root.sg.d2.s2", new PartialPath("root.backup_sg.d2.s4"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_bk.new_d1.s1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_bk.new_d1.s2"))));
 
     for (int i = 0; i < sqls.size(); i++) {
       Analysis analysis = analyzeSQL(sqls.get(i));

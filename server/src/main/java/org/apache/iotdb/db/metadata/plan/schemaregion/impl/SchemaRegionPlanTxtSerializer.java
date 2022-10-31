@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -29,8 +30,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
@@ -41,6 +45,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -233,6 +239,35 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
           .append(FIELD_SEPARATOR)
           .append(unsetTemplatePlan.getTemplateName());
       return null;
+    }
+
+    @Override
+    public Void visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, StringBuilder stringBuilder) {
+      parseTemplateSetInfo(preDeactivateTemplatePlan.getTemplateSetInfo(), stringBuilder);
+      return null;
+    }
+
+    @Override
+    public Void visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        StringBuilder stringBuilder) {
+      parseTemplateSetInfo(rollbackPreDeactivateTemplatePlan.getTemplateSetInfo(), stringBuilder);
+      return null;
+    }
+
+    @Override
+    public Void visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, StringBuilder stringBuilder) {
+      parseTemplateSetInfo(deactivateTemplatePlan.getTemplateSetInfo(), stringBuilder);
+      return null;
+    }
+
+    private void parseTemplateSetInfo(
+        Map<PartialPath, List<Integer>> templateSetInfo, StringBuilder stringBuilder) {
+      stringBuilder.append("{");
+      templateSetInfo.forEach((k, v) -> stringBuilder.append(k).append(": ").append(v).append(";"));
+      stringBuilder.append("}");
     }
   }
 }
