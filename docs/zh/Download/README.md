@@ -98,22 +98,12 @@
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
-## 关于 0.14.0-preview1
+## 关于 Version 1.0
 
-- 0.14.0-preview1 仅包括分布式预览版，供测试及试用，不推荐从 0.13 升级到预览版。
+- 如何从 v0.13.x 升级到 v1.0.x?
   
-- 0.14.0-preview1 的用户手册在 latest 栏目，未单独新建栏目，正式版会新建栏目。
-
-**<font color=red>注意: 不要使用 stop-confignode.bat/sh 脚本，会误杀其他进程</font>**:
-
-
-- 如何从 v0.13.x 升级到 v0.14.x?
-  
-  - **0.14 版本进行了 SQL 语法约定的改动（请参考用户手册语法约定章节），不兼容之处如下：**
-    - **不使用反引号引用的标识符不允许为实数，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。如果标识符中出现上述情况，请使用反引号将标识符括起。**
-    - **标识符不再支持使用单引号和双引号进行引用，请统一改为使用反引号引用。**
-    - **Session 接口中使用路径结点名时，写法需要与 SQL 语句中的一致。如路径结点为实数111，在 SQL 语句中需要使用反引号括起，写作\`111\`, 那么使用 Session 接口时，相应参数也需要写作\`111\`。**
-  - 为了保证 UDF 相关 API 的稳定性，0.14 版本中 UDF 相关 API 被独立为一个单独的 module，不再依赖 tsfile 包，已经实现的 UDF 需要改写代码，将 `TsDataType` 替换为 `Type`，将 `org.apache.iotdb.tsfile.utils.Binary` 替换成 `org.apache.iotdb.udf.api.type.Binary`，并重新进行打包装载流程。
+  - **1.0版本进行了 SQL 语法约定的改动（请参考用户手册语法约定章节）,不兼容之处可以参考下方1.0 版本不兼容的语法详细说明**。
+  - 为了保证 UDF 相关 API 的稳定性，1.0 版本中 UDF 相关 API 被独立为一个单独的 module，不再依赖 tsfile 包，已经实现的 UDF 需要改写代码，将 `TsDataType` 替换为 `Type`，将 `org.apache.iotdb.tsfile.utils.Binary` 替换成 `org.apache.iotdb.udf.api.type.Binary`，并重新进行打包装载流程。
 
 ### 1.0 版本不兼容的语法详细说明
 

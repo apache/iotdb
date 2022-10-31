@@ -100,22 +100,12 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
-## About 0.14.0-preview1
+## About Version 1.0
 
-- 0.14.0-preview1 is a preview release for the new IoTDB cluster, which you could download and have a try.
-  We DO NOT recommend using preview release on-line, and DO NOT upgrade 0.13 to a preview release.
-  - The UserGuide of 0.14.0-preview is still in the **latest**.
-
-**<font color=red>NOTE: Do not use the stop-confignode.bat/sh script, which has a bug that may kill other process</font>**:
- 
-
-- **After we release 0.14.0, how to upgrade from v.13.x to v0.14.x?**
+**After we release version 1.0, how to upgrade from v.13.x to v1.0.x?**
   
-  - **Version 0.14 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual), the incompatibilities are as follows:**
-    - **Identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. If the above occurs in an identifier, use backquotes to enclose the identifier.**
-    - **Identifiers no longer support quoting with single and double quotes, please use backquotes instead.**
-    - **When using the path node name in the Session API, it needs to be consistent with that in the SQL statement. If the path node is a pure number 111, it needs to be enclosed in backquotes in the SQL statement and written as \`111\`, then when using the Session API, the corresponding parameter also needs to be written as \`111\`.**
-  - In order to ensure the stability of UDF-related APIs, in version 0.14, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
+  - **Version 1.0 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual)**.
+  - In order to ensure the stability of UDF-related APIs, in version 1.0, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
 
 ### Detailed description of Syntax Conventions in version 1.0 that are different from older versions
 
