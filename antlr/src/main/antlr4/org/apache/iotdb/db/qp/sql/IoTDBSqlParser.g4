@@ -36,8 +36,7 @@ statement
     ;
 
 ddlStatement
-    : setStorageGroup | createStorageGroup | createTimeseries
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
+    : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
@@ -74,12 +73,9 @@ syncStatement
  */
 
 // Create Storage Group
-setStorageGroup
-    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
-    ;
-
 createStorageGroup
-    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    | CREATE (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause?
     ;
 
 storageGroupAttributesClause
@@ -197,7 +193,7 @@ alias
 
 // Delete Storage Group
 deleteStorageGroup
-    : DELETE STORAGE GROUP prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) (STORAGE GROUP | DATABASE) prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Timeseries
@@ -285,7 +281,7 @@ stopTrigger
 
 // Show Storage Group
 showStorageGroup
-    : SHOW STORAGE GROUP prefixPath?
+    : SHOW (STORAGE GROUP | DATABASES) prefixPath?
     ;
 
 // Show Devices
@@ -375,7 +371,7 @@ showPathsUsingSchemaTemplate
 
 // Count Storage Group
 countStorageGroup
-    : COUNT STORAGE GROUP prefixPath?
+    : COUNT (STORAGE GROUP | DATABASES) prefixPath?
     ;
 
 // Count Devices

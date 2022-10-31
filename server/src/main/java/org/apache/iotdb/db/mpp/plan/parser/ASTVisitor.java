@@ -2149,19 +2149,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Create Storage Group
-
-  @Override
-  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
-    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributesClause() != null) {
-      parseStorageGroupAttributesClause(
-          setStorageGroupStatement, ctx.storageGroupAttributesClause());
-    }
-    return setStorageGroupStatement;
-  }
-
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
