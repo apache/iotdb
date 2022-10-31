@@ -118,7 +118,7 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsSize());
+        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),

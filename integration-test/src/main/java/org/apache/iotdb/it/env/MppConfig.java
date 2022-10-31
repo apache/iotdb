@@ -270,9 +270,9 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
     confignodeProperties.setProperty(
-        "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));
+        "compaction_thread_count", String.valueOf(concurrentCompactionThread));
     return this;
   }
 

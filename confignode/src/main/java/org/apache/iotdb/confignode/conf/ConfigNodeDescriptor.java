@@ -292,11 +292,11 @@ public class ConfigNodeDescriptor {
                 "procedure_completed_clean_interval",
                 String.valueOf(conf.getProcedureCompletedCleanInterval()))));
 
-    conf.setProcedureCoreWorkerThreadsSize(
+    conf.setProcedureCoreWorkerThreadsCount(
         Integer.parseInt(
             properties.getProperty(
-                "procedure_core_worker_thread_size",
-                String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
+                "procedure_core_worker_thread_count",
+                String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
@@ -534,7 +534,7 @@ public class ConfigNodeDescriptor {
     int cqSubmitThread =
         Integer.parseInt(
             properties.getProperty(
-                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread())));
+                "continuous_query_submit_thread_count", String.valueOf(conf.getCqSubmitThread())));
     if (cqSubmitThread <= 0) {
       LOGGER.warn(
           "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",
