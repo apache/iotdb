@@ -18,6 +18,8 @@ public class MasterRepairUtil {
   private int k;
   private double[] std;
   private KDTreeUtil kdTreeUtil;
+  private int repaired_cnt;
+  private int total_cnt;
 
   public MasterRepairUtil(int columnCnt, long omega, double eta, int k) throws Exception {
     this.columnCnt = columnCnt;
@@ -102,6 +104,8 @@ public class MasterRepairUtil {
     for (int l = i - 1; l >= 0; l--) {
       if (this.td_time.get(i) <= this.td_time.get(l) + omega) {
         W_i.add(l);
+      } else {
+        break;
       }
     }
     return W_i;
@@ -121,6 +125,8 @@ public class MasterRepairUtil {
   }
 
   public void master_repair() {
+    this.repaired_cnt = 0;
+    this.total_cnt = 0;
     for (int i = 0; i < this.td.size(); i++) {
       ArrayList<Double> tuple = this.td.get(i);
       ArrayList<Integer> W_i = cal_W(i);
@@ -144,6 +150,10 @@ public class MasterRepairUtil {
           }
         }
       }
+      if (!repair_tuple.toString().equals(tuple.toString())) {
+        repaired_cnt++;
+      }
+      total_cnt++;
       this.td_cleaned.add(repair_tuple);
     }
   }
@@ -231,9 +241,6 @@ public class MasterRepairUtil {
     buildKDTree();
     call_std();
     set_parameters();
-    System.out.println(this.omega);
-    System.out.println(this.eta);
-    System.out.println(this.k);
     master_repair();
   }
 
@@ -243,6 +250,14 @@ public class MasterRepairUtil {
       intervals.add(this.td_time.get(i) - this.td_time.get(i - 1));
     }
     return intervals;
+  }
+
+  public int getRepaired_cnt() {
+    return repaired_cnt;
+  }
+
+  public int getTotal_cnt() {
+    return total_cnt;
   }
 
   public void fillNullValue() {
