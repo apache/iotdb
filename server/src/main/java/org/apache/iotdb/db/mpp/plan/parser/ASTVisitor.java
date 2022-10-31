@@ -1640,8 +1640,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
       if (ctx.loadFileAttributeClauses() != null) {
         for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
-            ctx.loadFileAttributeClauses().loadFileAttributeClause())
+            ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
           parseLoadFileAttributeClause(loadTsFileStatement, attributeContext);
+        }
       }
       return loadTsFileStatement;
     } catch (FileNotFoundException e) {
