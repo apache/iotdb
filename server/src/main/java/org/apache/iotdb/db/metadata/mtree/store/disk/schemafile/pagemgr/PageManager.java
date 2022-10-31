@@ -621,9 +621,9 @@ public abstract class PageManager implements IPageManager {
    * SchemaPageOverflowException} occurs. It is designed to accelerate when there is lots of new
    * children nodes, avoiding segments extend several times.
    *
-   * @param expSize
-   * @param batchSize
-   * @return
+   * @param expSize expected size calculated from next new record
+   * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
+   * @return estimated size
    * @throws MetadataException
    */
   private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
