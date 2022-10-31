@@ -16,19 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.cq;
 
-package org.apache.iotdb.consensus.exception;
+public enum CQState {
+  INACTIVE((byte) 0),
+  ACTIVE((byte) 1);
 
-public class ConsensusGroupAddPeerException extends Exception {
-  public ConsensusGroupAddPeerException(String message) {
-    super(message);
+  private final byte type;
+
+  CQState(byte type) {
+    this.type = type;
   }
 
-  public ConsensusGroupAddPeerException(Throwable cause) {
-    super(cause);
+  public byte getType() {
+    return type;
   }
 
-  public ConsensusGroupAddPeerException(String message, Throwable cause) {
-    super(message, cause);
+  public static CQState deserialize(byte t) {
+    switch (t) {
+      case 0:
+        return INACTIVE;
+      case 1:
+        return ACTIVE;
+      default:
+        throw new IllegalArgumentException("Unknown CQState: " + t);
+    }
   }
 }

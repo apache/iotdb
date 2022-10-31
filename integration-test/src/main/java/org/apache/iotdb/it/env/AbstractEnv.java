@@ -199,6 +199,7 @@ public abstract class AbstractEnv implements BaseEnv {
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
+      logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
       fail("After 30 times retry, the cluster can't work!");
     }
   }
@@ -429,9 +430,8 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         } catch (Exception e) {
           logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
-              configNodeWrapper.getIpAndPortString(),
-              e);
+              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
+              configNodeWrapper.getIpAndPortString());
         }
 
         // Sleep 1s before next retry

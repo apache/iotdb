@@ -240,6 +240,26 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
+  public void preUnsetSchemaTemplate() {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
+  public void rollbackUnsetSchemaTemplate() {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
+  public boolean isSchemaTemplatePreUnset() {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
+  public void unsetSchemaTemplate() {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
   public boolean isStorageGroup() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
