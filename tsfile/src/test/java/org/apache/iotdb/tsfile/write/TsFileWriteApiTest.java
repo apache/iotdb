@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -606,21 +605,21 @@ public class TsFileWriteApiTest {
   public void writeTsFileByFlushingPageDirectly() throws IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
 
-    // create a tsfile with two pages in one timeseries
+    // create a tsfile with four pages in one timeseries
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerTimeseries(tsFileWriter);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
-      writeMeasurementScheams.add(measurementSchemas.get(0));
+      List<MeasurementSchema> writeMeasurementSchemas = new ArrayList<>();
+      writeMeasurementSchemas.add(measurementSchemas.get(0));
 
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 0, 0, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 30, 30, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 30, 30, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 60, 60, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 60, 60, false);
       TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 90, 90, false);
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 90, 90, false);
     }
 
     ChunkWriterImpl chunkWriter = new ChunkWriterImpl(measurementSchemas.get(0));
@@ -634,10 +633,8 @@ public class TsFileWriteApiTest {
           reader.readChunkMetadataInDevice(deviceId).values()) {
         for (ChunkMetadata chunkMetadata : chunkMetadatas) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
-          ChunkReader chunkReader = new ChunkReader(chunk, null);
           ByteBuffer chunkDataBuffer = chunk.getData();
           ChunkHeader chunkHeader = chunk.getHeader();
-          chunkDataBuffer.flip();
           int pageNum = 0;
           while (chunkDataBuffer.remaining() > 0) {
             // deserialize a PageHeader from chunkDataBuffer
@@ -648,9 +645,13 @@ public class TsFileWriteApiTest {
             } else {
               pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
             }
-            ByteBuffer compressedPageData = reader.readCompressedPage(pageHeader);
-            chunkDataBuffer.position(chunkDataBuffer.position() + pageHeader.getCompressedSize());
-            chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
+
+            // read compressed page data
+            int compressedPageBodyLength = pageHeader.getCompressedSize();
+            byte[] compressedPageBody = new byte[compressedPageBodyLength];
+            chunkDataBuffer.get(compressedPageBody);
+            chunkWriter.writePageHeaderAndDataIntoBuff(
+                ByteBuffer.wrap(compressedPageBody), pageHeader);
             if (++pageNum % 2 == 0) {
               chunkWriter.writeToFileWriter(tsFileIOWriter);
             }
@@ -661,7 +662,8 @@ public class TsFileWriteApiTest {
       tsFileIOWriter.endFile();
 
       // read file
-      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+      TsFileReader tsFileReader =
+          new TsFileReader(new TsFileSequenceReader(file.getAbsolutePath()));
 
       QueryExpression queryExpression =
           QueryExpression.create(

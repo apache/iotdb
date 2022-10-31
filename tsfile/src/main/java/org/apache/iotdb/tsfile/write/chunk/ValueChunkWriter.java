@@ -212,7 +212,6 @@ public class ValueChunkWriter {
         if (header.getStatistics() != null) {
           this.firstPageStatistics = header.getStatistics();
         }
-        this.sizeWithoutStatistic = 0;
         this.sizeWithoutStatistic +=
             ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
         this.sizeWithoutStatistic +=
@@ -260,6 +259,7 @@ public class ValueChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = Statistics.getStatsByType(dataType);
   }
