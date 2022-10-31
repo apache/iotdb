@@ -36,8 +36,7 @@ statement
     ;
 
 ddlStatement
-    : setStorageGroup | createStorageGroup | createTimeseries
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
+    : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
@@ -74,16 +73,13 @@ syncStatement
  */
 
 // Create Storage Group
-setStorageGroup
-    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
-    ;
-
 createStorageGroup
-    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    | CREATE (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause?
     ;
 
 storageGroupAttributesClause
-    : WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*
+    : WITH storageGroupAttributeClause (COMMA? storageGroupAttributeClause)*
     ;
 
 storageGroupAttributeClause
@@ -131,7 +127,12 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL uriClasue? triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier
+        triggerEventClause
+        ON prefixPath
+        AS className=STRING_LITERAL
+        uriClasue?
+        triggerAttributeClause?
     ;
 
 triggerType
@@ -197,7 +198,7 @@ alias
 
 // Delete Storage Group
 deleteStorageGroup
-    : DELETE STORAGE GROUP prefixPath (COMMA prefixPath)*
+    : (DELETE | DROP) (STORAGE GROUP | DATABASE) prefixPath (COMMA prefixPath)*
     ;
 
 // Delete Timeseries
@@ -285,7 +286,7 @@ stopTrigger
 
 // Show Storage Group
 showStorageGroup
-    : SHOW STORAGE GROUP prefixPath?
+    : SHOW (STORAGE GROUP | DATABASES) prefixPath?
     ;
 
 // Show Devices
@@ -375,7 +376,7 @@ showPathsUsingSchemaTemplate
 
 // Count Storage Group
 countStorageGroup
-    : COUNT STORAGE GROUP prefixPath?
+    : COUNT (STORAGE GROUP | DATABASES) prefixPath?
     ;
 
 // Count Devices
@@ -750,13 +751,17 @@ loadTimeseries
 
 // Load TsFile
 loadFile
-    : LOAD fileName=STRING_LITERAL loadFilesClause?
+    : LOAD fileName=STRING_LITERAL loadFileAttributeClauses?
     ;
 
-loadFilesClause
-    : SGLEVEL operator_eq INTEGER_LITERAL (loadFilesClause)?
-    | VERIFY operator_eq BOOLEAN_LITERAL (loadFilesClause)?
-    | ONSUCCESS operator_eq (DELETE|NONE) (loadFilesClause)?
+loadFileAttributeClauses
+    : loadFileAttributeClause (COMMA? loadFileAttributeClause)*
+    ;
+
+loadFileAttributeClause
+    : SGLEVEL operator_eq INTEGER_LITERAL
+    | VERIFY operator_eq BOOLEAN_LITERAL
+    | ONSUCCESS operator_eq (DELETE|NONE)
     ;
 
 // Remove TsFile
@@ -813,7 +818,7 @@ dropPipe
 
 // attribute clauses
 syncAttributeClauses
-    : attributePair (COMMA attributePair)*
+    : attributePair (COMMA? attributePair)*
     ;
 
 
@@ -948,7 +953,7 @@ fromClause
 
 attributeClauses
     : aliasNodeName? WITH attributeKey operator_eq dataType=attributeValue
-    (COMMA attributePair)*
+    (COMMA? attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)

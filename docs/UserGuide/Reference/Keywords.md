@@ -55,6 +55,8 @@ The following list shows the keywords and reserved words in IoTDB. Reserved keyw
   - CQS
   - CREATE
   - DATA
+  - DATABASE
+  - DATABASES
   - DATANODES
   - DEACTIVATE
   - DEBUG
