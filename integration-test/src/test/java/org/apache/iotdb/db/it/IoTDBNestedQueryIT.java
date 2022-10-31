@@ -191,6 +191,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testUDFTerminateMethodInNestedExpressions() {
     String sqlStr =
         "select bottom_k(top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), 'k'='1'), top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), top_k(s1 + s1 / s1 - s2 / s1, 'k'='1'), top_k(s1, 'k'='1'), top_k(s2, 'k'='1') from root.vehicle.d2";
@@ -218,6 +219,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testUDFWithMultiInputsInNestedExpressions() {
     String sqlStr =
         "select adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2), adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)), adder(adder(d1.s1, d1.s2), adder(d2.s1, d2.s2)), adder(d1.s1, d1.s2) - adder(d1.s1, d1.s2) + adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)) from root.vehicle";
@@ -247,6 +249,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testNestedWindowingFunctionExpressions() {
     final int[] windows =
         new int[] {
@@ -318,6 +321,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testSelectEmptyColumns() {
     final int[] windows =
         new int[] {
@@ -363,6 +367,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testInvalidNestedBuiltInAggregation() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

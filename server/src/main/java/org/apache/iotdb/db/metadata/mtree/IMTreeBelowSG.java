@@ -72,6 +72,18 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   /**
+   * Check if measurements under device exists in MTree
+   *
+   * @param devicePath device full path
+   * @param measurementList measurements list
+   * @param aliasList alias of measurement
+   * @return If all measurements not exists, return empty map. Otherwise, return a map whose key is
+   *     index of measurement in list and value is exception.
+   */
+  Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
+  /**
    * Delete path. The path should be a full path from root to leaf node
    *
    * @param path Format: root.node(.node)+
@@ -80,6 +92,27 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
+
+  /**
+   * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
+   * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
+   * {root.sg.d1.s1, root.sg.d2.s1}.
+   *
+   * @param pathPattern path pattern
+   * @return all pre-deleted timeseries matched by given pathPattern
+   */
+  List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Get all devices of pre-deleted timeseries matched by given pathPattern. For example, given path
+   * pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result
+   * set is {root.sg.d1, root.sg.d2}.
+   *
+   * @param pathPattern path pattern
+   * @return all devices of pre-deleted timeseries matched by given pathPattern
+   */
+  Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
+      throws MetadataException;
 
   void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException;
 
@@ -148,6 +181,18 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   /**
+   * Fetch all measurement path
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param withTags whether returns all the tags of each timeseries as well.
+   * @return schema
+   */
+  List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException;
+
+  /**
    * Get all measurement schema matching the given path pattern
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
@@ -195,8 +240,20 @@ public interface IMTreeBelowSG {
    * Get the count of timeseries matching the given path.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException;
+
+  /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
   /**
@@ -260,6 +317,15 @@ public interface IMTreeBelowSG {
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
+
+  /**
+   * Get IMeasurementMNode by path pattern
+   *
+   * @param pathPattern full path or path pattern with wildcard
+   * @return list of IMeasurementMNode
+   */
+  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
+      throws MetadataException;
 
   /**
    * check whether there is template on given path and the subTree has template return true,

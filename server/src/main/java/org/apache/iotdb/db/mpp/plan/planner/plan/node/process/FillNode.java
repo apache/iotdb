@@ -26,8 +26,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,48 +33,24 @@ import java.util.List;
 import java.util.Objects;
 
 /** FillNode is used to fill the empty field in one row. */
-public class FillNode extends ProcessNode {
+public class FillNode extends SingleChildProcessNode {
 
   // descriptions of how null values are filled
-  private FillDescriptor fillDescriptor;
+  private final FillDescriptor fillDescriptor;
 
-  private Ordering scanOrder;
-
-  private PlanNode child;
-
-  public FillNode(PlanNodeId id) {
-    super(id);
-  }
+  private final Ordering scanOrder;
 
   public FillNode(PlanNodeId id, FillDescriptor fillDescriptor, Ordering scanOrder) {
-    this(id);
+    super(id);
     this.fillDescriptor = fillDescriptor;
     this.scanOrder = scanOrder;
   }
 
   public FillNode(
       PlanNodeId id, PlanNode child, FillDescriptor fillDescriptor, Ordering scanOrder) {
-    this(id, fillDescriptor, scanOrder);
-    this.child = child;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
+    super(id, child);
+    this.fillDescriptor = fillDescriptor;
+    this.scanOrder = scanOrder;
   }
 
   @Override
@@ -127,14 +101,12 @@ public class FillNode extends ProcessNode {
       return false;
     }
     FillNode that = (FillNode) o;
-    return Objects.equals(fillDescriptor, that.fillDescriptor)
-        && Objects.equals(child, that.child)
-        && scanOrder == that.scanOrder;
+    return Objects.equals(fillDescriptor, that.fillDescriptor) && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), fillDescriptor, child, scanOrder);
+    return Objects.hash(super.hashCode(), fillDescriptor, scanOrder);
   }
 
   public FillDescriptor getFillDescriptor() {

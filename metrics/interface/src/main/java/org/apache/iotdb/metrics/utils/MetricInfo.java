@@ -137,7 +137,7 @@ public class MetricInfo {
       this.tagNames = tagNames;
     }
 
-    /** check whether the key in tags is same */
+    /** check whether the keys of tags are same */
     public boolean hasSameKey(String... tags) {
       if (tags.length != tagNames.size() * 2) {
         return false;

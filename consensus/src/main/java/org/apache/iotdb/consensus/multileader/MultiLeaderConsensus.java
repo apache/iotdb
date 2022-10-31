@@ -37,8 +37,8 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
@@ -278,7 +278,11 @@ public class MultiLeaderConsensus implements IConsensus {
       logger.info("[MultiLeaderConsensus] activate new peer...");
       impl.activePeer(peer);
 
-    } catch (ConsensusGroupAddPeerException e) {
+      // step 7: spot clean
+      logger.info("[MultiLeaderConsensus] do spot clean...");
+      doSpotClean(peer, impl);
+
+    } catch (ConsensusGroupModifyPeerException e) {
       logger.error("cannot execute addPeer() for {}", peer, e);
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
@@ -287,6 +291,14 @@ public class MultiLeaderConsensus implements IConsensus {
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  private void doSpotClean(Peer peer, MultiLeaderServerImpl impl) {
+    try {
+      impl.cleanupRemoteSnapshot(peer);
+    } catch (ConsensusGroupModifyPeerException e) {
+      logger.warn("[MultiLeaderConsensus] failed to cleanup remote snapshot", e);
+    }
   }
 
   @Override
@@ -298,13 +310,30 @@ public class MultiLeaderConsensus implements IConsensus {
           .build();
     }
     try {
+      // let other peers remove the sync channel with target peer
       impl.notifyPeersToRemoveSyncLogChannel(peer);
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
           .setException(new ConsensusException(e.getMessage()))
           .build();
     }
+
+    try {
+      // let target peer reject new write
+      impl.inactivePeer(peer);
+      // wait its SyncLog to complete
+      impl.waitTargetPeerUntilSyncLogCompleted(peer);
+    } catch (ConsensusGroupModifyPeerException e) {
+      // we only log warning here because sometimes the target peer may already be down
+      logger.warn("cannot wait {} to complete SyncLog. error message: {}", peer, e.getMessage());
+    }
+
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
     return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
@@ -328,7 +357,7 @@ public class MultiLeaderConsensus implements IConsensus {
     }
     try {
       impl.takeSnapshot();
-    } catch (ConsensusGroupAddPeerException e) {
+    } catch (ConsensusGroupModifyPeerException e) {
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
           .setException(new ConsensusException(e.getMessage()))

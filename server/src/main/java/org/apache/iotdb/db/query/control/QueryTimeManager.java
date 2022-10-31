@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 
 import org.slf4j.Logger;
@@ -34,8 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+// TODO need to be remove with old standalone iotdb
 /**
  * This class is used to monitor the executing time of each query. Once one is over the threshold,
  * it will be killed and return the time out exception.
@@ -87,31 +86,6 @@ public class QueryTimeManager implements IService {
   }
 
   /**
-   * UnRegister query when query quits because of getting enough data or timeout. If getting enough
-   * data, we only remove the timeout task. If the query is full quit because of timeout or
-   * EndQuery(), we remove them all.
-   *
-   * @param fullQuit True if timeout or endQuery()
-   */
-  public AtomicBoolean unRegisterQuery(long queryId, boolean fullQuit) {
-    // This is used to make sure the QueryTimeoutRuntimeException is thrown once
-    AtomicBoolean successRemoved = new AtomicBoolean(false);
-    queryContextMap.computeIfPresent(
-        queryId,
-        (k, v) -> {
-          successRemoved.set(true);
-          ScheduledFuture<?> scheduledFuture = queryScheduledTaskMap.remove(queryId);
-          if (scheduledFuture != null) {
-            scheduledFuture.cancel(false);
-          }
-          SessionTimeoutManager.getInstance()
-              .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
-          return fullQuit ? null : v;
-        });
-    return successRemoved;
-  }
-
-  /**
    * Check given query is alive or not. We only throw the queryTimeoutRunTimeException once. If the
    * runTimeException is thrown in main thread, it will quit directly while the return value will be
    * used to ask sub query threads to quit. Else if it's thrown in one sub thread, other sub threads
@@ -121,15 +95,15 @@ public class QueryTimeManager implements IService {
    * @return True if alive.
    */
   public static boolean checkQueryAlive(long queryId) {
-    QueryContext queryContext = getInstance().getQueryContext(queryId);
-    if (queryContext == null) {
-      return false;
-    } else if (queryContext.isInterrupted()) {
-      if (getInstance().unRegisterQuery(queryId, true).get()) {
-        throw new QueryTimeoutRuntimeException();
-      }
-      return false;
-    }
+    //    QueryContext queryContext = getInstance().getQueryContext(queryId);
+    //    if (queryContext == null) {
+    //      return false;
+    //    } else if (queryContext.isInterrupted()) {
+    //      if (getInstance().unRegisterQuery(queryId, true).get()) {
+    //        throw new QueryTimeoutRuntimeException();
+    //      }
+    //      return false;
+    //    }
     return true;
   }
 

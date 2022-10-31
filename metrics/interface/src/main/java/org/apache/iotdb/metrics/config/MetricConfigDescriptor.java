@@ -25,9 +25,10 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
@@ -50,9 +51,9 @@ public class MetricConfigDescriptor {
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
-      try (InputStream inputStream = new FileInputStream(url)) {
+      try (InputStream inputStream = Files.newInputStream(Paths.get(url))) {
         logger.info("Start to read config file {}", url);
-        metricConfig = (MetricConfig) yaml.load(inputStream);
+        metricConfig = yaml.load(inputStream);
       } catch (IOException e) {
         logger.warn(
             "Fail to find config file : {} because of {}, use default config.",
@@ -86,7 +87,6 @@ public class MetricConfigDescriptor {
         // restart reporters or restart service
         if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
             || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig.getPredefinedMetrics().equals(newMetricConfig.getPredefinedMetrics())
             || !metricConfig
                 .getAsyncCollectPeriodInSecond()
                 .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
@@ -111,7 +111,22 @@ public class MetricConfigDescriptor {
         url += File.separator + "conf";
       }
     }
-    // second, try to get conf folder of datanode
+
+    if (url == null) {
+      logger.warn(
+          "Cannot find IOTDB_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          MetricConstant.DATANODE_CONFIG_NAME);
+    } else {
+      url += (File.separatorChar + MetricConstant.DATANODE_CONFIG_NAME);
+      if (new File(url).exists()) {
+        return url;
+      } else {
+        url = null;
+      }
+    }
+
+    // second, try to get conf folder of confignode
     if (url == null) {
       url = System.getProperty(MetricConstant.CONFIGNODE_CONF, null);
       if (url == null) {
@@ -122,15 +137,16 @@ public class MetricConfigDescriptor {
         }
       }
     }
+
     // finally, return null when not find
     if (url == null) {
       logger.warn(
-          "Cannot find IOTDB_CONF and CONFIGNODE_CONF environment variable when loading "
+          "Cannot find CONFIGNODE_CONF environment variable when loading "
               + "config file {}, use default configuration",
-          MetricConstant.CONFIG_NAME);
+          MetricConstant.CONFIG_NODE_CONFIG_NAME);
       return null;
     } else {
-      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
+      url += (File.separatorChar + MetricConstant.CONFIG_NODE_CONFIG_NAME);
     }
 
     return url;

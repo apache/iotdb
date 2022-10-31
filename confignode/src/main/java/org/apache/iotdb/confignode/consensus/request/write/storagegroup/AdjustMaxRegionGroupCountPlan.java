@@ -50,7 +50,7 @@ public class AdjustMaxRegionGroupCountPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(ConfigPhysicalPlanType.AdjustMaxRegionGroupCount.ordinal(), stream);
+    ReadWriteIOUtils.write(getType().getPlanType(), stream);
 
     ReadWriteIOUtils.write(maxRegionGroupCountMap.size(), stream);
     for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupCountEntry :
