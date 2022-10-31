@@ -66,8 +66,8 @@ public class SourceHandle implements ISourceHandle {
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
-  private final Map<Integer, TsBlock> sequenceIdToTsBlock = new HashMap<>();
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
+  private final Map<Integer, ByteBuffer> sequenceIdToTsBlock = new HashMap<>();
 
   private final String threadName;
   private long retryIntervalInMs;
@@ -116,6 +116,16 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized TsBlock receive() {
+    ByteBuffer tsBlock = getSerializedTsBlock();
+    if (tsBlock != null) {
+      return serde.deserialize(tsBlock);
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public synchronized ByteBuffer getSerializedTsBlock() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
 
       checkState();
@@ -124,7 +134,7 @@ public class SourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
 
-      TsBlock tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
       if (tsBlock == null) {
         return null;
       }
@@ -385,11 +395,9 @@ public class SourceHandle implements ISourceHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
-            List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
-            for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
-              TsBlock tsBlock = serde.deserialize(byteBuffer);
-              tsBlocks.add(tsBlock);
-            }
+            List<ByteBuffer> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
+            tsBlocks.addAll(resp.getTsBlocks());
+
             logger.info("[EndPullTsBlocksFromRemote] Count:{}", tsBlocks.size());
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));

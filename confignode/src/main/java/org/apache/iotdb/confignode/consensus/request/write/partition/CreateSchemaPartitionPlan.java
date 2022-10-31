@@ -60,7 +60,7 @@ public class CreateSchemaPartitionPlan extends ConfigPhysicalPlan {
       TTransport transport = new TIOStreamTransport(stream);
       TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-      stream.writeInt(ConfigPhysicalPlanType.CreateSchemaPartition.ordinal());
+      stream.writeShort(getType().getPlanType());
 
       stream.writeInt(assignedSchemaPartition.size());
       for (Map.Entry<String, SchemaPartitionTable> schemaPartitionTableEntry :

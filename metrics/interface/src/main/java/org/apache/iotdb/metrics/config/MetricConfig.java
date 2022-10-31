@@ -64,7 +64,7 @@ public class MetricConfig {
     /** The max number of connection */
     private Integer maxConnectionNumber = 3;
     /** The monitor database of iotdb */
-    private String database = "_metric";
+    private String database = "metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
 

@@ -22,18 +22,25 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cq.CQState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -60,10 +67,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -72,7 +82,7 @@ public class IoTDBConfigNodeSnapshotIT {
   protected static String originalConfigNodeConsensusProtocolClass;
 
   protected static int originalRatisSnapshotTriggerThreshold;
-  private static final int testRatisSnapshotTriggerThreshold = 10;
+  private static final int testRatisSnapshotTriggerThreshold = 100;
 
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
@@ -90,8 +100,8 @@ public class IoTDBConfigNodeSnapshotIT {
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
 
-    // Init 3C3D cluster environment
-    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+    // Init 2C2D cluster environment
+    EnvFactory.getEnv().initClusterEnvironment(2, 2);
   }
 
   @After
@@ -117,13 +127,16 @@ public class IoTDBConfigNodeSnapshotIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       List<TCreateTriggerReq> createTriggerReqs = createTrigger(client);
+      List<TCreateFunctionReq> createFunctionReqs = createUDF(client);
+
+      Set<TCQEntry> expectedCQEntries = createCQs(client);
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
         TSetStorageGroupReq setStorageGroupReq =
             new TSetStorageGroupReq(new TStorageGroupSchema(storageGroup));
         TSStatus status = client.setStorageGroup(setStorageGroupReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
           TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
@@ -135,14 +148,14 @@ public class IoTDBConfigNodeSnapshotIT {
           TSchemaPartitionTableResp schemaPartitionTableResp =
               client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
           // All requests should success if snapshot success
-          Assert.assertEquals(
+          assertEquals(
               TSStatusCode.SUCCESS_STATUS.getStatusCode(),
               schemaPartitionTableResp.getStatus().getCode());
           Assert.assertNotNull(schemaPartitionTableResp.getSchemaPartitionTable());
-          Assert.assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
+          assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
           Assert.assertNotNull(
               schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup));
-          Assert.assertEquals(
+          assertEquals(
               1, schemaPartitionTableResp.getSchemaPartitionTable().get(storageGroup).size());
 
           for (int k = 0; k < timePartitionSlotsNum; k++) {
@@ -160,20 +173,20 @@ public class IoTDBConfigNodeSnapshotIT {
             TDataPartitionTableResp dataPartitionTableResp =
                 client.getOrCreateDataPartitionTable(dataPartitionReq);
             // All requests should success if snapshot success
-            Assert.assertEquals(
+            assertEquals(
                 TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-            Assert.assertEquals(1, dataPartitionTableResp.getDataPartitionTableSize());
+            assertEquals(1, dataPartitionTableResp.getDataPartitionTableSize());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable().get(storageGroup));
-            Assert.assertEquals(
+            assertEquals(
                 1, dataPartitionTableResp.getDataPartitionTable().get(storageGroup).size());
             Assert.assertNotNull(
                 dataPartitionTableResp
                     .getDataPartitionTable()
                     .get(storageGroup)
                     .get(seriesPartitionSlot));
-            Assert.assertEquals(
+            assertEquals(
                 1,
                 dataPartitionTableResp
                     .getDataPartitionTable()
@@ -185,6 +198,11 @@ public class IoTDBConfigNodeSnapshotIT {
       }
 
       assertTriggerInformation(createTriggerReqs, client.getTriggerTable());
+      assertUDFInformation(createFunctionReqs, client.getUDFTable());
+
+      TShowCQResp showCQResp = client.showCQ();
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), showCQResp.getStatus().getCode());
+      assertEquals(expectedCQEntries, new HashSet<>(showCQResp.cqList));
     }
   }
 
@@ -205,13 +223,12 @@ public class IoTDBConfigNodeSnapshotIT {
         new TCreateTriggerReq(
                 "test1",
                 "org.apache.iotdb.trigger.SimpleTrigger",
-                "trigger-example.jar",
-                false,
                 TriggerEvent.AFTER_INSERT.getId(),
                 TriggerType.STATELESS.getId(),
                 new PartialPath("root.test1.**").serialize(),
                 Collections.emptyMap(),
-                FailureStrategy.OPTIMISTIC.getId())
+                FailureStrategy.OPTIMISTIC.getId(),
+                true)
             .setJarMD5(jarMD5)
             .setJarFile(jarFile);
 
@@ -221,22 +238,21 @@ public class IoTDBConfigNodeSnapshotIT {
         new TCreateTriggerReq(
                 "test2",
                 "org.apache.iotdb.trigger.SimpleTrigger",
-                "trigger-example.jar",
-                false,
                 TriggerEvent.BEFORE_INSERT.getId(),
                 TriggerType.STATEFUL.getId(),
                 new PartialPath("root.test2.**").serialize(),
                 attributes,
-                FailureStrategy.OPTIMISTIC.getId())
+                FailureStrategy.OPTIMISTIC.getId(),
+                true)
             .setJarMD5(jarMD5)
             .setJarFile(jarFile);
 
-    Assert.assertEquals(
-        client.createTrigger(createTriggerReq1).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    Assert.assertEquals(
-        client.createTrigger(createTriggerReq2).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq1).getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createTrigger(createTriggerReq2).getCode());
 
     List<TCreateTriggerReq> result = new ArrayList<>();
     result.add(createTriggerReq2);
@@ -252,7 +268,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
       Assert.assertEquals(createTriggerReq.getTriggerName(), triggerInformation.getTriggerName());
       Assert.assertEquals(createTriggerReq.getClassName(), triggerInformation.getClassName());
-      Assert.assertEquals(createTriggerReq.getJarPath(), triggerInformation.getJarName());
+      Assert.assertEquals(createTriggerReq.getJarName(), triggerInformation.getJarName());
       Assert.assertEquals(
           createTriggerReq.getTriggerEvent(), triggerInformation.getEvent().getId());
       Assert.assertEquals(
@@ -260,9 +276,96 @@ public class IoTDBConfigNodeSnapshotIT {
           triggerInformation.isStateful()
               ? TriggerType.STATEFUL.getId()
               : TriggerType.STATELESS.getId());
-      Assert.assertEquals(
+      assertEquals(
           PathDeserializeUtil.deserialize(ByteBuffer.wrap(createTriggerReq.getPathPattern())),
           triggerInformation.getPathPattern());
     }
+  }
+
+  private List<TCreateFunctionReq> createUDF(SyncConfigNodeIServiceClient client)
+      throws TException, IOException {
+    final String jarName = "udf-example.jar";
+    final String triggerPath =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + jarName;
+    ByteBuffer jarFile = TriggerExecutableManager.transferToBytebuffer(triggerPath);
+    final String jarMD5 = DigestUtils.md5Hex(jarFile.array());
+
+    TCreateFunctionReq createFunctionReq1 =
+        new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
+
+    TCreateFunctionReq createFunctionReq2 =
+        new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarFile(jarFile)
+            .setJarMD5(jarMD5);
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq1).getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        client.createFunction(createFunctionReq2).getCode());
+
+    List<TCreateFunctionReq> result = new ArrayList<>();
+    result.add(createFunctionReq1);
+    result.add(createFunctionReq2);
+    return result;
+  }
+
+  private void assertUDFInformation(List<TCreateFunctionReq> req, TGetUDFTableResp resp) {
+    for (int i = 0; i < req.size(); i++) {
+      TCreateFunctionReq createFunctionReq = req.get(i);
+      UDFInformation udfInformation =
+          UDFInformation.deserialize(resp.getAllUDFInformation().get(i));
+
+      assertEquals(createFunctionReq.getUdfName().toUpperCase(), udfInformation.getFunctionName());
+      assertEquals(createFunctionReq.getClassName(), udfInformation.getClassName());
+      assertEquals(createFunctionReq.getJarName(), udfInformation.getJarName());
+      assertEquals(createFunctionReq.getJarMD5(), udfInformation.getJarMD5());
+    }
+  }
+
+  private Set<TCQEntry> createCQs(SyncConfigNodeIServiceClient client) throws TException {
+    String sql1 = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.sg.d1 END";
+    String sql2 = "create cq testCq2 BEGIN select s1 into root.backup.d2(s1) from root.sg.d2 END";
+    TCreateCQReq req1 =
+        new TCreateCQReq(
+            "testCq1",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            sql1,
+            "Asia",
+            "root");
+    TCreateCQReq req2 =
+        new TCreateCQReq(
+            "testCq2",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 1,
+            "select s1 into root.backup.d2(s1) from root.sg.d2",
+            sql2,
+            "Asia",
+            "root");
+
+    assertEquals(client.createCQ(req1).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    assertEquals(client.createCQ(req2).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    Set<TCQEntry> result = new HashSet<>();
+    result.add(new TCQEntry("testCq1", sql1, CQState.ACTIVE.getType()));
+    result.add(new TCQEntry("testCq2", sql2, CQState.ACTIVE.getType()));
+    return result;
   }
 }

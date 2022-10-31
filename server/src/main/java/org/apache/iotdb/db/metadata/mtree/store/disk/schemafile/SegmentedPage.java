@@ -204,6 +204,9 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     if (!isCapableForSize(newSegSize)) {
       throw new SchemaPageOverflowException(pageIndex);
     }
+    if (maxAppendableSegmentSize() < newSegSize) {
+      compactSegments();
+    }
 
     ByteBuffer newBuf = ByteBuffer.allocate(newSegSize);
     srcPage.extendsSegmentTo(newBuf, segId);
@@ -402,6 +405,10 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     spareSize -= (short) (newSize - seg.size());
 
     return newSeg;
+  }
+
+  private short maxAppendableSegmentSize() {
+    return (short) (pageBuffer.limit() - 2 * (memberNum + 1) - spareOffset);
   }
 
   /**

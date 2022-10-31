@@ -47,7 +47,7 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.RegisterDataNode.ordinal());
+    stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTDataNodeInfo(dataNodeConfiguration, stream);
   }
 

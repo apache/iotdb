@@ -146,4 +146,8 @@ public class DatasetHeaderFactory {
         ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
         : new DatasetHeader(ColumnHeaderConstant.selectIntoColumnHeaders, true);
   }
+
+  public static DatasetHeader getShowContinuousQueriesHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showContinuousQueriesColumnHeaders, true);
+  }
 }
