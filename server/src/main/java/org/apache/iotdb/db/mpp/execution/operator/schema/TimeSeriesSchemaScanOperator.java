@@ -20,6 +20,8 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -32,106 +34,115 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+    private final String key;
+    private final String value;
+    private final boolean isContains;
 
-  // if is true, the result will be sorted according to the inserting frequency of the timeseries
-  private final boolean orderByHeat;
+    // if is true, the result will be sorted according to the inserting frequency of the timeseries
+    private final boolean orderByHeat;
 
-  private final Map<Integer, Template> templateMap;
+    private final Map<Integer, Template> templateMap;
 
-  private final List<TSDataType> outputDataTypes;
+    private final List<TSDataType> outputDataTypes;
 
-  public TimeSeriesSchemaScanOperator(
-      PlanNodeId planNodeId,
-      OperatorContext operatorContext,
-      int limit,
-      int offset,
-      PartialPath partialPath,
-      String key,
-      String value,
-      boolean isContains,
-      boolean orderByHeat,
-      boolean isPrefixPath,
-      Map<Integer, Template> templateMap) {
-    super(planNodeId, operatorContext, limit, offset, partialPath, isPrefixPath);
-    this.isContains = isContains;
-    this.key = key;
-    this.value = value;
-    this.orderByHeat = orderByHeat;
-    this.templateMap = templateMap;
-    this.outputDataTypes =
-        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-  }
-
-  public String getKey() {
-    return key;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  public boolean isContains() {
-    return isContains;
-  }
-
-  public boolean isOrderByHeat() {
-    return orderByHeat;
-  }
-
-  @Override
-  protected List<TsBlock> createTsBlockList() {
-    try {
-      List<ShowTimeSeriesResult> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
-              .left;
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+    public TimeSeriesSchemaScanOperator(
+            PlanNodeId planNodeId,
+            OperatorContext operatorContext,
+            int limit,
+            int offset,
+            PartialPath partialPath,
+            String key,
+            String value,
+            boolean isContains,
+            boolean orderByHeat,
+            boolean isPrefixPath,
+            Map<Integer, Template> templateMap) {
+        super(planNodeId, operatorContext, limit, offset, partialPath, isPrefixPath);
+        this.isContains = isContains;
+        this.key = key;
+        this.value = value;
+        this.orderByHeat = orderByHeat;
+        this.templateMap = templateMap;
+        this.outputDataTypes =
+                ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+                        .map(ColumnHeader::getColumnType)
+                        .collect(Collectors.toList());
     }
-  }
 
-  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
-  private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    ShowTimeSeriesPlan plan =
-        new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
-    plan.setRelatedTemplate(templateMap);
-    return plan;
-  }
-
-  private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
-    builder.getTimeColumnBuilder().writeLong(series.getLastTime());
-    builder.writeNullableText(0, series.getName());
-    builder.writeNullableText(1, series.getAlias());
-    builder.writeNullableText(2, series.getSgName());
-    builder.writeNullableText(3, series.getDataType().toString());
-    builder.writeNullableText(4, series.getEncoding().toString());
-    builder.writeNullableText(5, series.getCompressor().toString());
-    builder.writeNullableText(6, mapToString(series.getTag()));
-    builder.writeNullableText(7, mapToString(series.getAttribute()));
-    builder.declarePosition();
-  }
-
-  private String mapToString(Map<String, String> map) {
-    if (map == null || map.isEmpty()) {
-      return null;
+    public String getKey() {
+        return key;
     }
-    String content =
-        map.entrySet().stream()
-            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-            .collect(Collectors.joining(","));
-    return "{" + content + "}";
-  }
+
+    public String getValue() {
+        return value;
+    }
+
+    public boolean isContains() {
+        return isContains;
+    }
+
+    public boolean isOrderByHeat() {
+        return orderByHeat;
+    }
+
+    @Override
+    protected List<TsBlock> createTsBlockList() {
+        try {
+            List<ISchemaInfo> infos = new ArrayList<>();
+            ISchemaReader reader = ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                    .getSchemaRegion()
+                    .getSchemaReader();
+            while (reader.hasNext()) {
+                infos.add(reader.next());
+            }
+
+            List<ShowTimeSeriesResult> schemaRegionResult =
+                    ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                            .getSchemaRegion()
+                            .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
+                            .left;
+            return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+                    schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
+        } catch (MetadataException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    // ToDo @xinzhongtianxia remove this temporary converter after mpp online
+    private ShowTimeSeriesPlan convertToPhysicalPlan() {
+        ShowTimeSeriesPlan plan =
+                new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
+        plan.setRelatedTemplate(templateMap);
+        return plan;
+    }
+
+    private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
+        builder.getTimeColumnBuilder().writeLong(series.getLastTime());
+        builder.writeNullableText(0, series.getName());
+        builder.writeNullableText(1, series.getAlias());
+        builder.writeNullableText(2, series.getSgName());
+        builder.writeNullableText(3, series.getDataType().toString());
+        builder.writeNullableText(4, series.getEncoding().toString());
+        builder.writeNullableText(5, series.getCompressor().toString());
+        builder.writeNullableText(6, mapToString(series.getTag()));
+        builder.writeNullableText(7, mapToString(series.getAttribute()));
+        builder.declarePosition();
+    }
+
+    private String mapToString(Map<String, String> map) {
+        if (map == null || map.isEmpty()) {
+            return null;
+        }
+        String content =
+                map.entrySet().stream()
+                        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+                        .collect(Collectors.joining(","));
+        return "{" + content + "}";
+    }
 }

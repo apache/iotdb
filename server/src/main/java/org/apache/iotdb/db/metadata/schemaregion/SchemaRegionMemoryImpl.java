@@ -560,8 +560,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader getSchemaReader() {
-    return new ISchemaReader() {
-    };
+    return null;
   }
 
   // endregion
