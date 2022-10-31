@@ -85,6 +85,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TFetchWindowSetReq;
+import org.apache.iotdb.service.rpc.thrift.TFetchWindowSetResp;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -273,6 +275,11 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TFetchWindowSetResp fetchWindowSet(TFetchWindowSetReq req) throws TException {
     return null;
   }
 
