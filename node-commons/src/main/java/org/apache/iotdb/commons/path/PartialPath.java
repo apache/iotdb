@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -498,6 +499,68 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
 
     return dp[nodes1.length][nodes2.length];
+  }
+
+  public PartialPath getOverlapPathWith(PartialPath path) {
+    String[] lNodes = nodes.clone();
+    String[] rNodes = path.nodes.clone();
+
+    String[][] dp = new String[lNodes.length + 1][rNodes.length + 1];
+    int[][] pre = new int[lNodes.length + 1][rNodes.length + 1];
+    dp[0][0] = "";
+    for (int i = 0; i <= lNodes.length; i++) {
+      for (int j = 0; j <= rNodes.length; j++) {
+        if (dp[i][j] == null) {
+          continue;
+        }
+        if (i < lNodes.length && j < rNodes.length) {
+          if (lNodes[i].equals(rNodes[j])) {
+            dp[i + 1][j + 1] = rNodes[j]; // match one char in both paths
+          } else if (lNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            dp[i + 1][j + 1] = rNodes[j];
+          } else if (rNodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            dp[i + 1][j + 1] = lNodes[i];
+          } else if (lNodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+            dp[i + 1][j + 1] = rNodes[j];
+          } else if (rNodes[j].equals(ONE_LEVEL_PATH_WILDCARD)) {
+            dp[i + 1][j + 1] = lNodes[i];
+          }
+        }
+        if (i > 0 && j < rNodes.length && lNodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+          dp[i][j + 1] = rNodes[j];
+          pre[i][j + 1] = 1; // right path's char matches ** in left path
+        }
+        if (j > 0 && i < lNodes.length && rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+          dp[i + 1][j] = lNodes[i];
+          pre[i + 1][j] = 2; // left path's char matches ** in right path
+        }
+      }
+    }
+
+    if (dp[lNodes.length][rNodes.length] == null) {
+      return null;
+    }
+
+    int length = 0, lIndex = lNodes.length, rIndex = rNodes.length;
+    String[] resNodes = new String[lNodes.length + rNodes.length];
+    while (lIndex != 0 || rIndex != 0) {
+      resNodes[length++] = dp[lIndex][rIndex];
+      switch (pre[lIndex][rIndex]) {
+        case 0:
+          lIndex -= 1;
+          rIndex -= 1;
+          break;
+        case 1:
+          rIndex -= 1;
+          break;
+        case 2:
+          lIndex -= 1;
+          break;
+      }
+    }
+    resNodes = Arrays.copyOf(resNodes, length);
+    ArrayUtils.reverse(resNodes);
+    return new PartialPath(resNodes);
   }
 
   @Override
