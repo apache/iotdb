@@ -108,6 +108,7 @@ Makefile
 
 ### cluster test data
 node1/
+!node1/OneNodeClusterIT.java
 node2/
 node3/
 
