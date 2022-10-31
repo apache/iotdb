@@ -42,7 +42,7 @@ public class IoTDBMetricsUtils {
     stringBuilder
         .append(STORAGE_GROUP)
         .append(".")
-        .append(metricConfig.getIoTDBReporterConfig().getDatabase())
+        .append(metricConfig.getIoTDBReporterConfig().getLocation())
         .append(".`")
         .append(metricConfig.getRpcAddress())
         .append(":")
