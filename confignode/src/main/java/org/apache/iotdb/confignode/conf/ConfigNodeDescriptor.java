@@ -302,6 +302,12 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_log_appender_buffer_size_max",
                 String.valueOf(conf.getSchemaRegionRatisConsensusLogAppenderBufferSize()))));
 
+    conf.setPartitionRegionStandAloneSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_standalone_snapshot_trigger_threshold",
+                String.valueOf(conf.getPartitionRegionStandAloneSnapshotTriggerThreshold()))));
+
     conf.setDataRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
