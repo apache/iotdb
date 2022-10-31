@@ -95,7 +95,6 @@ public class ConfigNodeDescriptor {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     if (url == null) {
       LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-      return;
     }
     Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {

@@ -153,7 +153,6 @@ public class IoTDBDescriptor {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
-      return;
     }
     Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
