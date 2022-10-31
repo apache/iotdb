@@ -126,7 +126,7 @@ public class OneCopyConsensusTest {
   public void setUp() throws Exception {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.StandAloneConsensus,
+                ConsensusFactory.ONE_COPY_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 6667))
@@ -146,7 +146,7 @@ public class OneCopyConsensusTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.StandAloneConsensus)));
+                            ConsensusFactory.ONE_COPY_CONSENSUS)));
     consensusImpl.start();
   }
 

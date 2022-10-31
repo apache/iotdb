@@ -32,8 +32,8 @@ public class ConsensusFactory {
   public static final String CONSTRUCT_FAILED_MSG =
       "Construct consensusImpl failed, Please check your consensus className %s";
 
-  public static final String StandAloneConsensus =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  public static final String ONE_COPY_CONSENSUS =
+      "org.apache.iotdb.consensus.onecopy.OneCopyConsensus";
   public static final String RatisConsensus = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String MultiLeaderConsensus =
       "org.apache.iotdb.consensus.multileader.MultiLeaderConsensus";
