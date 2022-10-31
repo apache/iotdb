@@ -89,8 +89,8 @@ while true; do
             break
         ;;
         "")
-        #if we do not use getopt, we then have to process the case that there is no argument.
-            shift
+            #if we do not use getopt, we then have to process the case that there is no argument.
+            #in some systems, when there is no argument, shift command may throw error, so we skip directly
             #all others are args to the program
             PARAMS=$*
             break
