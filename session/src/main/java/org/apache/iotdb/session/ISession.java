@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -437,4 +438,6 @@ public interface ISession extends AutoCloseable {
   void setEnableRedirection(boolean enableRedirection);
 
   void sortTablet(Tablet tablet);
+
+  TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
 }

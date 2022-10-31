@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
-import org.apache.iotdb.confignode.manager.node.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 

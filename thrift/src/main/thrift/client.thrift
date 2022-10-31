@@ -432,6 +432,23 @@ struct TSyncTransportMetaInfo{
   2:required i64 startIndex
 }
 
+enum TSConnectionType {
+  THRIFT_BASED
+  MQTT_BASED
+  INTERNAL
+}
+
+struct TSConnectionInfo {
+  1: required string userName
+  2: required i64 logInTime
+  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
+  4: required TSConnectionType type
+}
+
+struct TSConnectionInfoResp {
+  1: required list<TSConnectionInfo> connectionInfoList
+}
+
 service IClientRPCService {
 
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
@@ -541,4 +558,6 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TSConnectionInfoResp fetchAllConnectionsInfo();
 }

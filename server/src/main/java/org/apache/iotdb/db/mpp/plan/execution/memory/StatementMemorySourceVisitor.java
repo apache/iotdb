@@ -245,9 +245,12 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
-      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(pipeSinkType.name()));
-      tsBlockBuilder.declarePosition();
+      // TODO(sync): only support IoTDB PipeSinkType now.
+      if (pipeSinkType.equals(PipeSink.PipeSinkType.IoTDB)) {
+        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+        tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(pipeSinkType.name()));
+        tsBlockBuilder.declarePosition();
+      }
     }
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
