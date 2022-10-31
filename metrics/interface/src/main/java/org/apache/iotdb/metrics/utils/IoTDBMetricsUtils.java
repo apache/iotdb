@@ -22,13 +22,9 @@ package org.apache.iotdb.metrics.utils;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 
 public class IoTDBMetricsUtils {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetricsUtils.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final String STORAGE_GROUP = "root.__system";
