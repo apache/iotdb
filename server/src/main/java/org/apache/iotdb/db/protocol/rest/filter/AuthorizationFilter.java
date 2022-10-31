@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.protocol.mpprest.filter;
+package org.apache.iotdb.db.protocol.rest.filter;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;

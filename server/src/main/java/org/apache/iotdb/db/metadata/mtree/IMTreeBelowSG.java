@@ -93,6 +93,27 @@ public interface IMTreeBelowSG {
 
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 
+  /**
+   * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
+   * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
+   * {root.sg.d1.s1, root.sg.d2.s1}.
+   *
+   * @param pathPattern path pattern
+   * @return all pre-deleted timeseries matched by given pathPattern
+   */
+  List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Get all devices of pre-deleted timeseries matched by given pathPattern. For example, given path
+   * pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result
+   * set is {root.sg.d1, root.sg.d2}.
+   *
+   * @param pathPattern path pattern
+   * @return all devices of pre-deleted timeseries matched by given pathPattern
+   */
+  Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
+      throws MetadataException;
+
   void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException;
 
   /**
@@ -296,6 +317,15 @@ public interface IMTreeBelowSG {
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
+
+  /**
+   * Get IMeasurementMNode by path pattern
+   *
+   * @param pathPattern full path or path pattern with wildcard
+   * @return list of IMeasurementMNode
+   */
+  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
+      throws MetadataException;
 
   /**
    * check whether there is template on given path and the subTree has template return true,

@@ -1010,10 +1010,10 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testSequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     int originCandidateNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
@@ -1088,7 +1088,7 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
       IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(compactionPriority);
       IoTDBDescriptor.getInstance()
@@ -1162,10 +1162,10 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testUnsequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originFinishCount = CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionPriority compactionPriority =
@@ -1226,7 +1226,7 @@ public class IoTDBSizeTieredCompactionIT {
         }
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
       IoTDBDescriptor.getInstance()
           .getConfig()

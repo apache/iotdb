@@ -55,7 +55,7 @@ public class UpgradeSevice implements IService {
 
   @Override
   public void start() {
-    int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadNum();
+    int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadCount();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }

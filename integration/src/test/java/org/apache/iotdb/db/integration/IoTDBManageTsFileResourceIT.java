@@ -89,7 +89,7 @@ public class IoTDBManageTsFileResourceIT {
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
     prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
-    prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
+    prevCompactionThreadNum = CONFIG.getCompactionThreadCount();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
@@ -97,7 +97,7 @@ public class IoTDBManageTsFileResourceIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
-    CONFIG.setConcurrentCompactionThread(prevCompactionThreadNum);
+    CONFIG.setCompactionThreadCount(prevCompactionThreadNum);
   }
 
   @Test
@@ -106,7 +106,7 @@ public class IoTDBManageTsFileResourceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      CONFIG.setConcurrentCompactionThread(0);
+      CONFIG.setCompactionThreadCount(0);
       double curTimeIndexMemoryThreshold = 1288.5;
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (String sql : unSeqSQLs) {
@@ -199,7 +199,7 @@ public class IoTDBManageTsFileResourceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      CONFIG.setConcurrentCompactionThread(0);
+      CONFIG.setCompactionThreadCount(0);
       double curTimeIndexMemoryThreshold = 1288.5;
       tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
       for (int i = 0; i < unSeqSQLs.length - 1; i++) {

@@ -43,7 +43,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
     int threadCnt =
         Math.min(
             Runtime.getRuntime().availableProcessors(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
+            IoTDBDescriptor.getInstance().getConfig().getSubRawQueryThreadCount());
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
@@ -78,7 +78,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
       int threadCnt =
           Math.min(
               Runtime.getRuntime().availableProcessors(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
+              IoTDBDescriptor.getInstance().getConfig().getSubRawQueryThreadCount());
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
               threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());

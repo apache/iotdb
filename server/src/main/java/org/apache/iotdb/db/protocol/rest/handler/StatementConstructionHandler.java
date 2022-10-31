@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.handler;
+package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.protocol.mpprest.model.InsertTabletRequest;
+import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;

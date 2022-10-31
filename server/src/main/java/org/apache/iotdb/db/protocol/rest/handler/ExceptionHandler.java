@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.handler;
+package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
