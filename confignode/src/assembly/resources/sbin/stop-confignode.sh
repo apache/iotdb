@@ -19,7 +19,7 @@
 #
 
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
-internal_port=$(sed '/^internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
+internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
 
 if type lsof >/dev/null 2>&1; then
   PID=$(lsof -t -i:${internal_port} -sTCP:LISTEN)

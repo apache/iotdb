@@ -19,7 +19,7 @@
 #
 
 DATANODE_CONF="`dirname "$0"`/../conf"
-rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 
 if  type lsof > /dev/null 2>&1 ; then
   PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
