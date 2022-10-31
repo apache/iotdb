@@ -156,6 +156,7 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
+  private long partitionRegionStandAloneSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -617,6 +618,16 @@ public class ConfigNodeConfig {
       long partitionRegionRatisSnapshotTriggerThreshold) {
     this.partitionRegionRatisSnapshotTriggerThreshold =
         partitionRegionRatisSnapshotTriggerThreshold;
+  }
+
+  public long getPartitionRegionStandAloneSnapshotTriggerThreshold() {
+    return partitionRegionStandAloneSnapshotTriggerThreshold;
+  }
+
+  public void setPartitionRegionStandAloneSnapshotTriggerThreshold(
+          long partitionRegionStandAloneSnapshotTriggerThreshold) {
+    this.partitionRegionStandAloneSnapshotTriggerThreshold =
+            partitionRegionStandAloneSnapshotTriggerThreshold;
   }
 
   public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
