@@ -21,6 +21,8 @@
 DATANODE_CONF="`dirname "$0"`/../conf"
 rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 
+echo "check whether the rpc_port is used..., port is" $rpc_port
+
 if  type lsof > /dev/null 2>&1 ; then
   PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
 elif type netstat > /dev/null 2>&1 ; then
@@ -38,7 +40,7 @@ if [ -z "$PID" ]; then
   exit 1
 elif [[ "${PIDS}" =~ "${PID}" ]]; then
   kill -s TERM $PID
-  echo "Stop DataNode"
+  echo "Stop DataNode, PID:" $PID
 else
   echo "No DataNode to stop"
   exit 1

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
@@ -93,6 +94,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void active() {
+    processPid();
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
       checks.verify();
@@ -122,7 +124,15 @@ public class IoTDB implements IoTDBMBean {
     config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
 
+    processPid();
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {

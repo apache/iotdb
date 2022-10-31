@@ -91,6 +91,8 @@ public class IoTDBConstant {
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
+
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
 
@@ -282,6 +284,9 @@ public class IoTDBConstant {
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
   public static final String NODE_STATUS_RUNNING = "Running";
   public static final String NODE_STATUS_Down = "Down";
+
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   // client version number
   public enum ClientVersion {

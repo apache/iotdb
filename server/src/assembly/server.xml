@@ -46,5 +46,18 @@
             <source>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf/iotdb-common.properties</source>
             <destName>conf/iotdb-common.properties</destName>
         </file>
+        <!-- copy iotdb-common.sh to different script folders-->
+        <file>
+            <source>src/assembly/resources/sbin/iotdb-common.sh</source>
+            <destName>tools/iotdb-common.sh</destName>
+        </file>
+        <file>
+            <source>src/assembly/resources/sbin/iotdb-common.sh</source>
+            <destName>tools/tsfileToolSet/iotdb-common.sh</destName>
+        </file>
+        <file>
+            <source>src/assembly/resources/sbin/iotdb-common.sh</source>
+            <destName>tools/schema/iotdb-common.sh</destName>
+        </file>
     </files>
 </assembly>

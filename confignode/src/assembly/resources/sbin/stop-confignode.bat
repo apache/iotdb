@@ -27,6 +27,8 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^internal_port"
   set internal_port=%%i
 )
 
+echo "check whether the rpc_port is used..., port is" $rpc_port
+
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "internal_address"
 %superior_dir%\conf\iotdb-confignode.properties') do (
   set internal_address=%%i
@@ -34,5 +36,6 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "internal_address"
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %internal_address%:%internal_port%') do (
   taskkill /f /pid %%a
+    echo "close ConfigNode, PID:" %%a
 )
 rem ps ax | grep -i 'confignode.ConfigNode' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM

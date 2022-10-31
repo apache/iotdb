@@ -107,17 +107,58 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %CONFIGNODE_HEAP_OPTS% -cp %CLASSPATH% %CONFIGNODE_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+@REM SET PARA
+
+@REM Before v0.14, iotdb-server runs in foreground by default
+@REM set foreground=0
+set foreground=yes
+
+:checkPara
+set COMMANSLINE=%*
+@REM setlocal ENABLEDELAYEDEXPANSION
+:STR_VISTOR
+for /f "tokens=1* delims= " %%a in ("%COMMANSLINE%") do (
+@REM -----more para-----
+for /f "tokens=1* delims==" %%1 in ("%%a") do (
+@REM echo 1=%%1 "|||" 2=%%2
+if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%IOTDB_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
+if "%%1"=="-f" ( set foreground=yes)
+if "%%1"=="-b" ( set foreground=0)
+)
+set COMMANSLINE=%%b
+goto STR_VISTOR
+)
+
+@REM SETLOCAL DISABLEDELAYEDEXPANSION
+
+echo ````````````````````````
+echo Starting IoTDB
+echo ````````````````````````
+
+@REM ----------------------------------------------------------------------------
+@REM SOURCE iotdb-env.bat
+IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+    CALL "%IOTDB_CONF%\iotdb-env.bat" %1
+    ) ELSE (
+    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
+    )
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
+if NOT DEFINED JAVA_HOME goto :err
+
+@REM ----------------------------------------------------------------------------
+@REM START
+:start
+if %foreground%==yes (
+	java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	) ELSE (
+	start javaw %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	)
 goto finally
 
 :err
 echo JAVA_HOME environment variable must be set!
 pause
 
-
-@REM -----------------------------------------------------------------------------
 :finally
-
+@ENDLOCAL
 pause
-
-ENDLOCAL
