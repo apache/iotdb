@@ -40,7 +40,7 @@ public class AuditLogUtils {
 
   public static final String LOG = "log";
   public static final String TYPE = "type";
-  public static final String USER = "user";
+  public static final String USERNAME = "username";
   public static final String AUDIT_LOG_DEVICE = "root.__system.audit.'%s'";
   public static final String TYPE_QUERY = "QUERY";
   public static final String TYPE_LOGIN = "LOGIN";
@@ -65,7 +65,7 @@ public class AuditLogUtils {
             new InsertRowPlan(
                 new PartialPath(String.format(AUDIT_LOG_DEVICE, username)),
                 DateTimeUtils.currentTime(),
-                new String[] {TYPE, LOG, USER},
+                new String[] {TYPE, LOG, USERNAME},
                 new String[] {type, log, username});
         IoTDB.serviceProvider.getExecutor().insert(insertRowPlan);
       } catch (IllegalPathException | QueryProcessException e) {
