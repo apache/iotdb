@@ -21,6 +21,8 @@
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
 cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
 
+echo "check whether the internal_port is used..., port is" $cn_internal_port
+
 if type lsof >/dev/null 2>&1; then
   PID=$(lsof -t -i:${cn_internal_port} -sTCP:LISTEN)
 elif type netstat >/dev/null 2>&1; then
@@ -37,5 +39,5 @@ if [ -z "$PID" ]; then
   exit 1
 else
   kill -s TERM $PID
-  echo "close ConfigNode"
+  echo "close ConfigNode, PID:" $PID
 fi

@@ -23,11 +23,11 @@ echo ---------------------
 echo Starting Printing the TsFileResources
 echo ---------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/../.."
-fi
-
-IOTDB_CONF=${IOTDB_HOME}/conf
+source "$(dirname "$0")/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+eval set -- "$VARS"
 
 
 if [ -n "$JAVA_HOME" ]; then

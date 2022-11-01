@@ -51,5 +51,9 @@
             <source>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf/iotdb-common.properties</source>
             <destName>conf/iotdb-common.properties</destName>
         </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
+            <destName>sbin/iotdb-common.sh</destName>
+        </file>
     </files>
 </assembly>
