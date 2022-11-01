@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,7 +43,8 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBQueryDemoIT {
 
   private static String[] sqls =
@@ -160,43 +162,40 @@ public class IoTDBQueryDemoIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.** where time>10");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
+      ResultSet resultSet = statement.executeQuery("select * from root.** where time>10");
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(10, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(10, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -220,83 +219,80 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize < limitNumber
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
-      boolean hasResultSet =
-          statement.execute("select * from root.** where time>10 limit 5 offset 3");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      ResultSet resultSet =
+          statement.executeQuery("select * from root.** where time>10 limit 5 offset 3");
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
+
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(5, cnt);
 
       // test 1: fetchSize > limitNumber
       statement.setFetchSize(10000);
       Assert.assertEquals(10000, statement.getFetchSize());
-      hasResultSet = statement.execute("select * from root.** where time>10 limit 5 offset 3");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
+      resultSet = statement.executeQuery("select * from root.** where time>10 limit 5 offset 3");
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      resultSetMetaData = resultSet.getMetaData();
+      actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
+
+      cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(5, cnt);
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -320,44 +316,41 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize < limitNumber
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
-      boolean hasResultSet =
-          statement.execute(
+      ResultSet resultSet =
+          statement.executeQuery(
               "select * from root.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(5, cnt);
 
       retArray =
           new String[] {
@@ -367,44 +360,42 @@ public class IoTDBQueryDemoIT {
             "1509466080000,false,22.58,v1,false,false,22.58,",
             "1509466140000,false,20.98,v1,false,false,20.98,",
           };
-      hasResultSet =
-          statement.execute(
+      resultSet =
+          statement.executeQuery(
               "select * from root.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      resultSetMetaData = resultSet.getMetaData();
+      actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
+
+      cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(5, cnt);
 
       retArray =
           new String[] {
@@ -412,44 +403,43 @@ public class IoTDBQueryDemoIT {
             "1509465960000,false,20.71,v1,false,false,20.71,",
             "1509466080000,false,22.58,v1,false,false,22.58,",
           };
-      hasResultSet =
-          statement.execute(
-              "select * from root.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                    + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                    + "root.sgcc.wf03.wt01.temperature,",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                  Types.BOOLEAN,
-                  Types.FLOAT,
-                });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      resultSet =
+          statement.executeQuery(
+              "select * from root.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+
+      resultSetMetaData = resultSet.getMetaData();
+      actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
+                  + "root.sgcc.wf03.wt01.temperature,",
+              new int[] {
+                Types.TIMESTAMP,
+                Types.BOOLEAN,
+                Types.FLOAT,
+                Types.VARCHAR,
+                Types.BOOLEAN,
+                Types.BOOLEAN,
+                Types.FLOAT,
+              });
+
+      cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(3, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(3, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -479,7 +469,7 @@ public class IoTDBQueryDemoIT {
   public void testWrongTextQuery() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("select * from root.ln.wf02.wt02 where hardware > 'v1'");
+      statement.executeQuery("select * from root.ln.wf02.wt02 where hardware > 'v1'");
     } catch (Exception e) {
       Assert.assertEquals(
           e.getMessage(),
@@ -496,35 +486,32 @@ public class IoTDBQueryDemoIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select hardware from root.ln.wf02.wt02 where hardware = 'v2'");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,root.ln.wf02.wt02.hardware,",
-                new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR,
-                });
+      ResultSet resultSet =
+          statement.executeQuery("select hardware from root.ln.wf02.wt02 where hardware = 'v2'");
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time,root.ln.wf02.wt02.hardware,",
+              new int[] {
+                Types.TIMESTAMP, Types.VARCHAR,
+              });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(2, cnt);
 
     } catch (Exception e) {
       Assert.assertNull(e.getMessage());
@@ -544,36 +531,33 @@ public class IoTDBQueryDemoIT {
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
       // Matches a string consisting of one lowercase letter and one digit. such as: "v1","v2"
-      boolean hasResultSet =
-          statement.execute(
+      ResultSet resultSet =
+          statement.executeQuery(
               "select hardware,status from root.ln.wf02.wt02 where hardware regexp '^[a-z][0-9]$' and time < 1509465780000");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
-                new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
-                });
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
+              new int[] {
+                Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
+              });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(3, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(3, cnt);
 
       retArray =
           new String[] {
@@ -588,36 +572,34 @@ public class IoTDBQueryDemoIT {
             "1509466080000,v1,false,",
             "1509466140000,v1,false,",
           };
-      hasResultSet =
-          statement.execute(
+      resultSet =
+          statement.executeQuery(
               "select hardware,status from root.ln.wf02.wt02 where hardware regexp 'v*' ");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
-                new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
-                });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      resultSetMetaData = resultSet.getMetaData();
+      actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
+              new int[] {
+                Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
+              });
+
+      cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(10, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(10, cnt);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -646,36 +628,33 @@ public class IoTDBQueryDemoIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
+      ResultSet resultSet =
+          statement.executeQuery(
               "select hardware,status from root.ln.wf02.wt02 where hardware regexp 's.' ");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
-                new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
-                });
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      List<Integer> actualIndexToExpectedIndexList =
+          checkHeader(
+              resultSetMetaData,
+              "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
+              new int[] {
+                Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
+              });
 
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
+      int cnt = 0;
+      while (resultSet.next()) {
+        String[] expectedStrings = retArray[cnt].split(",");
+        StringBuilder expectedBuilder = new StringBuilder();
+        StringBuilder actualBuilder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          actualBuilder.append(resultSet.getString(i)).append(",");
+          expectedBuilder
+              .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+              .append(",");
         }
-        Assert.assertEquals(0, cnt);
+        Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+        cnt++;
       }
+      Assert.assertEquals(0, cnt);
 
     } catch (Exception e) {
       e.printStackTrace();
