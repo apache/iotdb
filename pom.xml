@@ -131,7 +131,7 @@
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
-        <thrift.version>0.14.1</thrift.version>
+        <thrift.version>0.14.2</thrift.version>
         <airline.version>0.9</airline.version>
         <jackson.version>2.10.5</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
