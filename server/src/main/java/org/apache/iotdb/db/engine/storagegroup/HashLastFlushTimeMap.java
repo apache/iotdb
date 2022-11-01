@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,22 +52,39 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   /** used for recovering flush time from tsfile resource */
   TsFileManager tsFileManager;
 
+  /** record memory cost of map for each partitionId */
+  private Map<Long, Long> memCostForEachPartition = new HashMap<>();
+
   public HashLastFlushTimeMap(TsFileManager tsFileManager) {
     this.tsFileManager = tsFileManager;
   }
 
   @Override
   public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
-    partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-        .putAll(flushedTimeMap);
+    Map<String, Long> flushTimeMapForPartition =
+        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
+            timePartitionId, l -> new HashMap<>());
+    long memIncr = 0;
+    for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
+      if (flushTimeMapForPartition.put(entry.getKey(), entry.getValue()) == null) {
+        memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
+      }
+    }
+    long finalMemIncr = memIncr;
+    memCostForEachPartition.compute(
+        timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
   }
 
   @Override
   public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
-    partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-        .put(path, time);
+    if (partitionLatestFlushedTimeForEachDevice
+            .computeIfAbsent(timePartitionId, l -> new HashMap<>())
+            .put(path, time)
+        == null) {
+      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
+      memCostForEachPartition.compute(
+          timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
+    }
   }
 
   @Override
@@ -86,7 +101,17 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   public void updateFlushedTime(long timePartitionId, String path, long time) {
     partitionLatestFlushedTimeForEachDevice
         .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-        .compute(path, (k, v) -> v == null ? time : Math.max(v, time));
+        .compute(
+            path,
+            (k, v) -> {
+              if (v == null) {
+                long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
+                memCostForEachPartition.compute(
+                    timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
+                return time;
+              }
+              return Math.max(v, time);
+            });
   }
 
   @Override
@@ -175,6 +200,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public void removePartition(long partitionId) {
     partitionLatestFlushedTimeForEachDevice.remove(partitionId);
+    memCostForEachPartition.remove(partitionId);
   }
 
   private long recoverFlushTime(long partitionId, String devicePath) {
@@ -187,13 +213,15 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       }
     }
 
+    long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * devicePath.length();
+    memCostForEachPartition.compute(partitionId, (k, v) -> v == null ? memCost : v + memCost);
     return Long.MIN_VALUE;
   }
 
   @Override
   public long getMemSize(long partitionId) {
-    if (partitionLatestFlushedTimeForEachDevice.containsKey(partitionId)) {
-      return RamUsageEstimator.sizeOf(partitionLatestFlushedTimeForEachDevice.get(partitionId));
+    if (memCostForEachPartition.containsKey(partitionId)) {
+      return memCostForEachPartition.get(partitionId);
     }
     return 0;
   }

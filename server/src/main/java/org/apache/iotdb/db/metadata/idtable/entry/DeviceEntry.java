@@ -90,8 +90,8 @@ public class DeviceEntry {
 
   // region support flush time
 
-  public void putFlushTimeMap(long timePartition, long flushTime) {
-    flushTimeMapOfEachPartition.put(timePartition, flushTime);
+  public Long putFlushTimeMap(long timePartition, long flushTime) {
+    return flushTimeMapOfEachPartition.put(timePartition, flushTime);
   }
 
   public long updateFlushTimeMap(long timePartition, long flushTime) {

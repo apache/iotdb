@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +32,9 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   TsFileManager tsFileManager;
 
+  /** record memory cost of map for each partitionId */
+  private Map<Long, Long> memCostForEachPartition = new HashMap<>();
+
   public IDTableLastFlushTimeMap(IDTable idTable, TsFileManager tsFileManager) {
     this.idTable = idTable;
     this.tsFileManager = tsFileManager;
@@ -39,13 +43,21 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
-      idTable.getDeviceEntry(entry.getKey()).putFlushTimeMap(timePartitionId, entry.getValue());
+      if (idTable.getDeviceEntry(entry.getKey()).putFlushTimeMap(timePartitionId, entry.getValue())
+          == null) {
+        long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
+        memCostForEachPartition.compute(
+            timePartitionId, (k, v) -> v == null ? memCost : v + memCost);
+      }
     }
   }
 
   @Override
   public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
-    idTable.getDeviceEntry(path).putFlushTimeMap(timePartitionId, time);
+    if (idTable.getDeviceEntry(path).putFlushTimeMap(timePartitionId, time) != null) {
+      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
+      memCostForEachPartition.compute(timePartitionId, (k, v) -> v == null ? memCost : v + memCost);
+    }
   }
 
   @Override
@@ -149,11 +161,16 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
       }
     }
 
+    long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * devicePath.length();
+    memCostForEachPartition.compute(partitionId, (k, v) -> v == null ? memCost : v + memCost);
     return Long.MIN_VALUE;
   }
 
   @Override
   public long getMemSize(long partitionId) {
+    if (memCostForEachPartition.containsKey(partitionId)) {
+      return memCostForEachPartition.get(partitionId);
+    }
     return 0;
   }
 }

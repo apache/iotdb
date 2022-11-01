@@ -23,6 +23,24 @@ import java.util.Map;
 
 /** This interface manages last time and flush time for sequence and unsequence determination */
 public interface ILastFlushTimeMap {
+
+  /**
+   * String basic total, 40B
+   *
+   * <ul>
+   *   <li>Object header: Mark Word + Classic Pointer, 12B
+   *   <li>char[] reference 4B
+   *   <li>hash code, 4B
+   *   <li>padding 4B
+   *   <li>char[] header + length 16B
+   * </ul>
+   */
+  long STRING_BASE_SIZE = 40;
+
+  long LONG_SIZE = 24;
+
+  long HASHMAP_NODE_BASIC_SIZE = 14 + STRING_BASE_SIZE + LONG_SIZE;
+
   // region set
   void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
 
