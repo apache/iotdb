@@ -268,7 +268,7 @@ public class AuthorInfoTest {
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
-        privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
+        "", permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
     // list user privileges
     authorPlan =
