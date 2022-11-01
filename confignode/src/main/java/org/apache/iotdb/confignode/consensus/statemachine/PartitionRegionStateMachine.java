@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for PartitionRegion */
@@ -55,13 +57,15 @@ public class PartitionRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
+
+  private static final ExecutorService threadPool =
+      IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private LogWriter logWriter;
   private File logFile;
   private int startIndex;
-
   private int endIndex;
   private int logFileId;
 
@@ -124,7 +128,6 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-
     if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
@@ -224,22 +227,39 @@ public class PartitionRegionStateMachine
           "Current node [nodeId: {}, ip:port: {}] becomes Leader",
           newLeaderId,
           currentNodeTEndPoint);
+
+      // Always initiate all kinds of HeartbeatCache first
+      configManager.getLoadManager().initHeartbeatCache();
+
+      // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().startLoadBalancingService();
+      configManager.getLoadManager().startLoadStatisticsService();
+      configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getNodeManager().startHeartbeatService();
       configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
+
+      // we do cq recovery async for two reasons:
+      // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+      // make notifyLeaderChanged not blocked by it
+      // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
+      // initialized after notifyLeaderChanged finished
+      threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
     } else {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
+
+      // Stop leader scheduling services
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stopLoadBalancingService();
+      configManager.getLoadManager().stopLoadStatisticsService();
+      configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
+      configManager.getCQManager().stopCQScheduler();
     }
   }
 

@@ -68,6 +68,12 @@ public class SchemaRegionPlanFactory {
         return new PreDeleteTimeSeriesPlanImpl();
       case ROLLBACK_PRE_DELETE_TIMESERIES:
         return new RollbackPreDeleteTimeSeriesPlanImpl();
+      case PRE_DEACTIVATE_TEMPLATE:
+        return new PreDeactivateTemplatePlanImpl();
+      case ROLLBACK_PRE_DEACTIVATE_TEMPLATE:
+        return new RollbackPreDeactivateTemplatePlanImpl();
+      case DEACTIVATE_TEMPLATE:
+        return new DeactivateTemplatePlanImpl();
       default:
         throw new UnsupportedOperationException(
             String.format(

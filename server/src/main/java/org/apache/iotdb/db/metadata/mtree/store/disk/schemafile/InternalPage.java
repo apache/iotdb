@@ -51,7 +51,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   private transient String penultKey, lastKey;
 
   /**
-   * <b>Compound pointers will not be deserialized as any collections since it may contains massive
+   * <b>Compound pointers will not be deserialized as any Java Objects since it may contains massive
    * entries (maybe more than 500), and binary search and insert will be conducted DIRECTLY on
    * {@link #pageBuffer}.</b>
    *

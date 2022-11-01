@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.commons.service.metric.MetricService;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {

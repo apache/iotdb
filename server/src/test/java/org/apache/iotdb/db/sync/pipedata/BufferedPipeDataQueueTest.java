@@ -31,7 +31,10 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -42,7 +45,11 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+// TODO don't use old standalone style IT
+@Ignore
 public class BufferedPipeDataQueueTest {
+  private static final Logger logger = LoggerFactory.getLogger(BufferedPipeDataQueueTest.class);
+
   File pipeLogDir =
       new File(
           SyncPathUtil.getReceiverPipeLogDir("pipe", "192.168.0.11", System.currentTimeMillis()));
@@ -510,6 +517,9 @@ public class BufferedPipeDataQueueTest {
                 pipeDataQueue.commit();
               } catch (InterruptedException e) {
                 break;
+              } catch (Exception e) {
+                e.printStackTrace();
+                break;
               }
             }
           });
@@ -533,6 +543,94 @@ public class BufferedPipeDataQueueTest {
       Assert.assertEquals(18, pipeDataTakeList.size());
       for (int i = 0; i < 9; i++) {
         Assert.assertEquals(pipeDataList.get(i + 2), pipeDataTakeList.get(i));
+      }
+      pipeDataQueue.clear();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testOfferWhileTakingWithDiscontinuousSerialNumber() {
+    try {
+      DataOutputStream outputStream =
+          new DataOutputStream(
+              new FileOutputStream(new File(pipeLogDir, SyncConstant.COMMIT_LOG_NAME), true));
+      outputStream.writeLong(1);
+      outputStream.close();
+      List<PipeData> pipeDataList = new ArrayList<>();
+      // pipelog1: 3
+      DataOutputStream pipeLogOutput1 =
+          new DataOutputStream(
+              new FileOutputStream(
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
+      PipeData tsFile3PipeData = new TsFilePipeData("fake3", 3);
+      pipeDataList.add(tsFile3PipeData);
+      tsFile3PipeData.serialize(pipeLogOutput1);
+      pipeLogOutput1.close();
+      // pipelog2: 4,5,6,7,10
+      DataOutputStream pipeLogOutput2 =
+          new DataOutputStream(
+              new FileOutputStream(
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
+      for (int i = 4; i < 8; i++) {
+        PipeData pipeData =
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
+        pipeDataList.add(pipeData);
+        pipeData.serialize(pipeLogOutput2);
+      }
+      PipeData schema10PipeData =
+          new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake10")), 10);
+      pipeDataList.add(schema10PipeData);
+      schema10PipeData.serialize(pipeLogOutput2);
+      pipeLogOutput2.close();
+      ;
+      // recovery
+      BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
+      Assert.assertEquals(1, pipeDataQueue.getCommitSerialNumber());
+      Assert.assertEquals(10, pipeDataQueue.getLastMaxSerialNumber());
+
+      // take
+      List<PipeData> pipeDataTakeList = new ArrayList<>();
+      ExecutorService es1 = Executors.newSingleThreadExecutor();
+      es1.execute(
+          () -> {
+            while (true) {
+              try {
+                PipeData pipeData = pipeDataQueue.take();
+                logger.info(String.format("PipeData: %s", pipeData));
+                pipeDataTakeList.add(pipeData);
+                pipeDataQueue.commit();
+              } catch (InterruptedException e) {
+                break;
+              } catch (Exception e) {
+                e.printStackTrace();
+                break;
+              }
+            }
+          });
+      // offer
+      for (int i = 16; i < 20; i++) {
+        pipeDataQueue.offer(
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i));
+      }
+      try {
+        Thread.sleep(3000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      es1.shutdownNow();
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+      logger.info(String.format("PipeDataTakeList: %s", pipeDataTakeList));
+      Assert.assertEquals(10, pipeDataTakeList.size());
+      for (int i = 0; i < 6; i++) {
+        Assert.assertEquals(pipeDataList.get(i), pipeDataTakeList.get(i));
       }
       pipeDataQueue.clear();
     } catch (Exception e) {

@@ -38,8 +38,12 @@ public enum SchemaRegionPlanType {
   UNSET_TEMPLATE((byte) 57),
   ACTIVATE_TEMPLATE_IN_CLUSTER((byte) 63),
   PRE_DELETE_TIMESERIES_IN_CLUSTER((byte) 64),
-  ROLLBACK_PRE_DELETE_TIMESERIES((byte) 65);
+  ROLLBACK_PRE_DELETE_TIMESERIES((byte) 65),
   // endregion
+
+  PRE_DEACTIVATE_TEMPLATE((byte) 0),
+  ROLLBACK_PRE_DEACTIVATE_TEMPLATE((byte) 1),
+  DEACTIVATE_TEMPLATE((byte) 2);
 
   public static final int MAX_NUM = Byte.MAX_VALUE;
   private static final SchemaRegionPlanType[] PLAN_TYPE_TABLE = new SchemaRegionPlanType[MAX_NUM];

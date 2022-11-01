@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,7 +60,7 @@ public class StorageGroupPartitionTable {
   // The name of storage group
   private String storageGroupName;
 
-  // Region
+  // RegionGroup
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
   // SchemaPartition
   private final SchemaPartitionTable schemaPartitionTable;
@@ -109,6 +109,23 @@ public class StorageGroupPartitionTable {
 
     for (RegionGroup regionGroup : regionGroupMap.values()) {
       result.add(regionGroup.getReplicaSet());
+    }
+
+    return result;
+  }
+  /**
+   * Get all RegionGroups currently owned by this StorageGroup
+   *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        result.add(regionGroup.getReplicaSet());
+      }
     }
 
     return result;

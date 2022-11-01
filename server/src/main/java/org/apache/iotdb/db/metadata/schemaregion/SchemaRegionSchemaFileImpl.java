@@ -66,7 +66,10 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
@@ -724,7 +727,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    throw new UnsupportedOperationException();
+    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   /**
@@ -756,23 +759,108 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    int preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      List<IMeasurementMNode> measurementMNodeList = mtree.getMatchedMeasurementMNode(pathPattern);
+      try {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
+          // Given pathPatterns may match one timeseries multi times, which may results in the
+          // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the
+          // main
+          // purpose is to check whether there's timeseries to be deleted.
+          try {
+            preDeletedNum++;
+            measurementMNode.setPreDeleted(true);
+            mtree.updateMNode(measurementMNode);
+            if (!isRecovering) {
+              logWriter.write(
+                  SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+                      measurementMNode.getPartialPath()));
+            }
+          } catch (IOException e) {
+            throw new MetadataException(e);
+          }
+        }
+      } finally {
+        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
+    }
+    return preDeletedNum;
   }
 
   @Override
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
+        try {
+          measurementMNode.setPreDeleted(false);
+          mtree.updateMNode(measurementMNode);
+          if (!isRecovering) {
+            logWriter.write(
+                SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
+                    measurementMNode.getPartialPath()));
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        } finally {
+          mtree.unPinMNode(measurementMNode);
+        }
+      }
+    }
   }
 
   @Override
   public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeseries(pathPattern)) {
+        deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
+      }
+    }
+    return deviceBasedPathPatternSet;
   }
 
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          if (!isRecovering) {
+            logWriter.write(
+                SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
+          }
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  private void deleteSingleTimeseriesInBlackList(PartialPath path)
+      throws MetadataException, IOException {
+    Pair<PartialPath, IMeasurementMNode> pair =
+        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+
+    IMeasurementMNode measurementMNode = pair.right;
+    removeFromTagInvertedIndex(measurementMNode);
+
+    IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return;
+    }
+
+    mNodeCache.invalidate(node.getPartialPath());
+
+    schemaStatisticsManager.deleteTimeseries(1);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(1);
+    }
   }
 
   /**
@@ -919,7 +1007,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
   @Override
@@ -1109,7 +1197,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
   @Override
@@ -1917,7 +2005,31 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
@@ -1988,7 +2100,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     private boolean isFailed() {
-      return e == null;
+      return e != null;
     }
 
     private Exception getException() {

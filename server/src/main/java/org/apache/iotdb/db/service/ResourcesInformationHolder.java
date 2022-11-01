@@ -20,17 +20,29 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.udf.UDFInformation;
 
 import java.util.List;
 
 public class ResourcesInformationHolder {
   private static final int JAR_NUM_OF_ONE_RPC = 10;
 
+  /** store the list when registering in config node for preparing udf related resources */
+  private List<UDFInformation> udfInformationList;
+
   /** store the list when registering in config node for preparing trigger related resources */
   private List<TriggerInformation> triggerInformationList;
 
   public static int getJarNumOfOneRpc() {
     return JAR_NUM_OF_ONE_RPC;
+  }
+
+  public List<UDFInformation> getUDFInformationList() {
+    return udfInformationList;
+  }
+
+  public void setUDFInformationList(List<UDFInformation> udfInformationList) {
+    this.udfInformationList = udfInformationList;
   }
 
   public List<TriggerInformation> getTriggerInformationList() {

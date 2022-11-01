@@ -393,14 +393,62 @@ public abstract class AbstractEnv implements BaseEnv {
     this.dataNodeWrapperList = dataNodeWrapperList;
   }
 
+  /**
+   * Get connection to ConfigNode-Leader in ClusterIT environment
+   *
+   * <p>Notice: The caller should always use try-with-resource to invoke this interface in order to
+   * return client to ClientPool automatically
+   *
+   * @return SyncConfigNodeIServiceClient that connects to the ConfigNode-Leader
+   */
   @Override
-  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
+      throws IOException, InterruptedException {
     IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     for (int i = 0; i < 30; i++) {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+        try {
+          SyncConfigNodeIServiceClient client =
+              clientManager.borrowClient(
+                  new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+          TShowClusterResp resp = client.showCluster();
+
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // Only the ConfigNodeClient who connects to the ConfigNode-leader
+            // will respond the SUCCESS_STATUS
+            logger.info(
+                "Successfully get connection to the leader ConfigNode: {}",
+                configNodeWrapper.getIpAndPortString());
+            return client;
+          } else {
+            // Return client otherwise
+            client.close();
+          }
+        } catch (Exception e) {
+          logger.error(
+              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
+              configNodeWrapper.getIpAndPortString());
+        }
+
+        // Sleep 1s before next retry
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    throw new IOException("Failed to get connection to ConfigNode-Leader");
+  }
+
+  @Override
+  public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    for (int retry = 0; retry < 30; retry++) {
+      for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
+        ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(
                 new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
@@ -408,20 +456,21 @@ public abstract class AbstractEnv implements BaseEnv {
           // Only the ConfigNodeClient who connects to the ConfigNode-leader
           // will respond the SUCCESS_STATUS
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            logger.info(
-                "Successfully get connection to the leader ConfigNode: {}",
-                configNodeWrapper.getIp());
-            return client;
+            return configNodeId;
           }
-        } catch (TException e) {
+        } catch (TException | IOException e) {
           logger.error(
               "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
               configNodeWrapper.getIp(),
               e);
         }
+
+        // Sleep 1s before next retry
+        TimeUnit.SECONDS.sleep(1);
       }
     }
-    throw new IOException("Failed to get config node connection");
+
+    throw new IOException("Failed to get the index of ConfigNode-Leader");
   }
 
   @Override
@@ -441,5 +490,11 @@ public abstract class AbstractEnv implements BaseEnv {
 
   public void shutdownDataNode(int index) {
     dataNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public int getMqttPort() {
+    int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
+    return dataNodeWrapperList.get(randomIndex).getMqttPort();
   }
 }

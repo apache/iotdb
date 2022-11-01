@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,14 +33,27 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
 
   private final String udfName;
   private final String className;
-  private final List<URI> uris;
 
-  public CreateFunctionStatement(String udfName, String className, List<URI> uris) {
+  private String uriString;
+
+  private final boolean usingURI;
+
+  public CreateFunctionStatement(String udfName, String className, boolean usingURI) {
     super();
     statementType = StatementType.CREATE_FUNCTION;
     this.udfName = udfName;
     this.className = className;
-    this.uris = uris;
+    this.usingURI = usingURI;
+  }
+
+  public CreateFunctionStatement(
+      String udfName, String className, boolean usingURI, String uriString) {
+    super();
+    statementType = StatementType.CREATE_FUNCTION;
+    this.udfName = udfName;
+    this.className = className;
+    this.usingURI = usingURI;
+    this.uriString = uriString;
   }
 
   public String getUdfName() {
@@ -52,8 +64,12 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
     return className;
   }
 
-  public List<URI> getUris() {
-    return uris;
+  public String getUriString() {
+    return uriString;
+  }
+
+  public boolean isUsingURI() {
+    return usingURI;
   }
 
   @Override

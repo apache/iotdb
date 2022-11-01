@@ -33,7 +33,7 @@ public class PollRegionMaintainTaskPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.PollRegionMaintainTask.ordinal());
+    stream.writeShort(getType().getPlanType());
   }
 
   @Override

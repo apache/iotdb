@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -49,14 +50,18 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  public static final String CONFIG_NODE_ID = "config_node_id";
-  public static final String DATA_NODE_ID = "data_node_id";
-  public static final String RPC_ADDRESS = "rpc_address";
-  public static final String RPC_PORT = "rpc_port";
-  public static final String INTERNAL_ADDRESS = "internal_address";
-  public static final String INTERNAL_PORT = "internal_port";
-  public static final String CONSENSUS_PORT = "consensus_port";
-  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+  public static final String DN_RPC_ADDRESS = "dn_rpc_address";
+  public static final String DN_RPC_PORT = "dn_rpc_port";
+
+  public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
+  public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
+
+  public static final String CN_INTERNAL_PORT = "cn_internal_port";
+  public static final String DN_INTERNAL_PORT = "dn_internal_port";
+  public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+
+  public static final String CN_TARGET_CONFIG_NODES = "cn_target_config_nodes";
+  public static final String DN_TARGET_CONFIG_NODES = "dn_target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -199,7 +204,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -240,6 +245,9 @@ public class IoTDBConstant {
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;

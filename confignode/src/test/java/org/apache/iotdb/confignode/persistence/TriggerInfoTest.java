@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -72,12 +73,14 @@ public class TriggerInfoTest {
             new PartialPath("root.test.**"),
             "test1",
             "test1.class",
+            true,
             "test1.jar",
             null,
             TriggerEvent.AFTER_INSERT,
             TTriggerState.INACTIVE,
             false,
             null,
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     AddTriggerInTablePlan addTriggerInTablePlan =
         new AddTriggerInTablePlan(triggerInformation, new Binary(new byte[] {1, 2, 3}));
@@ -91,6 +94,7 @@ public class TriggerInfoTest {
             new PartialPath("root.test.**"),
             "test2",
             "test2.class",
+            true,
             "test2.jar",
             attributes,
             TriggerEvent.BEFORE_INSERT,
@@ -103,6 +107,7 @@ public class TriggerInfoTest {
                 new TEndPoint("127.0.0.1", 8800),
                 new TEndPoint("127.0.0.1", 9900),
                 new TEndPoint("127.0.0.1", 11000)),
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     addTriggerInTablePlan = new AddTriggerInTablePlan(triggerInformation, null);
     triggerInfo.addTriggerInTable(addTriggerInTablePlan);
