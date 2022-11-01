@@ -50,12 +50,12 @@ import java.util.concurrent.TimeUnit;
 
 /** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine
-        implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
+    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 
   private static final ExecutorService threadPool =
-          IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
+      IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
@@ -71,9 +71,9 @@ public class PartitionRegionStateMachine
     this.executor = executor;
     this.configManager = configManager;
     this.currentNodeTEndPoint =
-            new TEndPoint()
-                    .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
-                    .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
+        new TEndPoint()
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
+            .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
   }
 
   public ConfigManager getConfigManager() {
@@ -92,19 +92,19 @@ public class PartitionRegionStateMachine
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (Throwable e) {
         LOGGER.error(
-                "Deserialization error for write plan, request: {}, bytebuffer: {}",
-                request,
-                request.serializeToByteBuffer(),
-                e);
+            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            request,
+            request.serializeToByteBuffer(),
+            e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
     } else {
       LOGGER.error(
-              "Unexpected write plan, request: {}, bytebuffer: {}",
-              request,
-              request.serializeToByteBuffer());
+          "Unexpected write plan, request: {}, bytebuffer: {}",
+          request,
+          request.serializeToByteBuffer());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return write(plan);
@@ -172,9 +172,9 @@ public class PartitionRegionStateMachine
 
     if (currentNodeId == newLeaderId) {
       LOGGER.info(
-              "Current node [nodeId: {}, ip:port: {}] becomes Leader",
-              newLeaderId,
-              currentNodeTEndPoint);
+          "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+          newLeaderId,
+          currentNodeTEndPoint);
 
       // Always initiate all kinds of HeartbeatCache first
       configManager.getLoadManager().initHeartbeatCache();
@@ -195,10 +195,10 @@ public class PartitionRegionStateMachine
       threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
     } else {
       LOGGER.info(
-              "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
-              currentNodeId,
-              currentNodeTEndPoint,
-              newLeaderId);
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
+          currentNodeId,
+          currentNodeTEndPoint,
+          newLeaderId);
 
       // Stop leader scheduling services
       configManager.getProcedureManager().shiftExecutor(false);
@@ -252,9 +252,9 @@ public class PartitionRegionStateMachine
           logReader = new SingleFileLogReader(logFile);
         } catch (FileNotFoundException e) {
           LOGGER.error(
-                  "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
-                  logFile.getAbsolutePath(),
-                  e);
+              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              logFile.getAbsolutePath(),
+              e);
           continue;
         }
         while (logReader.hasNext()) {
