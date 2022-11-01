@@ -41,13 +41,14 @@ public class FakedTimeGenerator extends TimeGenerator {
         BinaryExpression.and(
             BinaryExpression.and(
                 new SingleSeriesExpression(
-                    new Path("d1", "s1"),
+                    new Path("d1", "s1", true),
                     FilterFactory.and(TimeFilter.gtEq(3L), TimeFilter.ltEq(8L))),
                 new SingleSeriesExpression(
-                    new Path("d2", "s2"),
+                    new Path("d2", "s2", true),
                     FilterFactory.and(TimeFilter.gtEq(1L), TimeFilter.ltEq(10L)))),
             new SingleSeriesExpression(
-                new Path("d2", "s2"), FilterFactory.and(TimeFilter.gtEq(2L), TimeFilter.ltEq(6L))));
+                new Path("d2", "s2", true),
+                FilterFactory.and(TimeFilter.gtEq(2L), TimeFilter.ltEq(6L))));
 
     super.constructNode(expression);
   }
@@ -70,7 +71,7 @@ public class FakedTimeGenerator extends TimeGenerator {
   @Test
   public void testTimeGenerator() throws IOException {
     FakedTimeGenerator fakedTimeGenerator = new FakedTimeGenerator();
-    Path path = new Path("d1", "s1");
+    Path path = new Path("d1", "s1", true);
     long count = 0;
     while (fakedTimeGenerator.hasNext()) {
       fakedTimeGenerator.next();

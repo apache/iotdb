@@ -363,7 +363,7 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          logger.info("[ResultHandleFinished]");
+          logger.debug("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }

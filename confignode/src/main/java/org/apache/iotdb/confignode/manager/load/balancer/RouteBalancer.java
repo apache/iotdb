@@ -75,7 +75,9 @@ public class RouteBalancer {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getDataRegionConsensusProtocolClass();
   private static final boolean isMultiLeader =
-      ConsensusFactory.MultiLeaderConsensus.equals(CONF.getDataRegionConsensusProtocolClass());
+      ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
+          ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+  
   public static final String LEADER_POLICY = "leader";
   public static final String GREEDY_POLICY = "greedy";
 

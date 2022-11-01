@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.standalone;
+package org.apache.iotdb.consensus.onecopy;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -57,18 +57,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>Notice: The stateMachine needs to implement WAL itself to ensure recovery after a restart
  */
-class StandAloneConsensus implements IConsensus {
+class OneCopyConsensus implements IConsensus {
 
-  private final Logger logger = LoggerFactory.getLogger(StandAloneConsensus.class);
+  private final Logger logger = LoggerFactory.getLogger(OneCopyConsensus.class);
 
   private final TEndPoint thisNode;
   private final int thisNodeId;
   private final File storageDir;
   private final IStateMachine.Registry registry;
-  private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
+  private final Map<ConsensusGroupId, OneCopyServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
 
-  public StandAloneConsensus(ConsensusConfig config, Registry registry) {
+  public OneCopyConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
@@ -92,8 +92,8 @@ class StandAloneConsensus implements IConsensus {
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          StandAloneServerImpl consensus =
-              new StandAloneServerImpl(
+          OneCopyServerImpl consensus =
+              new OneCopyServerImpl(
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   registry.apply(consensusGroupId));
           stateMachineMap.put(consensusGroupId, consensus);
@@ -105,12 +105,12 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public void stop() throws IOException {
-    stateMachineMap.values().parallelStream().forEach(StandAloneServerImpl::stop);
+    stateMachineMap.values().parallelStream().forEach(OneCopyServerImpl::stop);
   }
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
-    StandAloneServerImpl impl = stateMachineMap.get(groupId);
+    OneCopyServerImpl impl = stateMachineMap.get(groupId);
     if (impl == null) {
       return ConsensusWriteResponse.newBuilder()
           .setException(new ConsensusGroupNotExistException(groupId))
@@ -129,7 +129,7 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest request) {
-    StandAloneServerImpl impl = stateMachineMap.get(groupId);
+    OneCopyServerImpl impl = stateMachineMap.get(groupId);
     if (impl == null) {
       return ConsensusReadResponse.newBuilder()
           .setException(new ConsensusGroupNotExistException(groupId))
@@ -156,8 +156,7 @@ class StandAloneConsensus implements IConsensus {
         groupId,
         k -> {
           exist.set(false);
-          StandAloneServerImpl impl =
-              new StandAloneServerImpl(peers.get(0), registry.apply(groupId));
+          OneCopyServerImpl impl = new OneCopyServerImpl(peers.get(0), registry.apply(groupId));
           impl.start();
           String path = buildPeerDir(groupId);
           File file = new File(path);

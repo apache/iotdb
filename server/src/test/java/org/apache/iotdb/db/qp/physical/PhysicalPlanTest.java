@@ -666,7 +666,7 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"),
+            new Path("root.vehicle.d1", "s1", true),
             new OrFilter(
                 new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100)), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
@@ -680,7 +680,7 @@ public class PhysicalPlanTest {
 
     IExpression expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"),
+            new Path("root.vehicle.d1", "s1", true),
             new AndFilter(
                 ValueFilter.lt(10.0), new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100))));
 
@@ -697,7 +697,7 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"),
+            new Path("root.vehicle.d1", "s1", true),
             FilterFactory.or(ValueFilter.gt(20.0), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -754,7 +754,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(20.5e3));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(20.5e3));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -764,7 +764,8 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(20.5e-3));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(20.5e-3));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -774,7 +775,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(2.5));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -784,7 +785,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(2.5));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -794,7 +795,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(-2.5));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(-2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -804,7 +805,8 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(-2.5e-1));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(-2.5e-1));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -814,7 +816,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(2.5e+2));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(2.5e+2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -824,7 +826,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(0.2e+2));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(0.2e+2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -834,7 +836,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(0.2));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(0.2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -844,7 +846,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(2.0));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -854,7 +856,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(2.0));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -864,7 +866,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(-2.0));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(-2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -874,7 +876,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(-0.2));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(-0.2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -884,7 +886,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.gt(-20.0));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1", true), ValueFilter.gt(-20.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -899,7 +901,7 @@ public class PhysicalPlanTest {
     values.add(40.0f);
     IExpression expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"), ValueFilter.in(values, false));
+            new Path("root.vehicle.d1", "s1", true), ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -913,7 +915,8 @@ public class PhysicalPlanTest {
     values.add(30.0f);
     values.add(40.0f);
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.in(values, true));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d1", "s1", true), ValueFilter.in(values, true));
     assertEquals(expect.toString(), queryFilter.toString());
 
     sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE not(s1 not in (25, 30, 40))";
@@ -921,7 +924,7 @@ public class PhysicalPlanTest {
     queryFilter = ((RawDataQueryPlan) plan).getExpression();
     expect =
         new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"), ValueFilter.in(values, false));
+            new Path("root.vehicle.d1", "s1", true), ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -1056,13 +1059,15 @@ public class PhysicalPlanTest {
     RawDataQueryPlan plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.vehicle.d1", "s1"), plan.getDeduplicatedPaths().get(0));
+    Assert.assertEquals(
+        new Path("root.vehicle.d1", "s1", true), plan.getDeduplicatedPaths().get(0));
 
     sqlStr = "select count(*) from root.vehicle.d1,root.vehicle.d1,root.vehicle.d1";
     plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.vehicle.d1", "s1"), plan.getDeduplicatedPaths().get(0));
+    Assert.assertEquals(
+        new Path("root.vehicle.d1", "s1", true), plan.getDeduplicatedPaths().get(0));
   }
 
   @Test
@@ -1071,8 +1076,8 @@ public class PhysicalPlanTest {
     String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
-    Path path1 = new Path("root.vehicle.d1", "s1");
-    Path path2 = new Path("root.vehicle.d2", "s1");
+    Path path1 = new Path("root.vehicle.d1", "s1", true);
+    Path path2 = new Path("root.vehicle.d2", "s1", true);
     assertEquals(1, plan1.getPaths().size());
     assertEquals(path1.toString(), plan1.getPaths().get(0).getFullPath());
     assertEquals(2, plan2.getPaths().size());
@@ -1452,7 +1457,8 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
+        new SingleSeriesExpression(
+            new Path("root.vehicle.d5", "s1", true), ValueFilter.like("string*"));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 

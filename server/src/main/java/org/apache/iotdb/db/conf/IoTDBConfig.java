@@ -888,14 +888,14 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
    */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup
@@ -1155,24 +1155,24 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
   private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    schemaDir = addHomeDir(schemaDir);
-    loadTsFileDir = addHomeDir(loadTsFileDir);
-    tracingDir = addHomeDir(tracingDir);
-    consensusDir = addHomeDir(consensusDir);
-    dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
-    schemaRegionConsensusDir = addHomeDir(schemaRegionConsensusDir);
-    indexRootFolder = addHomeDir(indexRootFolder);
-    extDir = addHomeDir(extDir);
-    udfDir = addHomeDir(udfDir);
-    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
-    triggerDir = addHomeDir(triggerDir);
-    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
-    mqttDir = addHomeDir(mqttDir);
+    systemDir = addDataHomeDir(systemDir);
+    schemaDir = addDataHomeDir(schemaDir);
+    loadTsFileDir = addDataHomeDir(loadTsFileDir);
+    tracingDir = addDataHomeDir(tracingDir);
+    consensusDir = addDataHomeDir(consensusDir);
+    dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
+    indexRootFolder = addDataHomeDir(indexRootFolder);
+    extDir = addDataHomeDir(extDir);
+    udfDir = addDataHomeDir(udfDir);
+    udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
+    triggerDir = addDataHomeDir(triggerDir);
+    triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    mqttDir = addDataHomeDir(mqttDir);
 
-    extPipeDir = addHomeDir(extPipeDir);
+    extPipeDir = addDataHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1181,9 +1181,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addHomeDir(queryDir);
+      queryDir = addDataHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1197,7 +1197,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
     // make sure old data directories not removed
@@ -1214,13 +1214,26 @@ public class IoTDBConfig {
     DirectoryManager.getInstance().updateFileFolders();
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
+  //  private String addHomeDir(String dir) {
+  //    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
+  //  }
+
+  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
+  // In this way, we can keep consistent with v0.13.0~2.
+  private String addDataHomeDir(String dir) {
+    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
+    if (dataHomeDir == null) {
+      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    }
+    return addDirPrefix(dataHomeDir, dir);
+  }
+
+  private String addDirPrefix(String prefix, String dir) {
+    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
+      if (!prefix.endsWith(File.separator)) {
+        dir = prefix + File.separatorChar + dir;
       } else {
-        dir = homeDir + dir;
+        dir = prefix + dir;
       }
     }
     return dir;
