@@ -110,8 +110,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1627,14 +1625,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
             TSDataType dataType = timeseriesMetadata.getTSDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
-              ChunkHeader chunkHeader =
-                  getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata); // TODO: speed up
+              Pair<CompressionType, TSEncoding> pair =
+                  reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
               MeasurementSchema measurementSchema =
                   new MeasurementSchema(
                       timeseriesMetadata.getMeasurementId(),
                       dataType,
-                      chunkHeader.getEncodingType(),
-                      chunkHeader.getCompressionType());
+                      pair.getRight(),
+                      pair.getLeft());
               device2Schemas
                   .computeIfAbsent(device, o -> new HashMap<>())
                   .put(measurementSchema, tsFile);
@@ -1682,13 +1680,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       resource.setStatus(TsFileResourceStatus.CLOSED);
       return resource;
     }
-  }
-
-  private ChunkHeader getChunkHeaderByTimeseriesMetadata(
-      TsFileSequenceReader reader, TimeseriesMetadata timeseriesMetadata) throws IOException {
-    IChunkMetadata chunkMetadata = timeseriesMetadata.getChunkMetadataList().get(0);
-    reader.position(chunkMetadata.getOffsetOfChunkHeader());
-    return reader.readChunkHeader(reader.readMarker());
   }
 
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
