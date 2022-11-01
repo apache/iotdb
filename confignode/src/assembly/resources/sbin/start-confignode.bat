@@ -18,10 +18,6 @@
 @REM
 
 @echo off
-echo ```````````````````````````
-echo Starting IoTDB ConfigNode
-echo ```````````````````````````
-
 
 set PATH="%JAVA_HOME%\bin\";%PATH%
 set "FULL_VERSION="
