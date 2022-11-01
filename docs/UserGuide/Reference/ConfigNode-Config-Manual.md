@@ -166,9 +166,9 @@ The global configuration of cluster is in ConfigNode.
 
 |Name| data\_region\_consensus\_protocol\_class |
 |:---:|:---|
-|Description| Consensus protocol of data replicas, StandAloneConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
+|Description| Consensus protocol of data replicas, OneCopyConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
 |Type| String |
-|Default| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
+|Default| org.apache.iotdb.consensus.onecopy.OneCopyConsensus |
 |Effective|Only allowed to be modified in first start up|
 
 * schema\_replication\_factor
@@ -185,9 +185,9 @@ The global configuration of cluster is in ConfigNode.
 
 |Name| schema\_region\_consensus\_protocol\_class |
 |:---:|:---|
-|Description| Consensus protocol of schema replicas, StandAloneConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
+|Description| Consensus protocol of schema replicas, OneCopyConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
 |Type| String |
-|Default| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
+|Default| org.apache.iotdb.consensus.onecopy.OneCopyConsensus |
 |Effective|Only allowed to be modified in first start up|
 
 

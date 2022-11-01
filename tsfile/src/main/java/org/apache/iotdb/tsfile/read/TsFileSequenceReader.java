@@ -708,7 +708,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     for (String device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (String measurementId : timeseriesMetadataMap.keySet()) {
-        paths.add(new Path(device, measurementId));
+        paths.add(new Path(device, measurementId, true));
       }
     }
     return paths;
@@ -753,7 +753,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             paths.add(
                 new Path(
                     startEndPair.left,
-                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId()));
+                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId(),
+                    true));
           }
           return paths;
         } catch (IOException e) {
@@ -1564,7 +1565,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1583,7 +1584,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1605,7 +1606,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         // schema of last chunk group
         if (newSchema != null) {
           for (IMeasurementSchema tsSchema : measurementSchemaList) {
-            newSchema.putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+            newSchema.putIfAbsent(
+                new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
           }
         }
         // last chunk group Metadata

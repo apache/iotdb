@@ -70,7 +70,7 @@ public class DataRegionConsensusImpl {
                               .setRpc(
                                   RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
-                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadNum())
+                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadCount())
                                       .setRpcMinConcurrentClientNum(
                                           conf.getRpcMinConcurrentClientNum())
                                       .setRpcMaxConcurrentClientNum(

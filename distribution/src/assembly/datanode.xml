@@ -56,6 +56,11 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>

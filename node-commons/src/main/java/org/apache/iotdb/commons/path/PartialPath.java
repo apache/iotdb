@@ -653,7 +653,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDevice(), getMeasurement());
+    return new Path(getDevice(), getMeasurement(), true);
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {

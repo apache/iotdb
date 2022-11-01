@@ -503,7 +503,7 @@ public class TsFileIOWriter implements AutoCloseable {
           chunkGroupMetaData.getChunkMetadataList().iterator();
       while (chunkMetaDataIterator.hasNext()) {
         IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid(), true);
         int startTimeIdx = startTimeIdxes.get(path);
 
         List<Long> pathChunkStartTimes = chunkStartTimes.get(path);

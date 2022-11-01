@@ -118,7 +118,7 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsSize());
+        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
@@ -361,8 +361,8 @@ public class ProcedureManager {
     final CreateTriggerProcedure createTriggerProcedure =
         new CreateTriggerProcedure(triggerInformation, jarFile);
     try {
-      final int planSize = new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize();
-      if (planSize > planSizeLimit) {
+      if (jarFile != null
+          && new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize() > planSizeLimit) {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(

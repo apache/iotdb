@@ -16,18 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+package org.apache.iotdb.db.it.query;
+
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,7 +44,8 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInIT {
 
   private static String[] sqls =
@@ -98,12 +101,10 @@ public class IoTDBInIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select qrcode from root.sg.d1.* where qrcode in ('qrcode002', 'qrcode003')");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select qrcode from root.sg.d1.* where qrcode in ('qrcode002', 'qrcode003')")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -142,12 +143,10 @@ public class IoTDBInIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -194,12 +193,10 @@ public class IoTDBInIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode004') align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode004') align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(

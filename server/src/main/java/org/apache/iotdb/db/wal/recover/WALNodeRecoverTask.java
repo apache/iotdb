@@ -96,7 +96,7 @@ public class WALNodeRecoverTask implements Runnable {
 
     if (!config
         .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       // delete this wal node folder
       FileUtils.deleteDirectory(logDirectory);
       logger.info(

@@ -296,16 +296,19 @@ public class AsyncDataNodeClientPool {
               (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
               (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case UPDATE_TEMPLATE:
           client.updateTemplate(
               (TUpdateTemplateReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
               (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
               (CountPathsUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

@@ -103,10 +103,10 @@ public class IoTDBClusterPartitionIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();

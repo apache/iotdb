@@ -49,8 +49,7 @@ public class IoTDBLoadExternalTsfileWithVirtualSGIT extends IoTDBLoadExternalTsf
   public void setUp() throws Exception {
     prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(2);
-    prevCompactionThread =
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    prevCompactionThread = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     EnvironmentUtils.envSetUp();
     StorageEngine.getInstance().reset();
     Class.forName(Config.JDBC_DRIVER_NAME);

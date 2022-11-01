@@ -82,6 +82,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -238,7 +239,7 @@ public class DataNode implements DataNodeMBean {
           // In current implementation, only MultiLeader need separated memory from Consensus
           if (!config
               .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+              .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
             IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
 
@@ -280,6 +281,7 @@ public class DataNode implements DataNodeMBean {
   /** register services and set up DataNode */
   private void active() throws StartupException {
     try {
+      processPid();
       setUp();
     } catch (StartupException | QueryProcessException e) {
       logger.error("Meet error while starting up.", e);
@@ -293,6 +295,13 @@ public class DataNode implements DataNodeMBean {
       DataRegionConsensusImpl.setupAndGetInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
+    }
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
     }
   }
 
@@ -315,7 +324,7 @@ public class DataNode implements DataNodeMBean {
 
     // close wal when using ratis consensus
     if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());

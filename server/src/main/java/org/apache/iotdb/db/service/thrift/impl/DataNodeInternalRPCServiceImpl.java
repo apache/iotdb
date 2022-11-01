@@ -237,7 +237,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
-    LOGGER.info("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
+    LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
     // deserialize ConsensusGroupId
     ConsensusGroupId groupId;
@@ -273,7 +273,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req) {
-    LOGGER.info("receive PlanNode to group[{}]", req.getConsensusGroupId());
+    LOGGER.debug("receive PlanNode to group[{}]", req.getConsensusGroupId());
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
