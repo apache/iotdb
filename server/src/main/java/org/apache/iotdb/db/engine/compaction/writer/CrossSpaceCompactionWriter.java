@@ -78,7 +78,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     long memorySizeForEachWriter =
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
