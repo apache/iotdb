@@ -91,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =
         ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
@@ -298,11 +298,13 @@ public class IoTDBConfigNodeSnapshotIT {
 
     TCreateFunctionReq createFunctionReq1 =
         new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
 
     TCreateFunctionReq createFunctionReq2 =
         new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
 

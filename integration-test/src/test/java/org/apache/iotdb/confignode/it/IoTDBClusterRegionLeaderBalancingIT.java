@@ -58,10 +58,10 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
-      ConsensusFactory.RatisConsensus;
+      ConsensusFactory.RATIS_CONSENSUS;
   protected static String originalDataRegionConsensusProtocolClass;
   private static final String testDataRegionConsensusProtocolClass =
-      ConsensusFactory.MultiLeaderConsensus;
+      ConsensusFactory.MULTI_LEADER_CONSENSUS;
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;

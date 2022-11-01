@@ -218,23 +218,6 @@ public class AuthUtils {
   }
 
   /**
-   * check if pathA either belongs to pathB or pathB belongs to pathA according to path pattern.
-   *
-   * @param pathA path
-   * @param pathB path
-   * @return True if pathA is a sub pattern of pathB, or pathB is a sub pattern of pathA
-   */
-  public static boolean pathOrBelongsTo(String pathA, String pathB) throws AuthException {
-    try {
-      PartialPath partialPathA = new PartialPath(pathA);
-      PartialPath partialPathB = new PartialPath(pathB);
-      return partialPathB.matchFullPath(partialPathA) || partialPathA.matchFullPath(partialPathB);
-    } catch (IllegalPathException e) {
-      throw new AuthException(e);
-    }
-  }
-
-  /**
    * check privilege.
    *
    * @param path series path

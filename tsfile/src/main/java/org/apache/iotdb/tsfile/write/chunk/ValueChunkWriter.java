@@ -154,7 +154,16 @@ public class ValueChunkWriter {
     pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void writeEmptyPageToPageBuffer() {
+  public void writeEmptyPageToPageBuffer() throws IOException {
+    if (numOfPages == 1 && firstPageStatistics != null) {
+      // if the first page is not an empty page
+      byte[] b = pageBuffer.toByteArray();
+      pageBuffer.reset();
+      pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+      firstPageStatistics.serialize(pageBuffer);
+      pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+      firstPageStatistics = null;
+    }
     pageWriter.writeEmptyPageIntoBuff(pageBuffer);
     numOfPages++;
   }
@@ -250,6 +259,7 @@ public class ValueChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = Statistics.getStatsByType(dataType);
   }
