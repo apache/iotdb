@@ -888,14 +888,14 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
    */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup

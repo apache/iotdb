@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.standalone;
+package org.apache.iotdb.consensus.onecopy;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -46,7 +46,7 @@ public class RecoveryTest {
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.StandAloneConsensus,
+                ConsensusFactory.ONE_COPY_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
@@ -58,7 +58,7 @@ public class RecoveryTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.StandAloneConsensus)));
+                            ConsensusFactory.ONE_COPY_CONSENSUS)));
     consensusImpl.start();
   }
 

@@ -122,7 +122,7 @@ public class WriteTest {
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     pathArray = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      pathArray.add(new Path("d1", "s" + i));
+      pathArray.add(new Path("d1", "s" + i, true));
     }
     schema = new Schema();
     LOG.info(schema.toString());
