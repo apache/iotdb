@@ -89,9 +89,9 @@ public class ExportTsFileTestIT extends AbstractScript {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
         TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("root.test.t2", "c1"));
-      paths.add(new Path("root.test.t2", "c2"));
-      paths.add(new Path("root.test.t2", "c3"));
+      paths.add(new Path("root.test.t2", "c1", true));
+      paths.add(new Path("root.test.t2", "c2", true));
+      paths.add(new Path("root.test.t2", "c3", true));
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       return readTsFile.query(queryExpression);
     }
