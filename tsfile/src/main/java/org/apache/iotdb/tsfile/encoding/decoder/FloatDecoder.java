@@ -47,8 +47,11 @@ public class FloatDecoder extends Decoder {
   /** flag that indicates whether we have read maxPointNumber and calculated maxPointValue. */
   private boolean isMaxPointNumberRead;
 
+  private TSEncoding encoderType;
+
   public FloatDecoder(TSEncoding encodingType, TSDataType dataType) {
     super(encodingType);
+    encoderType = encodingType;
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
         decoder = new IntRleDecoder();

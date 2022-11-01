@@ -35,31 +35,37 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    return buffer.get() != 0;
+    byte r = buffer.get();
+    return r != 0;
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    return buffer.getShort();
+    short r = buffer.getShort();
+    return r;
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    return ReadWriteForEncodingUtils.readVarInt(buffer);
+    int r = ReadWriteForEncodingUtils.readVarInt(buffer);
+    return r;
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    return buffer.getLong();
+    long r = buffer.getLong();
+    return r;
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    return buffer.getFloat();
+    float r = buffer.getFloat();
+    return r;
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
+    double r = buffer.getDouble();
     return buffer.getDouble();
   }
 
@@ -78,7 +84,7 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public BigDecimal readBigDecimal(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBigDecimal is not supproted by PlainDecoder");
+    throw new TsFileDecodingException("Method readBigDecimal is not supported by PlainDecoder");
   }
 
   @Override

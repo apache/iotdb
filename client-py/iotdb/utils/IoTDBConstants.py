@@ -48,6 +48,11 @@ class TSEncoding(Enum):
     GORILLA_V1 = 6
     REGULAR = 7
     GORILLA = 8
+    SPRINTZ = 9,
+    RAKE = 10,
+    RLBE = 11,
+    TEXTRLE = 12,
+    HUFFMAN = 13
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

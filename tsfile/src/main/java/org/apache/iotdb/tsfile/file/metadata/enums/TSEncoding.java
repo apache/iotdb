@@ -27,9 +27,6 @@ public enum TSEncoding {
   BITMAP((byte) 5),
   GORILLA_V1((byte) 6),
   REGULAR((byte) 7),
-<<<<<<< Updated upstream
-  GORILLA((byte) 8);
-=======
   GORILLA((byte) 8),
   SPRINTZ((byte) 9),
   RAKE((byte) 10),
@@ -38,7 +35,6 @@ public enum TSEncoding {
   HUFFMAN((byte) 13),
   HUFFMANV2((byte) 14),
   BUCKET((byte) 15);
->>>>>>> Stashed changes
 
   private final byte type;
 
@@ -76,8 +72,6 @@ public enum TSEncoding {
         return TSEncoding.REGULAR;
       case 8:
         return TSEncoding.GORILLA;
-<<<<<<< Updated upstream
-=======
       case 9:
         return TSEncoding.SPRINTZ;
       case 10:
@@ -92,7 +86,6 @@ public enum TSEncoding {
         return TSEncoding.HUFFMANV2;
       case 15:
         return TSEncoding.BUCKET;
->>>>>>> Stashed changes
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

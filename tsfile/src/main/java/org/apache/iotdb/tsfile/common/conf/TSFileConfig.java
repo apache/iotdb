@@ -99,6 +99,8 @@ public class TSFileConfig implements Serializable {
   private int rleBitWidth = 8;
   /** Default block size of two-diff. delta encoding is 128 */
   private int deltaBlockSize = 128;
+  /** Default predict method for Sprintz encoding scheme * */
+  private String sprintzPredictScheme = "delta";
   /** Default frequency type is SINGLE_FREQ. */
   private String freqType = "SINGLE_FREQ";
   /** Default PLA max error is 100. */
@@ -243,6 +245,14 @@ public class TSFileConfig implements Serializable {
 
   public void setDeltaBlockSize(int deltaBlockSize) {
     this.deltaBlockSize = deltaBlockSize;
+  }
+
+  public String getSprintzPredictScheme() {
+    return sprintzPredictScheme;
+  }
+
+  public void setSprintzPredictScheme(String scheme) {
+    this.sprintzPredictScheme = scheme;
   }
 
   public String getFreqType() {

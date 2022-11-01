@@ -58,8 +58,6 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
-<<<<<<< Updated upstream
-=======
         <dependency>
             <groupId>net.sourceforge.javacsv</groupId>
             <artifactId>javacsv</artifactId>
@@ -90,7 +88,6 @@
             <version>1.9</version>
             <scope>compile</scope>
         </dependency>
->>>>>>> Stashed changes
     </dependencies>
     <build>
         <plugins>
