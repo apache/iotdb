@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation.timerangeiterator;
 
+import java.util.List;
+
 import static org.apache.iotdb.db.qp.utils.DateTimeUtils.MS_TO_MONTH;
 
 public class TimeRangeIteratorFactory {
@@ -71,5 +73,14 @@ public class TimeRangeIteratorFactory {
           isIntervalByMonth,
           leftCRightO);
     }
+  }
+
+  public static ITimeRangeIterator getSampleTimeRangeIterator(
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      List<Integer> samplingIndexes) {
+    return new SampleWindowIterator(startTime, endTime, interval, slidingStep, samplingIndexes);
   }
 }
