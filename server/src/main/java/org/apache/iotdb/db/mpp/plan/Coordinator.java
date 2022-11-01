@@ -120,7 +120,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
-        LOGGER.info("[QueryStart] sql: {}", sql);
+        LOGGER.debug("[QueryStart] sql: {}", sql);
       }
       MPPQueryContext queryContext =
           new MPPQueryContext(
@@ -193,7 +193,7 @@ public class Coordinator {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("[CleanUpQuery]]");
+        LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup();
         queryExecutionMap.remove(queryId);
       }

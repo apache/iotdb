@@ -220,7 +220,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("[ScHListenerOnFinish]");
+      logger.debug("[ScHListenerOnFinish]");
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
@@ -239,7 +239,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      logger.info("[ScHListenerOnAbort]");
+      logger.debug("[ScHListenerOnAbort]");
       onFinished(sourceHandle);
     }
 
@@ -267,20 +267,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnFinish]");
+      logger.debug("[SkHListenerOnFinish]");
       removeFromMPPDataExchangeManager(sinkHandle);
       context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnEndOfTsBlocks]");
+      logger.debug("[SkHListenerOnEndOfTsBlocks]");
       context.transitionToFlushing();
     }
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnAbort]");
+      logger.debug("[SkHListenerOnAbort]");
       removeFromMPPDataExchangeManager(sinkHandle);
     }
 
@@ -288,7 +288,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       if (sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId()) == null) {
         logger.warn("[RemoveNoSinkHandle]");
       } else {
-        logger.info("[RemoveSinkHandle]");
+        logger.debug("[RemoveSinkHandle]");
       }
     }
 
@@ -499,7 +499,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("[StartForceReleaseFIDataExchangeResource]");
+    logger.debug("[StartForceReleaseFIDataExchangeResource]");
     if (sinkHandles.containsKey(fragmentInstanceId)) {
       ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
       sinkHandle.abort();
@@ -508,12 +508,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (sourceHandles.containsKey(fragmentInstanceId)) {
       Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
-        logger.info("[CloseSourceHandle] {}", entry.getKey());
+        logger.debug("[CloseSourceHandle] {}", entry.getKey());
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }
-    logger.info("[EndForceReleaseFIDataExchangeResource]");
+    logger.debug("[EndForceReleaseFIDataExchangeResource]");
   }
 
   /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */

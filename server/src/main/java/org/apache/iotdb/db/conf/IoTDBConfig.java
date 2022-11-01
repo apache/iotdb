@@ -118,7 +118,7 @@ public class IoTDBConfig {
   private int influxDBRpcPort = 8086;
 
   /** Rpc Selector thread num */
-  private int rpcSelectorThreadNum = 1;
+  private int rpcSelectorThreadCount = 1;
 
   /** Min concurrent client number */
   private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
@@ -305,10 +305,10 @@ public class IoTDBConfig {
   private int batchSize = 100000;
 
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
-  private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+  private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -316,13 +316,13 @@ public class IoTDBConfig {
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
-  private int concurrentSubRawQueryThread = 8;
+  private int subRawQueryThreadCount = 8;
 
   /** Blocking queue size for read task in raw data query. */
   private int rawQueryBlockingQueueCapacity = 5;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
-  private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
+  private int windowEvaluationThreadCount = Runtime.getRuntime().availableProcessors();
 
   /**
    * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
@@ -630,7 +630,7 @@ public class IoTDBConfig {
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /** How many threads will be set up to perform upgrade tasks. */
-  private int upgradeThreadNum = 1;
+  private int upgradeThreadCount = 1;
 
   /** How many threads will be set up to perform settle tasks. */
   private int settleThreadNum = 1;
@@ -655,7 +655,7 @@ public class IoTDBConfig {
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
    * equal to 0.
    */
-  private int concurrentCompactionThread = 10;
+  private int compactionThreadCount = 10;
 
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
@@ -1460,20 +1460,20 @@ public class IoTDBConfig {
     this.maxMemtableNumber = maxMemtableNumber;
   }
 
-  public int getConcurrentFlushThread() {
-    return concurrentFlushThread;
+  public int getFlushThreadCount() {
+    return flushThreadCount;
   }
 
-  void setConcurrentFlushThread(int concurrentFlushThread) {
-    this.concurrentFlushThread = concurrentFlushThread;
+  void setFlushThreadCount(int flushThreadCount) {
+    this.flushThreadCount = flushThreadCount;
   }
 
-  public int getConcurrentQueryThread() {
-    return concurrentQueryThread;
+  public int getQueryThreadCount() {
+    return queryThreadCount;
   }
 
-  public void setConcurrentQueryThread(int concurrentQueryThread) {
-    this.concurrentQueryThread = concurrentQueryThread;
+  public void setQueryThreadCount(int queryThreadCount) {
+    this.queryThreadCount = queryThreadCount;
   }
 
   public int getMaxAllowedConcurrentQueries() {
@@ -1484,16 +1484,16 @@ public class IoTDBConfig {
     this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
-  public int getConcurrentSubRawQueryThread() {
-    return concurrentSubRawQueryThread;
+  public int getSubRawQueryThreadCount() {
+    return subRawQueryThreadCount;
   }
 
-  void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
-    this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  void setSubRawQueryThreadCount(int subRawQueryThreadCount) {
+    this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
   public long getMaxBytesPerQuery() {
-    return allocateMemoryForDataExchange / concurrentQueryThread;
+    return allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public int getRawQueryBlockingQueueCapacity() {
@@ -1504,12 +1504,12 @@ public class IoTDBConfig {
     this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
-  public int getConcurrentWindowEvaluationThread() {
-    return concurrentWindowEvaluationThread;
+  public int getWindowEvaluationThreadCount() {
+    return windowEvaluationThreadCount;
   }
 
-  public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
-    this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
+  public void setWindowEvaluationThreadCount(int windowEvaluationThreadCount) {
+    this.windowEvaluationThreadCount = windowEvaluationThreadCount;
   }
 
   public int getMaxPendingWindowEvaluationTasks() {
@@ -1536,12 +1536,12 @@ public class IoTDBConfig {
     this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
-  public int getRpcSelectorThreadNum() {
-    return rpcSelectorThreadNum;
+  public int getRpcSelectorThreadCount() {
+    return rpcSelectorThreadCount;
   }
 
-  public void setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-    this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
+    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
   }
 
   public int getRpcMinConcurrentClientNum() {
@@ -1857,12 +1857,12 @@ public class IoTDBConfig {
     this.enablePartialInsert = enablePartialInsert;
   }
 
-  public int getConcurrentCompactionThread() {
-    return concurrentCompactionThread;
+  public int getCompactionThreadCount() {
+    return compactionThreadCount;
   }
 
-  public void setConcurrentCompactionThread(int concurrentCompactionThread) {
-    this.concurrentCompactionThread = concurrentCompactionThread;
+  public void setCompactionThreadCount(int compactionThreadCount) {
+    this.compactionThreadCount = compactionThreadCount;
   }
 
   public int getContinuousQueryThreadNum() {
@@ -2341,16 +2341,16 @@ public class IoTDBConfig {
     this.hdfsPort = hdfsPort;
   }
 
-  public int getUpgradeThreadNum() {
-    return upgradeThreadNum;
+  public int getUpgradeThreadCount() {
+    return upgradeThreadCount;
   }
 
   public int getSettleThreadNum() {
     return settleThreadNum;
   }
 
-  void setUpgradeThreadNum(int upgradeThreadNum) {
-    this.upgradeThreadNum = upgradeThreadNum;
+  void setUpgradeThreadCount(int upgradeThreadCount) {
+    this.upgradeThreadCount = upgradeThreadCount;
   }
 
   String getDfsNameServices() {
