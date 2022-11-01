@@ -210,7 +210,7 @@ public class StorageEngineV2 implements IService {
 
     // wait until wal is recovered
     if (!config.isClusterMode()
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
@@ -630,7 +630,7 @@ public class StorageEngineV2 implements IService {
         if (config.isClusterMode()
             && config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.MultiLeaderConsensus)) {
+                .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
           WALManager.getInstance()
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());

@@ -17,20 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -40,36 +41,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBFuzzyQueryIT {
   private static List<String> sqls = new ArrayList<>();
-  private static Connection connection;
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     initCreateSQLStatement();
-    EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    close();
-    EnvironmentUtils.cleanEnv();
-  }
-
-  private static void close() {
-    if (Objects.nonNull(connection)) {
-      try {
-        connection.close();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   private static void initCreateSQLStatement() {
@@ -101,10 +90,9 @@ public class IoTDBFuzzyQueryIT {
     sqls.add("insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  private static void insertData() throws SQLException {
+
+    Connection connection = EnvFactory.getEnv().getConnection();
     Statement statement = connection.createStatement();
 
     for (String sql : sqls) {
@@ -115,58 +103,60 @@ public class IoTDBFuzzyQueryIT {
 
   @Test
   public void testLike() throws SQLException {
+    Connection connection = EnvFactory.getEnv().getConnection();
     Statement st0 = connection.createStatement();
-    boolean hasResultSet =
-        st0.execute("select status from root.t1.wf01.wt01 where status like '1'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1", outputResultStr(st0.getResultSet()));
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals(
-        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\", outputResultStr(st0.getResultSet()));
+    ResultSet resultSet =
+        st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1'");
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1,14,123%", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("1", outputResultStr(resultSet));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("1,14,616,6116,6%16,%123,123%", outputResultStr(st0.getResultSet()));
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%'");
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6%6'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("616,626,6116,6%16", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\", outputResultStr(resultSet));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1_'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("14", outputResultStr(st0.getResultSet()));
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1%'");
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6_1%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("6116,6%16", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("1,14,123%", outputResultStr(resultSet));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6\\%%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("6%16", outputResultStr(st0.getResultSet()));
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%1%'");
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '\\%%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("%123", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("1,14,616,6116,6%16,%123,123%", outputResultStr(resultSet));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%\\%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("123%", outputResultStr(st0.getResultSet()));
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '6%6'");
 
-    hasResultSet =
-        st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
-    Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("\\\\", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("616,626,6116,6%16", outputResultStr(resultSet));
+
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '1_'");
+
+    Assert.assertEquals("14", outputResultStr(resultSet));
+
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '6_1%'");
+
+    Assert.assertEquals("6116,6%16", outputResultStr(resultSet));
+
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '6\\%%'");
+
+    Assert.assertEquals("6%16", outputResultStr(resultSet));
+
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '\\%%'");
+
+    Assert.assertEquals("%123", outputResultStr(resultSet));
+
+    resultSet = st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%\\%'");
+
+    Assert.assertEquals("123%", outputResultStr(resultSet));
+
+    resultSet =
+        st0.executeQuery("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
+
+    Assert.assertEquals("\\\\", outputResultStr(resultSet));
   }
 
   @Test(expected = Exception.class)
   public void testLikeNonTextCloumn() throws SQLException {
+    Connection connection = EnvFactory.getEnv().getConnection();
     Statement st1 = connection.createStatement();
-    st1.execute("select * from root.t1.wf01.wt01 where temperature like '1'");
+    st1.executeQuery("select * from root.t1.wf01.wt01 where temperature like '1'");
   }
 
   private String outputResultStr(ResultSet resultSet) throws SQLException {
@@ -201,18 +191,12 @@ public class IoTDBFuzzyQueryIT {
   public void selectLikeAlignByDevice() throws ClassNotFoundException {
     String[] retArray =
         new String[] {"1509465660000,root.t1.wf01.wt01,14,", "1509465600000,root.t1.wf01.wt02,14"};
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select status from root.t1.wf01.wt0* where status like '14%' align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select status from root.t1.wf01.wt0* where status like '14%' align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -252,17 +236,12 @@ public class IoTDBFuzzyQueryIT {
           "1509465600000,root.t1.wf01.wt02,14,"
         };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select status from root.t1.wf01.wt0* where status regexp '^1.*' align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select status from root.t1.wf01.wt0* where status regexp '^1.*' align by device"); ) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
