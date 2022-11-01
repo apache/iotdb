@@ -70,6 +70,21 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
+<<<<<<< Updated upstream
+=======
+      case RAKE:
+        return new Rake();
+      case SPRINTZ:
+        return new Sprintz();
+      case RLBE:
+        return new RLBE();
+      case TEXTRLE:
+        return new TEXTRLE();
+      case HUFFMAN:
+        return new HUFFMAN();
+      case BUCKET:
+        return new BucketEncoder();
+>>>>>>> Stashed changes
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -140,7 +155,13 @@ public abstract class TSEncodingBuilder {
           return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
+<<<<<<< Updated upstream
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
+=======
+          return new FloatEncoder(TSEncoding.RLE, type, 6);//maxPointNumber);
+        case TEXT:
+          return new TextRleEncoder();
+>>>>>>> Stashed changes
         default:
           throw new UnSupportedDataTypeException("RLE doesn't support data type: " + type);
       }
@@ -182,7 +203,7 @@ public abstract class TSEncodingBuilder {
   /** for INT32, INT64, FLOAT, DOUBLE. */
   public static class Ts2Diff extends TSEncodingBuilder {
 
-    private int maxPointNumber = 0;
+    private int maxPointNumber = 5;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -193,6 +214,8 @@ public abstract class TSEncodingBuilder {
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
+//          maxPointNumber
+//          System.out.println(maxPointNumber);
           return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);
@@ -207,8 +230,10 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+        System.out.println(Encoder.MAX_POINT_NUMBER);
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
+        System.out.println(Encoder.MAX_POINT_NUMBER);
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
         } catch (NumberFormatException e) {
@@ -314,4 +339,140 @@ public abstract class TSEncodingBuilder {
       // do nothing
     }
   }
+<<<<<<< Updated upstream
+=======
+
+  public static class Rake extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return new FloatRAKEEncoder();
+        case DOUBLE:
+          return new DoubleRAKEEncoder();
+        case INT32:
+          return new IntRAKEEncoder();
+        case INT64:
+          return new LongRAKEEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Rake doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Sprintz extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntSprintzEncoder();
+        case INT64:
+          return new LongSprintzEncoder();
+        case FLOAT:
+          return new FloatSprintzEncoder();
+        case DOUBLE:
+          return new DoubleSprintzEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Sprintz doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class RLBE extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntRLBE();
+        case INT64:
+          return new LongRLBE();
+        case FLOAT:
+          return new FloatRLBE();
+        case DOUBLE:
+          return new DoubleRLBE();
+        default:
+          throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class HUFFMAN extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case TEXT:
+          return new HuffmanEncoder();
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+        default:
+          throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class TEXTRLE extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case TEXT:
+          return new TextRleEncoder();
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+        default:
+          throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+  public static class BucketEncoder extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
+        case FLOAT:
+          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
+        case TEXT:
+        case INT64:
+        case DOUBLE:
+        default:
+          throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+>>>>>>> Stashed changes
 }
