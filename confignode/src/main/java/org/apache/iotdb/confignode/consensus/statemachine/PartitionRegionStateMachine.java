@@ -176,8 +176,8 @@ public class PartitionRegionStateMachine
           newLeaderId,
           currentNodeTEndPoint);
 
-      // Recover HeartbeatCache by inheriting old-leader's statistics result
-      configManager.getLoadManager().recoverHeartbeatCache();
+      // Always initiate all kinds of HeartbeatCache first
+      configManager.getLoadManager().initHeartbeatCache();
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);

@@ -113,7 +113,7 @@ public class LocalSinkHandle implements ISinkHandle {
       if (queue.hasNoMoreTsBlocks()) {
         return;
       }
-      logger.info("[StartSendTsBlockOnLocal]");
+      logger.debug("[StartSendTsBlockOnLocal]");
       synchronized (this) {
         blocked = queue.add(tsBlock);
       }
@@ -129,7 +129,7 @@ public class LocalSinkHandle implements ISinkHandle {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        logger.info("[StartSetNoMoreTsBlocksOnLocal]");
+        logger.debug("[StartSetNoMoreTsBlocksOnLocal]");
         if (aborted || closed) {
           return;
         }
@@ -138,12 +138,12 @@ public class LocalSinkHandle implements ISinkHandle {
       }
     }
     checkAndInvokeOnFinished();
-    logger.info("[EndSetNoMoreTsBlocksOnLocal]");
+    logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }
 
   @Override
   public void abort() {
-    logger.info("[StartAbortLocalSinkHandle]");
+    logger.debug("[StartAbortLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -154,12 +154,12 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onAborted(this);
       }
     }
-    logger.info("[EndAbortLocalSinkHandle]");
+    logger.debug("[EndAbortLocalSinkHandle]");
   }
 
   @Override
   public void close() {
-    logger.info("[StartCloseLocalSinkHandle]");
+    logger.debug("[StartCloseLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -170,7 +170,7 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onFinish(this);
       }
     }
-    logger.info("[EndCloseLocalSinkHandle]");
+    logger.debug("[EndCloseLocalSinkHandle]");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {

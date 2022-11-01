@@ -19,14 +19,14 @@
 #
 
 DATANODE_CONF="`dirname "$0"`/../conf"
-rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 
-echo "check whether the rpc_port is used..., port is" $rpc_port
+echo "check whether the rpc_port is used..., port is" $dn_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
-  PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
+  PID=$(lsof -t -i:${dn_rpc_port} -sTCP:LISTEN)
 elif type netstat > /dev/null 2>&1 ; then
-  PID=$(netstat -anp 2>/dev/null | grep ":${rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
+  PID=$(netstat -anp 2>/dev/null | grep ":${dn_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
 else
   echo ""
   echo " Error: No necessary tool."

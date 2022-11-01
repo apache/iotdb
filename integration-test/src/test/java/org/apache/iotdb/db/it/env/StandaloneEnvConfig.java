@@ -249,16 +249,14 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(concurrentCompactionThread);
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(concurrentCompactionThread);
     return this;
   }
 
   @Override
   public int getConcurrentCompactionThread() {
-    return IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    return IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
   }
 
   @Override

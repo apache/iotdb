@@ -22,19 +22,19 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^internal_port"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
 %superior_dir%\conf\iotdb-confignode.properties') do (
-  set internal_port=%%i
+  set cn_internal_port=%%i
 )
 
 echo "check whether the rpc_port is used..., port is" $rpc_port
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "internal_address"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
 %superior_dir%\conf\iotdb-confignode.properties') do (
-  set internal_address=%%i
+  set cn_internal_address=%%i
 )
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %internal_address%:%internal_port%') do (
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port%') do (
   taskkill /f /pid %%a
     echo "close ConfigNode, PID:" %%a
 )

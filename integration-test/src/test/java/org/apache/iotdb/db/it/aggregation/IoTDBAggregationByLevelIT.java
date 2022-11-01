@@ -33,6 +33,8 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -671,6 +673,23 @@ public class IoTDBAggregationByLevelIT {
           e.getMessage()
               .contains(
                   "Common queries and aggregated queries are not allowed to appear at the same time"));
+    }
+  }
+
+  @Test
+  public void groupByLevelWithSameColumn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(status),count(status) from root.** GROUP BY level=0")) {
+
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        Assert.assertEquals(metaData.getColumnName(1), metaData.getColumnName(2));
+        Assert.assertEquals(count("root.*.*.status"), metaData.getColumnName(1));
+        Assert.assertEquals(2, metaData.getColumnCount());
+      }
     }
   }
 
