@@ -625,9 +625,9 @@ public class ConfigNodeConfig {
   }
 
   public void setPartitionRegionStandAloneSnapshotTriggerThreshold(
-          long partitionRegionStandAloneSnapshotTriggerThreshold) {
+      long partitionRegionStandAloneSnapshotTriggerThreshold) {
     this.partitionRegionStandAloneSnapshotTriggerThreshold =
-            partitionRegionStandAloneSnapshotTriggerThreshold;
+        partitionRegionStandAloneSnapshotTriggerThreshold;
   }
 
   public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
