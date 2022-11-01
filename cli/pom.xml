@@ -63,7 +63,7 @@
         <dependency>
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
-            <version>0.9.2</version>
+            <version>0.9.5</version>
         </dependency>
         <dependency>
             <groupId>org.jline</groupId>
