@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement;
 
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -205,6 +206,10 @@ public abstract class StatementVisitor<R, C> {
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
+  }
+
+  public R visitFetchWindowSet(FetchWindowSetStatement fetchWindowSetStatement, C context) {
+    return visitStatement(fetchWindowSetStatement, context);
   }
 
   // Insert Statement

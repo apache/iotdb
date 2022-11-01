@@ -68,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -1204,6 +1205,44 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
       }
     }
+  }
+
+  @Override
+  public Analysis visitFetchWindowSet(
+      FetchWindowSetStatement fetchWindowSetStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(fetchWindowSetStatement);
+
+    // check for semantic errors
+    fetchWindowSetStatement.semanticCheck();
+
+    // concat path and construct path pattern tree
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : fetchWindowSetStatement.getQueryPaths()) {
+      patternTree.appendFullPath(path);
+    }
+
+    // request schema fetch API
+    logger.info("[StartFetchSchema]");
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+    logger.info("[EndFetchSchema]");
+
+    // set source
+    List<MeasurementPath> measurementPaths = schemaTree.getAllMeasurement();
+    Set<Expression> sourceExpressions =
+        measurementPaths.stream().map(TimeSeriesOperand::new).collect(Collectors.toSet());
+    analysis.setSourceExpressions(sourceExpressions);
+
+    // set output
+    List<ColumnHeader> columnHeaders =
+        measurementPaths.stream()
+            .map(
+                measurementPath ->
+                    new ColumnHeader(measurementPath.toString(), measurementPath.getSeriesType()))
+            .collect(Collectors.toList());
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+
+    return analysis;
   }
 
   @Override

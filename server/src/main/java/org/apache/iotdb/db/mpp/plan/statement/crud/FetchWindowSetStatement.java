@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
@@ -74,4 +75,11 @@ public class FetchWindowSetStatement extends Statement {
   public List<? extends PartialPath> getPaths() {
     return queryPaths;
   }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitFetchWindowSet(this, context);
+  }
+
+  public void semanticCheck() {}
 }
