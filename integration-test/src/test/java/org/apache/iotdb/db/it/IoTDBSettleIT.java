@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -33,7 +33,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -91,9 +90,7 @@ public class IoTDBSettleIT {
   }
 
   private static void executeSql() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    connection = EnvFactory.getEnv().getConnection();
     try (Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
