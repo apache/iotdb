@@ -121,7 +121,7 @@ for /f "tokens=1* delims= " %%a in ("%COMMANSLINE%") do (
 @REM -----more para-----
 for /f "tokens=1* delims==" %%1 in ("%%a") do (
 @REM echo 1=%%1 "|||" 2=%%2
-if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%IOTDB_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
+if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%CONFIGNODE_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
 if "%%1"=="-f" ( set foreground=yes)
 if "%%1"=="-b" ( set foreground=0)
 )
@@ -131,18 +131,18 @@ goto STR_VISTOR
 
 @REM SETLOCAL DISABLEDELAYEDEXPANSION
 
-echo ````````````````````````
-echo Starting IoTDB
-echo ````````````````````````
+echo ```````````````````````````
+echo Starting IoTDB ConfigNode
+echo ```````````````````````````
 
 @REM ----------------------------------------------------------------------------
-@REM SOURCE iotdb-env.bat
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat" %1
+@REM SOURCE confignode-env.bat
+IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
+    CALL "%CONFIGNODE_CONF%\confignode-env.bat" %1
     ) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
+    echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
     )
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM ----------------------------------------------------------------------------

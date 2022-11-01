@@ -41,7 +41,7 @@ classname=org.apache.iotdb.confignode.service.ConfigNode
 
 launch_service() {
   class="$1"
-    iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
+    iotdb_parms="-Dlogback.configurationFile=${CONFIGNODE_LOG_CONFIG}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_DATA_HOME=${CONFIGNODE_DATA_HOME}"
   	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${CONFIGNODE_HOME}"
