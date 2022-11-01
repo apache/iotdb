@@ -3263,6 +3263,20 @@ public class Session implements ISession {
     return defaultSessionConnection.fetchAllConnections();
   }
 
+  @Override
+  public List<SessionDataSet> fetchWindowSet(
+      List<String> queryPaths,
+      String functionName,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      List<Integer> indexes)
+      throws StatementExecutionException {
+    return defaultSessionConnection.fetchWindowSet(
+        queryPaths, functionName, startTime, endTime, interval, slidingStep, indexes);
+  }
+
   public static class Builder {
     private String host = SessionConfig.DEFAULT_HOST;
     private int rpcPort = SessionConfig.DEFAULT_PORT;

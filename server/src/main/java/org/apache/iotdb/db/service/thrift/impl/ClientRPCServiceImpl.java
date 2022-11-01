@@ -458,9 +458,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        TSFetchWindowSetResp resp = createResponse(queryExecution.getDatasetHeader());
-        resp.setStatus(result.status);
-        resp.setQueryDataSetList(QueryDataSetUtils.convertTsBlocksToWindowSet(queryExecution));
+        TSFetchWindowSetResp resp =
+            createTSFetchWindowSetResp(queryExecution.getDatasetHeader(), queryId);
+        resp.setQueryResultList(QueryDataSetUtils.convertTsBlocksToWindowSet(queryExecution));
         return resp;
       }
     } catch (Exception e) {
@@ -1798,10 +1798,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return resp;
   }
 
-  private TSFetchWindowSetResp createResponse(DatasetHeader header) {
+  private TSFetchWindowSetResp createTSFetchWindowSetResp(DatasetHeader header, long queryId) {
     TSFetchWindowSetResp resp = RpcUtils.getTSFetchWindowSetResp(TSStatusCode.SUCCESS_STATUS);
-    resp.setColumns(header.getRespColumns());
-    resp.setDataTypeList(header.getRespDataTypeList());
+    resp.setColumnNameList(header.getRespColumns());
+    resp.setColumnTypeList(header.getRespDataTypeList());
+    resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
+    resp.setQueryId(queryId);
     return resp;
   }
 

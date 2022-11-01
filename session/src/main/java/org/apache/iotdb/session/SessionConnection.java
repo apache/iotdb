@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TGroupByTimeParameter;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -38,6 +39,8 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetResp;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -66,6 +69,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -479,6 +483,47 @@ public class SessionConnection {
         sessionId,
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp());
+  }
+
+  public List<SessionDataSet> fetchWindowSet(
+      List<String> queryPaths,
+      String functionName,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      List<Integer> indexes)
+      throws StatementExecutionException {
+    TSFetchWindowSetReq req =
+        new TSFetchWindowSetReq(
+            sessionId,
+            statementId,
+            queryPaths,
+            new TGroupByTimeParameter(startTime, endTime, interval, slidingStep, indexes));
+    TSFetchWindowSetResp resp;
+    try {
+      resp = client.fetchWindowSet(req);
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (TException e) {
+      throw new StatementExecutionException("");
+    }
+
+    List<SessionDataSet> windowSet = new ArrayList<>();
+    for (List<ByteBuffer> queryResult : resp.getQueryResultList()) {
+      windowSet.add(
+          new SessionDataSet(
+              "",
+              resp.columnNameList,
+              resp.columnTypeList,
+              resp.columnNameIndexMap,
+              resp.queryId,
+              statementId,
+              client,
+              sessionId,
+              queryResult,
+              false));
+    }
+    return windowSet;
   }
 
   protected void insertRecord(TSInsertRecordReq request)

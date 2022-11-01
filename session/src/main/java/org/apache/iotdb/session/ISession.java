@@ -440,4 +440,14 @@ public interface ISession extends AutoCloseable {
   void sortTablet(Tablet tablet);
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
+
+  List<SessionDataSet> fetchWindowSet(
+      List<String> queryPaths,
+      String functionName,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      List<Integer> indexes)
+      throws StatementExecutionException;
 }
