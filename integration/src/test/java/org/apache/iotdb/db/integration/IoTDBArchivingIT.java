@@ -247,10 +247,10 @@ public class IoTDBArchivingIT {
   }
 
   private void waitUntilAllFinished() throws InterruptedException {
-    int cnt = 10;
     for (ArchivingTask task : ArchivingManager.getInstance().getArchivingTasks()) {
-      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.FINISHED) {
-        Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      int cnt = 0;
+      while (task.getStatus() != ArchivingTask.ArchivingTaskStatus.FINISHED) {
+        Thread.sleep(ARCHIVING_CHECK_TIME * 10);
         cnt++;
         if (cnt >= 50) {
           throw new RuntimeException("Wait too long for all archiving task finished.");
