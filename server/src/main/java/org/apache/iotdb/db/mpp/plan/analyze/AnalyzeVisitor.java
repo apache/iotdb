@@ -1233,6 +1233,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         measurementPaths.stream().map(TimeSeriesOperand::new).collect(Collectors.toSet());
     analysis.setSourceExpressions(sourceExpressions);
 
+    // set transform
+    if (fetchWindowSetStatement.getFunctionName() != null) {
+      String functionName = fetchWindowSetStatement.getFunctionName();
+      Set<Expression> sourceTransformExpressions =
+          sourceExpressions.stream()
+              .map(
+                  expression ->
+                      new FunctionExpression(
+                          functionName,
+                          new LinkedHashMap<>(),
+                          Collections.singletonList(expression)))
+              .collect(Collectors.toSet());
+      analysis.setSourceTransformExpressions(sourceTransformExpressions);
+    }
+
     // set output
     List<ColumnHeader> columnHeaders =
         measurementPaths.stream()

@@ -150,7 +150,8 @@ public enum PlanNodeType {
   ROLLBACK_PRE_DEACTIVATE_TEMPLATE_NODE((short) 60),
   DEACTIVATE_TEMPLATE_NODE((short) 61),
   INTO((short) 62),
-  DEVICE_VIEW_INTO((short) 63);
+  DEVICE_VIEW_INTO((short) 63),
+  WINDOW_SPLIT((short) 64);
 
   public static final int BYTES = Short.BYTES;
 

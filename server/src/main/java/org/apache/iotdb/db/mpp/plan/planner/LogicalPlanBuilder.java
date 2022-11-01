@@ -64,6 +64,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowSplitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -772,6 +773,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planTransform(
       Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
+    if (selectExpressions == null) {
+      return this;
+    }
+
     boolean needTransform = false;
     for (Expression expression : selectExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -881,6 +886,17 @@ public class LogicalPlanBuilder {
         });
     this.root =
         new IntoNode(context.getQueryId().genPlanNodeId(), this.getRoot(), intoPathDescriptor);
+    return this;
+  }
+
+  public LogicalPlanBuilder planWindowSplit(
+      GroupByTimeParameter groupByTimeParameter, List<Integer> samplingIndexes) {
+    this.root =
+        new WindowSplitNode(
+            context.getQueryId().genPlanNodeId(),
+            this.getRoot(),
+            groupByTimeParameter,
+            samplingIndexes);
     return this;
   }
 
