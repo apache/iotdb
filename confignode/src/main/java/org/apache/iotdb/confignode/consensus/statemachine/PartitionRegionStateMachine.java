@@ -132,7 +132,7 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (ConsensusFactory.ONE_COPY_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
           logWriter.force();
@@ -276,7 +276,7 @@ public class PartitionRegionStateMachine
 
   @Override
   public void start() {
-    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (ConsensusFactory.ONE_COPY_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       initStandAloneConfigNode();
     }
   }
