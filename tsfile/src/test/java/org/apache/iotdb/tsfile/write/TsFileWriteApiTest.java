@@ -54,8 +54,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
 public class TsFileWriteApiTest {
   private final File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
   private final String deviceId = "root.sg.d1";
@@ -475,11 +473,7 @@ public class TsFileWriteApiTest {
       QueryExpression queryExpression =
           QueryExpression.create(
               Collections.singletonList(
-                  new Path(
-                      deviceId
-                          + PATH_SEPARATOR
-                          + alignedMeasurementSchemas.get(i).getMeasurementId(),
-                      true)),
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
               null);
       QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
 
@@ -525,11 +519,7 @@ public class TsFileWriteApiTest {
       QueryExpression queryExpression =
           QueryExpression.create(
               Collections.singletonList(
-                  new Path(
-                      deviceId
-                          + PATH_SEPARATOR
-                          + alignedMeasurementSchemas.get(i).getMeasurementId(),
-                      true)),
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
               null);
       QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
       int cnt = 0;
@@ -595,11 +585,7 @@ public class TsFileWriteApiTest {
       QueryExpression queryExpression =
           QueryExpression.create(
               Collections.singletonList(
-                  new Path(
-                      deviceId
-                          + PATH_SEPARATOR
-                          + alignedMeasurementSchemas.get(i).getMeasurementId(),
-                      true)),
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
               null);
       QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
       int cnt = 0;
@@ -682,9 +668,7 @@ public class TsFileWriteApiTest {
       QueryExpression queryExpression =
           QueryExpression.create(
               Collections.singletonList(
-                  new Path(
-                      deviceId + PATH_SEPARATOR + measurementSchemas.get(0).getMeasurementId(),
-                      true)),
+                  new Path(deviceId, measurementSchemas.get(0).getMeasurementId(), true)),
               null);
       QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
       int cnt = 0;
