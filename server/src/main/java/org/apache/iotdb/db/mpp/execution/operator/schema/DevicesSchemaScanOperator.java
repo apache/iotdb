@@ -20,6 +20,9 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -27,17 +30,13 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   private final boolean hasSgCol;
-  private final List<TSDataType> outputDataTypes;
 
   public DevicesSchemaScanOperator(
       PlanNodeId sourceId,
@@ -57,18 +56,10 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected List<TsBlock> createTsBlockList() {
-    try {
-      List<ShowDevicesResult> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getMatchedDevices(convertToPhysicalPlan())
-              .left;
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
-    }
+  protected ISchemaReader<DevicesSchemaInfo> createSchemaReader() throws MetadataException {
+    return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+        .getSchemaRegion()
+        .getDevicesSchemaReader(convertToPhysicalPlan());
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
@@ -76,7 +67,9 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
     return new ShowDevicesPlan(partialPath, limit, offset, hasSgCol);
   }
 
-  private void setColumns(ShowDevicesResult device, TsBlockBuilder builder) {
+  @Override
+  protected void setColumns(ISchemaInfo iSchemaInfo, TsBlockBuilder builder) {
+    ShowDevicesResult device = ((DevicesSchemaInfo) iSchemaInfo).getDevicesResult();
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(device.getName()));
     if (hasSgCol) {

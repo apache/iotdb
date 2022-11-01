@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.metadata.schemainfo;
 
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 
-public class ITimeSeriesSchemaInfo extends ISchemaInfo {
+public class DevicesSchemaInfo extends ISchemaInfo {
+  private final ShowDevicesResult showDevicesResult;
 
-  private final ShowTimeSeriesResult seriesResult;
-
-  public ITimeSeriesSchemaInfo(ShowTimeSeriesResult seriesResult) {
-    this.seriesResult = seriesResult;
+  public DevicesSchemaInfo(ShowDevicesResult showDevicesResult) {
+    this.showDevicesResult = showDevicesResult;
   }
 
-  public ShowTimeSeriesResult getSeriesResult() {
-    return seriesResult;
+  public ShowDevicesResult getDevicesResult() {
+    return showDevicesResult;
   }
 }

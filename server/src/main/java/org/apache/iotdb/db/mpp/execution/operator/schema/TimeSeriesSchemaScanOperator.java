@@ -21,7 +21,8 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
@@ -91,30 +91,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected List<TsBlock> createTsBlockList() {
-    return null;
-  }
-
-  @Override
-  public TsBlock next() {
-    return SchemaTsBlockUtil.transferSchemaResultToTsBlock(
-        schemaReader.next(), outputDataTypes, this::setColumns);
-  }
-
-  @Override
-  public boolean hasNext() {
-    if (schemaReader == null) {
-      try {
-        schemaReader =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion()
-                .getTimeseriesSchemaReader(
-                    convertToPhysicalPlan(), operatorContext.getInstanceContext());
-      } catch (MetadataException e) {
-        throw new RuntimeException(e.getMessage(), e);
-      }
-    }
-    return schemaReader.hasNext();
+  protected ISchemaReader<TimeSeriesSchemaInfo> createSchemaReader() throws MetadataException {
+    return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+        .getSchemaRegion()
+        .getTimeseriesSchemaReader(convertToPhysicalPlan(), operatorContext.getInstanceContext());
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
@@ -125,8 +105,9 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     return plan;
   }
 
-  private void setColumns(ISchemaInfo iTimeSeriesSchemaInfo, TsBlockBuilder builder) {
-    ShowTimeSeriesResult series = ((ITimeSeriesSchemaInfo) iTimeSeriesSchemaInfo).getSeriesResult();
+  @Override
+  protected void setColumns(ISchemaInfo iTimeSeriesSchemaInfo, TsBlockBuilder builder) {
+    ShowTimeSeriesResult series = ((TimeSeriesSchemaInfo) iTimeSeriesSchemaInfo).getSeriesResult();
     builder.getTimeColumnBuilder().writeLong(series.getLastTime());
     builder.writeNullableText(0, series.getName());
     builder.writeNullableText(1, series.getAlias());

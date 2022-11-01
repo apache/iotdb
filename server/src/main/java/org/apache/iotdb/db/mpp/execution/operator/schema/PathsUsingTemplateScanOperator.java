@@ -21,17 +21,18 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,25 +59,17 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected List<TsBlock> createTsBlockList() {
-    try {
-      List<String> schemaRegionResult = new LinkedList<>();
-      for (PartialPath pathPattern : pathPatternList) {
-        schemaRegionResult.addAll(
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion()
-                .getPathsUsingTemplate(pathPattern, templateId));
-      }
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
-    }
-  }
-
-  private void setColumns(String path, TsBlockBuilder builder) {
+  protected void setColumns(ISchemaInfo iSchemaInfo, TsBlockBuilder builder) {
+    String path = ((PathsUsingTemplateInfo) iSchemaInfo).getTemplateName();
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(path));
     builder.declarePosition();
+  }
+
+  @Override
+  protected ISchemaReader<PathsUsingTemplateInfo> createSchemaReader() throws MetadataException {
+    return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+        .getSchemaRegion()
+        .getTemplateSchemaReader(pathPatternList, templateId);
   }
 }

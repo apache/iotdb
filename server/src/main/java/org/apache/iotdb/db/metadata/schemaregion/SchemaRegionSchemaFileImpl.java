@@ -74,7 +74,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
-import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -440,9 +442,21 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
+  public ISchemaReader<TimeSeriesSchemaInfo> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<DevicesSchemaInfo> getDevicesSchemaReader(ShowDevicesPlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
+      List<PartialPath> pathPatterns, int templateId) throws MetadataException {
+    return null;
   }
 
   // endregion

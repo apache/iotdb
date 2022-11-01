@@ -18,15 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
@@ -35,6 +38,8 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   protected OperatorContext operatorContext;
   protected List<TsBlock> tsBlockList;
   protected int currentIndex = 0;
+
+  protected List<TSDataType> outputDataTypes;
 
   protected int limit;
   protected int offset;
@@ -60,7 +65,10 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
     this.sourceId = sourceId;
   }
 
-  protected abstract List<TsBlock> createTsBlockList();
+  protected abstract void setColumns(ISchemaInfo iSchemaInfo, TsBlockBuilder builder);
+
+  protected abstract ISchemaReader<? extends ISchemaInfo> createSchemaReader()
+      throws MetadataException;
 
   public PartialPath getPartialPath() {
     return partialPath;
@@ -93,19 +101,20 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    currentIndex++;
-    return tsBlockList.get(currentIndex - 1);
+    return SchemaTsBlockUtil.transferSchemaResultToTsBlock(
+        schemaReader.next(), outputDataTypes, this::setColumns);
   }
 
   @Override
   public boolean hasNext() {
-    if (tsBlockList == null) {
-      tsBlockList = createTsBlockList();
+    if (schemaReader == null) {
+      try {
+        schemaReader = createSchemaReader();
+      } catch (MetadataException e) {
+        throw new RuntimeException(e.getMessage(), e);
+      }
     }
-    return currentIndex < tsBlockList.size();
+    return schemaReader.hasNext();
   }
 
   @Override

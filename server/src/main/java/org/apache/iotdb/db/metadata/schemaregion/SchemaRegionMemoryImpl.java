@@ -79,7 +79,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
-import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemareader.SchemaReaderFakeImpl;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -562,12 +564,33 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
+  public ISchemaReader<TimeSeriesSchemaInfo> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<ShowTimeSeriesResult> results = showTimeseries(plan, context).left;
-    Iterator<ITimeSeriesSchemaInfo> iTimeSeriesSchemaInfoIterator =
-        results.stream().map(ITimeSeriesSchemaInfo::new).iterator();
-    return new SchemaReaderFakeImpl<>(iTimeSeriesSchemaInfoIterator);
+    Iterator<TimeSeriesSchemaInfo> timeSeriesSchemaInfoIterator =
+        results.stream().map(TimeSeriesSchemaInfo::new).iterator();
+    return new SchemaReaderFakeImpl<>(timeSeriesSchemaInfoIterator);
+  }
+
+  @Override
+  public ISchemaReader<DevicesSchemaInfo> getDevicesSchemaReader(ShowDevicesPlan plan)
+      throws MetadataException {
+    List<ShowDevicesResult> results = getMatchedDevices(plan).left;
+    Iterator<DevicesSchemaInfo> devicesSchemaInfoIterator =
+        results.stream().map(DevicesSchemaInfo::new).iterator();
+    return new SchemaReaderFakeImpl<>(devicesSchemaInfoIterator);
+  }
+
+  @Override
+  public ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
+      List<PartialPath> pathPatterns, int templateId) throws MetadataException {
+    List<String> results = new ArrayList<>();
+    for (PartialPath pathPattern : pathPatterns) {
+      results.addAll(getPathsUsingTemplate(pathPattern, templateId));
+    }
+    Iterator<PathsUsingTemplateInfo> pathsUsingTemplateInfoIterator =
+        results.stream().map(PathsUsingTemplateInfo::new).iterator();
+    return new SchemaReaderFakeImpl<>(pathsUsingTemplateInfoIterator);
   }
 
   // endregion
