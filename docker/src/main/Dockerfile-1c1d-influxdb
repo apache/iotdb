@@ -36,6 +36,7 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y
 RUN dos2unix /iotdb/sbin/start-1c1d.sh
+RUN dos2unix /iotdb/sbin/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
 RUN dos2unix /iotdb/sbin/start-datanode.sh
