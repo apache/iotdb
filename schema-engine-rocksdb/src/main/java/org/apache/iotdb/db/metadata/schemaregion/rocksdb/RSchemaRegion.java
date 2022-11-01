@@ -243,7 +243,8 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader getSchemaReader() {
+  public ISchemaReader getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

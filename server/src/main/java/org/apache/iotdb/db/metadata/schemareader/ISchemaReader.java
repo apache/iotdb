@@ -4,12 +4,11 @@ import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 
 import java.util.Iterator;
 
-public abstract class ISchemaReader<R extends ISchemaInfo> implements Iterator<R> {
+public interface ISchemaReader<R extends ISchemaInfo> extends Iterator<R> {
 
-    @Override
-    public abstract boolean hasNext();
+  @Override
+  boolean hasNext();
 
-    @Override
-    public abstract R next() ;
-
+  @Override
+  R next();
 }

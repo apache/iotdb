@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -43,6 +45,27 @@ public class SchemaTsBlockUtil {
     T schemaRegionResultElement;
     while (schemaRegionResultIterator.hasNext()) {
       schemaRegionResultElement = schemaRegionResultIterator.next();
+      consumer.accept(schemaRegionResultElement, tsBlockBuilder);
+      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+        result.add(tsBlockBuilder.build());
+        tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+      }
+    }
+    if (!tsBlockBuilder.isEmpty()) {
+      result.add(tsBlockBuilder.build());
+    }
+    return result;
+  }
+
+  public static <T extends ISchemaInfo> List<TsBlock> transferSchemaReaderToTsBlockList(
+      ISchemaReader<T> schemaReader,
+      List<TSDataType> outputDataTypes,
+      BiConsumer<T, TsBlockBuilder> consumer) {
+    List<TsBlock> result = new ArrayList<>();
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    T schemaRegionResultElement;
+    while (schemaReader.hasNext()) {
+      schemaRegionResultElement = schemaReader.next();
       consumer.accept(schemaRegionResultElement, tsBlockBuilder);
       if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
         result.add(tsBlockBuilder.build());

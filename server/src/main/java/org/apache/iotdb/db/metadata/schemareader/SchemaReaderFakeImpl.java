@@ -4,16 +4,20 @@ import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 
 import java.util.Iterator;
 
-public class SchemaReaderFakeImpl extends ISchemaReader<ISchemaInfo> {
-    private Iterator<? extends ISchemaInfo> schemaInfoIterator;
+public class SchemaReaderFakeImpl<R extends ISchemaInfo> implements ISchemaReader<R> {
+  private final Iterator<R> schemaInfoIterator;
 
-    @Override
-    public boolean hasNext() {
-        return schemaInfoIterator.hasNext();
-    }
+  public SchemaReaderFakeImpl(Iterator<R> schemaInfoIterator) {
+    this.schemaInfoIterator = schemaInfoIterator;
+  }
 
-    @Override
-    public ISchemaInfo next() {
-        return schemaInfoIterator.next();
-    }
+  @Override
+  public boolean hasNext() {
+    return schemaInfoIterator.hasNext();
+  }
+
+  @Override
+  public R next() {
+    return schemaInfoIterator.next();
+  }
 }

@@ -79,7 +79,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
+import org.apache.iotdb.db.metadata.schemareader.SchemaReaderFakeImpl;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -112,15 +114,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -559,8 +553,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader getSchemaReader() {
-    return null;
+  public ISchemaReader<?> getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
+      throws MetadataException {
+    List<ShowTimeSeriesResult> results = showTimeseries(plan, context).left;
+    Iterator<ITimeSeriesSchemaInfo> iTimeSeriesSchemaInfoIterator =
+        results.stream().map(ITimeSeriesSchemaInfo::new).iterator();
+    return new SchemaReaderFakeImpl<>(iTimeSeriesSchemaInfoIterator);
   }
 
   // endregion

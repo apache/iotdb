@@ -109,7 +109,8 @@ public interface ISchemaRegion {
   void loadSnapshot(File latestSnapshotRootDir);
   // endregion
 
-  ISchemaReader getSchemaReader();
+  ISchemaReader<?> getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
+      throws MetadataException;
 
   // region Interfaces for Timeseries operation
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
