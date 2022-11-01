@@ -40,6 +40,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -60,13 +63,21 @@ public class PartitionRegionStateMachine
       IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
+
   private ConfigManager configManager;
   private LogWriter logWriter;
   private File logFile;
   private int logFileId;
-  private static final String fileDir = CONF.getConsensusDir();
-  private static final String filePath = fileDir + File.separator + "log_inprogress_";
+  private static final String fileDir =
+      CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
+
+  private static final String snapshotDir =
+      CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "sm";
+  private static final String filePath = fileDir + File.separator + "log_";
   private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
+
+  private static final long SNAPSHOT_TRIGGER_THRESHOLD =
+      CONF.getPartitionRegionRatisSnapshotTriggerThreshold();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -121,7 +132,6 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-
     if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
@@ -150,18 +160,29 @@ public class PartitionRegionStateMachine
         }
         createLogFile(logFileId + 1);
       }
-
       try {
         ByteBuffer buffer = plan.serializeToByteBuffer();
         // The method logWriter.write will execute flip() firstly, so we must make position==limit
         buffer.position(buffer.limit());
         logWriter.write(buffer);
+        logFileId = logFileId + 1;
+        File tmp = new File(filePath + logFileId);
+
+        Files.move(logFile.toPath(), tmp.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        logFile = tmp;
+        logWriter = new LogWriter(tmp, false);
       } catch (IOException e) {
         LOGGER.error(
-            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+            "Can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+      }
+      if (logFileId > SNAPSHOT_TRIGGER_THRESHOLD) {
+        try {
+          takeSnapshot(logFileId);
+        } catch (IOException e) {
+          LOGGER.error("Can't delete old snapshot", e);
+        }
       }
     }
-
     return result;
   }
 
@@ -289,38 +310,51 @@ public class PartitionRegionStateMachine
   }
 
   private void initStandAloneConfigNode() {
+    File dir = new File(fileDir);
+    File snapshotDIr = new File(snapshotDir);
+    dir.mkdirs();
+    snapshotDIr.mkdirs();
     String[] list = new File(fileDir).list();
-    if (list != null && list.length != 0) {
-      for (String logFileName : list) {
-        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
-        SingleFileLogReader logReader;
-        try {
-          logReader = new SingleFileLogReader(logFile);
-        } catch (FileNotFoundException e) {
-          LOGGER.error(
-              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
-              logFile.getAbsolutePath(),
-              e);
-          continue;
-        }
-        while (logReader.hasNext()) {
-          // read and re-serialize the PhysicalPlan
-          ConfigPhysicalPlan nextPlan = logReader.next();
-          try {
-            executor.executeNonQueryPlan(nextPlan);
-          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
-            LOGGER.error(e.getMessage());
-          }
-        }
-        logReader.close();
+    String[] listSnapshot = new File(snapshotDir).list();
+    int logIndex = 0;
+    if (listSnapshot != null && listSnapshot.length != 0) {
+      for (String logFileName : listSnapshot) {
+        File snapshotFile = new File(snapshotDir + File.separator + logFileName);
+        logIndex = Integer.parseInt(logFileName);
+        loadSnapshot(snapshotFile);
       }
     }
-    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath);
-      if (!file.exists()) {
-        logFileId = ID;
-        break;
+    if (list != null && list.length != 0) {
+      for (String logFileName : list) {
+        logFileId =
+            Integer.parseInt(
+                logFileName.substring(logFileName.lastIndexOf("_") + 1, logFileName.length()));
+        if (logFileId >= logIndex) {
+          File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+          SingleFileLogReader logReader;
+          try {
+            logReader = new SingleFileLogReader(logFile);
+          } catch (FileNotFoundException e) {
+            LOGGER.error(
+                "InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+                logFile.getAbsolutePath(),
+                e);
+            continue;
+          }
+          while (logReader.hasNext()) {
+            // read and re-serialize the PhysicalPlan
+            ConfigPhysicalPlan nextPlan = logReader.next();
+            try {
+              executor.executeNonQueryPlan(nextPlan);
+            } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+              LOGGER.error(e.getMessage());
+            }
+          }
+          logReader.close();
+        }
       }
+    } else {
+      logFileId = 0;
     }
     createLogFile(logFileId);
   }
@@ -328,6 +362,9 @@ public class PartitionRegionStateMachine
   private void createLogFile(int logFileId) {
     logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
     try {
+      logFile.createNewFile();
+      logWriter = new LogWriter(logFile, false);
+      LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
       if (logFile.createNewFile()) {
         logWriter = new LogWriter(logFile, false);
         LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
@@ -339,6 +376,31 @@ public class PartitionRegionStateMachine
       } catch (InterruptedException ignored) {
         // Ignore and retry
       }
+    }
+  }
+
+  private void takeSnapshot(int logFileId) throws IOException {
+    int index, oldIndex = 0;
+    File file = new File(snapshotDir);
+    String[] list = file.list();
+    if (list != null && list.length != 0) {
+      oldIndex = Integer.parseInt(list[0]);
+    }
+    index = logFileId + 1;
+    File snapshotTmpDir = new File(snapshotDir + File.separator + index);
+    boolean applicationTakeSnapshotSuccess = takeSnapshot(snapshotTmpDir);
+    if (!applicationTakeSnapshotSuccess) {
+      if (!snapshotTmpDir.delete()) {
+        LOGGER.info(
+            "Snapshot directory is in complete, deleting " + snapshotTmpDir.getAbsolutePath());
+        try {
+          FileUtils.deleteFully(snapshotTmpDir);
+        } catch (IOException e) {
+          LOGGER.info("Snapshot failed " + snapshotTmpDir.getAbsolutePath());
+        }
+      }
+    } else {
+      FileUtils.deleteFully(new File(snapshotDir + File.separator + oldIndex));
     }
   }
 }
