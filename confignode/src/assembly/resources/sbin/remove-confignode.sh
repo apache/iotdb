@@ -26,12 +26,12 @@ source "$(dirname "$0")/iotdb-common.sh"
 
 #get_iotdb_include wil remove -D parameters
 VARS=$(get_iotdb_include "$*")
-checkAllVariables
+checkAllConfigNodeVariables
 eval set -- "$VARS"
 
 PARAMS="-r "$*
 
-initEnv
+initConfigNodeEnv
 
 CLASSPATH=""
 for f in ${CONFIGNODE_HOME}/lib/*.jar; do
@@ -50,7 +50,7 @@ launch_service() {
   	iotdb_parms="$iotdb_parms -Dname=iotdb\.ConfigNode"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${CONFIGNODE_LOGS}"
 
-  exec "$JAVA" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
+  exec "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
   return $?
 }
 

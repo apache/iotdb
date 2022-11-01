@@ -64,8 +64,8 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
-            #checkEnvVaribles is in iotdb-common.sh
-            checkEnvVaribles $2
+            #checkConfigNodeEnvVariables is in iotdb-common.sh
+            checkConfigNodeEnvVariables $2
             shift 2
         ;;
         -X)
@@ -103,14 +103,14 @@ while true; do
 done
 
 #checkAllVariables is in iotdb-common.sh
-checkAllVariables
+checkAllConfigNodeVariables
 
 
 
 PARAMS="-s $PARAMS"
 
 #initEnv is in iotdb-common.sh
-initEnv
+initConfigNodeEnv
 
 
 CLASSPATH=""
@@ -121,7 +121,7 @@ classname=org.apache.iotdb.confignode.service.ConfigNode
 
 launch_service() {
     class="$1"
-    iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
+    iotdb_parms="-Dlogback.configurationFile=${CONFIGNODE_LOG_CONFIG}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_DATA_HOME=${CONFIGNODE_DATA_HOME}"
   	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${CONFIGNODE_HOME}"
@@ -139,19 +139,19 @@ launch_service() {
           iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
             [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           else
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           fi
       # Startup IoTDB, background it, and write the pid.
       else
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-                exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
+                exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
                 [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           else
-                exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
+                exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
                 [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           fi

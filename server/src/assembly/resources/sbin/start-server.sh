@@ -60,8 +60,8 @@ while true; do
         ;;
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
-            #checkEnvVaribles is in iotdb-common.sh
-            checkEnvVaribles $2
+            #checkEnvVariables is in iotdb-common.sh
+            checkEnvVariables $2
             shift 2
         ;;
         -X)

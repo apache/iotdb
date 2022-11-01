@@ -24,7 +24,7 @@
 
 # this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
 # The command just parse IOTDB-prefixed variables and ignore all other variables
-checkEnvVaribles()
+checkEnvVariables()
 {
   string="$1"
   array=$(echo $string | tr '=' ' ')
@@ -74,7 +74,7 @@ while true; do
             shift 2
         ;;
         -D)
-            checkEnvVaribles $2
+            checkEnvVariables $2
             shift 2
         ;;
         --help)
