@@ -1,0 +1,7 @@
+data: {
+    dataTypes:        tdd(../data/DataType.tdd),
+    decimalDataTypes:     tdd(../data/DataType.tdd),
+}
+freemarkerLinks: {
+    includes: includes/
+}

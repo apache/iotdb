@@ -224,6 +224,9 @@
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
         <JTransforms.version>3.1</JTransforms.version>
+        <!-- codegen -->
+        <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
+        <codegen.phase>generate-sources</codegen.phase>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
