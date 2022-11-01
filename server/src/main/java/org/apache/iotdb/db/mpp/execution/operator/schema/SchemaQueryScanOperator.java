@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -41,6 +42,8 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   protected boolean isPrefixPath;
 
   protected PlanNodeId sourceId;
+
+  protected ISchemaReader schemaReader;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
