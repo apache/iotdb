@@ -149,6 +149,7 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
     for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
       deviceEntry.removePartition(partitionId);
     }
+    memCostForEachPartition.remove(partitionId);
   }
 
   private long recoverFlushTime(long partitionId, String devicePath) {

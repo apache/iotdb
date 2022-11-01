@@ -17,14 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
@@ -48,41 +47,17 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class IDTableFlushTimeTest {
+public class LastFlushTimeMapTest {
   private PlanExecutor executor = new PlanExecutor();
 
   private final Planner processor = new Planner();
 
-  private boolean isEnableIDTable = false;
-
-  private String originalDeviceIDTransformationMethod = null;
-
-  private boolean isEnableIDTableLogFile = false;
-
-  public IDTableFlushTimeTest() throws QueryProcessException {}
+  public LastFlushTimeMapTest() throws QueryProcessException {}
 
   @Before
   public void before() {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
-    isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
-    originalDeviceIDTransformationMethod =
-        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
-    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void clean() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -172,10 +147,18 @@ public class IDTableFlushTimeTest {
     executor.processNonQuery(deletePartitionPlan);
 
     assertEquals(
-        Long.MIN_VALUE,
-        storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0L, "root.isp.d1"));
-    assertEquals(
         123L, storageGroupProcessor.getLastFlushTimeMap().getGlobalFlushedTime("root.isp.d1"));
+  }
+
+  @Test
+  public void testMemoryCalculation() {}
+
+  @Test
+  public void testRecoverFlushTime() {}
+
+  @After
+  public void clean() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
   }
 
   private void insertData(long initTime) throws IllegalPathException, QueryProcessException {
