@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -49,10 +52,17 @@ public class FloatEncoder extends Encoder {
   /** flag to check whether maxPointNumber is saved in the stream. */
   private boolean isMaxPointNumberSaved;
 
+  /** same as encodingType when constructing an object. */
+  private TSEncoding encoderType;
+
+  /** logger to save start and stop. */
+  protected static final Logger logger = LoggerFactory.getLogger(FloatEncoder.class);
+
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
     super(encodingType);
 //    System.out.println(maxPointNumber);
     this.maxPointNumber = maxPointNumber;
+    this.encoderType = encodingType;
     calculateMaxPonitNum();
     isMaxPointNumberSaved = false;
     if (encodingType == TSEncoding.RLE) {
@@ -81,11 +91,17 @@ public class FloatEncoder extends Encoder {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
+    if (this.encoderType == TSEncoding.RLE) {
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+    }
     saveMaxPointNumber(out);
 //    System.out.println(value);
     int valueInt = convertFloatToInt(value);
 //    System.out.println(valueInt);
     encoder.encode(valueInt, out);
+    if (this.encoderType == TSEncoding.RLE) {
+    } else if (this.encoderType == TSEncoding.TS_2DIFF) {
+    }
   }
 
   @Override

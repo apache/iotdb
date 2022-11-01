@@ -51,7 +51,8 @@ public class IntRleDecoder extends RleDecoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    return this.readInt(buffer) == 0 ? false : true;
+    boolean r = this.readInt(buffer) == 0 ? false : true;
+    return r;
   }
 
   /**
@@ -96,6 +97,7 @@ public class IntRleDecoder extends RleDecoder {
     if (!hasNextPackage()) {
       isLengthAndBitWidthReaded = false;
     }
+
     return result;
   }
 

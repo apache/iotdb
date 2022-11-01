@@ -36,11 +36,14 @@ public class SinglePrecisionEncoderV2 extends IntGorillaEncoder {
 
   @Override
   public final void encode(float value, ByteArrayOutputStream out) {
+    //    logger.error("Encode GORILLA start");
     encode(Float.floatToRawIntBits(value), out);
+    //    logger.error("Encode GORILLA stop");
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
+    //    logger.error("Flush GORILLA start");
     // ending stream
     encode(GORILLA_ENCODING_ENDING_FLOAT, out);
 
@@ -51,5 +54,7 @@ public class SinglePrecisionEncoderV2 extends IntGorillaEncoder {
 
     // the encoder may be reused, so let us reset it
     reset();
+
+    //    logger.error("Flush GORILLA stop");
   }
 }

@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 /** uncompress data according to type in metadata. */
 public interface IUnCompressor {
 
+  Logger logger = LoggerFactory.getLogger(IUnCompressor.class);
   /**
    * get the UnCompressor based on the CompressionType.
    *
@@ -154,7 +155,8 @@ public interface IUnCompressor {
       }
 
       try {
-        return Snappy.uncompress(bytes);
+        byte[] r = Snappy.uncompress(bytes);
+        return r;
       } catch (IOException e) {
         logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
@@ -165,7 +167,8 @@ public interface IUnCompressor {
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      return Snappy.uncompress(byteArray, offset, length, output, outOffset);
+      int r = Snappy.uncompress(byteArray, offset, length, output, outOffset);
+      return r;
     }
 
     @Override
@@ -175,7 +178,8 @@ public interface IUnCompressor {
       }
 
       try {
-        return Snappy.uncompress(compressed, uncompressed);
+        int r = Snappy.uncompress(compressed, uncompressed);
+        return r;
       } catch (IOException e) {
         logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
@@ -281,7 +285,6 @@ public interface IUnCompressor {
       if (null == byteArray) {
         return new byte[0];
       }
-
       return ICompressor.GZIPCompress.uncompress(byteArray);
     }
 
@@ -303,7 +306,6 @@ public interface IUnCompressor {
 
       byte[] res = ICompressor.GZIPCompress.uncompress(dataBefore);
       uncompressed.put(res);
-
       return res.length;
     }
 

@@ -633,7 +633,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | RLBE | RAKE | SPRINTZ | HUFFMAN | TEXTRLE
     ;
 
 DICTIONARY
@@ -664,6 +664,25 @@ TS_2DIFF
     : T S '_' '2' D I F F
     ;
 
+RLBE
+    : R L B E
+    ;
+
+RAKE
+    : R A K E
+    ;
+
+SPRINTZ
+    : S P R I N T Z
+    ;
+
+HUFFMAN
+    : H U F F M A N
+    ;
+
+TEXTRLE
+    : T E X T R L E
+    ;
 
 // Compressor Type Keywords
 

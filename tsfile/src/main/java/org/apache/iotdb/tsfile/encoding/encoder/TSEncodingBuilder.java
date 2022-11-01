@@ -70,8 +70,6 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
-<<<<<<< Updated upstream
-=======
       case RAKE:
         return new Rake();
       case SPRINTZ:
@@ -84,7 +82,6 @@ public abstract class TSEncodingBuilder {
         return new HUFFMAN();
       case BUCKET:
         return new BucketEncoder();
->>>>>>> Stashed changes
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -155,13 +152,9 @@ public abstract class TSEncodingBuilder {
           return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
-<<<<<<< Updated upstream
-          return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
-=======
           return new FloatEncoder(TSEncoding.RLE, type, 6);//maxPointNumber);
         case TEXT:
           return new TextRleEncoder();
->>>>>>> Stashed changes
         default:
           throw new UnSupportedDataTypeException("RLE doesn't support data type: " + type);
       }
@@ -339,8 +332,6 @@ public abstract class TSEncodingBuilder {
       // do nothing
     }
   }
-<<<<<<< Updated upstream
-=======
 
   public static class Rake extends TSEncodingBuilder {
 
@@ -474,5 +465,4 @@ public abstract class TSEncodingBuilder {
       // do nothing
     }
   }
->>>>>>> Stashed changes
 }
