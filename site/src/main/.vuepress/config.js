@@ -1837,7 +1837,7 @@ var config = {
 							['Write-Data/Write-Data','CLI工具写入'],
 							['Write-Data/Session','原生接口写入'],
 							['Write-Data/REST API','REST服务'],
-							['Write-Data/MQTT','CMQTT写入'],
+							['Write-Data/MQTT','MQTT写入'],
 							['Write-Data/Load-External-Tsfile','加载 TsFile'],
 							['Write-Data/CSV-Tool','导入导出 CSV']
 						]
