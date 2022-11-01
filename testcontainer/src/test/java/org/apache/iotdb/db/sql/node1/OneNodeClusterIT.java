@@ -41,11 +41,11 @@ public class OneNodeClusterIT extends ClusterIT {
   // I am not sure the difference now.
   @Rule
   public DockerComposeContainer environment =
-      new NoProjectNameDockerComposeContainer(
-          "1node", new File("src/test/resources/1node/docker-compose.yaml"))
-          .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
-          .withLocalCompose(true);
+    new NoProjectNameDockerComposeContainer(
+      "1node", new File("src/test/resources/1node/docker-compose.yaml"))
+      .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
+      .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
+      .withLocalCompose(true);
 
   @Override
   protected DockerComposeContainer getContainer() {
