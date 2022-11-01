@@ -170,7 +170,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
-  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionOneCopyLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -712,13 +712,13 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
-  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
-    return partitionRegionStandAloneLogSegmentSizeMax;
+  public long getPartitionRegionOneCopyLogSegmentSizeMax() {
+    return partitionRegionOneCopyLogSegmentSizeMax;
   }
 
-  public void setPartitionRegionStandAloneLogSegmentSizeMax(
-      long partitionRegionStandAloneLogSegmentSizeMax) {
-    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
+  public void setPartitionRegionOneCopyLogSegmentSizeMax(
+      long partitionRegionOneCopyLogSegmentSizeMax) {
+    this.partitionRegionOneCopyLogSegmentSizeMax = partitionRegionOneCopyLogSegmentSizeMax;
   }
 
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
