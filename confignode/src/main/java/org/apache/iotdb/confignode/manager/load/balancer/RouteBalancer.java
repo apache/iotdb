@@ -77,7 +77,7 @@ public class RouteBalancer {
   private static final boolean isMultiLeader =
       ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
           ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
-  
+
   public static final String LEADER_POLICY = "leader";
   public static final String GREEDY_POLICY = "greedy";
 
@@ -234,7 +234,7 @@ public class RouteBalancer {
                 leaderBalancingExecutor,
                 this::balancingRegionLeader,
                 0,
-                // Execute route balancing service in every 5loops of heartbeat service
+                // Execute route balancing service in every 5 loops of heartbeat service
                 NodeManager.HEARTBEAT_INTERVAL * 5,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("Route-Balancing service is started successfully.");
