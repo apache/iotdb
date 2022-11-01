@@ -610,9 +610,9 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.StandAloneConsensus)) {
+            .equals(ConsensusFactory.ONE_COPY_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
       status.setMessage("standalone protocol is not supported to remove data node");
     }

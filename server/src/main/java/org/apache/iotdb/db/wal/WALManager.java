@@ -64,7 +64,7 @@ public class WALManager implements IService {
     if (config.isClusterMode()
         && config
             .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -76,7 +76,7 @@ public class WALManager implements IService {
   public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
     return config
             .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MultiLeaderConsensus)
+            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)
         ? storageGroupName
         : storageGroupName
             + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -99,7 +99,7 @@ public class WALManager implements IService {
         || !config.isClusterMode()
         || !config
             .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       return;
     }
 
@@ -113,7 +113,7 @@ public class WALManager implements IService {
         || !config.isClusterMode()
         || !config
             .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       return;
     }
 
