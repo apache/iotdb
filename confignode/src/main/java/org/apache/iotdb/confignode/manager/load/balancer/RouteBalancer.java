@@ -254,10 +254,15 @@ public class RouteBalancer {
   }
 
   private void balancingRegionLeader() {
+    balancingRegionLeader(TConsensusGroupType.SchemaRegion);
+    balancingRegionLeader(TConsensusGroupType.DataRegion);
+  }
+
+  private void balancingRegionLeader(TConsensusGroupType regionGroupType) {
     // Collect latest data to generate leaderBalancer
     MCFLeaderBalancer leaderBalancer =
         new MCFLeaderBalancer(
-            getPartitionManager().getAllReplicaSetsMap(),
+            getPartitionManager().getAllReplicaSetsMap(regionGroupType),
             regionRouteMap.getRegionLeaderMap(),
             getNodeManager()
                 .filterDataNodeThroughStatus(
@@ -288,6 +293,10 @@ public class RouteBalancer {
                 consensusProtocolClass = DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
                 break;
             }
+            LOGGER.info(
+                "[LeaderBalancer] Try to change the leader of Region: {} to DataNode: {} ",
+                regionGroupId,
+                newLeaderId);
             changeRegionLeader(
                 consensusProtocolClass, requestId, clientHandler, regionGroupId, newLeaderId);
           }

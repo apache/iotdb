@@ -443,10 +443,11 @@ public class PartitionManager {
   /**
    * Only leader use this interface
    *
+   * @param type The specified TConsensusGroupType
    * @return Deep copy of all Regions' RegionReplicaSet and organized to Map
    */
-  public Map<TConsensusGroupId, TRegionReplicaSet> getAllReplicaSetsMap() {
-    return partitionInfo.getAllReplicaSets().stream()
+  public Map<TConsensusGroupId, TRegionReplicaSet> getAllReplicaSetsMap(TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(type).stream()
         .collect(
             Collectors.toMap(TRegionReplicaSet::getRegionId, regionReplicaSet -> regionReplicaSet));
   }
