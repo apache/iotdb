@@ -250,7 +250,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
           ChunkInfo chunkInfo = new ChunkInfo();
 
           chunkInfo.measurementFullPath =
-              new Path(device, chunkMetadata.getMeasurementUid()).getFullPath();
+              new Path(device, chunkMetadata.getMeasurementUid(), true).getFullPath();
           chunkInfo.chunkOffsetInFile = chunkMetadata.getOffsetOfChunkHeader();
           chunkInfo.pointCount = chunkMetadata.getStatistics().getCount();
 
@@ -1101,7 +1101,8 @@ public class TsFileOpBlock extends AbstractOpBlock {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(deviceId, timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
+                    timeseriesMetadata));
           }
         } else { // deviceId should be determined by LEAF_DEVICE node
           if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {

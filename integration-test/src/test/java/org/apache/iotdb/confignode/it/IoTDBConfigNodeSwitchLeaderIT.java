@@ -78,11 +78,11 @@ public class IoTDBConfigNodeSwitchLeaderIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.MultiLeaderConsensus);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.MULTI_LEADER_CONSENSUS);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();

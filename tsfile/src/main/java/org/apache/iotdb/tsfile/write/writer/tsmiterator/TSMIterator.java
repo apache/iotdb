@@ -70,10 +70,10 @@ public class TSMIterator {
     return iterator.hasNext();
   }
 
-  public Pair<String, TimeseriesMetadata> next() throws IOException {
+  public Pair<Path, TimeseriesMetadata> next() throws IOException {
     Pair<Path, List<IChunkMetadata>> nextPair = iterator.next();
     return new Pair<>(
-        nextPair.left.getFullPath(),
+        nextPair.left,
         constructOneTimeseriesMetadata(nextPair.left.getMeasurement(), nextPair.right));
   }
 
@@ -119,7 +119,7 @@ public class TSMIterator {
         chunkMetadataMap
             .get(chunkGroupMetadata.getDevice())
             .computeIfAbsent(
-                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid()),
+                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid(), false),
                 x -> new ArrayList<>())
             .add(chunkMetadata);
       }
@@ -129,7 +129,8 @@ public class TSMIterator {
         chunkMetadataMap
             .computeIfAbsent(currentDevice, x -> new TreeMap<>())
             .computeIfAbsent(
-                new Path(currentDevice, chunkMetadata.getMeasurementUid()), x -> new ArrayList<>())
+                new Path(currentDevice, chunkMetadata.getMeasurementUid(), false),
+                x -> new ArrayList<>())
             .add(chunkMetadata);
       }
     }

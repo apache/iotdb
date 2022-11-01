@@ -72,7 +72,7 @@ public class IoTDBClusterNodeIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   @Before
   public void setUp() throws Exception {

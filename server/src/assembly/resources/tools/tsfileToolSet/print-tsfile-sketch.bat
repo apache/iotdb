@@ -33,6 +33,11 @@ if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchT
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
+@REM JVM Opts
+set JAVA_OPTS=-ea^
+ -Dfile.encoding=UTF-8
+
+@REM -----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%IOTDB_HOME%\lib\*"
@@ -46,7 +51,7 @@ goto :eof
 @REM -----------------------------------------------------------------------------
 :okClasspath
 
-"%JAVA_HOME%\bin\java" -cp "%CLASSPATH%" %MAIN_CLASS% %*
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %*
 
 goto finally
 
