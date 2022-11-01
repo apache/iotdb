@@ -1638,8 +1638,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       LoadTsFileStatement loadTsFileStatement =
           new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
-      if (ctx.loadFilesClause() != null) {
-        parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+      if (ctx.loadFileAttributeClauses() != null) {
+        for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
+            ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
+          parseLoadFileAttributeClause(loadTsFileStatement, attributeContext);
+        }
       }
       return loadTsFileStatement;
     } catch (FileNotFoundException e) {
@@ -1654,8 +1657,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    * @param loadTsFileStatement the result statement, setting by clause context
    * @param ctx context of property statement
    */
-  private void parseLoadFiles(
-      LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+  private void parseLoadFileAttributeClause(
+      LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFileAttributeClauseContext ctx) {
     if (ctx.ONSUCCESS() != null) {
       loadTsFileStatement.setDeleteAfterLoad(ctx.DELETE() != null);
     } else if (ctx.SGLEVEL() != null) {
@@ -1667,9 +1670,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           String.format(
               "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
               ctx.getText()));
-    }
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
     }
   }
 
@@ -2149,19 +2149,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Create Storage Group
-
-  @Override
-  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
-    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributesClause() != null) {
-      parseStorageGroupAttributesClause(
-          setStorageGroupStatement, ctx.storageGroupAttributesClause());
-    }
-    return setStorageGroupStatement;
-  }
-
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();

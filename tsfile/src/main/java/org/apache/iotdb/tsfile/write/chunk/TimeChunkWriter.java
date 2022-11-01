@@ -227,6 +227,7 @@ public class TimeChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = new TimeStatistics();
   }

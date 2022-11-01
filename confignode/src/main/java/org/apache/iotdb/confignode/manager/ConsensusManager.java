@@ -79,7 +79,7 @@ public class ConsensusManager {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(CONF.getPartitionRegionId());
 
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)) {
+    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   ConsensusFactory.StandAloneConsensus,
