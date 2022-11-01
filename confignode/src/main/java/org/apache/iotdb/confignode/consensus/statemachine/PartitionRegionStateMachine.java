@@ -65,7 +65,8 @@ public class PartitionRegionStateMachine
   private int endIndex;
   private int logFileId;
 
-  private static final String fileDir = CONF.getConsensusDir() + File.separator + "standalone";
+  private static final String fileDir =
+      CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
   private static final String fileTempPath = fileDir + File.separator + "log_inprogress_";
   private static final String filePath = fileDir + File.separator + "log_";
   private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
@@ -160,8 +161,8 @@ public class PartitionRegionStateMachine
         // The method logWriter.write will execute flip() firstly, so we must make position==limit
         buffer.position(buffer.limit());
         logWriter.write(buffer);
-        logFileId=logFileId+1;
-        File logFileTmp=new File(fileTempPath+logFileId);
+        logFileId = logFileId + 1;
+        File logFileTmp = new File(fileTempPath + logFileId);
         Files.move(logFile.toPath(), logFileTmp.toPath(), StandardCopyOption.ATOMIC_MOVE);
       } catch (IOException e) {
         LOGGER.error(
@@ -279,18 +280,18 @@ public class PartitionRegionStateMachine
 
   private void initStandAloneConfigNode() {
     File dir = new File(fileDir);
-    dir.mkdir();
+    dir.mkdirs();
     String[] list = new File(fileDir).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
+        int tmp =
+            Integer.parseInt(
+                logFileName.substring(logFileName.lastIndexOf("_") + 1, logFileName.length()));
         if (logFileName.startsWith("log_inprogress")) {
-          logFileId =
-              Integer.parseInt(
-                  logFileName.substring(logFileName.lastIndexOf("_") + 1, logFileName.length()));
+          logFileId = tmp;
         }
-        if (startIndex<Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_")+1,logFileName.length())))
-        {
-          startIndex=Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_")+1,logFileName.length()));
+        if (startIndex < tmp) {
+          startIndex = tmp;
         }
         File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
         SingleFileLogReader logReader;
@@ -315,29 +316,30 @@ public class PartitionRegionStateMachine
         logReader.close();
       }
     } else {
-      startIndex=0;
+      startIndex = 0;
       logFileId = 0;
     }
     endIndex = logFileId;
-    File logFiletmp=new File(fileTempPath+logFileId);
-    if (logFiletmp.exists()){
-    logFile=new File(filePath+startIndex+"_"+endIndex);
-    try {
-      Files.move(logFiletmp.toPath(), logFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
-    } catch (IOException e) {
-      LOGGER.error(
-              "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
-    }}
-    createLogFile(endIndex+1);
+    File logFiletmp = new File(fileTempPath + logFileId);
+    if (logFiletmp.exists()) {
+      logFile = new File(filePath + startIndex + "_" + endIndex);
+      try {
+        Files.move(logFiletmp.toPath(), logFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        LOGGER.error(
+            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+      }
+    }
+    createLogFile(endIndex + 1);
   }
 
   private void createLogFile(int logFileId) {
     logFile = SystemFileFactory.INSTANCE.getFile(fileTempPath + logFileId);
     try {
-      if (logFile.createNewFile()) {
-        logWriter = new LogWriter(logFile, false);
-        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-      }
+      logFile.createNewFile();
+      logWriter = new LogWriter(logFile, false);
+      LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
+
     } catch (IOException e) {
       LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
       try {
