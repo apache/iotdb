@@ -273,7 +273,7 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return All registered DataNodes */
+  /** @return All registered DataNodes */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
@@ -283,6 +283,16 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  /** @return The specified registered DataNode */
+  public TDataNodeConfiguration getRegisteredDataNode(int dataNodeId) {
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      return registeredDataNodes.getOrDefault(dataNodeId, new TDataNodeConfiguration()).deepCopy();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
   }
 
   /**

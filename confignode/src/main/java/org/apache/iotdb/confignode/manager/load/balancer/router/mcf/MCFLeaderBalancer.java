@@ -34,12 +34,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Minimum cost flow */
+/** Leader distribution balancer that uses minimum cost flow algorithm */
 public class MCFLeaderBalancer {
 
   private static final int INFINITY = Integer.MAX_VALUE;
 
+  /** Input parameters */
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap;
+
   private final Map<TConsensusGroupId, Integer> regionLeaderMap;
   private final Set<Integer> disabledDataNodeSet;
 
@@ -52,11 +54,15 @@ public class MCFLeaderBalancer {
   private int maxNode = tNode + 1;
   // Map<RegionGroupId, rNode>
   private final Map<TConsensusGroupId, Integer> rNodeMap;
-  // Map<DataNodeId, >
+  // Map<DataNodeId, dNode>
   private final Map<Integer, Integer> dNodeMap;
+  // Map<dNode, DataNodeId>
   private final Map<Integer, Integer> dNodeReflect;
 
+  /** Graph edges */
+  // Maximum index of graph edges
   private int maxEdge = 0;
+
   private final List<MCFEdge> mcfEdges;
   private int[] nodeHeadEdge;
   private int[] nodeCurrentEdge;
@@ -110,8 +116,7 @@ public class MCFLeaderBalancer {
 
     /* Construct edges: sNode -> rNodes */
     for (int rNode : rNodeMap.values()) {
-      // Capacity: 1, each RegionGroup should have exactly 1 leader
-      // Cost: 0,
+      // Cost: 0
       addAdjacentEdges(sNode, rNode, 1, 0);
     }
 
@@ -120,6 +125,9 @@ public class MCFLeaderBalancer {
       int rNode = rNodeMap.get(regionReplicaSet.getRegionId());
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         int dNode = dNodeMap.get(dataNodeLocation.getDataNodeId());
+        // Cost: 1 if the dNode is corresponded to the current leader of the rNode,
+        //       0 otherwise.
+        // Therefore, the RegionGroup will keep the leader as constant as possible.
         int cost =
             regionLeaderMap.getOrDefault(regionReplicaSet.getRegionId(), -1)
                     == dataNodeLocation.getDataNodeId()
@@ -130,7 +138,6 @@ public class MCFLeaderBalancer {
     }
 
     /* Construct edges: dNodes -> tNode */
-
     // Count the possible maximum number of leader in each DataNode
     Map<Integer, AtomicInteger> maxLeaderCounter = new ConcurrentHashMap<>();
     regionReplicaSetMap
@@ -157,6 +164,8 @@ public class MCFLeaderBalancer {
 
       int maxLeaderCount = maxLeaderCounter.get(dataNodeId).get();
       for (int extraEdge = 1; extraEdge <= maxLeaderCount; extraEdge++) {
+        // Cost: x^2 for the x-th edge at the current dNode.
+        // Thus, the leader distribution will be as balance as possible.
         addAdjacentEdges(dNode, tNode, 1, extraEdge * extraEdge);
       }
     }
@@ -173,6 +182,14 @@ public class MCFLeaderBalancer {
     nodeHeadEdge[fromNode] = maxEdge++;
   }
 
+  /**
+   * Check whether there is an augmented path in the MCF graph by Bellman-Ford algorithm.
+   *
+   * <p>Notice: Never use Dijkstra algorithm to replace this since there might exist negative
+   * circles.
+   *
+   * @return True if there exist augmented paths, false otherwise.
+   */
   private boolean bellmanFordCheck() {
     Arrays.fill(isNodeVisited, false);
     Arrays.fill(nodeMinimumCost, INFINITY);
@@ -202,6 +219,7 @@ public class MCFLeaderBalancer {
     return nodeMinimumCost[tNode] < INFINITY;
   }
 
+  /** Do augmentation by dfs algorithm */
   private int dfsAugmentation(int currentNode, int inputFlow) {
     if (currentNode == tNode || inputFlow == 0) {
       return inputFlow;
@@ -251,6 +269,7 @@ public class MCFLeaderBalancer {
     }
   }
 
+  /** @return Map<RegionGroupId, DataNodeId where the new leader locate> */
   private Map<TConsensusGroupId, Integer> collectLeaderDistribution() {
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
 
