@@ -328,8 +328,7 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      assertEquals(
-          "", authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
+      assertEquals("", authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
       // list user privileges
       authorizerReq =
