@@ -76,8 +76,6 @@ public abstract class InnerCompactionTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    IoTDB.configManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -90,8 +88,7 @@ public abstract class InnerCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
-    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
   }
 
   void prepareSeries() throws MetadataException {
