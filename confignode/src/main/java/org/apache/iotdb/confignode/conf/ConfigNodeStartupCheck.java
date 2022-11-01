@@ -50,7 +50,7 @@ public class ConfigNodeStartupCheck {
 
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
-    // When the ConfigNode consensus protocol is set to StandAlone,
+    // When the ConfigNode consensus protocol is set to ONE_COPY_CONSENSUS,
     // the target_config_nodes needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
         && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
@@ -61,7 +61,7 @@ public class ConfigNodeStartupCheck {
           CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }
 
-    // When the data region consensus protocol is set to StandAlone,
+    // When the data region consensus protocol is set to ONE_COPY_CONSENSUS,
     // the data replication factor must be 1
     if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
         && CONF.getDataReplicationFactor() != 1) {
@@ -71,7 +71,7 @@ public class ConfigNodeStartupCheck {
           String.valueOf(1));
     }
 
-    // When the schema region consensus protocol is set to StandAlone,
+    // When the schema region consensus protocol is set to ONE_COPY_CONSENSUS,
     // the schema replication factor must be 1
     if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
         && CONF.getSchemaReplicationFactor() != 1) {
@@ -84,12 +84,12 @@ public class ConfigNodeStartupCheck {
     // When the schema region consensus protocol is set to MultiLeaderConsensus,
     // we should report an error
     if (CONF.getSchemaRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.ONE_COPY_CONSENSUS, ConsensusFactory.RatisConsensus));
+              "%s or %s", ConsensusFactory.ONE_COPY_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
     // The routing policy is limited

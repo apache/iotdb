@@ -50,7 +50,7 @@ public class ConfigNodeConfig {
   private int partitionRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.ONE_COPY_CONSENSUS;

@@ -129,7 +129,7 @@ public class SchemaEngine {
     if (!(config.isClusterMode()
             && config
                 .getSchemaRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.RatisConsensus))
+                .equals(ConsensusFactory.RATIS_CONSENSUS))
         && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
