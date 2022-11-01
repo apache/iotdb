@@ -67,7 +67,7 @@ public class PartitionRegionStateMachine
   private ConfigManager configManager;
   private LogWriter logWriter;
   private File logFile;
-  private  int logFileId;
+  private int logFileId;
   private static final String fileDir =
       CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
 
@@ -374,7 +374,6 @@ public class PartitionRegionStateMachine
       }
     }
   }
-
 
   private void takeSnapshot(int logFileId) throws IOException {
     int index, oldIndex = 0;
