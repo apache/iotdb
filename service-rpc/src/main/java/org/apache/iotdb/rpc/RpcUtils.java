@@ -25,6 +25,7 @@ import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetResp;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -223,6 +224,18 @@ public class RpcUtils {
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);
     return resp;
+  }
+
+  public static TSFetchWindowSetResp getTSFetchWindowSetResp(TSStatus status) {
+    TSFetchWindowSetResp resp = new TSFetchWindowSetResp();
+    TSStatus tsStatus = new TSStatus(status);
+    resp.setStatus(tsStatus);
+    return resp;
+  }
+
+  public static TSFetchWindowSetResp getTSFetchWindowSetResp(TSStatusCode tsStatusCode) {
+    TSStatus status = getStatus(tsStatusCode);
+    return getTSFetchWindowSetResp(status);
   }
 
   public static final String DEFAULT_TIME_FORMAT = "default";

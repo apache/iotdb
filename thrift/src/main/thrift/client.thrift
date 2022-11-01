@@ -421,17 +421,19 @@ struct TGroupByTimeParameter {
   5: required list<i32> indexes
 }
 
-struct TFetchWindowSetReq {
+struct TSFetchWindowSetReq {
   1: required i64 sessionId
-  2: required list<string> queryPaths
-  3: optional string functionName
-  4: required TGroupByTimeParameter groupByTimeParameter
+  2: required i64 statementId
+  3: required list<string> queryPaths
+  4: optional string functionName
+  5: required TGroupByTimeParameter groupByTimeParameter
 }
 
-struct TFetchWindowSetResp {
-  1: required list<string> columns
-  2: required list<string> dataTypeList
-  3: required list<TSQueryDataSet> queryDataSetList
+struct TSFetchWindowSetResp {
+  1: required common.TSStatus status
+  2: required list<string> columns
+  3: required list<string> dataTypeList
+  4: required list<TSQueryDataSet> queryDataSetList
 }
 
 // The sender and receiver need to check some info to confirm validity
@@ -582,5 +584,5 @@ service IClientRPCService {
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
-  TFetchWindowSetResp fetchWindowSet(1:TFetchWindowSetReq req)
+  TSFetchWindowSetResp fetchWindowSet(1:TSFetchWindowSetReq req);
 }
