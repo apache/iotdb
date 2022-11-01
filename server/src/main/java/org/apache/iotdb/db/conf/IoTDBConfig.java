@@ -880,8 +880,8 @@ public class IoTDBConfig {
   private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
-  /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
+  /** The time of data node waiting for the next retry to join into the cluster */
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
@@ -2944,12 +2944,12 @@ public class IoTDBConfig {
     this.targetConfigNodeList = targetConfigNodeList;
   }
 
-  public long getJoinClusterTimeOutMs() {
-    return joinClusterTimeOutMs;
+  public long getJoinClusterRetryIntervalMs() {
+    return joinClusterRetryIntervalMs;
   }
 
-  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
-    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  public void setJoinClusterRetryIntervalMs(long joinClusterRetryIntervalMs) {
+    this.joinClusterRetryIntervalMs = joinClusterRetryIntervalMs;
   }
 
   public String getDataRegionConsensusProtocolClass() {

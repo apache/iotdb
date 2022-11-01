@@ -256,8 +256,8 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait 5s to start the next try
-        Thread.sleep(config.getJoinClusterTimeOutMs());
+        // wait to start the next try
+        Thread.sleep(config.getJoinClusterRetryIntervalMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);

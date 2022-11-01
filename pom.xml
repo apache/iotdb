@@ -766,9 +766,10 @@
                             <exclude>**/*.json</exclude>
                             <!-- the zeppelin export file format-->
                             <exclude>**/*.zpln</exclude>
-                            <!-- exclude go.mod and go.sum in iotdb-client-go submodule-->
+                            <!-- exclude go.mod, go.sum and rpc/* in iotdb-client-go submodule-->
                             <exclude>**/go.mod</exclude>
                             <exclude>**/go.sum</exclude>
+                            <exclude>client-go/rpc/*</exclude>
                             <!-- python -->
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>

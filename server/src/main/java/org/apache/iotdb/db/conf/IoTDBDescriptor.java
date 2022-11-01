@@ -1866,6 +1866,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_schema_region_consensus_port",
                 Integer.toString(conf.getSchemaRegionConsensusPort()))));
+    conf.setJoinClusterRetryIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_join_cluster_retry_interval_ms",
+                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
   }
 
   public void loadShuffleProps(Properties properties) {
