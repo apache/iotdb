@@ -94,11 +94,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   protected List<TsBlock> createTsBlockList() {
     try {
       ISchemaReader<ITimeSeriesSchemaInfo> iTimeSeriesSchemaInfoISchemaReader =
-          (ISchemaReader<ITimeSeriesSchemaInfo>)
-              ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                  .getSchemaRegion()
-                  .getTimeseriesSchemaReader(
-                      convertToPhysicalPlan(), operatorContext.getInstanceContext());
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getTimeseriesSchemaReader(
+                  convertToPhysicalPlan(), operatorContext.getInstanceContext());
       return SchemaTsBlockUtil.transferSchemaReaderToTsBlockList(
           iTimeSeriesSchemaInfoISchemaReader, outputDataTypes, this::setColumns);
     } catch (MetadataException e) {

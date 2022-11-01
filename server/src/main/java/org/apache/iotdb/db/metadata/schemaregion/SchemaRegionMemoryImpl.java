@@ -562,8 +562,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<?> getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
+      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<ShowTimeSeriesResult> results = showTimeseries(plan, context).left;
     Iterator<ITimeSeriesSchemaInfo> iTimeSeriesSchemaInfoIterator =
         results.stream().map(ITimeSeriesSchemaInfo::new).iterator();

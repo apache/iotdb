@@ -58,6 +58,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
@@ -243,7 +244,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
