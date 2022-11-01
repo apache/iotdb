@@ -129,7 +129,7 @@ public class ConfigNodeConfig {
   private int procedureCompletedCleanInterval = 30;
 
   /** Procedure core worker threads size */
-  private int procedureCoreWorkerThreadsSize =
+  private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
@@ -496,12 +496,12 @@ public class ConfigNodeConfig {
     this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
   }
 
-  public int getProcedureCoreWorkerThreadsSize() {
-    return procedureCoreWorkerThreadsSize;
+  public int getProcedureCoreWorkerThreadsCount() {
+    return procedureCoreWorkerThreadsCount;
   }
 
-  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
-    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
+  public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
+    this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
   public long getHeartbeatIntervalInMs() {

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.filter;
+package org.apache.iotdb.db.protocol.rest.filter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;

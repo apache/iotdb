@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mpprest.handler;
+package org.apache.iotdb.db.protocol.rest.handler;
 
-import org.apache.iotdb.db.protocol.mpprest.model.ExpressionRequest;
-import org.apache.iotdb.db.protocol.mpprest.model.InsertTabletRequest;
-import org.apache.iotdb.db.protocol.mpprest.model.SQL;
+import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
+import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
+import org.apache.iotdb.db.protocol.rest.model.SQL;
 
 import org.apache.commons.lang3.Validate;
 
