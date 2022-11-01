@@ -75,6 +75,8 @@ public class TsFileWriteApiTest {
     if (f.exists()) f.delete();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxNumOfPointsInPage);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
+    alignedMeasurementSchemas.clear();
+    measurementSchemas.clear();
   }
 
   private void setEnv(int chunkGroupSize, int pageSize) {
@@ -461,7 +463,7 @@ public class TsFileWriteApiTest {
       TsFileGeneratorUtils.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 30, 1000, 500, true);
 
-      // example3 : late data
+      // example3
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       TsFileGeneratorUtils.writeWithTsRecord(
