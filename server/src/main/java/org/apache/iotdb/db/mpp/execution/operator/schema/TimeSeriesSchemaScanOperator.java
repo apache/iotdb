@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
@@ -98,9 +97,6 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   @Override
   public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
     return SchemaTsBlockUtil.transferSchemaResultToTsBlock(
         schemaReader.next(), outputDataTypes, this::setColumns);
   }

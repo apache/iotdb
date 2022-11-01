@@ -57,7 +57,8 @@ public class SchemaTsBlockUtil {
 
   public static <T> TsBlock transferSchemaResultToTsBlock(
       T iSchemaInfo, List<TSDataType> outputDataTypes, BiConsumer<T, TsBlockBuilder> consumer) {
-
-    return null;
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    consumer.accept(iSchemaInfo, tsBlockBuilder);
+    return tsBlockBuilder.build();
   }
 }
