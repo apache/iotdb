@@ -141,7 +141,7 @@
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <felix.version>5.1.1</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
-        <netty.version>4.1.73.Final</netty.version>
+        <netty.version>4.1.84.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
