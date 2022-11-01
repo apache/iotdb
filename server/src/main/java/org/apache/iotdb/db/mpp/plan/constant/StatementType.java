@@ -152,4 +152,6 @@ public enum StatementType {
   SHOW_TRIGGERS,
 
   DEACTIVATE_TEMPLATE,
+
+  FETCH_WINDOW_SET
 }

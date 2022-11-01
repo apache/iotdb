@@ -30,12 +30,14 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -61,12 +63,14 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.service.rpc.thrift.TGroupByTimeParameter;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -173,6 +177,37 @@ public class StatementGenerator {
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
     return lastQueryStatement;
+  }
+
+  public static Statement createStatement(TSFetchWindowSetReq fetchWindowSetReq, ZoneId zoneId)
+      throws IllegalPathException {
+    FetchWindowSetStatement statement = new FetchWindowSetStatement();
+
+    // set queryPaths
+    List<PartialPath> queryPaths = new ArrayList<>();
+    for (String pathStr : fetchWindowSetReq.getQueryPaths()) {
+      queryPaths.add(new PartialPath(pathStr));
+    }
+    statement.setQueryPaths(queryPaths);
+
+    // set functionName
+    statement.setFunctionName(fetchWindowSetReq.getFunctionName());
+
+    // set groupByTimeParameter
+    TGroupByTimeParameter tGroupByTimeParameter = fetchWindowSetReq.getGroupByTimeParameter();
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(
+            tGroupByTimeParameter.getStartTime(),
+            tGroupByTimeParameter.getEndTime(),
+            tGroupByTimeParameter.getInterval(),
+            tGroupByTimeParameter.getSlidingStep(),
+            true);
+    statement.setGroupByTimeParameter(groupByTimeParameter);
+
+    // set samplingIndexes
+    statement.setSamplingIndexes(tGroupByTimeParameter.getIndexes());
+
+    return statement;
   }
 
   public static Statement createStatement(TSInsertRecordReq insertRecordReq)
