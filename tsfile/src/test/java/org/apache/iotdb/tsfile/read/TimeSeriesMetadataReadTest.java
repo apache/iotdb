@@ -64,7 +64,7 @@ public class TimeSeriesMetadataReadTest {
   @Test
   public void testReadTimeseriesMetadata() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    Path path = new Path("d1", "s1");
+    Path path = new Path("d1", "s1", true);
     Set<String> set = new HashSet<>();
     set.add("s1");
     set.add("s2");
@@ -78,7 +78,7 @@ public class TimeSeriesMetadataReadTest {
       Assert.assertEquals("s" + i, timeseriesMetadataList.get(i - 1).getMeasurementId());
     }
 
-    path = new Path("d1", "s5");
+    path = new Path("d1", "s5", true);
     set.clear();
     set.add("s5");
     set.add("s6");

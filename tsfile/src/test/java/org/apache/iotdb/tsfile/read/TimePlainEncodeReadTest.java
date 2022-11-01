@@ -69,7 +69,7 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryOneMeasurementWithoutFilterTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s1"));
+    pathList.add(new Path("d1", "s1", true));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
@@ -90,8 +90,8 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryTwoMeasurementsWithoutFilterTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s1"));
-    pathList.add(new Path("d2", "s2"));
+    pathList.add(new Path("d1", "s1", true));
+    pathList.add(new Path("d2", "s2", true));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
@@ -111,9 +111,10 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryTwoMeasurementsWithSingleFilterTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d2", "s1"));
-    pathList.add(new Path("d2", "s4"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d2", "s2"), ValueFilter.gt(9722L));
+    pathList.add(new Path("d2", "s1", true));
+    pathList.add(new Path("d2", "s4", true));
+    IExpression valFilter =
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.gt(9722L));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -130,9 +131,9 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryWithTwoSeriesTimeValueFilterCrossTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d2", "s2"));
+    pathList.add(new Path("d2", "s2", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d2", "s2"), ValueFilter.notEq(9722L));
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.notEq(9722L));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -161,9 +162,10 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryWithCrossSeriesTimeValueFilterTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s1"));
-    pathList.add(new Path("d2", "s2"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d2", "s2"), ValueFilter.gt(9722L));
+    pathList.add(new Path("d1", "s1", true));
+    pathList.add(new Path("d2", "s2", true));
+    IExpression valFilter =
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.gt(9722L));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -195,12 +197,13 @@ public class TimePlainEncodeReadTest {
     assertEquals(5, cnt);
 
     pathList.clear();
-    pathList.add(new Path("d1", "s1"));
-    pathList.add(new Path("d2", "s2"));
-    valFilter = new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.ltEq(9321));
+    pathList.add(new Path("d1", "s1", true));
+    pathList.add(new Path("d2", "s2", true));
+    valFilter = new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilter.ltEq(9321));
     valFilter =
         BinaryExpression.and(
-            new SingleSeriesExpression(new Path("d2", "s2"), ValueFilter.ltEq(9312L)), valFilter);
+            new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.ltEq(9312L)),
+            valFilter);
     tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618906L)),
@@ -238,8 +241,9 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryBooleanTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s5"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d1", "s5"), ValueFilter.eq(false));
+    pathList.add(new Path("d1", "s5", true));
+    IExpression valFilter =
+        new SingleSeriesExpression(new Path("d1", "s5", true), ValueFilter.eq(false));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -268,9 +272,9 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryStringTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s4"));
+    pathList.add(new Path("d1", "s4", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s4"), ValueFilter.gt(new Binary("dog97")));
+        new SingleSeriesExpression(new Path("d1", "s4", true), ValueFilter.gt(new Binary("dog97")));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -292,9 +296,9 @@ public class TimePlainEncodeReadTest {
     Assert.assertEquals(1, cnt);
 
     pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s4"));
+    pathList.add(new Path("d1", "s4", true));
     valFilter =
-        new SingleSeriesExpression(new Path("d1", "s4"), ValueFilter.lt(new Binary("dog97")));
+        new SingleSeriesExpression(new Path("d1", "s4", true), ValueFilter.lt(new Binary("dog97")));
     tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -318,9 +322,9 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryFloatTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s6"));
+    pathList.add(new Path("d1", "s6", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s6"), ValueFilter.gt(103.0f));
+        new SingleSeriesExpression(new Path("d1", "s6", true), ValueFilter.gt(103.0f));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -349,8 +353,9 @@ public class TimePlainEncodeReadTest {
   @Test
   public void queryDoubleTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s7"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d1", "s7"), ValueFilter.gt(7.0));
+    pathList.add(new Path("d1", "s7", true));
+    IExpression valFilter =
+        new SingleSeriesExpression(new Path("d1", "s7", true), ValueFilter.gt(7.0));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618021L)),

@@ -17,42 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBArithmeticIT {
 
   private static final double E = 0.0001;
 
   private static final String[] INSERTION_SQLS = {
+    "SET STORAGE GROUP TO root.test",
+    "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s7 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s8 WITH DATATYPE=INT32, ENCODING=PLAIN",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (1, 1, 1, 1, 1, false, '1', 1)",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (2, 2, 2, 2, 2, false, '2', 2)",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (3, 3, 3, 3, 3, true, '3', 3)",
@@ -62,87 +68,18 @@ public class IoTDBArithmeticIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    createTimeSeries();
-    generateData();
-  }
-
-  private static void createTimeSeries() throws MetadataException {
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s5"),
-        TSDataType.BOOLEAN,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s6"),
-        TSDataType.TEXT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s7"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.s8"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-  }
-
-  private static void generateData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : INSERTION_SQLS) {
-        statement.execute(dataGenerationSql);
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    EnvFactory.getEnv().initBeforeClass();
+    prepareData(INSERTION_SQLS);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
   public void testArithmeticBinary() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       String[] operands = new String[] {"s1", "s2", "s3", "s4"};
@@ -159,7 +96,7 @@ public class IoTDBArithmeticIT {
 
         assertEquals(1 + expressions.size(), resultSet.getMetaData().getColumnCount());
 
-        for (int i = 1; i < INSERTION_SQLS.length + 1; ++i) {
+        for (int i = 1; i < 6; ++i) {
           resultSet.next();
           for (int j = 0; j < expressions.size(); ++j) {
             double expected = 0;
@@ -192,9 +129,7 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testArithmeticUnary() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"- s1", "- s2", "- s3", "- s4"};
       String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
@@ -202,7 +137,7 @@ public class IoTDBArithmeticIT {
 
       assertEquals(1 + expressions.length, resultSet.getMetaData().getColumnCount());
 
-      for (int i = 1; i < INSERTION_SQLS.length + 1; ++i) {
+      for (int i = 1; i < 6; ++i) {
         resultSet.next();
         for (int j = 0; j < expressions.length; ++j) {
           double expected = -i;
@@ -218,9 +153,7 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testHybridQuery() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"s1", "s1 + s2", "sin(s1)"};
       String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
@@ -228,7 +161,7 @@ public class IoTDBArithmeticIT {
 
       assertEquals(1 + expressions.length, resultSet.getMetaData().getColumnCount());
 
-      for (int i = 1; i < INSERTION_SQLS.length + 1; ++i) {
+      for (int i = 1; i < 6; ++i) {
         resultSet.next();
         assertEquals(i, Double.parseDouble(resultSet.getString(2)), E);
         assertEquals(i + i, Double.parseDouble(resultSet.getString(3)), E);
@@ -242,19 +175,29 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testNonAlign() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       assertTrue(resultSet.next());
+      String curr = null;
+      while (curr == null) {
+        curr = resultSet.getString(2);
+        resultSet.next();
+      }
       assertEquals(10, Double.parseDouble(resultSet.getString(2)), E);
       assertFalse(resultSet.next());
 
       resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1 where time < 5");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
-      assertFalse(resultSet.next());
+      curr = null;
+      while (curr == null) {
+        if (!resultSet.next()) {
+          break;
+        }
+        curr = resultSet.getString(2);
+      }
+      assertEquals(null, curr);
       resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -263,25 +206,21 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testWrongTypeBoolean() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s5 from root.sg.d1");
     } catch (Exception throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported dataType: BOOLEAN"));
+      assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
     }
   }
 
   @Test
   public void testWrongTypeText() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported dataType: TEXT"));
+      assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
     }
   }
 }
