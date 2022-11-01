@@ -827,10 +827,10 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public Map<String, Long> getLatestTime() {
+  public Map<String, Long> getMaxTime() {
     Map<String, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getLatestTime());
+      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
     }
     return latestTimeForEachDevice;
   }

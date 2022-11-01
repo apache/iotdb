@@ -704,7 +704,7 @@ public abstract class AlignedTVList extends TVList {
     checkExpansion();
     int idx = start;
 
-    updateMinTimeAndSorted(time, start, end);
+    updateMaxTimeAndSorted(time, start, end);
 
     while (idx < end) {
       int inputRemaining = end - idx;

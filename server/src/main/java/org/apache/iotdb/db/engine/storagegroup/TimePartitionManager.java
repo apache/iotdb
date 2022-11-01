@@ -28,14 +28,14 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-public class LastFlushTimeMapManager {
+public class TimePartitionManager {
   Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
 
   long memCost = 0;
-  long flushTimeMapMemoryThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForFlushTime();
+  long timePartitionInfoMemoryThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForTimePartitionInfo();
 
-  private LastFlushTimeMapManager() {
+  private TimePartitionManager() {
     timePartitionInfoMap = new HashMap<>();
   }
 
@@ -57,7 +57,11 @@ public class LastFlushTimeMapManager {
   }
 
   public void flushMemtable(
-      DataRegionId dataRegionId, long timePartitionId, long systemFlushTime, long memSize) {
+      DataRegionId dataRegionId,
+      long timePartitionId,
+      long systemFlushTime,
+      long memSize,
+      boolean isActive) {
     synchronized (timePartitionInfoMap) {
       TimePartitionInfo timePartitionInfo =
           timePartitionInfoMap
@@ -67,9 +71,22 @@ public class LastFlushTimeMapManager {
         timePartitionInfo.lastSystemFlushTime = systemFlushTime;
         memCost += memSize - timePartitionInfo.memSize;
         timePartitionInfo.memSize = memSize;
-        if (memCost > flushTimeMapMemoryThreshold) {
+        timePartitionInfo.isActive = isActive;
+        if (memCost > timePartitionInfoMemoryThreshold) {
           evictOldMap();
         }
+      }
+    }
+  }
+
+  public void openMemtable(DataRegionId dataRegionId, long timePartitionId) {
+    synchronized (timePartitionInfoMap) {
+      TimePartitionInfo timePartitionInfo =
+          timePartitionInfoMap
+              .computeIfAbsent(dataRegionId, k -> new TreeMap<>())
+              .get(timePartitionId);
+      if (timePartitionInfo != null) {
+        timePartitionInfo.isActive = true;
       }
     }
   }
@@ -82,7 +99,7 @@ public class LastFlushTimeMapManager {
         treeSet.addAll(entry.getValue().values());
       }
 
-      while (memCost > flushTimeMapMemoryThreshold) {
+      while (memCost > timePartitionInfoMemoryThreshold) {
         TimePartitionInfo timePartitionInfo = treeSet.first();
         memCost -= timePartitionInfo.memSize;
         StorageEngineV2.getInstance()
@@ -109,13 +126,13 @@ public class LastFlushTimeMapManager {
     }
   }
 
-  public static LastFlushTimeMapManager getInstance() {
-    return LastFlushTimeMapManager.InstanceHolder.instance;
+  public static TimePartitionManager getInstance() {
+    return TimePartitionManager.InstanceHolder.instance;
   }
 
   private static class InstanceHolder {
     private InstanceHolder() {}
 
-    private static LastFlushTimeMapManager instance = new LastFlushTimeMapManager();
+    private static TimePartitionManager instance = new TimePartitionManager();
   }
 }

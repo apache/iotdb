@@ -238,6 +238,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public long getMaxTime() {
+    return list.getMaxTime();
+  }
+
+  @Override
   public synchronized TVList getSortedTvListForQuery() {
     sortTVList();
     // increase reference count

@@ -53,5 +53,5 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   long getCurrentTVListSize(String measurement);
 
-  long getLatestTime();
+  long getMaxTime();
 }

@@ -1112,7 +1112,7 @@ public class TsFileProcessor {
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
     Map<String, Long> lastTimeForEachDevice = new HashMap<>();
     if (sequence) {
-      lastTimeForEachDevice = tobeFlushed.getLatestTime();
+      lastTimeForEachDevice = tobeFlushed.getMaxTime();
       tsFileResource.updateEndTime(lastTimeForEachDevice);
     }
     if (!tobeFlushed.isSignalMemTable()

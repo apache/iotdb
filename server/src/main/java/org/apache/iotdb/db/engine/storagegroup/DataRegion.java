@@ -861,7 +861,7 @@ public class DataRegion {
       long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-        LastFlushTimeMapManager.getInstance()
+        TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
                     new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -914,7 +914,7 @@ public class DataRegion {
       long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-        LastFlushTimeMapManager.getInstance()
+        TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
                     new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -996,7 +996,7 @@ public class DataRegion {
       // init map
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
-        LastFlushTimeMapManager.getInstance()
+        TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
                     new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -1030,7 +1030,7 @@ public class DataRegion {
           beforeTimePartition = curTimePartition;
 
           if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(curTimePartition)) {
-            LastFlushTimeMapManager.getInstance()
+            TimePartitionManager.getInstance()
                 .registerTimePartitionInfo(
                     new TimePartitionInfo(
                         new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -1142,7 +1142,7 @@ public class DataRegion {
       // init map
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
-        LastFlushTimeMapManager.getInstance()
+        TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
                     new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -1538,6 +1538,8 @@ public class DataRegion {
 
     if (null == res) {
       // build new processor, memory control module will control the number of memtables
+      TimePartitionManager.getInstance()
+          .openMemtable(new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
       res = newTsFileProcessor(sequence, timeRangeId);
       tsFileProcessorTreeMap.put(timeRangeId, res);
       tsFileManager.add(res.getTsFileResource(), sequence);
@@ -2472,12 +2474,13 @@ public class DataRegion {
 
   private boolean unsequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
-    LastFlushTimeMapManager.getInstance()
+    TimePartitionManager.getInstance()
         .flushMemtable(
             new DataRegionId(Integer.valueOf(dataRegionId)),
             processor.getTimeRangeId(),
             systemFlushTime,
-            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()));
+            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
+            workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
     return true;
   }
 
@@ -2493,12 +2496,13 @@ public class DataRegion {
       return res;
     }
 
-    LastFlushTimeMapManager.getInstance()
+    TimePartitionManager.getInstance()
         .flushMemtable(
             new DataRegionId(Integer.valueOf(dataRegionId)),
             processor.getTimeRangeId(),
             systemFlushTime,
-            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()));
+            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
+            workUnsequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
     return res;
   }
 
@@ -3441,7 +3445,7 @@ public class DataRegion {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
       long partitionId = longTsFileProcessorEntry.getKey();
       lastFlushTimeMap.removePartition(partitionId);
-      LastFlushTimeMapManager.getInstance()
+      TimePartitionManager.getInstance()
           .removePartition(new DataRegionId(Integer.valueOf(dataRegionId)), partitionId);
       TsFileProcessor processor = longTsFileProcessorEntry.getValue();
       if (filter.satisfy(storageGroupName, partitionId)) {
@@ -3465,7 +3469,7 @@ public class DataRegion {
         tsFileResource.remove();
         tsFileManager.remove(tsFileResource, sequence);
         lastFlushTimeMap.removePartition(tsFileResource.getTimePartition());
-        LastFlushTimeMapManager.getInstance()
+        TimePartitionManager.getInstance()
             .removePartition(
                 new DataRegionId(Integer.valueOf(dataRegionId)), tsFileResource.getTimePartition());
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
@@ -3500,7 +3504,7 @@ public class DataRegion {
         long timePartitionId = StorageEngine.getTimePartition(plan.getTime());
 
         if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-          LastFlushTimeMapManager.getInstance()
+          TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
                       new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -3572,7 +3576,7 @@ public class DataRegion {
         long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
         if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-          LastFlushTimeMapManager.getInstance()
+          TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
                       new DataRegionId(Integer.valueOf(dataRegionId)),

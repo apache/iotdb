@@ -189,5 +189,5 @@ public interface IMemTable extends WALEntryValue {
 
   void setFlushStatus(FlushStatus flushStatus);
 
-  Map<String, Long> getLatestTime();
+  Map<String, Long> getMaxTime();
 }
