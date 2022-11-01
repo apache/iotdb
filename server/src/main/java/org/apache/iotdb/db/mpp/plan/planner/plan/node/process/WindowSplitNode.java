@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -130,5 +131,10 @@ public class WindowSplitNode extends SingleChildProcessNode {
   @Override
   public String toString() {
     return String.format("WindowSplitNode-%s", getPlanNodeId());
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitWindowSplit(this, context);
   }
 }

@@ -1231,6 +1231,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<MeasurementPath> measurementPaths = schemaTree.getAllMeasurement();
     Set<Expression> sourceExpressions =
         measurementPaths.stream().map(TimeSeriesOperand::new).collect(Collectors.toSet());
+    for (Expression sourceExpression : sourceExpressions) {
+      analyzeExpression(analysis, sourceExpression);
+    }
     analysis.setSourceExpressions(sourceExpressions);
 
     // set transform
@@ -1245,6 +1248,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                           new LinkedHashMap<>(),
                           Collections.singletonList(expression)))
               .collect(Collectors.toSet());
+      for (Expression sourceTransformExpression : sourceTransformExpressions) {
+        analyzeExpression(analysis, sourceTransformExpression);
+      }
       analysis.setSourceTransformExpressions(sourceTransformExpressions);
     }
 
@@ -1256,6 +1262,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     new ColumnHeader(measurementPath.toString(), measurementPath.getSeriesType()))
             .collect(Collectors.toList());
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+
+    Set<String> deviceSet =
+        measurementPaths.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+    DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
+    analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;
   }

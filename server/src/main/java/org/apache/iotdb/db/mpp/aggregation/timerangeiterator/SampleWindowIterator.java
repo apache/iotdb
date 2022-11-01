@@ -59,7 +59,7 @@ public class SampleWindowIterator implements ITimeRangeIterator {
   public TimeRange nextTimeRange() {
     while (allTimeRangeIterator.hasNextTimeRange()) {
       TimeRange timeRange = allTimeRangeIterator.nextTimeRange();
-      if (timeRangeIndex == samplingIndexes.get(sampleIndex)) {
+      if (timeRangeIndex + 1 == samplingIndexes.get(sampleIndex)) {
         curTimeRange = timeRange;
         timeRangeIndex++;
         sampleIndex++;

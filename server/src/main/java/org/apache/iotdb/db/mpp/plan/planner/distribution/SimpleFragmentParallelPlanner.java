@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -114,7 +115,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
     fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
 
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof FetchWindowSetStatement) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

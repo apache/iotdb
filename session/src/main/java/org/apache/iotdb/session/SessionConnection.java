@@ -510,18 +510,16 @@ public class SessionConnection {
 
     List<SessionDataSet> windowSet = new ArrayList<>();
     for (List<ByteBuffer> queryResult : resp.getQueryResultList()) {
-      windowSet.add(
+      SessionDataSet sessionDataSet =
           new SessionDataSet(
-              "",
               resp.columnNameList,
               resp.columnTypeList,
               resp.columnNameIndexMap,
               resp.queryId,
               statementId,
-              client,
               sessionId,
-              queryResult,
-              false));
+              queryResult);
+      windowSet.add(sessionDataSet);
     }
     return windowSet;
   }
