@@ -170,7 +170,7 @@ public class ConfigNodeDescriptor {
 
     conf.setConfigNodeConsensusProtocolClass(
         properties.getProperty(
-            "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+            "cn_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
 
     conf.setSchemaRegionConsensusProtocolClass(
         properties.getProperty(
