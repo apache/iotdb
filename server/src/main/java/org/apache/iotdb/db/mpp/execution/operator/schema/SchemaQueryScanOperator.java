@@ -36,8 +36,6 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
-  protected List<TsBlock> tsBlockList;
-  protected int currentIndex = 0;
 
   protected List<TSDataType> outputDataTypes;
 
@@ -48,7 +46,7 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected PlanNodeId sourceId;
 
-  protected ISchemaReader schemaReader;
+  protected ISchemaReader<? extends ISchemaInfo> schemaReader;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,

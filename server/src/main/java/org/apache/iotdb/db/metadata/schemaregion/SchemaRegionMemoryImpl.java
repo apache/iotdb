@@ -80,6 +80,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
 import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
@@ -591,6 +592,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     Iterator<PathsUsingTemplateInfo> pathsUsingTemplateInfoIterator =
         results.stream().map(PathsUsingTemplateInfo::new).iterator();
     return new SchemaReaderFakeImpl<>(pathsUsingTemplateInfoIterator);
+  }
+
+  @Override
+  public ISchemaReader<LevelTimeSeriesCountSchemaInfo> getLevelTimeSeriesCountSchemaInfoReader(
+      PartialPath partialPath,
+      int level,
+      boolean isPrefixPath,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+
+    Map<PartialPath, Integer> countMap;
+    if (key != null && value != null) {
+      countMap =
+          getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath, key, value, isContains);
+    } else {
+      countMap = getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
+    }
+    List<LevelTimeSeriesCountSchemaInfo> levelTimeSeriesCountSchemaInfos = new ArrayList<>();
+    for (Map.Entry<PartialPath, Integer> entry : countMap.entrySet()) {
+      levelTimeSeriesCountSchemaInfos.add(
+          new LevelTimeSeriesCountSchemaInfo(entry.getKey(), entry.getValue()));
+    }
+    return new SchemaReaderFakeImpl<>(levelTimeSeriesCountSchemaInfos.stream().iterator());
   }
 
   // endregion
