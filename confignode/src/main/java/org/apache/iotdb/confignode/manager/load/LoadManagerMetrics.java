@@ -38,11 +38,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_CONFIG_NODE;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_DATA_NODE;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_ONLINE;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_UNKNOWN;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_DATA_NODE;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_CONFIG_NODE;
 
 /** This class collates metrics about loadManager */
 public class LoadManagerMetrics implements IMetricSet {
