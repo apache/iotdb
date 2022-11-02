@@ -9,13 +9,13 @@
       "pluginName": "Prometheus"
     }
   ],
-  "__elements": {},
+  "__elements": [],
   "__requires": [
     {
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "9.2.0"
+      "version": "8.4.2"
     },
     {
       "type": "datasource",
@@ -57,6 +57,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
+  "iteration": 1667383574315,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -64,7 +65,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -78,7 +79,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -97,8 +98,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -175,18 +174,12 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -273,8 +266,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -364,8 +355,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -462,7 +451,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -476,7 +465,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -495,8 +484,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -583,8 +570,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -672,8 +657,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -770,7 +753,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -784,7 +767,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -803,8 +786,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -893,8 +874,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -977,7 +956,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -991,7 +970,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -1010,8 +989,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1091,10 +1068,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1102,8 +1075,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1177,7 +1148,7 @@
           "exemplar": true,
           "expr": "multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"safeIndex\"}",
           "interval": "",
-          "legendFormat": "{{region}}",
+          "legendFormat": "{{region}}-safeIndex",
           "range": true,
           "refId": "A"
         },
@@ -1187,9 +1158,11 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
+          "exemplar": true,
           "expr": "multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"searchIndex\"}",
           "hide": false,
-          "legendFormat": "{{region}}",
+          "interval": "",
+          "legendFormat": "{{region}}-searchIndex",
           "range": true,
           "refId": "B"
         }
@@ -1209,8 +1182,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1316,8 +1287,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1408,8 +1377,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1500,8 +1467,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1592,8 +1557,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1685,8 +1648,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1779,8 +1740,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1869,8 +1828,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1961,8 +1918,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2055,8 +2010,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2141,7 +2094,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -2155,7 +2108,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -2174,8 +2127,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMax": 0,
@@ -2253,7 +2204,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU-Load",
+      "title": "CPU Load",
       "type": "timeseries"
     },
     {
@@ -2267,8 +2218,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMax": 0,
@@ -2353,7 +2302,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -2367,7 +2316,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -2386,8 +2335,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2487,8 +2434,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2587,8 +2532,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMin": -5,
@@ -2679,14 +2622,14 @@
           "refId": "B"
         }
       ],
-      "title": "Disk-Space",
+      "title": "Disk Space",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "-paUMyI4z"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -2700,7 +2643,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "-paUMyI4z"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -2719,8 +2662,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2819,8 +2760,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -2920,8 +2859,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -3057,8 +2994,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -3146,8 +3081,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -3237,7 +3170,7 @@
     }
   ],
   "refresh": false,
-  "schemaVersion": 37,
+  "schemaVersion": 35,
   "style": "dark",
   "tags": [
     "Apache-IoTDB",
@@ -3293,7 +3226,7 @@
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -3309,6 +3242,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7m",
-  "version": 23,
+  "version": 3,
   "weekStart": ""
 }
