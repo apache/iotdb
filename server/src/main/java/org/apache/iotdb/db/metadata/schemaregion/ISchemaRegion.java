@@ -39,10 +39,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
-import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
-import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -113,10 +111,10 @@ public interface ISchemaRegion {
   void loadSnapshot(File latestSnapshotRootDir);
   // endregion
 
-  ISchemaReader<TimeSeriesSchemaInfo> getTimeseriesSchemaReader(
+  ISchemaReader<ShowTimeSeriesResult> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
 
-  ISchemaReader<DevicesSchemaInfo> getDevicesSchemaReader(ShowDevicesPlan plan)
+  ISchemaReader<ShowDevicesResult> getDevicesSchemaReader(ShowDevicesPlan plan)
       throws MetadataException;
 
   ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.schemainfo;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
-public class LevelTimeSeriesCountSchemaInfo extends ISchemaInfo {
+public class LevelTimeSeriesCountSchemaInfo implements ISchemaInfo {
 
   CountEntry countEntry;
 

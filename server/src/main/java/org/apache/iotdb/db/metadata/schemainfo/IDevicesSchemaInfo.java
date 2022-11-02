@@ -19,16 +19,4 @@
 
 package org.apache.iotdb.db.metadata.schemainfo;
 
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-
-public class DevicesSchemaInfo extends ISchemaInfo {
-  private final ShowDevicesResult showDevicesResult;
-
-  public DevicesSchemaInfo(ShowDevicesResult showDevicesResult) {
-    this.showDevicesResult = showDevicesResult;
-  }
-
-  public ShowDevicesResult getDevicesResult() {
-    return showDevicesResult;
-  }
-}
+public interface IDevicesSchemaInfo extends ISchemaInfo {}

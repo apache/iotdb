@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -56,7 +55,7 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected ISchemaReader<DevicesSchemaInfo> createSchemaReader() throws MetadataException {
+  protected ISchemaReader<ShowDevicesResult> createSchemaReader() throws MetadataException {
     return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
         .getSchemaRegion()
         .getDevicesSchemaReader(convertToPhysicalPlan());
@@ -69,7 +68,7 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
 
   @Override
   protected void setColumns(ISchemaInfo iSchemaInfo, TsBlockBuilder builder) {
-    ShowDevicesResult device = ((DevicesSchemaInfo) iSchemaInfo).getDevicesResult();
+    ShowDevicesResult device = (ShowDevicesResult) iSchemaInfo;
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(device.getName()));
     if (hasSgCol) {

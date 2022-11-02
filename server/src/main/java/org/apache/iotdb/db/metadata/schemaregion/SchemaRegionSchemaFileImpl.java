@@ -74,9 +74,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
-import org.apache.iotdb.db.metadata.schemainfo.DevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
-import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -442,13 +441,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<TimeSeriesSchemaInfo> getTimeseriesSchemaReader(
+  public ISchemaReader<ShowTimeSeriesResult> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public ISchemaReader<DevicesSchemaInfo> getDevicesSchemaReader(ShowDevicesPlan plan)
+  public ISchemaReader<ShowDevicesResult> getDevicesSchemaReader(ShowDevicesPlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
@@ -456,7 +455,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
       List<PartialPath> pathPatterns, int templateId) throws MetadataException {
-    return null;
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<LevelTimeSeriesCountSchemaInfo> getLevelTimeSeriesCountSchemaInfoReader(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   // endregion

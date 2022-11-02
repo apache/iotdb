@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,7 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 
-public class ShowTimeSeriesResult extends ShowResult {
+public class ShowTimeSeriesResult extends ShowResult implements ISchemaInfo {
 
   private String alias;
   private TSDataType dataType;

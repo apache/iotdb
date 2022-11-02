@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.TimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -91,7 +90,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected ISchemaReader<TimeSeriesSchemaInfo> createSchemaReader() throws MetadataException {
+  protected ISchemaReader<ShowTimeSeriesResult> createSchemaReader() throws MetadataException {
     return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
         .getSchemaRegion()
         .getTimeseriesSchemaReader(convertToPhysicalPlan(), operatorContext.getInstanceContext());
@@ -107,7 +106,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   @Override
   protected void setColumns(ISchemaInfo iTimeSeriesSchemaInfo, TsBlockBuilder builder) {
-    ShowTimeSeriesResult series = ((TimeSeriesSchemaInfo) iTimeSeriesSchemaInfo).getSeriesResult();
+    ShowTimeSeriesResult series = (ShowTimeSeriesResult) iTimeSeriesSchemaInfo;
     builder.getTimeColumnBuilder().writeLong(series.getLastTime());
     builder.writeNullableText(0, series.getName());
     builder.writeNullableText(1, series.getAlias());

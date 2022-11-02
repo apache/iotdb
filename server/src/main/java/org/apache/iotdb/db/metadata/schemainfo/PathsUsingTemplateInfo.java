@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemainfo;
 
-public class PathsUsingTemplateInfo extends ISchemaInfo {
+public class PathsUsingTemplateInfo implements ISchemaInfo {
   private final String templateName;
 
   public PathsUsingTemplateInfo(String templateName) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.metadata.schemainfo.IDevicesSchemaInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowDevicesResult extends ShowResult {
+public class ShowDevicesResult extends ShowResult implements IDevicesSchemaInfo {
   private boolean isAligned;
 
   public ShowDevicesResult() {
