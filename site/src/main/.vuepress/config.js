@@ -647,7 +647,7 @@ var config = {
 				],
 				'/UserGuide/V0.13.x/': [
 					{
-						title:'IoTDB User Guide (latest)',
+						title:'IoTDB User Guide (V0.13.x)',
 						collapsable: false,
 					},
 					{
@@ -921,9 +921,7 @@ var config = {
 							['Query-Data/Result-Format.md','Query Result Formats'],
 							['Query-Data/Aggregate-Query.md','Aggregate Query'],
 							['Query-Data/Last-Query.md','Last Query'],
-							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
-							['Query-Data/Without-Null.md','Without Null'],
-							['Query-Data/Tracing-Tool.md','Tracing Tool']
+							['Query-Data/Fill-Null-Value.md','Fill Null Value']
 						]
 					},
 					{
@@ -1581,7 +1579,7 @@ var config = {
 				],
 				'/zh/UserGuide/V0.13.x/': [
 					{
-						title: 'IoTDB用户手册 (In progress)',
+						title: 'IoTDB用户手册 (V0.13.x)',
 						collapsable: false,
 					},
 					{
@@ -1855,9 +1853,7 @@ var config = {
 							['Query-Data/Result-Format.md','查询结果对齐格式'],
 							['Query-Data/Aggregate-Query.md','聚合查询'],
 							['Query-Data/Last-Query.md','最新点查询'],
-							['Query-Data/Fill-Null-Value.md','空值填充'],
-							['Query-Data/Without-Null.md','空值过滤'],
-							['Query-Data/Tracing-Tool.md','查询性能追踪']
+							['Query-Data/Fill-Null-Value.md','空值填充']
 						]
 					},
 					{
