@@ -76,7 +76,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 ### 1.3.3. IoTDB 默认指标
 
-#### 1.3.3.1. 接入层
+#### 1.3.3.1. Interface
 
 | Metric                | Tag                      | level     | 说明                | 示例                                         |
 | --------------------- | ------------------------ | --------- | ------------------- | -------------------------------------------- |
@@ -89,21 +89,21 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 1.3.3.2. Task
 
-| Metric                        | Tag                                                                           | level     | 说明                            | 示例                                                                                               |
-| ----------------------------- | ----------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| queue                         | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | 当前时间任务数                  | queue{name="flush",status="waiting",} 0.0<br/>queue{name="compaction/flush",status="running",} 0.0 |
-| cost_task_seconds_count       | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
-| cost_task_seconds_max         | name="inner_compaction/cross_compaction/flush"                                | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
-| cost_task_seconds_sum         | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
-| data_written_total            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written_total{name="compaction",type="total",} 10240                                                |
-| data_read_total               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read_total{name="compaction",} 10240                                                               |
-| compaction_task_count_total   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | 合并任务个数                    | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                                  |
+| Metric                      | Tag                                                                          | level     | 说明                            | 示例                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| queue                       | name="compaction_inner/compaction_cross/flush",<br/>status="running/waiting" | important | 当前时间任务数                  | queue{name="flush",status="waiting",} 0.0<br/>queue{name="compaction/flush",status="running",} 0.0 |
+| cost_task_seconds_count     | name="inner_compaction/cross_compaction/flush"                               | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
+| cost_task_seconds_max       | name="inner_compaction/cross_compaction/flush"                               | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
+| cost_task_seconds_sum       | name="inner_compaction/cross_compaction/flush"                               | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
+| data_written_total          | name="compaction", <br/>type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written_total{name="compaction",type="total",} 10240                                          |
+| data_read_total             | name="compaction"                                                            | important | 合并文件时的读取量              | data_read_total{name="compaction",} 10240                                                          |
+| compaction_task_count_total | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross" | important | 合并任务个数                    | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                            |
 
 #### 1.3.3.3. 内存占用
 
-| Metric | Tag                                     | level     | 说明                                               | 示例                              |
-| ------ | --------------------------------------- | --------- | -------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| Metric | Tag                                                          | level     | 说明                       | 示例                              |
+| ------ | ------------------------------------------------------------ | --------- | -------------------------- | --------------------------------- |
+| mem    | name="chunkMetaData/storageGroup/mtree/MultiLeaderConsensus" | important | 对应部分占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
 #### 1.3.3.4. 缓存
 
@@ -120,18 +120,35 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 1.3.3.6. 集群
 
+##### 1.3.3.6.1. 集群状态
+
 | Metric                    | Tag                                                                | level     | 说明                                                          | 示例                                                                         |
 | ------------------------- | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀   | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                                | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | 节点状态，0=Unkonwn 1=online                                   | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0             |
-| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                        | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| config_node               | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 confignode 的节点数量                          | config_node{name="total",status="Online",} 2.0                               |
-| data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 datanode 的节点数量                            | data_node{name="total",status="Registered",} 3.0                             |
-| partition_table           | name="number"                                                      | core      | partition table表的个数                                        | partition_table{name="number",} 2.0                                          |
-| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                     | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                   | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                                 | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | 节点状态，0=Unkonwn 1=online                                  | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0             |
+| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node               | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 confignode 的节点数量                        | config_node{name="total",status="Online",} 2.0                               |
+| data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 datanode 的节点数量                          | data_node{name="total",status="Registered",} 3.0                             |
+| partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
+| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+
+##### 1.3.3.6.2. 弱一致性
+| Metric       | Tag                                                                                          | level     | 说明                                                 | 示例 |
+| ------------ | -------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | ---- |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core      | 弱一致性对应region的写入index和同步index             |      |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | important | 弱一致性对应region的同步线程当前的同步index          |      |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | important | 弱一致性对应region的同步线程缓存的队列总大小         |      |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | core      | 弱一致性对应region获取状态机锁的耗时                 |      |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | core      | 弱一致性对应region状态机完成写前检查的耗时           |      |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | core      | 弱一致性对应region状态机写入请求的耗时               |      |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | core      | 弱一致性对应region状态机尝试将请求放入同步队列的耗时 |      |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | core      | 弱一致性对应region状态机处理共识层请求的耗时         |      |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | core      | 弱一致性对应同步线程完成一个请求构造的耗时           |      |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | core      | 弱一致性对应同步线程完成一个请求同步的耗时           |      |
+
 
 ### 1.3.4. IoTDB 预定义指标集
 
@@ -171,11 +188,11 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 ##### 1.3.4.1.4. Classes
 
-| Metric                             | Tag                                           | level     | 说明                   | 示例                                                                                |
-| ---------------------------------- | --------------------------------------------- | --------- | ---------------------- | ----------------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes       | 无                                            | important | jvm累计卸载的class数量 | jvm_classes_unloaded_classes 680.0                                            |
-| jvm_classes_loaded_classes         | 无                                            | important | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                                   |
-| jvm_compilation_time_ms            | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
+| Metric                       | Tag                                           | level     | 说明                   | 示例                                                                          |
+| ---------------------------- | --------------------------------------------- | --------- | ---------------------- | ----------------------------------------------------------------------------- |
+| jvm_classes_unloaded_classes | 无                                            | important | jvm累计卸载的class数量 | jvm_classes_unloaded_classes 680.0                                            |
+| jvm_classes_loaded_classes   | 无                                            | important | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                             |
+| jvm_compilation_time_ms      | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
 #### 1.3.4.2. 文件（File）
 
@@ -246,7 +263,7 @@ enableMetric: false
 # 是否启用操作延迟统计
 enablePerformanceStat: false
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB],IOTDB是默认关闭的。
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB], IOTDB是默认关闭的。
 metricReporterList:
   - JMX
   - PROMETHEUS
