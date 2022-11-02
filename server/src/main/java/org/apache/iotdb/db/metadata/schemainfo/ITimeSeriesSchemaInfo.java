@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.db.metadata.schemainfo;
 
-public class TimeSeriesSchemaInfo implements ISchemaInfo {}
+public interface ITimeSeriesSchemaInfo extends ISchemaInfo {}
