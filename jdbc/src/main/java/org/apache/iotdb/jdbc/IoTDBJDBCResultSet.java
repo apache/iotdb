@@ -60,8 +60,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected List<String> columnTypeList;
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
-  private boolean isRpcFetchResult = true;
-
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
@@ -82,7 +80,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       String operationType,
       List<String> columns,
       List<String> sgColumns,
-      BitSet aliasColumnMap)
+      BitSet aliasColumnMap,
+      boolean moreData)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -91,7 +90,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            true,
+            moreData,
             queryId,
             ((IoTDBStatement) statement).getStmtId(),
             client,
@@ -125,7 +124,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       List<ByteBuffer> dataSet,
       TSTracingInfo tracingInfo,
       long timeout,
-      boolean isRpcFetchResult)
+      boolean moreData)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -134,7 +133,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            isRpcFetchResult,
+            moreData,
             queryId,
             ((IoTDBStatement) statement).getStmtId(),
             client,
@@ -144,7 +143,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
             timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
-    this.isRpcFetchResult = isRpcFetchResult;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);

@@ -64,7 +64,8 @@ public class IoTDBRpcDataSet {
   public long queryId;
   public long statementId;
   public boolean ignoreTimeStamp;
-  public boolean isRpcFetchResult;
+  // indicates that there is still more data in server side and we can call fetchResult to get more
+  public boolean moreData;
 
   public static final TsBlockSerde serde = new TsBlockSerde();
   public List<ByteBuffer> queryResult;
@@ -81,7 +82,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      boolean isRpcFetchResult,
+      boolean moreData,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -97,7 +98,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
-    this.isRpcFetchResult = isRpcFetchResult;
+    this.moreData = moreData;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -162,7 +163,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      boolean isRpcFetchResult,
+      boolean moreData,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -180,7 +181,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
-    this.isRpcFetchResult = isRpcFetchResult;
+    this.moreData = moreData;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -289,7 +290,7 @@ public class IoTDBRpcDataSet {
             "Cannot close dataset, because of network connection: {} ", e);
       }
     }
-    if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
+    if (moreData && fetchResults() && hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
@@ -309,8 +310,8 @@ public class IoTDBRpcDataSet {
     req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResultsV2(req);
-
       RpcUtils.verifySuccess(resp.getStatus());
+      moreData = resp.moreData;
       if (!resp.hasResultSet) {
         emptyResultSet = true;
         close();
