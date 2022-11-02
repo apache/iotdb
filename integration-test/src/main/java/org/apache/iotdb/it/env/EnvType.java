@@ -18,28 +18,13 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.itbase.env.BaseConfig;
+public enum EnvType {
+  Remote,
+  OneCopy,
+  Cluster1;
 
-public class ConfigFactory {
-  private static BaseConfig config;
-
-  public static BaseConfig getConfig() {
-    if (config == null) {
-      EnvType env = EnvType.getSystemEnvType();
-      switch (env) {
-        case OneCopy:
-        case Cluster1:
-          config = new MppConfig();
-          break;
-        case Remote:
-          config = new RemoteServerConfig();
-          break;
-        default:
-          System.out.println("Unknown env type: " + env);
-          System.exit(-1);
-          break;
-      }
-    }
-    return config;
+  public static EnvType getSystemEnvType() {
+    String envValue = System.getProperty("TestEnv", OneCopy.name());
+    return EnvType.valueOf(envValue);
   }
 }
