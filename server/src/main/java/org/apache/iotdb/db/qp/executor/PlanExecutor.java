@@ -2252,7 +2252,7 @@ public class PlanExecutor implements IPlanExecutor {
           continue;
         }
         for (PartialPath path : nodeNameList) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
             RowRecord record = new RowRecord(index++);
             Field field = new Field(TSDataType.TEXT);
             field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -2307,7 +2307,7 @@ public class PlanExecutor implements IPlanExecutor {
           continue;
         }
         for (PartialPath path : nodeNameList) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
             RowRecord record = new RowRecord(index++);
             Field roleF = new Field(TSDataType.TEXT);
             roleF.setBinaryV(new Binary(""));
@@ -2336,7 +2336,7 @@ public class PlanExecutor implements IPlanExecutor {
             dataSet.putRecord(record);
           }
           for (PartialPath path : nodeNameList) {
-            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
               RowRecord record = new RowRecord(index++);
               Field roleF = new Field(TSDataType.TEXT);
               roleF.setBinaryV(new Binary(roleN));

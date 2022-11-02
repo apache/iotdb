@@ -20,39 +20,24 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.itbase.env.BaseConfig;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class ConfigFactory {
   private static BaseConfig config;
 
   public static BaseConfig getConfig() {
     if (config == null) {
-      try {
-        switch (System.getProperty("TestEnv", "Standalone")) {
-          case "Standalone":
-            config =
-                (BaseConfig)
-                    Class.forName("org.apache.iotdb.db.it.env.StandaloneEnvConfig")
-                        .getDeclaredConstructor()
-                        .newInstance();
-            break;
-          case "LocalStandaloneOnMpp":
-          case "Cluster1":
-            config = new MppConfig();
-            break;
-          case "Remote":
-            config = new RemoteServerConfig();
-            break;
-          default:
-            throw new ClassNotFoundException("The Property class of TestEnv not found");
-        }
-      } catch (ClassNotFoundException
-          | IllegalAccessException
-          | InstantiationException
-          | NoSuchMethodException
-          | InvocationTargetException e) {
-        e.printStackTrace();
-        System.exit(-1);
+      EnvType env = EnvType.getSystemEnvType();
+      switch (env) {
+        case OneCopy:
+        case Cluster1:
+          config = new MppConfig();
+          break;
+        case Remote:
+          config = new RemoteServerConfig();
+          break;
+        default:
+          System.out.println("Unknown env type: " + env);
+          System.exit(-1);
+          break;
       }
     }
     return config;

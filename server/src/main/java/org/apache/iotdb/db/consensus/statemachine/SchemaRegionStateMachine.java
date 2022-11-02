@@ -86,7 +86,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       logger.error(e.getMessage());
       return null;
     }
-    logger.info(
+    logger.debug(
         "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());

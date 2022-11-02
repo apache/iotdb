@@ -22,30 +22,14 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
 import org.slf4j.Logger;
 
-import java.util.Collections;
-
-public class StandaloneOnMppEnv extends AbstractEnv {
+public class OneCopyEnv extends AbstractEnv {
 
   private static final Logger logger = IoTDBTestLogger.logger;
-
-  private void initEnvironment() {
-    DataNodeWrapper dataNodeWrapper =
-        new StandaloneDataNodeWrapper(
-            null,
-            super.getTestClassName(),
-            super.getTestMethodName(),
-            EnvUtils.searchAvailablePorts());
-    dataNodeWrapper.createDir();
-    dataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
-    dataNodeWrapper.start();
-    super.dataNodeWrapperList = Collections.singletonList(dataNodeWrapper);
-    super.testWorking();
-  }
 
   @Override
   public void initBeforeClass() throws InterruptedException {
     logger.debug("=======start init class=======");
-    initEnvironment();
+    super.initEnvironment(1, 1);
   }
 
   @Override
@@ -56,6 +40,6 @@ public class StandaloneOnMppEnv extends AbstractEnv {
   @Override
   public void initBeforeTest() {
     logger.debug("=======start init test=======");
-    initEnvironment();
+    initEnvironment(1, 1);
   }
 }

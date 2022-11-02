@@ -297,7 +297,7 @@ public class QueryExecution implements IQueryExecution {
   public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-    if (isQuery()) {
+    if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
@@ -363,7 +363,7 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          logger.info("[ResultHandleFinished]");
+          logger.debug("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
