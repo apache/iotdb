@@ -40,7 +40,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,7 +167,6 @@ public class PartitionRegionStateMachine
         LOGGER.error(
             "Can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
       }
-
     }
     return result;
   }
@@ -303,9 +301,7 @@ public class PartitionRegionStateMachine
     int logIndex = 0;
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
-        logFileId =
-            Integer.parseInt(
-                logFileName.substring(logFileName.lastIndexOf("_") + 1));
+        logFileId = Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_") + 1));
         if (logFileId >= logIndex) {
           File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
           SingleFileLogReader logReader;

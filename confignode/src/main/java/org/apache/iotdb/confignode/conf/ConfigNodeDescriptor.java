@@ -170,7 +170,7 @@ public class ConfigNodeDescriptor {
 
     conf.setConfigNodeConsensusProtocolClass(
         properties.getProperty(
-            "cn_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+            "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
 
     conf.setSchemaRegionConsensusProtocolClass(
         properties.getProperty(
@@ -321,12 +321,6 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_log_appender_buffer_size_max",
                 String.valueOf(conf.getSchemaRegionRatisConsensusLogAppenderBufferSize()))));
-
-    conf.setPartitionRegionStandAloneSnapshotTriggerThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "partition_region_standalone_snapshot_trigger_threshold",
-                String.valueOf(conf.getPartitionRegionStandAloneSnapshotTriggerThreshold()))));
 
     conf.setDataRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(

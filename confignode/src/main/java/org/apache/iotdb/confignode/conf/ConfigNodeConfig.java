@@ -153,9 +153,8 @@ public class ConfigNodeConfig {
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
    * written
    */
-  private long partitionRegionStandAloneSnapshotTriggerThreshold = 400000L;
-
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
+
   private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
   private long partitionRegionOneCopySnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
@@ -546,16 +545,6 @@ public class ConfigNodeConfig {
       long dataRegionRatisConsensusLogAppenderBufferSize) {
     this.dataRegionRatisConsensusLogAppenderBufferSize =
         dataRegionRatisConsensusLogAppenderBufferSize;
-  }
-
-  public long getPartitionRegionStandAloneSnapshotTriggerThreshold() {
-    return partitionRegionStandAloneSnapshotTriggerThreshold;
-  }
-
-  public void setPartitionRegionStandAloneSnapshotTriggerThreshold(
-      long partitionRegionStandAloneSnapshotTriggerThreshold) {
-    this.partitionRegionStandAloneSnapshotTriggerThreshold =
-        partitionRegionStandAloneSnapshotTriggerThreshold;
   }
 
   public long getDataRegionRatisSnapshotTriggerThreshold() {
