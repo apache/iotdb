@@ -28,6 +28,10 @@ import java.util.Map;
 
 public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
+  long LONG_SIZE = 24;
+
+  long HASHMAP_NODE_BASIC_SIZE = 14 + LONG_SIZE + LONG_SIZE;
+
   IDTable idTable;
 
   TsFileManager tsFileManager;
@@ -45,18 +49,19 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
       if (idTable.getDeviceEntry(entry.getKey()).putFlushTimeMap(timePartitionId, entry.getValue())
           == null) {
-        long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
         memCostForEachPartition.compute(
-            timePartitionId, (k, v) -> v == null ? memCost : v + memCost);
+            timePartitionId,
+            (k, v) -> v == null ? HASHMAP_NODE_BASIC_SIZE : v + HASHMAP_NODE_BASIC_SIZE);
       }
     }
   }
 
   @Override
   public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
-    if (idTable.getDeviceEntry(path).putFlushTimeMap(timePartitionId, time) != null) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
-      memCostForEachPartition.compute(timePartitionId, (k, v) -> v == null ? memCost : v + memCost);
+    if (idTable.getDeviceEntry(path).putFlushTimeMap(timePartitionId, time) == null) {
+      memCostForEachPartition.compute(
+          timePartitionId,
+          (k, v) -> v == null ? HASHMAP_NODE_BASIC_SIZE : v + HASHMAP_NODE_BASIC_SIZE);
     }
   }
 
@@ -74,6 +79,11 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void updateFlushedTime(long timePartitionId, String path, long time) {
+    if (idTable.getDeviceEntry(path).getFlushTime(timePartitionId) == null) {
+      memCostForEachPartition.compute(
+          timePartitionId,
+          (k, v) -> v == null ? HASHMAP_NODE_BASIC_SIZE : v + HASHMAP_NODE_BASIC_SIZE);
+    }
     idTable.getDeviceEntry(path).updateFlushTimeMap(timePartitionId, time);
   }
 
@@ -162,8 +172,8 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
       }
     }
 
-    long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * devicePath.length();
-    memCostForEachPartition.compute(partitionId, (k, v) -> v == null ? memCost : v + memCost);
+    memCostForEachPartition.compute(
+        partitionId, (k, v) -> v == null ? HASHMAP_NODE_BASIC_SIZE : v + HASHMAP_NODE_BASIC_SIZE);
     return Long.MIN_VALUE;
   }
 

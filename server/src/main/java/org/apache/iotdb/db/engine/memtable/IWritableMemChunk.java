@@ -140,4 +140,6 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getFirstPoint();
 
   long getLastPoint();
+
+  boolean isEmpty();
 }

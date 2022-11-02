@@ -269,6 +269,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public boolean isEmpty() {
+    return list.rowCount() == 0;
+  }
+
+  @Override
   public int delete(long lowerBound, long upperBound) {
     return list.delete(lowerBound, upperBound);
   }

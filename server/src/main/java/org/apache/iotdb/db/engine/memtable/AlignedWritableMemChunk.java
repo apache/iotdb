@@ -451,6 +451,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public boolean isEmpty() {
+    return list.rowCount() == 0;
+  }
+
+  @Override
   public int serializedSize() {
     int size = 0;
     size += Integer.BYTES;

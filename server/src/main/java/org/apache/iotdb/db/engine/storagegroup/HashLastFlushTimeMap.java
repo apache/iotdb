@@ -31,6 +31,23 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
 
   /**
+   * String basic total, 40B
+   *
+   * <ul>
+   *   <li>Object header: Mark Word + Classic Pointer, 12B
+   *   <li>char[] reference 4B
+   *   <li>hash code, 4B
+   *   <li>padding 4B
+   *   <li>char[] header + length 16B
+   * </ul>
+   */
+  long STRING_BASE_SIZE = 40;
+
+  long LONG_SIZE = 24;
+
+  long HASHMAP_NODE_BASIC_SIZE = 14 + STRING_BASE_SIZE + LONG_SIZE;
+
+  /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
    * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a
    * data point should be put into a sequential file or an unsequential file. Data of some device

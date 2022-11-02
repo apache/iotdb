@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,6 +43,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,9 +51,9 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 
 public class LastFlushTimeMapTest {
-  private PlanExecutor executor = new PlanExecutor();
+  protected PlanExecutor executor = new PlanExecutor();
 
-  private final Planner processor = new Planner();
+  protected final Planner processor = new Planner();
 
   public LastFlushTimeMapTest() throws QueryProcessException {}
 
@@ -151,17 +154,52 @@ public class LastFlushTimeMapTest {
   }
 
   @Test
-  public void testMemoryCalculation() {}
+  public void testMemoryCalculation()
+      throws QueryProcessException, IllegalPathException, StorageEngineException,
+          StorageGroupNotSetException {
+    insertRecord("root.sg.d1", 100L);
+    DataRegion storageGroupProcessor =
+        StorageEngine.getInstance().getProcessor(new PartialPath("root.sg"));
+    assertEquals(98l, storageGroupProcessor.getLastFlushTimeMap().getMemSize(0L));
+
+    storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0L, "root.sg.d100");
+    storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0L, "root.sg.d101");
+    assertEquals(302l, storageGroupProcessor.getLastFlushTimeMap().getMemSize(0L));
+
+    storageGroupProcessor.getLastFlushTimeMap().setOneDeviceFlushedTime(0L, "root.sg.d102", 0L);
+    HashMap<String, Long> updateMap = new HashMap<>();
+    updateMap.put("root.sg.d103", 1L);
+    updateMap.put("root.sg.d100", 1L);
+    storageGroupProcessor.getLastFlushTimeMap().setMultiDeviceFlushedTime(0L, updateMap);
+    storageGroupProcessor.getLastFlushTimeMap().updateFlushedTime(0L, "root.sg.d103", 2L);
+    storageGroupProcessor.getLastFlushTimeMap().updateFlushedTime(0L, "root.sg.d104", 2L);
+    assertEquals(608L, storageGroupProcessor.getLastFlushTimeMap().getMemSize(0L));
+  }
 
   @Test
-  public void testRecoverFlushTime() {}
+  public void testRecoverFlushTime()
+      throws QueryProcessException, IllegalPathException, StorageEngineException,
+          StorageGroupNotSetException {
+    insertData(100);
+    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
+    executor.processNonQuery(flushPlan);
+    DataRegion storageGroupProcessor =
+        StorageEngine.getInstance().getProcessor(new PartialPath("root.isp"));
+    assertEquals(
+        103L, storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0l, "root.isp.d1"));
+
+    storageGroupProcessor.getLastFlushTimeMap().removePartition(0l);
+    storageGroupProcessor.getLastFlushTimeMap().checkAndCreateFlushedTimePartition(0l);
+    assertEquals(
+        103L, storageGroupProcessor.getLastFlushTimeMap().getFlushedTime(0l, "root.isp.d1"));
+  }
 
   @After
   public void clean() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 
-  private void insertData(long initTime) throws IllegalPathException, QueryProcessException {
+  protected void insertData(long initTime) throws IllegalPathException, QueryProcessException {
 
     long[] times = new long[] {initTime, initTime + 1, initTime + 2, initTime + 3};
     List<Integer> dataTypes = new ArrayList<>();
@@ -198,7 +236,19 @@ public class LastFlushTimeMapTest {
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
 
-    PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
+  }
+
+  protected void insertRecord(String devicePath, long time)
+      throws IllegalPathException, QueryProcessException {
+    InsertRowPlan insertRowPlan =
+        new InsertRowPlan(
+            new PartialPath(devicePath),
+            time,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT32, TSDataType.INT32},
+            new String[] {"1", "1", "1"});
+
+    executor.insert(insertRowPlan);
   }
 }
