@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -193,6 +194,9 @@ public class ConfigManager implements IManager {
   /** CQ */
   private final CQManager cqManager;
 
+  /** Manage quotas for storage groups */
+  private final ClusterQuotaManager clusterQuotaManager;
+
   private final PartitionRegionStateMachine stateMachine;
 
   public ConfigManager() throws IOException {
@@ -206,6 +210,7 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
+    QuotaInfo quotaInfo = new QuotaInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -218,7 +223,8 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             syncInfo,
-            cqInfo);
+            cqInfo,
+            quotaInfo);
     this.stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -232,6 +238,7 @@ public class ConfigManager implements IManager {
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
+    this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
   }
 
   public void initConsensusManager() throws IOException {

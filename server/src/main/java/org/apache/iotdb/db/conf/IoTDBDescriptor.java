@@ -1005,6 +1005,10 @@ public class IoTDBDescriptor {
     if (!conf.isClusterMode()) {
       conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
     }
+
+    conf.setQuotaEnable(
+        Boolean.parseBoolean(
+            properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
   }
 
   private void loadAuthorCache(Properties properties) {
