@@ -191,7 +191,9 @@ public class CountMergeOperatorTest {
       Assert.assertTrue(countMergeOperator.isBlocked().isDone());
       while (countMergeOperator.hasNext()) {
         tsBlock = countMergeOperator.next();
-        assertFalse(countMergeOperator.hasNext());
+        if (tsBlock != null) {
+          assertFalse(countMergeOperator.hasNext());
+        }
       }
       assertNotNull(tsBlock);
       for (int i = 0; i < 10; i++) {
