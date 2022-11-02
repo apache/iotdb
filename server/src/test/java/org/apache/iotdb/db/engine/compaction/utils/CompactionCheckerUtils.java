@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -101,6 +102,9 @@ public class CompactionCheckerUtils {
    */
   public static Map<String, List<TimeValuePair>> readFiles(List<TsFileResource> tsFileResources)
       throws IOException, IllegalPathException {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     Map<String, Map<Long, TimeValuePair>> mapResult = new HashMap<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {

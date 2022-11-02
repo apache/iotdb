@@ -211,8 +211,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance().deleteFile(resource.getTsFile().length(), sequence);
       }
       // inner space compaction task has only one target file
-      TsFileMetricManager.getInstance()
-          .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+      if (targetTsFileList.size() > 0) {
+        // if the target tsfile is empty file, it will be removed
+        TsFileMetricManager.getInstance()
+            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+      }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(

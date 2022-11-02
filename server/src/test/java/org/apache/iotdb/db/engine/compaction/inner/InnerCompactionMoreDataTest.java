@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -31,8 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.utils.SchemaTestUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -101,43 +100,6 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
-    for (int i = 0; i < unseqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
-                  .concat(
-                      (10000 + i)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + (10000 + i)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile"));
-      TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      tsFileResource.updatePlanIndexes((long) (i + seqFileNum));
-      unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
-    }
-
-    File file =
-        new File(
-            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
-                .concat(
-                    unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
   @Override
@@ -202,10 +164,9 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     QueryContext context = new QueryContext();
     MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[2688].getMeasurementId());
+        new MeasurementPath(
+            new PartialPath(deviceIds[0], measurementSchemas[2688].getMeasurementId()),
+            measurementSchemas[2688].getType());
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
