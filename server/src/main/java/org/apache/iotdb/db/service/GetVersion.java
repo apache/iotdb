@@ -16,17 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.db.service;
 
-public class StandaloneDataNodeWrapper extends DataNodeWrapper {
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-  public StandaloneDataNodeWrapper(
-      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
-    super(targetConfigNode, testClassName, testMethodName, portList);
-  }
-
-  @Override
-  protected String mainClassName() {
-    return "org.apache.iotdb.db.service.NewIoTDB";
+public class GetVersion {
+  public static void main(String[] args) {
+    System.out.println(IoTDBDescriptor.getInstance().getConfig().getIoTDBVersion());
   }
 }

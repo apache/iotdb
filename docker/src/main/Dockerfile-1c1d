@@ -35,21 +35,12 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y \
 RUN dos2unix /iotdb/sbin/start-1c1d.sh
+RUN dos2unix /iotdb/sbin/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
 RUN dos2unix /iotdb/sbin/start-datanode.sh
 RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8086
-EXPOSE 8181
-EXPOSE 22278
-EXPOSE 22277
-EXPOSE 8777
-EXPOSE 9003
-EXPOSE 40010
-EXPOSE 50010
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"

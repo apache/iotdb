@@ -157,6 +157,7 @@ public class ConfigNodeConfig {
 
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
   private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
+  private long partitionRegionOneCopySnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -170,7 +171,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
-  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionOneCopyLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -630,6 +631,16 @@ public class ConfigNodeConfig {
         partitionRegionRatisSnapshotTriggerThreshold;
   }
 
+  public long getPartitionRegionOneCopySnapshotTriggerThreshold() {
+    return partitionRegionOneCopySnapshotTriggerThreshold;
+  }
+
+  public void setPartitionRegionOneCopySnapshotTriggerThreshold(
+      long partitionRegionOneCopySnapshotTriggerThreshold) {
+    this.partitionRegionOneCopySnapshotTriggerThreshold =
+        partitionRegionOneCopySnapshotTriggerThreshold;
+  }
+
   public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
     return partitionRegionRatisLogUnsafeFlushEnable;
   }
@@ -712,13 +723,13 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
-  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
-    return partitionRegionStandAloneLogSegmentSizeMax;
+  public long getPartitionRegionOneCopyLogSegmentSizeMax() {
+    return partitionRegionOneCopyLogSegmentSizeMax;
   }
 
-  public void setPartitionRegionStandAloneLogSegmentSizeMax(
-      long partitionRegionStandAloneLogSegmentSizeMax) {
-    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
+  public void setPartitionRegionOneCopyLogSegmentSizeMax(
+      long partitionRegionOneCopyLogSegmentSizeMax) {
+    this.partitionRegionOneCopyLogSegmentSizeMax = partitionRegionOneCopyLogSegmentSizeMax;
   }
 
   public long getSchemaRegionRatisGrpcFlowControlWindow() {

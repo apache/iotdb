@@ -22,9 +22,11 @@ echo ---------------------
 echo Starting Parsing the IoTDB Mlog or Snapshot
 echo ---------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
-fi
+source "$(dirname "$0")/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+eval set -- "$VARS"
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

@@ -52,6 +52,9 @@ public class ConfigNodeConstant {
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
 
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
+
   private ConfigNodeConstant() {
     // empty constructor
   }
