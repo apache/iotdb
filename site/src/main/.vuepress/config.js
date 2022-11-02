@@ -899,7 +899,7 @@ var config = {
 						children: [
 							['Write-Data/Write-Data','CLI Write'],
 							['Write-Data/Session','Native API Write'],
-							['Write-Data/REST API','REST API'],
+							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
 							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
 							['Write-Data/CSV-Tool','CSV Tool'],
@@ -1834,10 +1834,10 @@ var config = {
 						title: '数据写入（更新）',
 						sidebarDepth: 1,
 						children: [
-							['Write-Data/Write-Data','CLI工具写入'],
+							['Write-Data/Write-Data','CLI 工具写入'],
 							['Write-Data/Session','原生接口写入'],
-							['Write-Data/REST API','REST服务'],
-							['Write-Data/MQTT','CMQTT写入'],
+							['Write-Data/REST-API','REST 服务'],
+							['Write-Data/MQTT','MQTT写入'],
 							['Write-Data/Load-External-Tsfile','加载 TsFile'],
 							['Write-Data/CSV-Tool','导入导出 CSV']
 						]

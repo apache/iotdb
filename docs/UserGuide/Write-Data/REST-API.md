@@ -19,6 +19,6 @@
 
 -->
 
-# MQTT Write
+# REST API Write
 
-Refer to [Built-in MQTT Service](../API/Programming-MQTT.md#built-in-mqtt-service)
+参考[insertTablet](../API/RestService.md#inserttablet)
