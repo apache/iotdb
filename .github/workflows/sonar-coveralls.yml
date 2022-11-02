@@ -46,19 +46,19 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: IT/UT Test
-        # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean compile post-integration-test -Dcluster.test.skip=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
-      - name: Code Coverage (Coveralls)
-        if: ${{ success() }}
-        run: |
-          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
-          mvn -B coveralls:report \
-          -DserviceName=travis_ci \
-          -Dbranch=$BRANCH_NAME \
-          -DpullRequest=$PR_NUMBER \
-          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage -P '!testcontainer'
+#      - name: IT/UT Test
+#        # we do not compile client-cpp for saving time, it is tested in client.yml
+#        run: mvn -B clean compile post-integration-test -Dcluster.test.skip=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
+#      - name: Code Coverage (Coveralls)
+#        if: ${{ success() }}
+#        run: |
+#          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+#          mvn -B coveralls:report \
+#          -DserviceName=travis_ci \
+#          -Dbranch=$BRANCH_NAME \
+#          -DpullRequest=$PR_NUMBER \
+#          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
+#          -Pcode-coverage -P '!testcontainer'
       - name: SonarCloud Report
         if: ${{ success() }}
         env:

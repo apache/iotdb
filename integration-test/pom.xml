@@ -209,11 +209,11 @@
     </build>
     <profiles>
         <profile>
-            <id>OneCopyIT</id>
+            <id>SimpleIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>OneCopy</integrationTest.testEnv>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>

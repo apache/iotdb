@@ -22,7 +22,7 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
 import org.slf4j.Logger;
 
-public class OneCopyEnv extends AbstractEnv {
+public class SimpleEnv extends AbstractEnv {
 
   private static final Logger logger = IoTDBTestLogger.logger;
 
