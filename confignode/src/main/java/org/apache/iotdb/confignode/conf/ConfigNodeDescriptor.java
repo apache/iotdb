@@ -334,6 +334,12 @@ public class ConfigNodeDescriptor {
                 "partition_region_ratis_snapshot_trigger_threshold",
                 String.valueOf(conf.getPartitionRegionRatisSnapshotTriggerThreshold()))));
 
+    conf.setPartitionRegionOneCopySnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_one_copy_snapshot_trigger_threshold",
+                String.valueOf(conf.getPartitionRegionOneCopySnapshotTriggerThreshold()))));
+
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
@@ -361,26 +367,26 @@ public class ConfigNodeDescriptor {
     conf.setDataRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "data_region_ratis_log_segment_size_max",
+                "data_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getDataRegionRatisLogSegmentSizeMax()))));
 
     conf.setPartitionRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_log_segment_size_max",
+                "partition_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getPartitionRegionRatisLogSegmentSizeMax()))));
 
     conf.setSchemaRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "schema_region_ratis_log_segment_size_max",
+                "schema_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
-    conf.setPartitionRegionStandAloneLogSegmentSizeMax(
+    conf.setPartitionRegionOneCopyLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_standalone_log_segment_size_max",
-                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
+                "partition_region_one_copy_log_segment_size_max_in_byte",
+                String.valueOf(conf.getPartitionRegionOneCopyLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
