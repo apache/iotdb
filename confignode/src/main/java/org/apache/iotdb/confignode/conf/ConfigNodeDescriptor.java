@@ -333,6 +333,12 @@ public class ConfigNodeDescriptor {
                 "partition_region_ratis_snapshot_trigger_threshold",
                 String.valueOf(conf.getPartitionRegionRatisSnapshotTriggerThreshold()))));
 
+    conf.setPartitionRegionStandAloneSnapshotTriggerThreshold(
+            Long.parseLong(
+                    properties.getProperty(
+                            "partition_region_standalone_snapshot_trigger_threshold",
+                            String.valueOf(conf.getPartitionRegionStandAloneSnapshotTriggerThreshold()))));
+
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
