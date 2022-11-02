@@ -100,7 +100,7 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     return SchemaTsBlockUtil.transferSchemaResultToTsBlock(
-        schemaReader.next(), outputDataTypes, this::setColumns);
+        schemaReader, outputDataTypes, this::setColumns);
   }
 
   @Override

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -55,10 +57,17 @@ public class SchemaTsBlockUtil {
     return result;
   }
 
-  public static <T> TsBlock transferSchemaResultToTsBlock(
-      T iSchemaInfo, List<TSDataType> outputDataTypes, BiConsumer<T, TsBlockBuilder> consumer) {
+  public static <T extends ISchemaInfo> TsBlock transferSchemaResultToTsBlock(
+      ISchemaReader<T> iSchemaReader,
+      List<TSDataType> outputDataTypes,
+      BiConsumer<T, TsBlockBuilder> consumer) {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    consumer.accept(iSchemaInfo, tsBlockBuilder);
+    while (iSchemaReader.hasNext()) {
+      consumer.accept(iSchemaReader.next(), tsBlockBuilder);
+      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+        return tsBlockBuilder.build();
+      }
+    }
     return tsBlockBuilder.build();
   }
 }
