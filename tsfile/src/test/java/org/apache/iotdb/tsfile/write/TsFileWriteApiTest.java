@@ -443,52 +443,56 @@ public class TsFileWriteApiTest {
 
   /** Write an empty page and then write a nonEmpty page. */
   @Test
-  public void writeAlignedTimeseriesWithEmptyPage() throws IOException, WriteProcessException {
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
-    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      registerAlignedTimeseries(tsFileWriter);
+  public void writeAlignedTimeseriesWithEmptyPage() {
+    try {
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+        registerAlignedTimeseries(tsFileWriter);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
-      // example1
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, true);
+        List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+        // example1
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+        TsFileGeneratorUtils.writeWithTsRecord(
+            tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, true);
 
-      // example2
-      writeMeasurementScheams.clear();
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 30, 1000, 500, true);
+        // example2
+        writeMeasurementScheams.clear();
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+        TsFileGeneratorUtils.writeWithTsRecord(
+            tsFileWriter, deviceId, writeMeasurementScheams, 30, 1000, 500, true);
 
-      // example3
-      writeMeasurementScheams.clear();
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 60, 300000, 50, true);
-    }
-
-    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
-    for (int i = 0; i < 3; i++) {
-      QueryExpression queryExpression =
-          QueryExpression.create(
-              Collections.singletonList(
-                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId())),
-              null);
-      QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
-
-      int cnt = 0;
-      while (queryDataSet.hasNext()) {
-        cnt++;
-        queryDataSet.next();
+        // example3
+        writeMeasurementScheams.clear();
+        writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+        TsFileGeneratorUtils.writeWithTsRecord(
+            tsFileWriter, deviceId, writeMeasurementScheams, 60, 300000, 50, true);
       }
-      if (i < 2) {
-        Assert.assertEquals(60, cnt);
-      } else {
-        Assert.assertEquals(90, cnt);
+
+      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+      for (int i = 0; i < 3; i++) {
+        QueryExpression queryExpression =
+            QueryExpression.create(
+                Collections.singletonList(
+                    new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId())),
+                null);
+        QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
+
+        int cnt = 0;
+        while (queryDataSet.hasNext()) {
+          cnt++;
+          queryDataSet.next();
+        }
+        if (i < 2) {
+          Assert.assertEquals(60, cnt);
+        } else {
+          Assert.assertEquals(90, cnt);
+        }
       }
+    } catch (Throwable throwable) {
+      throwable.printStackTrace();
     }
   }
 
