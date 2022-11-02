@@ -29,17 +29,19 @@ SQL 语法：
 select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <whereClause> [ORDER BY TIMESERIES (DESC | ASC)?]
 ```
 
-其含义是：查询时间序列 prefixPath.path 中最近时间戳的数据。
+其含义是： 查询时间序列 prefixPath.path 中最近时间戳的数据。
 
-`whereClause` 中当前只支持时间过滤条件，任何其他过滤条件都将会返回异常。当缓存的最新点不满足过滤条件时，IoTDB 需要从存储中获取结果，此时性能将会有所下降。
+- `whereClause` 中当前只支持时间过滤条件，任何其他过滤条件都将会返回异常。当缓存的最新点不满足过滤条件时，IoTDB 需要从存储中获取结果，此时性能将会有所下降。
 
-结果集为四列的结构：
+- 结果集为四列的结构：
 
-```
-+----+----------+-----+--------+
-|Time|timeseries|value|dataType|
-+----+----------+-----+--------+
-```
+    ```
+    +----+----------+-----+--------+
+    |Time|timeseries|value|dataType|
+    +----+----------+-----+--------+
+    ```
+
+- 可以使用 `ORDER BY TIMESERIES (DESC | ASC)` 指定结果集按照序列名降序/升序排列。
 
 **示例 1：** 查询 root.ln.wf01.wt01.status 的最新数据点
 
@@ -67,8 +69,6 @@ IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017
 Total line number = 2
 It costs 0.002s
 ```
-
-## 将结果集根据序列名进行排序
 
 **示例 3：** 查询 root.ln.wf01.wt01 下所有序列的最新数据点，并按照序列名降序排列。
 
