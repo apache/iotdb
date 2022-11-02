@@ -68,11 +68,12 @@ public class PartitionRegionStateMachine
   private int startIndex;
   private int endIndex;
 
-  private static final String fileDir =
+  private static final String currentFileDir =
       CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
-  private static final String fileTempPath = fileDir + File.separator + "log_inprogress_";
-  private static final String filePath = fileDir + File.separator + "log_";
-  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionOneCopyLogSegmentSizeMax();
+  private static final String progressFilePath =
+      currentFileDir + File.separator + "log_inprogress_";
+  private static final String filePath = currentFileDir + File.separator + "log_";
+  private static final long LOG_FILE_MAX_SIZE = CONF.getPartitionRegionOneCopyLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -127,21 +128,22 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+
     if (ConsensusFactory.ONE_COPY_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      if (logFile.length() > FILE_MAX_SIZE) {
+      if (logFile.length() > LOG_FILE_MAX_SIZE) {
         try {
           logWriter.force();
-          File fileDir = new File(filePath + startIndex + "_" + endIndex);
-          Files.move(logFile.toPath(), fileDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+          File completedFilePath = new File(filePath + startIndex + "_" + endIndex);
+          Files.move(logFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
-          LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
+          LOGGER.error("Can't force logWriter for ConfigNode OneCopy mode", e);
         }
         for (int retry = 0; retry < 5; retry++) {
           try {
             logWriter.close();
           } catch (IOException e) {
             LOGGER.warn(
-                "Can't close StandAloneLog for ConfigNode Standalone mode, filePath: {}, retry: {}",
+                "Can't close StandAloneLog for ConfigNode OneCopy mode, filePath: {}, retry: {}",
                 logFile.getAbsolutePath(),
                 retry);
             try {
@@ -164,13 +166,12 @@ public class PartitionRegionStateMachine
         buffer.position(buffer.limit());
         logWriter.write(buffer);
         endIndex = endIndex + 1;
-        File logFileTmp = new File(fileTempPath + endIndex);
-        Files.move(logFile.toPath(), logFileTmp.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        logFile = logFileTmp;
+        File tmpLogFile = new File(progressFilePath + endIndex);
+        Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        logFile = tmpLogFile;
         logWriter = new LogWriter(logFile, false);
       } catch (IOException e) {
-        LOGGER.error(
-            "can't serialize current ConfigPhysicalPlan for ConfigNode Standalone mode", e);
+        LOGGER.error("Can't serialize current ConfigPhysicalPlan for ConfigNode OneCopy mode", e);
       }
     }
     return result;
@@ -300,14 +301,12 @@ public class PartitionRegionStateMachine
   }
 
   private void initStandAloneConfigNode() {
-    File dir = new File(fileDir);
+    File dir = new File(currentFileDir);
     dir.mkdirs();
-    String[] list = new File(fileDir).list();
+    String[] list = new File(currentFileDir).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
-        int tmp =
-            Integer.parseInt(
-                logFileName.substring(logFileName.lastIndexOf("_") + 1, logFileName.length()));
+        int tmp = Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_") + 1));
         if (logFileName.startsWith("log_inprogress")) {
           endIndex = tmp;
         } else {
@@ -315,13 +314,14 @@ public class PartitionRegionStateMachine
             startIndex = tmp;
           }
         }
-        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+        File logFile =
+            SystemFileFactory.INSTANCE.getFile(currentFileDir + File.separator + logFileName);
         SingleFileLogReader logReader;
         try {
           logReader = new SingleFileLogReader(logFile);
         } catch (FileNotFoundException e) {
           LOGGER.error(
-              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              "InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
               logFile.getAbsolutePath(),
               e);
           continue;
@@ -346,18 +346,14 @@ public class PartitionRegionStateMachine
   }
 
   private void createLogFile(int endIndex) {
-    logFile = SystemFileFactory.INSTANCE.getFile(fileTempPath + endIndex);
+    logFile = SystemFileFactory.INSTANCE.getFile(progressFilePath + endIndex);
     try {
       logFile.createNewFile();
       logWriter = new LogWriter(logFile, false);
-      LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-    } catch (IOException e) {
-      LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException ignored) {
-        // Ignore and retry
-      }
+      LOGGER.info("Create ConfigNode OneCopyLogFile: {}", logFile.getAbsolutePath());
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Create ConfigNode OneCopyLogFile failed, filePath: {}", logFile.getAbsolutePath(), e);
     }
   }
 }
