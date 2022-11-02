@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -50,14 +49,14 @@ public class IoTDBSettleIT {
   @BeforeClass
   public static void setUp() throws Exception {
     initCreateSQLStatement();
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
     executeSql();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @Test
