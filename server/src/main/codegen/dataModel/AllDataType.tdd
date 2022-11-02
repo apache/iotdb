@@ -1,0 +1,28 @@
+{
+  "types": [
+      {
+        "dataType": "boolean",
+        "column": "BooleanColumn"
+      }
+    ,{
+        "dataType": "int",
+        "column": "IntColumn"
+      }
+    ,{
+        "dataType": "long",
+        "column": "LongColumn"
+     }
+    ,{
+         "dataType": "float",
+         "column": "FloatColumn"
+     }
+   ,{
+        "dataType": "double",
+        "column": "DoubleColumn"
+    }
+    ,{
+         "dataType": "Binary",
+         "column": "BinaryColumn"
+     }
+  ]
+}

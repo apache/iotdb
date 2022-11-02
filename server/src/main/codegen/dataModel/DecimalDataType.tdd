@@ -1,0 +1,20 @@
+{
+  "types": [
+      {
+        "dataType": "int",
+        "column": "IntColumn"
+      }
+    ,{
+        "dataType": "long",
+        "column": "LongColumn"
+      }
+    ,{
+        "dataType": "float",
+        "column": "FloatColumn"
+     }
+    ,{
+         "dataType": "double",
+         "column": "DoubleColumn"
+     }
+ ]
+}
