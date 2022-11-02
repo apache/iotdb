@@ -49,7 +49,6 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -779,7 +778,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             preDeletedNum++;
             measurementMNode.setPreDeleted(true);
             mtree.updateMNode(measurementMNode);
-            writeToMLog(SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+            writeToMLog(
+                SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
                     measurementMNode.getPartialPath()));
           } catch (IOException e) {
             throw new MetadataException(e);
@@ -802,8 +802,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           measurementMNode.setPreDeleted(false);
           mtree.updateMNode(measurementMNode);
           writeToMLog(
-                SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
-                    measurementMNode.getPartialPath()));
+              SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
+                  measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
         } finally {
@@ -832,7 +832,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
-                SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
+              SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -882,8 +882,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
         }
-        writeToMLog(
-            SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
+        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -962,11 +961,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
     IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     mtree.unPinMNode(node);
-      try {
-        writeToMLog(plan);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(plan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
   // endregion
 
@@ -1003,7 +1002,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+    return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
   }
 
   @Override
@@ -1444,8 +1443,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     try {
-      writeToMLog(
-        SchemaRegionPlanFactory.getChangeAliasPlan(path, alias));
+      writeToMLog(SchemaRegionPlanFactory.getChangeAliasPlan(path, alias));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -2012,7 +2010,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
     try {
       writeToMLog(SchemaRegionPlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
     } catch (IOException e) {
@@ -2024,9 +2023,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
     try {
-      writeToMLog(SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
+      writeToMLog(
+          SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -2034,7 +2035,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
     try {
       writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
     } catch (IOException e) {
@@ -2083,11 +2085,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());
     }
-      try {
-        writeToMLog(SchemaRegionPlanFactory.getActivateTemplatePlan(node.getPartialPath()));
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(SchemaRegionPlanFactory.getActivateTemplatePlan(node.getPartialPath()));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
     return mountedMNode;
   }
   // endregion

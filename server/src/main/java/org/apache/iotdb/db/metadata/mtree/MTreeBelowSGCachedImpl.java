@@ -1034,7 +1034,11 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.setTemplateMap(templateMap);
+    counter.traverse();
+    return counter.getCount();
   }
 
   /**
@@ -1880,24 +1884,22 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   @Override
   public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
-          throws MetadataException {
+      throws MetadataException {
     CounterTraverser counterTraverser =
-            new CounterTraverser(storageGroupMNode, pathPattern, store) {
-              @Override
-              protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-                      throws MetadataException {
-                return false;
-              }
+        new CounterTraverser(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+            return false;
+          }
 
-              @Override
-              protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-                      throws MetadataException {
-                if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
-                  count++;
-                }
-                return false;
-              }
-            };
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
+              count++;
+            }
+            return false;
+          }
+        };
     counterTraverser.traverse();
     return counterTraverser.getCount();
   }
