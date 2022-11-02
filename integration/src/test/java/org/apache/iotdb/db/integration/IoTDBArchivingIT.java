@@ -249,7 +249,7 @@ public class IoTDBArchivingIT {
   private void waitUntilAllFinished() throws InterruptedException {
     for (ArchivingTask task : ArchivingManager.getInstance().getArchivingTasks()) {
       int cnt = 0;
-      while (task.getStatus() != ArchivingTask.ArchivingTaskStatus.FINISHED) {
+      while (task.isActive()) {
         Thread.sleep(ARCHIVING_CHECK_TIME * 10);
         cnt++;
         if (cnt >= 50) {
