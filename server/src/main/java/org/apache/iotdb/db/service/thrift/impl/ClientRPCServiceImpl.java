@@ -414,7 +414,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (queryExecution == null) {
         resp.setHasResultSet(false);
-        resp.setMoreData(true);
+        resp.setMoreData(false);
         return resp;
       }
 

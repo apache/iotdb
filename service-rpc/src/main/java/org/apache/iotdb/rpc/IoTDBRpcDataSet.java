@@ -53,7 +53,6 @@ public class IoTDBRpcDataSet {
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
   public final long timeout;
-  public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
 
@@ -154,7 +153,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public IoTDBRpcDataSet(
@@ -246,7 +244,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -281,15 +278,7 @@ public class IoTDBRpcDataSet {
       constructOneRow();
       return true;
     }
-    if (emptyResultSet) {
-      try {
-        close();
-        return false;
-      } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
-      }
-    }
+
     if (moreData && fetchResults() && hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
@@ -313,7 +302,6 @@ public class IoTDBRpcDataSet {
       RpcUtils.verifySuccess(resp.getStatus());
       moreData = resp.moreData;
       if (!resp.hasResultSet) {
-        emptyResultSet = true;
         close();
       } else {
         queryResult = resp.getQueryResult();
@@ -324,7 +312,6 @@ public class IoTDBRpcDataSet {
         }
         this.tsBlockSize = 0;
         this.tsBlockIndex = -1;
-        this.emptyResultSet = this.queryResultSize == 0;
       }
       return resp.hasResultSet;
     } catch (TException e) {
