@@ -1633,6 +1633,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return null;
   }
 
+  @Override
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
@@ -1697,6 +1698,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     entityMNode.setSchemaTemplateId(templateId);
   }
 
+  @Override
   public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     Set<String> result = new HashSet<>();
@@ -1704,7 +1706,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<Set<String>> collector =
         new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (node.getSchemaTemplateId() == templateId) {
               result.add(node.getFullPath());
             }
@@ -1720,7 +1722,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<List<IEntityMNode>> collector =
         new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (templateIdList.contains(node.getSchemaTemplateId())) {
               result.add(node);
             }
@@ -1736,7 +1738,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<List<IEntityMNode>> collector =
         new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (templateIdList.contains(node.getSchemaTemplateId())
                 && node.isPreDeactivateTemplate()) {
               result.add(node);
@@ -1747,6 +1749,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
+  @Override
   public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     CounterTraverser counterTraverser =

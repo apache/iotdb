@@ -392,4 +392,12 @@ public interface IMTreeBelowSG {
    * @return null if no template has been set on path
    */
   String getTemplateOnPath(PartialPath path) throws MetadataException;
+
+  void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
+
+  List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException;
+
+  int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+          throws MetadataException;
 }
