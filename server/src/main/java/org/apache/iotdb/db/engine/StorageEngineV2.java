@@ -129,7 +129,8 @@ public class StorageEngineV2 implements IService {
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
-  private ExecutorService recoveryThreadPool;
+  /** used to do short-lived asynchronous tasks */
+  private ExecutorService cachedThreadPool;
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -201,12 +202,12 @@ public class StorageEngineV2 implements IService {
 
   public void recover() {
     setAllSgReady(false);
-    recoveryThreadPool =
+    cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
+            ThreadName.STORAGE_ENGINE_CACHED_SERVICE.getName());
 
     List<Future<Void>> futures = new LinkedList<>();
-    asyncRecover(recoveryThreadPool, futures);
+    asyncRecover(futures);
 
     // wait until wal is recovered
     if (!config.isClusterMode()
@@ -222,24 +223,13 @@ public class StorageEngineV2 implements IService {
     Thread recoverEndTrigger =
         new Thread(
             () -> {
-              for (Future<Void> future : futures) {
-                try {
-                  future.get();
-                } catch (ExecutionException e) {
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                }
-              }
-              recoveryThreadPool.shutdown();
+              checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
             });
     recoverEndTrigger.start();
   }
 
-  private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
-
+  private void asyncRecover(List<Future<Void>> futures) {
     Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
     localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
@@ -265,7 +255,7 @@ public class StorageEngineV2 implements IService {
                   recoverDataRegionNum);
               return null;
             };
-        futures.add(pool.submit(recoverDataRegionTask));
+        futures.add(cachedThreadPool.submit(recoverDataRegionTask));
       }
     }
   }
@@ -401,7 +391,7 @@ public class StorageEngineV2 implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    recoveryThreadPool.shutdownNow();
+    cachedThreadPool.shutdownNow();
     dataRegionMap.clear();
   }
 
@@ -419,7 +409,7 @@ public class StorageEngineV2 implements IService {
     shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    recoveryThreadPool.shutdownNow();
+    cachedThreadPool.shutdownNow();
     dataRegionMap.clear();
   }
 
@@ -431,19 +421,6 @@ public class StorageEngineV2 implements IService {
       } catch (InterruptedException e) {
         logger.warn("{} still doesn't exit after 30s", poolName);
         Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
-      throws ShutdownException {
-    if (pool != null) {
-      pool.shutdownNow();
-      try {
-        pool.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 30s", poolName);
-        throw new ShutdownException(e);
       }
     }
   }
@@ -493,34 +470,73 @@ public class StorageEngineV2 implements IService {
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        dataRegion.syncCloseAllWorkingTsFileProcessors();
+        tasks.add(
+            cachedThreadPool.submit(
+                () -> {
+                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  return null;
+                }));
       }
     }
+    checkResults(tasks, "Failed to sync close processor.");
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start force closing all storage group processor");
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        dataRegion.forceCloseAllWorkingTsFileProcessors();
+        tasks.add(
+            cachedThreadPool.submit(
+                () -> {
+                  dataRegion.forceCloseAllWorkingTsFileProcessors();
+                  return null;
+                }));
       }
     }
+    checkResults(tasks, "Failed to force close processor.");
   }
 
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
-            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+            tasks.add(
+                cachedThreadPool.submit(
+                    () -> {
+                      dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+                      return null;
+                    }));
           }
         } else {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+            tasks.add(
+                cachedThreadPool.submit(
+                    () -> {
+                      dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+                      return null;
+                    }));
           }
         }
+      }
+    }
+    checkResults(tasks, "Failed to close storage group processor.");
+  }
+
+  private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
+    for (Future<V> task : tasks) {
+      try {
+        task.get();
+      } catch (ExecutionException e) {
+        throw new StorageEngineFailureException(errorMsg, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException(errorMsg, e);
       }
     }
   }
