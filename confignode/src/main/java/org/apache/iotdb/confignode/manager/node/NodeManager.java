@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -633,6 +635,14 @@ public class NodeManager {
             DataNodeRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
+  }
+
+  public TSStatus setDataNodeStatus(TSetDataNodeStatusReq setDataNodeStatusReq) {
+    return SyncDataNodeClientPool.getInstance()
+        .sendSyncRequestToDataNodeWithRetry(
+            setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
+            setDataNodeStatusReq.getStatus(),
+            DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   /** Start the heartbeat service */
