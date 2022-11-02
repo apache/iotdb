@@ -383,11 +383,9 @@ public class QueryDataSetUtils {
       IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
     int rowCount = 0;
     List<ByteBuffer> res = new ArrayList<>();
-    boolean finished = false;
     while (rowCount < fetchSize) {
       Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
       if (!optionalByteBuffer.isPresent()) {
-        finished = true;
         break;
       }
       ByteBuffer byteBuffer = optionalByteBuffer.get();
@@ -403,7 +401,7 @@ public class QueryDataSetUtils {
       }
       rowCount += positionCount;
     }
-    return new Pair<>(res, finished);
+    return new Pair<>(res, !queryExecution.hasNextResult());
   }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
