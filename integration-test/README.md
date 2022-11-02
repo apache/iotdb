@@ -25,12 +25,12 @@ Integration tests for IoTDB are in this module.
 
 Now integration testing supports two kinds of architecture.
 
-- `OneCopy`: A cluster with 1 config node and 1 data node.
+- `Simple`: A cluster with 1 config node and 1 data node.
 - `Cluster1`: A cluster with 1 config node and 3 data nodes.
 
 ## Integration Testing with One Copy Mode
 
-Integration testing in `OneCopy` mode can be run with both maven and IDEs like IntelliJ easily.
+Integration testing in `Simple` mode can be run with both maven and IDEs like IntelliJ easily.
 
 The maven command is:
 ```
@@ -39,24 +39,15 @@ mvn clean verify -DskipUTs -pl integration-test -am
 
 Notice that, this above maven command only run IT.
 
-And if you want to run IT in the IDE like IntelliJ, you need to achieve the effect as the `OneCopyIT` profile in maven, which has already been set by default. Follow Steps 1-4 to achieve it.
+And if you want to run IT in the IDE like IntelliJ, when you run the test for the first time, or when you change the code of the module that the integration test module depends on, you may need to use the following command to generate `integration-test/target/template-node` for the node to be tested.
 
-- Step 0. Optionally, when you run the test for the first time, or when you change the code of the module that the integration test module depends on, you may need to use the following command to generate `integration-test/target/template-node` for the node to be tested.   
-  
 ```
 mvn clean package -DskipTests -pl integration-test -am
 ```
 
-- Step 1. Run(Menu) -> Edit Configurations...  
-  ![Run(Menu)](https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/Run(Menu).png?raw=true)
+After doing this, you can run any one just by clicking the test case and pressing `Run`, like running normal cases :).
 
-
-- Step 2. Add New Configuration -> JUnit  
-  ![Add New Configuration](https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/Add_New_Configuration.png?raw=true)
-
-
-- Step 3. Input some fields as the following picture  
-  ![OneCopy Category](https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/OneCopy_Category.png?raw=true)
+![Simple Run](https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/OneCopy_Category.png?raw=true)
 
 ## Integration Testing with Cluster Mode
 
@@ -68,15 +59,15 @@ The maven command is:
 mvn clean verify -DskipUTs -pl integration-test -am -PClusterIT
 ```
 
-If you want to run IT in `Cluster1` mode in the IDE like IntelliJ, you need to achieve the effect as the `ClusterIT` profile in maven explicitly. Follow Steps 1-4 to achieve it, which are almost the same as `OneCopy`.
+If you want to run IT in `Cluster1` mode in the IDE like IntelliJ, you need to achieve the effect as the `ClusterIT` profile in maven explicitly. Follow Steps 1-4 to achieve it.
 
 
 - Step 0. Optionally, when you run the test for the first time, or when you change the code of the module that the integration test module depends on, you may need to use the following command to generate `integration-test/target/template-node` for nodes of the pseudo cluster.
   
-  It has the same effect as step 0 of the `OneCopy` counterpart; these two commands' generations are the same content.
-```
-mvn clean package -DskipTests -pl integration-test
-```
+  It has the same effect as the `Simple` counterpart; these two commands' generations are the same content.
+  ```
+  mvn clean package -DskipTests -pl integration-test
+  ```
 
 - Step 1. Run(Menu) -> Edit Configurations...  
   ![Run(Menu)](https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/Run(Menu).png?raw=true)
