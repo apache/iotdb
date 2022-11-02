@@ -164,12 +164,12 @@ The global configuration of cluster is in ConfigNode.
 
 * data\_region\_consensus\_protocol\_class
 
-|Name| data\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|Description| Consensus protocol of data replicas, OneCopyConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|Type| String |
-|Default| org.apache.iotdb.consensus.onecopy.OneCopyConsensus |
-|Effective|Only allowed to be modified in first start up|
+|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
+|Type| String                                                                                                                                                       |
+|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
+|Effective| Only allowed to be modified in first start up                                                                                                                |
 
 * schema\_replication\_factor
 
@@ -183,12 +183,12 @@ The global configuration of cluster is in ConfigNode.
 
 * schema\_region\_consensus\_protocol\_class
 
-|Name| schema\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|Description| Consensus protocol of schema replicas, OneCopyConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
-|Type| String |
-|Default| org.apache.iotdb.consensus.onecopy.OneCopyConsensus |
-|Effective|Only allowed to be modified in first start up|
+|Name| schema\_region\_consensus\_protocol\_class                                                                                                  |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
+|Type| String                                                                                                                                      |
+|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                               |
 
 
 * region\_allocate\_strategy

@@ -35,8 +35,8 @@ public class EnvFactory {
         logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
         EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
-          case OneCopy:
-            env = new OneCopyEnv();
+          case Simple:
+            env = new SimpleEnv();
             break;
           case Cluster1:
             env = new Cluster1Env();

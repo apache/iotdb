@@ -22,16 +22,13 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  ClusterIT:
+  Simple:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest, windows-latest ]
-        include:
-          - java: 8
-            os: macos-latest
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
