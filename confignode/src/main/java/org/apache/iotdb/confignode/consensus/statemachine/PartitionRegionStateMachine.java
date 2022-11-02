@@ -342,10 +342,6 @@ public class PartitionRegionStateMachine
       logFile.createNewFile();
       logWriter = new LogWriter(logFile, false);
       LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-      if (logFile.createNewFile()) {
-        logWriter = new LogWriter(logFile, false);
-        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-      }
     } catch (IOException e) {
       LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
     }
