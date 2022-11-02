@@ -1,13 +1,13 @@
 <@pp.dropOutputFile />
 
-<#list dataTypes.types as type>
+<#list allDataTypes.types as type>
 
-  <#assign className = "${operator.upperDataType}ConstantFill">
+  <#assign className = "${type.dataType?cap_first}ConstantFill">
   <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/process/fill/constant/${className}.java" />
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.constant;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.read.common.block.column.${type.upperDataType}Column;
+import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 <#if type.dataType == "Binary">
@@ -16,6 +16,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.Optional;
 
+/*
+* This class is generated using freemarker and the ${.template_name} template.
+*/
 public class ${className} implements IFill {
 
   // fill value
@@ -37,17 +40,17 @@ public class ${className} implements IFill {
     }
     // if its values are all null
     if (valueColumn instanceof RunLengthEncodedColumn) {
-      return new RunLengthEncodedColumn(new ${type.upperDataType}Column(1, Optional.empty(), valueArray), size);
+      return new RunLengthEncodedColumn(new ${type.column}(1, Optional.empty(), valueArray), size);
     } else {
       ${type.dataType}[] array = new ${type.dataType}[size];
       for (int i = 0; i < size; i++) {
         if (valueColumn.isNull(i)) {
           array[i] = value;
         } else {
-          array[i] = valueColumn.get${type.upperDataType}(i);
+          array[i] = valueColumn.get${type.dataType?cap_first}(i);
         }
       }
-      return new ${type.upperDataType}Column(size, Optional.empty(), array);
+      return new ${type.column}(size, Optional.empty(), array);
     }
   }
 }

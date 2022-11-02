@@ -1,6 +1,6 @@
 data: {
-    dataTypes:        tdd(../data/DataType.tdd),
-    decimalDataTypes:     tdd(../data/DataType.tdd),
+    allDataTypes: tdd(../data/AllDataType.tdd),
+    decimalDataTypes: tdd(../data/DecimalDataType.tdd),
 }
 freemarkerLinks: {
     includes: includes/
