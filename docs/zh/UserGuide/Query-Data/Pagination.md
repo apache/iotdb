@@ -146,18 +146,6 @@ Total line number = 4
 It costs 0.016s
 ```
 
-值得注意的是，由于当前的 FILL 子句只能在某个时间点填充时间序列的缺失值，也就是说，FILL 子句的执行结果恰好是一行，因此 LIMIT 和 OFFSE 不能与 FILL 子句结合使用，否则将提示错误。 例如，执行以下 SQL 语句：
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) limit 10
-```
-
-错误提示如下：
-
-```
-Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, ';'}
-```
-
 ## 按列分页
 
 通过使用 `SLIMIT` 和 `SOFFSET` 子句，用户可以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
@@ -244,26 +232,6 @@ select max_value(*) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-
 +-----------------------------+-----------------------------------+
 Total line number = 7
 It costs 0.000s
-```
-
-- **示例 4：** `SLIMIT` 子句与 `FILL` 子句结合
-
-SQL 语句：
-
-```sql
-select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) slimit 1 soffset 1
-```
-
-含义：
-
-```
-+-----------------------------+--------------------------+
-|                         Time|root.sgcc.wf03.wt01.status|
-+-----------------------------+--------------------------+
-|2017-11-01T16:35:00.000+08:00|                      true|
-+-----------------------------+--------------------------+
-Total line number = 1
-It costs 0.007s
 ```
 
 ## 行和列混合分页
