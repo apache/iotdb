@@ -296,7 +296,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
+Msg: 416: Out of range. LIMIT <N>: N should be Int32.
 ```
 
 If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:

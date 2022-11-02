@@ -303,7 +303,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 SQL 语句将不会执行，并且相应的错误提示如下：
 
 ```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
+Msg: 416: Out of range. LIMIT <N>: N should be Int32.
 ```
 
 当 `LIMIT / LIMIT` 子句的参数 `N / SN` 不是正整数时，系统将提示错误。 例如，执行以下 SQL 语句：
