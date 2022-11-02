@@ -154,7 +154,7 @@
         <org.slf4j.version>1.7.36</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
-        <jetty.version>9.4.48.v20220622</jetty.version>
+        <jetty.version>9.4.49.v20220914</jetty.version>
         <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
         <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
@@ -766,9 +766,10 @@
                             <exclude>**/*.json</exclude>
                             <!-- the zeppelin export file format-->
                             <exclude>**/*.zpln</exclude>
-                            <!-- exclude go.mod and go.sum in iotdb-client-go submodule-->
+                            <!-- exclude go.mod, go.sum and rpc/* in iotdb-client-go submodule-->
                             <exclude>**/go.mod</exclude>
                             <exclude>**/go.sum</exclude>
+                            <exclude>client-go/rpc/*</exclude>
                             <!-- python -->
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>

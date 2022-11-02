@@ -151,45 +151,49 @@ public class IoTDBDescriptor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
-    if (url == null) {
-      logger.warn("Couldn't load the configuration from any of the known sources.");
-      return;
-    }
     Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
-
-      logger.info("Start to read config file {}", url);
-      commonProperties.load(inputStream);
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        logger.info("Start to read config file {}", url);
+        commonProperties.load(inputStream);
+      } catch (FileNotFoundException e) {
+        logger.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        logger.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        logger.warn("Incorrect format in config file, use default configuration", e);
+      }
+    } else {
+      logger.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          CommonConfig.CONFIG_NAME);
     }
-
     url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    try (InputStream inputStream = url.openStream()) {
-      logger.info("Start to read config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      commonProperties.putAll(properties);
-      loadProperties(commonProperties);
-
-    } catch (FileNotFoundException e) {
-      logger.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      logger.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      logger.warn("Incorrect format in config file, use default configuration", e);
-    } finally {
-      // update all data seriesPath
-      conf.updatePath();
-      commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
-      MetricConfigDescriptor.getInstance()
-          .getMetricConfig()
-          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        logger.info("Start to read config file {}", url);
+        Properties properties = new Properties();
+        properties.load(inputStream);
+        commonProperties.putAll(properties);
+        loadProperties(commonProperties);
+      } catch (FileNotFoundException e) {
+        logger.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        logger.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        logger.warn("Incorrect format in config file, use default configuration", e);
+      } finally {
+        // update all data seriesPath
+        conf.updatePath();
+        commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+        MetricConfigDescriptor.getInstance()
+            .getMetricConfig()
+            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+      }
+    } else {
+      logger.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          IoTDBConfig.CONFIG_NAME);
     }
   }
 
@@ -236,7 +240,7 @@ public class IoTDBDescriptor {
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties.getProperty(
-                "selector_thread_nums_of_client_manager",
+                "selector_thread_count_of_client_manager",
                 String.valueOf(conf.getSelectorNumOfClientManager()))));
 
     conf.setRpcPort(
@@ -472,7 +476,7 @@ public class IoTDBDescriptor {
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
-                "sub_compaction_thread_num", Integer.toString(conf.getSubCompactionTaskNum())));
+                "sub_compaction_thread_count", Integer.toString(conf.getSubCompactionTaskNum())));
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
 
@@ -495,13 +499,13 @@ public class IoTDBDescriptor {
 
     conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
-    conf.setConcurrentFlushThread(
+    conf.setFlushThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "concurrent_flush_thread", Integer.toString(conf.getConcurrentFlushThread()))));
+                "flush_thread_count", Integer.toString(conf.getFlushThreadCount()))));
 
-    if (conf.getConcurrentFlushThread() <= 0) {
-      conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
+    if (conf.getFlushThreadCount() <= 0) {
+      conf.setFlushThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     // start: index parameter setting
@@ -526,13 +530,13 @@ public class IoTDBDescriptor {
                 "default_index_window_range",
                 Integer.toString(conf.getDefaultIndexWindowRange()))));
 
-    conf.setConcurrentQueryThread(
+    conf.setQueryThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
+                "query_thread_count", Integer.toString(conf.getQueryThreadCount()))));
 
-    if (conf.getConcurrentQueryThread() <= 0) {
-      conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
+    if (conf.getQueryThreadCount() <= 0) {
+      conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -545,14 +549,13 @@ public class IoTDBDescriptor {
       conf.setMaxAllowedConcurrentQueries(1000);
     }
 
-    conf.setConcurrentSubRawQueryThread(
+    conf.setSubRawQueryThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "concurrent_sub_rawQuery_thread",
-                Integer.toString(conf.getConcurrentSubRawQueryThread()))));
+                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
 
-    if (conf.getConcurrentSubRawQueryThread() <= 0) {
-      conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
+    if (conf.getSubRawQueryThreadCount() <= 0) {
+      conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     conf.setRawQueryBlockingQueueCapacity(
@@ -592,10 +595,10 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
-    conf.setUpgradeThreadNum(
+    conf.setUpgradeThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
+                "upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -605,11 +608,10 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
-    conf.setConcurrentCompactionThread(
+    conf.setCompactionThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "concurrent_compaction_thread",
-                Integer.toString(conf.getConcurrentCompactionThread()))));
+                "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))));
     conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -666,13 +668,13 @@ public class IoTDBDescriptor {
     int rpcSelectorThreadNum =
         Integer.parseInt(
             properties.getProperty(
-                "rpc_selector_thread_num",
-                Integer.toString(conf.getRpcSelectorThreadNum()).trim()));
+                "rpc_selector_thread_count",
+                Integer.toString(conf.getRpcSelectorThreadCount()).trim()));
     if (rpcSelectorThreadNum <= 0) {
       rpcSelectorThreadNum = 1;
     }
 
-    conf.setRpcSelectorThreadNum(rpcSelectorThreadNum);
+    conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
 
     int minConcurrentClientNum =
         Integer.parseInt(
@@ -802,13 +804,13 @@ public class IoTDBDescriptor {
                 "enable_discard_out_of_order_data",
                 Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
-    conf.setConcurrentWindowEvaluationThread(
+    conf.setWindowEvaluationThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "concurrent_window_evaluation_thread",
-                Integer.toString(conf.getConcurrentWindowEvaluationThread()))));
-    if (conf.getConcurrentWindowEvaluationThread() <= 0) {
-      conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
+                "window_evaluation_thread_count",
+                Integer.toString(conf.getWindowEvaluationThreadCount()))));
+    if (conf.getWindowEvaluationThreadCount() <= 0) {
+      conf.setWindowEvaluationThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     conf.setMaxPendingWindowEvaluationTasks(
@@ -859,9 +861,14 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
 
     conf.setPageCacheSizeInSchemaFile(
-        Short.parseShort(
+        Integer.parseInt(
             properties.getProperty(
                 "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+
+    conf.setSchemaFileLogSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
     // mqtt
     loadMqttProps(properties);
@@ -1859,6 +1866,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_schema_region_consensus_port",
                 Integer.toString(conf.getSchemaRegionConsensusPort()))));
+    conf.setJoinClusterRetryIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_join_cluster_retry_interval_ms",
+                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
   }
 
   public void loadShuffleProps(Properties properties) {

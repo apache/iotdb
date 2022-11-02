@@ -227,7 +227,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
     if (config.isClusterMode()
-        && config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       File schemaRegionDir = new File(schemaRegionDirPath);
       if (schemaRegionDir.exists()) {
         FileUtils.deleteDirectory(schemaRegionDir);
@@ -260,7 +262,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       if (!(config.isClusterMode()
           && config
               .getSchemaRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.RatisConsensus))) {
+              .equals(ConsensusFactory.RATIS_CONSENSUS))) {
         usingMLog = true;
         initMLog();
       } else {

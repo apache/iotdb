@@ -47,7 +47,7 @@ public class RecoveryTest {
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.MultiLeaderConsensus,
+                ConsensusFactory.MULTI_LEADER_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
@@ -59,7 +59,7 @@ public class RecoveryTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.MultiLeaderConsensus)));
+                            ConsensusFactory.MULTI_LEADER_CONSENSUS)));
     consensusImpl.start();
   }
 

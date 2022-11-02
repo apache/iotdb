@@ -132,7 +132,7 @@ public class LocalExecutionPlanner {
             TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.info(
+        LOGGER.debug(
             String.format(
                 "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
@@ -146,7 +146,7 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.info(
+                LOGGER.debug(
                     String.format(
                         "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));

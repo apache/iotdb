@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
 public class LogDispatcher {
-  private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
@@ -432,6 +432,7 @@ public class LogDispatcher {
         client.syncLog(req, handler);
       } catch (IOException | TException e) {
         logger.error("Can not sync logs to peer {} because", peer, e);
+        handler.onError(e);
       }
     }
 

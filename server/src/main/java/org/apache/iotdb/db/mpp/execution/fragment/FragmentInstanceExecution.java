@@ -59,7 +59,7 @@ public class FragmentInstanceExecution {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(instanceId, context, driver, stateMachine);
     execution.initialize(failedInstances, scheduler);
-    LOGGER.info("timeout is {}ms.", timeOut);
+    LOGGER.debug("timeout is {}ms.", timeOut);
     scheduler.submitDrivers(instanceId.getQueryId(), ImmutableList.of(driver), timeOut);
     return execution;
   }

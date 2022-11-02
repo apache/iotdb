@@ -58,4 +58,9 @@ public abstract class AbstractSchemaMergeNode extends ProcessNode {
     }
     return Collections.emptyList();
   }
+
+  @Override
+  public String toString() {
+    return String.format("AbstractSchemaMergeNode-%s", this.getPlanNodeId());
+  }
 }

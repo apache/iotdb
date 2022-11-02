@@ -35,7 +35,10 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest ]
+        include:
+          - java: 8
+            os: macos-latest
     runs-on: ${{ matrix.os}}
 
     steps:

@@ -33,9 +33,7 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -114,10 +112,7 @@ public class EnvironmentUtils {
       if (TriggerRegistrationService.getInstance() != null) {
         TriggerRegistrationService.getInstance().deregisterAll();
       }
-      if (ContinuousQueryService.getInstance() != null) {
-        ContinuousQueryService.getInstance().deregisterAll();
-      }
-    } catch (UDFManagementException | TriggerManagementException | ContinuousQueryException e) {
+    } catch (UDFManagementException | TriggerManagementException e) {
       fail(e.getMessage());
     }
 
@@ -313,7 +308,7 @@ public class EnvironmentUtils {
     // reset id method
     DeviceIDFactory.getInstance().reset();
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

@@ -93,10 +93,17 @@ public class Path implements Serializable, Comparable<Path> {
    *
    * @param device root.deviceType.d1
    * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
+   * @param needCheck need to validate the correctness of the path
    */
-  public Path(String device, String measurement) {
+  public Path(String device, String measurement, boolean needCheck) {
     if (device == null || measurement == null) {
       throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
+    }
+    if (!needCheck) {
+      this.measurement = measurement;
+      this.device = device;
+      this.fullPath = device + "." + measurement;
+      return;
     }
     // use PathNodesGenerator to check whether path is legal.
     if (!StringUtils.isEmpty(device) && !StringUtils.isEmpty(measurement)) {

@@ -64,7 +64,7 @@ public class PartitionRegionStateMachine
   private int logFileId;
   private static final String fileDir = CONF.getConsensusDir();
   private static final String filePath = fileDir + File.separator + "log_inprogress_";
-  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
+  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionOneCopyLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {

@@ -120,7 +120,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
-        LOGGER.info("[QueryStart] sql: {}", sql);
+        LOGGER.debug("[QueryStart] sql: {}", sql);
       }
       MPPQueryContext queryContext =
           new MPPQueryContext(
@@ -165,10 +165,6 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
-  public void removeQueryExecution(Long queryId) {
-    queryExecutionMap.remove(queryId);
-  }
-
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
@@ -191,6 +187,17 @@ public class Coordinator {
 
   public QueryId createQueryId() {
     return queryIdGenerator.createNextQueryId();
+  }
+
+  public void cleanupQueryExecution(Long queryId) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.debug("[CleanUpQuery]]");
+        queryExecution.stopAndCleanup();
+        queryExecutionMap.remove(queryId);
+      }
+    }
   }
 
   public static Coordinator getInstance() {

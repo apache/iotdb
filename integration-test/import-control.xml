@@ -85,6 +85,8 @@
     <allow class="org.apache.iotdb.db.exception.TriggerManagementException" />
     <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
     <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
