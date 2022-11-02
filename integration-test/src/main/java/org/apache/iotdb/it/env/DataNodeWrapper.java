@@ -58,6 +58,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         "dn_data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "dn_schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+    properties.setProperty("dn_join_cluster_retry_interval_ms", "1000");
     properties.setProperty("mqtt_host", super.getIp());
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
