@@ -94,15 +94,13 @@
    select code from root.sg1.d1 where code not in ('200', '300', '400', '500');
    ```
 
-## 空值过滤
-使用空值过滤条件可以筛选出值为空或非空的数据
-1. 选择值为空的数据:
+6. 选择值为空的数据:
 
     ```sql
     select code from root.sg1.d1 where temperature is null;
     ````
 
-2. 选择值为非空的数据:
+7. 选择值为非空的数据:
 
     ```sql
     select code from root.sg1.d1 where temperature is not null;
