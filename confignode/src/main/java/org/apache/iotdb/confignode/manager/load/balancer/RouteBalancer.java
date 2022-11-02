@@ -315,12 +315,12 @@ public class RouteBalancer {
       TConsensusGroupId regionGroupId,
       int newLeaderId) {
     switch (consensusProtocolClass) {
-      case ConsensusFactory.MultiLeaderConsensus:
+      case ConsensusFactory.MULTI_LEADER_CONSENSUS:
         // For multi-leader protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
         regionRouteMap.setLeader(regionGroupId, newLeaderId);
         break;
-      case ConsensusFactory.RatisConsensus:
+      case ConsensusFactory.RATIS_CONSENSUS:
       default:
         // For ratis protocol, the ConfigNode-leader will send a changeLeaderRequest to the new
         // leader.
