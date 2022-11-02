@@ -119,7 +119,7 @@ public class ConcatOptimizerTest {
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression =
-        new SingleSeriesExpression(new Path("root.laptop.d1", "s1"), ValueFilter.lt(10));
+        new SingleSeriesExpression(new Path("root.laptop.d1", "s1", true), ValueFilter.lt(10));
     assertEquals(seriesExpression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
 
@@ -130,9 +130,11 @@ public class ConcatOptimizerTest {
     IExpression expression =
         BinaryExpression.and(
             BinaryExpression.and(
-                new SingleSeriesExpression(new Path("root.laptop.d1", "s1"), ValueFilter.lt(10)),
-                new SingleSeriesExpression(new Path("root.laptop.d2", "s1"), ValueFilter.lt(10))),
-            new SingleSeriesExpression(new Path("root.laptop.d3", "s1"), ValueFilter.lt(10)));
+                new SingleSeriesExpression(
+                    new Path("root.laptop.d1", "s1", true), ValueFilter.lt(10)),
+                new SingleSeriesExpression(
+                    new Path("root.laptop.d2", "s1", true), ValueFilter.lt(10))),
+            new SingleSeriesExpression(new Path("root.laptop.d3", "s1", true), ValueFilter.lt(10)));
     assertEquals(expression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
 }

@@ -517,3 +517,58 @@ Output series:
 |2020-01-01T00:00:32.000+08:00|                                     1.0|
 +-----------------------------+----------------------------------------+
 ```
+
+## Accuracy
+
+### Usage
+
+This function is used to calculate the Accuracy of time series based on master data.
+
+**Name**: Accuracy
+
+**Input Series:** Support multiple input series. The types are are in INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameters:**
+
++ `omega`: The window size. It is a non-negative integer whose unit is millisecond. By default, it will be estimated according to the distances of two tuples with various time differences.
++ `eta`: The distance threshold. It is a positive number. By default, it will be estimated according to the distance distribution of tuples in windows.
++ `k`: The number of neighbors in master data. It is a positive integer. By default, it will be estimated according to the tuple dis- tance of the k-th nearest neighbor in the master data.
+
+**Output Series**: Output a single value. The type is DOUBLE. The range is [0,1].
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+------------+------------+------------+------------+------------+------------+
+|                         Time|root.test.t1|root.test.t2|root.test.t3|root.test.m1|root.test.m2|root.test.m3|
++-----------------------------+------------+------------+------------+------------+------------+------------+
+|2021-07-01T12:00:01.000+08:00|        1704|     1154.55|       0.195|        1704|     1154.55|       0.195|
+|2021-07-01T12:00:02.000+08:00|        1702|     1152.30|       0.193|        1702|     1152.30|       0.193|
+|2021-07-01T12:00:03.000+08:00|        1702|     1148.65|       0.192|        1702|     1148.65|       0.192|
+|2021-07-01T12:00:04.000+08:00|        1701|     1145.20|       0.194|        1701|     1145.20|       0.194|
+|2021-07-01T12:00:07.000+08:00|        1703|     1150.55|       0.195|        1703|     1150.55|       0.195|
+|2021-07-01T12:00:08.000+08:00|        1694|     1151.55|       0.193|        1704|     1151.55|       0.193|
+|2021-07-01T12:01:09.000+08:00|        1705|     1153.55|       0.194|        1705|     1153.55|       0.194|
+|2021-07-01T12:01:10.000+08:00|        1706|     1152.30|       0.190|        1706|     1152.30|       0.190|
++-----------------------------+------------+------------+------------+------------+------------+------------+
+```
+
+SQL for query:
+
+```sql
+select Accuracy(t1,t2,t3,m1,m2,m3) from root.test
+```
+
+Output series:
+
+
+```
++-----------------------------+---------------------------------------------------------------------------------------+
+|                         Time|Accuracy(root.test.t1,root.test.t2,root.test.t3,root.test.m1,root.test.m2,root.test.m3)|
++-----------------------------+---------------------------------------------------------------------------------------+
+|2021-07-01T12:00:01.000+08:00|                                                                                  0.875|
++-----------------------------+---------------------------------------------------------------------------------------+
+```
+

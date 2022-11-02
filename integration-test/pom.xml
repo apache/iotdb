@@ -209,11 +209,15 @@
     </build>
     <profiles>
         <profile>
-            <id>LocalStandaloneIT</id>
+            <id>OneCopyIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>Standalone</integrationTest.testEnv>
+                <integrationTest.testEnv>OneCopy</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -240,21 +244,6 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
-            </properties>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-        </profile>
-        <profile>
-            <id>LocalStandaloneOnMppIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>LocalStandaloneOnMpp</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
                 <integrationTest.parallelMode>classes</integrationTest.parallelMode>
             </properties>
             <activation>

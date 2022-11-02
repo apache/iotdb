@@ -131,6 +131,13 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
+  public int getSerializedSize() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeImpl(outputStream);
+    return byteArrayOutputStream.size();
+  }
+
   public static class Factory {
 
     public static ConfigPhysicalPlan create(ByteBuffer buffer) throws IOException {

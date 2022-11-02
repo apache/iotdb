@@ -122,7 +122,8 @@ public class IOTDBLoadTsFileIT {
     String sql =
         String.format(
             "create timeseries %s %s",
-            new Path(device, schema.getMeasurementId()).getFullPath(), schema.getType().name());
+            new Path(device, schema.getMeasurementId(), true).getFullPath(),
+            schema.getType().name());
     LOGGER.info(String.format("schema execute: %s.", sql));
     return sql;
   }

@@ -47,5 +47,5 @@ ioTDBReporterConfig:
   username: root
   password: root
   maxConnectionNumber: 3
-  database: metric
+  location: metric
   pushPeriodInSecond: 15

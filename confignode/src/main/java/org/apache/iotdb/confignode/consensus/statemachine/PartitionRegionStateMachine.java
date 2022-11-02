@@ -72,7 +72,7 @@ public class PartitionRegionStateMachine
       CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
   private static final String fileTempPath = fileDir + File.separator + "log_inprogress_";
   private static final String filePath = fileDir + File.separator + "log_";
-  private static final long FILE_MAX_SIZE =75;
+  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionOneCopyLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -127,11 +127,11 @@ public class PartitionRegionStateMachine
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (ConsensusFactory.ONE_COPY_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       if (logFile.length() > FILE_MAX_SIZE) {
         try {
           logWriter.force();
-          File fileDir = new File(filePath+startIndex+"_"+endIndex);
+          File fileDir = new File(filePath + startIndex + "_" + endIndex);
           Files.move(logFile.toPath(), fileDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
           LOGGER.error("Can't force logWrite for ConfigNode Standalone mode", e);
@@ -155,7 +155,7 @@ public class PartitionRegionStateMachine
           }
           break;
         }
-        startIndex=endIndex+1;
+        startIndex = endIndex + 1;
         createLogFile(startIndex);
       }
       try {
@@ -266,7 +266,7 @@ public class PartitionRegionStateMachine
 
   @Override
   public void start() {
-    if (ConsensusFactory.StandAloneConsensus.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (ConsensusFactory.ONE_COPY_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       initStandAloneConfigNode();
     }
   }
@@ -310,7 +310,7 @@ public class PartitionRegionStateMachine
                 logFileName.substring(logFileName.lastIndexOf("_") + 1, logFileName.length()));
         if (logFileName.startsWith("log_inprogress")) {
           endIndex = tmp;
-        }else {
+        } else {
           if (startIndex < tmp) {
             startIndex = tmp;
           }
@@ -341,7 +341,7 @@ public class PartitionRegionStateMachine
       startIndex = 0;
       endIndex = 0;
     }
-    startIndex=startIndex+1;
+    startIndex = startIndex + 1;
     createLogFile(endIndex);
   }
 
@@ -351,7 +351,6 @@ public class PartitionRegionStateMachine
       logFile.createNewFile();
       logWriter = new LogWriter(logFile, false);
       LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-
     } catch (IOException e) {
       LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
       try {

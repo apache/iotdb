@@ -61,7 +61,7 @@ public class RouteBalancer {
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
   private static final boolean isMultiLeader =
-      ConsensusFactory.MultiLeaderConsensus.equals(
+      ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
           ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
   public static final String LEADER_POLICY = "leader";
   public static final String GREEDY_POLICY = "greedy";

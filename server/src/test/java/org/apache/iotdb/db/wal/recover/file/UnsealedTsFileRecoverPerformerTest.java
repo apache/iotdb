@@ -146,13 +146,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(2, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -201,13 +201,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(1, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));

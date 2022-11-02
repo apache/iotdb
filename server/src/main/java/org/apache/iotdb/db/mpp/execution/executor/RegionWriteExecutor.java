@@ -69,6 +69,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class RegionWriteExecutor {
 
@@ -265,7 +266,7 @@ public class RegionWriteExecutor {
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -299,7 +300,7 @@ public class RegionWriteExecutor {
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -331,7 +332,7 @@ public class RegionWriteExecutor {
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -348,14 +349,17 @@ public class RegionWriteExecutor {
             }
 
             // filter failed measurement and keep the rest for execution
-            for (Map.Entry<Integer, MetadataException> failingMeasurement :
-                failingMeasurementMap.entrySet()) {
-              entry.getValue().removeMeasurement(failingMeasurement.getKey());
-              LOGGER.error("Metadata error: ", failingMeasurement.getValue());
+            List<Integer> failingMeasurementIndexList =
+                failingMeasurementMap.keySet().stream().sorted().collect(Collectors.toList());
+            int removedNum = 0;
+            for (Integer index : failingMeasurementIndexList) {
+              entry.getValue().removeMeasurement(index - removedNum);
+              removedNum++;
+              LOGGER.error("Metadata error: ", failingMeasurementMap.get(index));
               failingStatus.add(
                   RpcUtils.getStatus(
-                      failingMeasurement.getValue().getErrorCode(),
-                      failingMeasurement.getValue().getMessage()));
+                      failingMeasurementMap.get(index).getErrorCode(),
+                      failingMeasurementMap.get(index).getMessage()));
             }
 
             if (entry.getValue().isEmpty()) {
@@ -401,7 +405,7 @@ public class RegionWriteExecutor {
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();

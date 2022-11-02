@@ -21,10 +21,12 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
@@ -57,6 +59,12 @@ public class UDFManager {
   private final ConfigManager configManager;
   private final UDFInfo udfInfo;
 
+  private final long planSizeLimit =
+      ConfigNodeDescriptor.getInstance()
+              .getConf()
+              .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+          - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
+
   public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {
     this.configManager = configManager;
     this.udfInfo = udfInfo;
@@ -78,27 +86,31 @@ public class UDFManager {
 
       final UDFInformation udfInformation =
           new UDFInformation(udfName, req.getClassName(), false, isUsingURI, jarName, jarMD5);
+      final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
-      LOGGER.info("Start to create UDF [{}] on Data Nodes", udfName);
+      LOGGER.info(
+          "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
 
       final TSStatus dataNodesStatus =
           RpcUtils.squashResponseStatusList(
-              createFunctionOnDataNodes(udfInformation, req.getJarFile()));
+              createFunctionOnDataNodes(udfInformation, needToSaveJar ? jarFile : null));
       if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return dataNodesStatus;
       }
 
-      final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
+      CreateFunctionPlan createFunctionPlan =
+          new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
+      if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
+        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    udfName));
+      }
 
-      LOGGER.info(
-          "Start to add UDF [{}] in UDF_Table on Config Nodes, needToSaveJar[{}]",
-          udfName,
-          needToSaveJar);
+      LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
 
-      return configManager
-          .getConsensusManager()
-          .write(new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null))
-          .getStatus();
+      return configManager.getConsensusManager().write(createFunctionPlan).getStatus();
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
