@@ -21,4 +21,4 @@
 
 # REST API Write
 
-参考[insertTablet](../API/RestService.md#inserttablet)
+Refer to [insertTablet](../API/RestService.md#inserttablet)

@@ -25,13 +25,13 @@ The Native API ( Session ) is the most widely used series of APIs of IoTDB, incl
 ## Multi-language API write
 * ### Java
     Before writing via the Java API, you need to establish a connection, refer to [Java Native API](../API/Programming-Java-Native-API.md)。
-    then refer to [Insert](../API/Programming-Java-Native-API.md#insert)
+    then refer to [ JAVA Data Manipulation Interface (DML) ](../API/Programming-Java-Native-API.md#insert)
 
 * ### Python
-    Refer to [Insert](../API/Programming-Python-Native-API.md#insert)
+    Refer to [ Python Data Manipulation Interface (DML) ](../API/Programming-Python-Native-API.md#insert)
 
 * ### C++ 
-    Refer to [Insert](../API/Programming-Cpp-Native-API.md#insert)
+    Refer to [ C++ Data Manipulation Interface (DML) ](../API/Programming-Cpp-Native-API.md#insert)
 
 * ### Go
     Refer to [Go Native API](../API/Programming-Go-Native-API.md)
