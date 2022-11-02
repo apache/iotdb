@@ -1,4 +1,4 @@
-name: New Cluster IT
+name: Cluster IT - 1C3D
 
 on:
   push:
@@ -28,7 +28,10 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [ ubuntu-latest, windows-latest ]
+        include:
+          - java: 8
+            os: macos-latest
     runs-on: ${{ matrix.os }}
 
     steps:

@@ -18,15 +18,28 @@
  */
 package org.apache.iotdb.it.env;
 
-public class StandaloneDataNodeWrapper extends DataNodeWrapper {
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
-  public StandaloneDataNodeWrapper(
-      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
-    super(targetConfigNode, testClassName, testMethodName, portList);
+import org.slf4j.Logger;
+
+public class OneCopyEnv extends AbstractEnv {
+
+  private static final Logger logger = IoTDBTestLogger.logger;
+
+  @Override
+  public void initBeforeClass() throws InterruptedException {
+    logger.debug("=======start init class=======");
+    super.initEnvironment(1, 1);
   }
 
   @Override
-  protected String mainClassName() {
-    return "org.apache.iotdb.db.service.NewIoTDB";
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    // Do nothing
+  }
+
+  @Override
+  public void initBeforeTest() {
+    logger.debug("=======start init test=======");
+    initEnvironment(1, 1);
   }
 }
