@@ -47,8 +47,6 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   private final Map<Integer, Template> templateMap;
 
-  private final List<TSDataType> outputDataTypes;
-
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
       OperatorContext operatorContext,

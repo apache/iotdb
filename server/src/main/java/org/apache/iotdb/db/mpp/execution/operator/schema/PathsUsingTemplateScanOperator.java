@@ -42,8 +42,6 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
 
   private final int templateId;
 
-  private final List<TSDataType> outputDataTypes;
-
   public PathsUsingTemplateScanOperator(
       PlanNodeId planNodeId,
       OperatorContext context,

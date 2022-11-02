@@ -50,9 +50,6 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final String value;
   private final boolean isContains;
 
-  private List<TsBlock> tsBlockList;
-  private int currentIndex = 0;
-
   private ISchemaReader<? extends ISchemaInfo> schemaReader;
 
   private final List<TSDataType> outputDataTypes;
