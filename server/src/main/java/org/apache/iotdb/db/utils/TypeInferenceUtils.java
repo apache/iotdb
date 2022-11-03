@@ -64,7 +64,11 @@ public class TypeInferenceUtils {
   }
 
   private static boolean isConvertFloatPrecisionLack(String s) {
-    return Long.parseLong(s) > (1 << 24);
+    try {
+      return Long.parseLong(s) > (1 << 24);
+    } catch (NumberFormatException e) {
+      return true;
+    }
   }
 
   /** Get predicted DataType of the given value */
