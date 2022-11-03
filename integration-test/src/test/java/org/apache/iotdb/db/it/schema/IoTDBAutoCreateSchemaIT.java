@@ -201,4 +201,23 @@ public class IoTDBAutoCreateSchemaIT {
     }
     Assert.assertTrue(resultList.contains(storageGroup));
   }
+
+  /**
+   * insert data when storage group hasn't been set, timeseries hasn't been created and have null
+   * values
+   */
+  @Test
+  public void testInsertAutoCreate3() {
+    String[] sqls = {
+      "INSERT INTO root.sg0.d3(timestamp,s1) values(1,null)",
+      "INSERT INTO root.sg0.d3(timestamp,s1,s2) values(1,null,2)",
+    };
+    for (String sql : sqls) {
+      try {
+        statement.execute(sql);
+      } catch (SQLException e) {
+        Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+      }
+    }
+  }
 }

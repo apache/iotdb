@@ -17,10 +17,32 @@
 # under the License.
 #
 
-cn_internal_address=127.0.0.1
-cn_internal_port=22277
-cn_consensus_port=22278
-cn_target_config_nodes=127.0.0.1:22277
-cn_system_dir=target/confignode1/system
-cn_data_dirs=target/confignode1/data
-cn_consensus_dir=target/confignode1/consensus
+# whether enable the module
+enableMetric: true
+
+# Is stat performance of operation latency
+enablePerformanceStat: false
+
+# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
+metricReporterList:
+  - JMX
+  - PROMETHEUS
+
+# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
+monitorType: MICROMETER
+
+# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
+metricLevel: IMPORTANT
+
+# The http server's port for prometheus exporter to get metric data.
+prometheusExporterPort: 9093
+
+# The config of iotdb reporter
+ioTDBReporterConfig:
+  host: 127.0.0.1
+  port: 6667
+  username: root
+  password: root
+  maxConnectionNumber: 3
+  location: metric
+  pushPeriodInSecond: 15

@@ -96,6 +96,7 @@ public class ConsensusManager {
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               ConsensusFactory.SIMPLE_CONSENSUS)));
     } else {
+      // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   CONF.getConfigNodeConsensusProtocolClass(),
