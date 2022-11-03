@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -40,6 +43,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -47,6 +52,7 @@ import java.util.List;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
+  private static final Logger log = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private String device;
   private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
@@ -63,6 +69,7 @@ public class SingleSeriesCompactionExecutor {
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
+  private boolean alreadyFetchSchema = false;
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -110,7 +117,7 @@ public class SingleSeriesCompactionExecutor {
    * This function execute the compaction of a single time series. Notice, the result of single
    * series compaction may contain more than one chunk.
    */
-  public void execute() throws IOException {
+  public void execute() throws IOException, IllegalPathException {
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<ChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -121,6 +128,20 @@ public class SingleSeriesCompactionExecutor {
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
+
+        if (!checkDataType(currentChunk)) {
+          // after fetching the correct schema
+          // the datatype of current chunk is still inconsistent with schema
+          // abort current chunk
+          log.warn(
+              "Abort a chunk from {}, because the datatype is inconsistent, "
+                  + "type of schema is {}, but type of chunk is {}",
+              reader.getFileName(),
+              schema.getType().toString(),
+              currentChunk.getHeader().getDataType().toString());
+          continue;
+        }
+
         CompactionMetricsRecorder.recordReadInfo(
             currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
@@ -154,6 +175,27 @@ public class SingleSeriesCompactionExecutor {
     fileWriter.checkMetadataSizeAndMayFlush();
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
+  }
+
+  private boolean checkDataType(Chunk currentChunk) throws IllegalPathException {
+    if (currentChunk.getHeader().getDataType() != schema.getType()) {
+      // the datatype is not consistent
+      fixSchemaInconsistent();
+    }
+    return currentChunk.getHeader().getDataType() == schema.getType();
+  }
+
+  private void fixSchemaInconsistent() throws IllegalPathException {
+    if (alreadyFetchSchema) {
+      return;
+    }
+    IMeasurementSchema correctSchema =
+        CompactionUtils.fetchSchema(device, schema.getMeasurementId());
+    if (schema.getType() != correctSchema.getType()) {
+      chunkWriter = new ChunkWriterImpl(correctSchema);
+      schema = correctSchema;
+    }
+    alreadyFetchSchema = true;
   }
 
   private void constructChunkWriterFromReadChunk(Chunk chunk) {

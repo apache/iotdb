@@ -19,15 +19,24 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,6 +224,24 @@ public class CompactionUtils {
       if (normalModification.exists()) {
         normalModification.remove();
       }
+    }
+  }
+
+  public static IMeasurementSchema fetchSchema(String device, String measurementId)
+      throws IllegalPathException {
+    ISchemaFetcher schemaFetcher =
+        IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+            ? ClusterSchemaFetcher.getInstance()
+            : StandaloneSchemaFetcher.getInstance();
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendFullPath(new PartialPath(device, measurementId));
+    patternTree.constructTree();
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+    if (!schemaTree.getAllMeasurement().isEmpty()) {
+      MeasurementPath path = schemaTree.getAllMeasurement().get(0);
+      return path.getMeasurementSchema();
+    } else {
+      return null;
     }
   }
 }
