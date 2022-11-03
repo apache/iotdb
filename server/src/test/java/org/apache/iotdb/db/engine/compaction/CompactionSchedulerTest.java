@@ -51,7 +51,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-// TODO don't use old standalone style IT
 public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";

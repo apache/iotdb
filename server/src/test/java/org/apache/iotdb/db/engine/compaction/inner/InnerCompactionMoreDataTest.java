@@ -56,8 +56,6 @@ import java.util.ArrayList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-// TODO don't use old standalone style
-// @Ignore
 public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   protected int measurementNum = 3000;

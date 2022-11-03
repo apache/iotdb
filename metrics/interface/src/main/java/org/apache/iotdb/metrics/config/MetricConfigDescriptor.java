@@ -46,14 +46,14 @@ public class MetricConfigDescriptor {
    * @return metric config
    */
   public MetricConfig loadProps() {
-    MetricConfig metricConfig = null;
+    MetricConfig metricConfig;
     String url = getPropsUrl();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
       try (InputStream inputStream = Files.newInputStream(Paths.get(url))) {
         logger.info("Start to read config file {}", url);
-        // metricConfig = yaml.load(inputStream);
+        metricConfig = yaml.load(inputStream);
       } catch (IOException e) {
         logger.warn(
             "Fail to find config file : {} because of {}, use default config.",
