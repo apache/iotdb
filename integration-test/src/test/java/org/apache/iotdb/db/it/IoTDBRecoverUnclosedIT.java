@@ -17,25 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -45,9 +45,11 @@ import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRecoverUnclosedIT {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -91,6 +93,7 @@ public class IoTDBRecoverUnclosedIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     prevWALMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
     EnvironmentUtils.envSetUp();
@@ -102,64 +105,57 @@ public class IoTDBRecoverUnclosedIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     config.setWalMode(prevWALMode);
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
   public void test() throws SQLException, IOException, StartupException {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select count(temperature) from root.ln.wf01.wt01 where time > 3");
-
-      Assert.assertTrue(hasResultSet);
+      String selectSql = "select count(temperature) from root.ln.wf01.wt01 where time > 3";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(count(TEMPERATURE_STR));
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where time > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where time > 3";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(minTime(TEMPERATURE_STR));
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        assertEquals(2, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(minTime(TEMPERATURE_STR));
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(3, cnt);
+        assertEquals(3, cnt);
       }
 
     } catch (Exception e) {
@@ -167,36 +163,35 @@ public class IoTDBRecoverUnclosedIT {
       fail(e.getMessage());
     }
 
+    // TODO: replace restartDaemon() with new methods in Env.
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      Assert.fail();
+      fail();
     }
     insertMoreData();
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      Assert.fail();
+      fail();
     }
 
     // test count, max, min value
     retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select count(*) from root.vehicle.d0");
-      Assert.assertTrue(hasResultSet);
-      statement.getResultSet().next();
-      Assert.assertEquals(7500, statement.getResultSet().getInt("count(" + d0s0 + ")"));
+      String selectSql = "select count(*) from root.vehicle.d0";
+      ResultSet tempResultSet = statement.executeQuery(selectSql);
+      assertNotNull(tempResultSet);
+      tempResultSet.next();
+      assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
 
-      hasResultSet =
-          statement.execute(
-              "select max_value(s0),min_value(s2) "
-                  + "from root.vehicle.d0 where time >= 100 and time < 9000");
-
-      Assert.assertTrue(hasResultSet);
+      selectSql =
+          "select max_value(s0),min_value(s2) "
+              + "from root.vehicle.d0 where time >= 100 and time < 9000";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -205,18 +200,15 @@ public class IoTDBRecoverUnclosedIT {
                   + resultSet.getString(maxValue(d0s0))
                   + ","
                   + resultSet.getString(minValue(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select max_value(s0),min_value(s2) " + "from root.vehicle.d0 where time < 2500");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select max_value(s0),min_value(s2) from root.vehicle.d0 where time < 2500";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -224,10 +216,10 @@ public class IoTDBRecoverUnclosedIT {
                   + resultSet.getString(maxValue(d0s0))
                   + ","
                   + resultSet.getString(minValue(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        assertEquals(2, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -236,9 +228,7 @@ public class IoTDBRecoverUnclosedIT {
   }
 
   private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : creationSqls) {
         statement.execute(sql);
@@ -254,9 +244,7 @@ public class IoTDBRecoverUnclosedIT {
   }
 
   private void insertMoreData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite file

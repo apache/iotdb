@@ -17,21 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -39,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -46,22 +45,22 @@ import static org.junit.Assert.fail;
  * @Author: Architect @Date: 2021-03-30 18:36 @Description: This class is initially intend to test
  * the issue of IOTDB-924
  */
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertMultiRowIT {
   private static List<String> sqls = new ArrayList<>();
   private static Connection connection;
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     initCreateSQLStatement();
-    EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   private static void close() {
@@ -81,9 +80,7 @@ public class IoTDBInsertMultiRowIT {
   }
 
   private static void insertData() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    connection = EnvFactory.getEnv().getConnection();
     Statement statement = connection.createStatement();
 
     for (String sql : sqls) {
@@ -113,12 +110,12 @@ public class IoTDBInsertMultiRowIT {
     ResultSet rs1 = st1.executeQuery("select count(status) from root.t1.wf01.wt01");
     rs1.next();
     long countStatus = rs1.getLong(1);
-    Assert.assertEquals(countStatus, 12L);
+    assertEquals(countStatus, 12L);
 
     ResultSet rs2 = st1.executeQuery("select count(temperature) from root.t1.wf01.wt01");
     rs2.next();
     long countTemperature = rs2.getLong(1);
-    Assert.assertEquals(countTemperature, 6L);
+    assertEquals(countTemperature, 6L);
 
     st1.close();
   }
@@ -133,12 +130,11 @@ public class IoTDBInsertMultiRowIT {
   public void testInsertMultiRowWithMisMatchDataType() {
     try {
       Statement st1 = connection.createStatement();
-      st1.execute(
-          "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0) (2, 'hello'), (3, true)");
+      st1.execute("insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0), (2, 'hello')");
       fail();
     } catch (SQLException e) {
       assertTrue(
-          e.getMessage().contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
+          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
     }
   }
 }

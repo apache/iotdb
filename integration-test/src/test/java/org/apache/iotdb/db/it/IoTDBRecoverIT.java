@@ -17,10 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
@@ -30,7 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -40,9 +41,10 @@ import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRecoverIT {
 
   private static final String TIMESTAMP_STR = "Time";
@@ -83,6 +85,7 @@ public class IoTDBRecoverIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeTest();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -91,21 +94,19 @@ public class IoTDBRecoverIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
   public void mergeTest() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select count(temperature) from root.ln.wf01.wt01 where time > 3");
-
-      Assert.assertTrue(hasResultSet);
+      String selectSql = "select count(temperature) from root.ln.wf01.wt01 where time > 3";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -118,11 +119,9 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where time > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where time > 3";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -134,12 +133,9 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(2, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -157,6 +153,7 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
+    // TODO: replace stopDaemon() and activeDaemon() with new methods in Env.
     EnvironmentUtils.stopDaemon();
     // wait for close
     try {
@@ -169,17 +166,15 @@ public class IoTDBRecoverIT {
 
     // count test
     retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s0),count(s1),count(s2),count(s3) "
-                  + "from root.vehicle.d0 where time >= 6000 and time <= 9000");
 
-      Assert.assertTrue(hasResultSet);
+      String selectSql =
+          "select count(s0),count(s1),count(s2),count(s3) "
+              + "from root.vehicle.d0 where time >= 6000 and time <= 9000";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -198,12 +193,9 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select count(s0),count(s1),count(s2),count(s3) " + "from root.vehicle.d0");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select count(s0),count(s1),count(s2),count(s3) " + "from root.vehicle.d0";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -240,18 +232,15 @@ public class IoTDBRecoverIT {
     // maxminValueTest
 
     retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
-              "select max_value(s0),min_value(s2) "
-                  + "from root.vehicle.d0 where time >= 100 and time < 9000");
-
-      Assert.assertTrue(hasResultSet);
+      String selectSql =
+          "select max_value(s0),min_value(s2) "
+              + "from root.vehicle.d0 where time >= 100 and time < 9000";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -266,12 +255,9 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select max_value(s0),min_value(s2) " + "from root.vehicle.d0 where time < 2500");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select max_value(s0),min_value(s2) from root.vehicle.d0 where time < 2500";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -292,9 +278,7 @@ public class IoTDBRecoverIT {
 
   @Test
   public void vmTest() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // prepare more data to flush
       for (int i = 2000; i < 2500; i++) {
@@ -318,17 +302,15 @@ public class IoTDBRecoverIT {
 
     // count test
     String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s0),count(s1),count(s2),count(s3) "
-                  + "from root.vehicle.d0 where time >= 6000 and time <= 9000");
 
-      Assert.assertTrue(hasResultSet);
+      String selectSql =
+          "select count(s0),count(s1),count(s2),count(s3) "
+              + "from root.vehicle.d0 where time >= 6000 and time <= 9000";
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -347,12 +329,9 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select count(s0),count(s1),count(s2),count(s3) " + "from root.vehicle.d0");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      selectSql = "select count(s0),count(s1),count(s2),count(s3) from root.vehicle.d0";
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -376,9 +355,9 @@ public class IoTDBRecoverIT {
   }
 
   private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        /*DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");*/
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {

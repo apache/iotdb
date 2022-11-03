@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -40,13 +39,15 @@ import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBFloatPrecisionIT {
 
   private static final String CREATE_TEMPLATE_SQL =
@@ -105,33 +106,34 @@ public class IoTDBFloatPrecisionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root.**");
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
           for (int i = 0; i < 10; i++) {
-            Assert.assertEquals(
+            assertEquals(
                 MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
                 DELTA_DOUBLE);
-            Assert.assertEquals(
+            assertEquals(
                 MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
                 DELTA_DOUBLE);
           }
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
 
       statement.execute("flush");
@@ -141,26 +143,26 @@ public class IoTDBFloatPrecisionIT {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
           for (int i = 0; i < 10; i++) {
             BigDecimal b = new BigDecimal(VALUE);
-            Assert.assertEquals(
+            assertEquals(
                 b.setScale(i, RoundingMode.HALF_UP).floatValue(),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 b.setScale(i, RoundingMode.HALF_UP).floatValue(),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
                 DELTA_DOUBLE);
-            Assert.assertEquals(
+            assertEquals(
                 b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
                 DELTA_DOUBLE);
           }
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
