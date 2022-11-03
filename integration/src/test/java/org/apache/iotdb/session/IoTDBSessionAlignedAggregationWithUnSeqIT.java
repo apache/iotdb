@@ -48,8 +48,8 @@ public class IoTDBSessionAlignedAggregationWithUnSeqIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    originCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
-    CONFIG.setConcurrentCompactionThread(0);
+    originCompactionThreadNum = CONFIG.getCompactionThreadCount();
+    CONFIG.setCompactionThreadCount(0);
     EnvironmentUtils.envSetUp();
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -61,7 +61,7 @@ public class IoTDBSessionAlignedAggregationWithUnSeqIT {
   public static void tearDown() throws Exception {
     session.close();
     EnvironmentUtils.cleanEnv();
-    CONFIG.setConcurrentCompactionThread(originCompactionThreadNum);
+    CONFIG.setCompactionThreadCount(originCompactionThreadNum);
   }
 
   @Test

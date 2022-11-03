@@ -56,6 +56,10 @@
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
@@ -74,6 +78,11 @@
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

@@ -1197,7 +1197,7 @@ public class LocalConfigNode {
         continue;
       }
       for (PartialPath path : authorStatement.getNodeNameList()) {
-        if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
           rolePrivilegeSet.add(pathPrivilege.toString());
         }
       }
@@ -1236,7 +1236,7 @@ public class LocalConfigNode {
           continue;
         }
         for (PartialPath path : authorStatement.getNodeNameList()) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
               && !userPrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add("");
             userPrivilegeSet.add(pathPrivilege.toString());
@@ -1258,7 +1258,7 @@ public class LocalConfigNode {
             continue;
           }
           for (PartialPath path : authorStatement.getNodeNameList()) {
-            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
                 && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
               rolePrivileges.add(roleN);
               rolePrivilegeSet.add(pathPrivilege.toString());
@@ -1350,7 +1350,7 @@ public class LocalConfigNode {
   public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
     try {
       syncService.addPipe(
-          SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
+          SyncPipeUtil.parseCreatePipeStatementAsPipeInfo(
               createPipeStatement, System.currentTimeMillis()));
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());

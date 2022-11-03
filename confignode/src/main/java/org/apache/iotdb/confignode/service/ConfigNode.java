@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -47,6 +48,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -82,6 +84,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
+      processPid();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -90,6 +93,7 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
@@ -104,7 +108,7 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        // Init consensusGroup
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
@@ -124,6 +128,7 @@ public class ConfigNode implements ConfigNodeMBean {
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
+
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
         return;
@@ -171,6 +176,13 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
+  void processPid() {
+    String pidFile = System.getProperty(ConfigNodeConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
+  }
+
   private void initConfigManager() {
     try {
       configManager = new ConfigManager();
@@ -200,7 +212,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -217,7 +229,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSchemaRegionConsensusProtocolClass(),
             CONF.getSeriesPartitionSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
             CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
@@ -248,6 +260,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
@@ -289,6 +302,15 @@ public class ConfigNode implements ConfigNodeMBean {
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
     System.exit(-1);
+  }
+
+  public ConfigManager getConfigManager() {
+    return configManager;
+  }
+
+  @TestOnly
+  public void setConfigManager(ConfigManager configManager) {
+    this.configManager = configManager;
   }
 
   private static class ConfigNodeHolder {

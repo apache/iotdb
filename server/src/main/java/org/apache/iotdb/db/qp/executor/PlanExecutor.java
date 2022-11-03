@@ -47,14 +47,12 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
@@ -146,7 +144,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -211,12 +208,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS_TYPES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COLUMN;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_BOUNDARY;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_QUERY_SQL;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_TARGET_PATH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
@@ -604,14 +595,12 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan)
-      throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().register(plan, true);
+  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) {
+    throw new UnsupportedOperationException();
   }
 
-  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan)
-      throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().deregister(plan, true);
+  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) {
+    throw new UnsupportedOperationException();
   }
 
   public static void flushSpecifiedStorageGroups(FlushPlan plan)
@@ -731,7 +720,7 @@ public class PlanExecutor implements IPlanExecutor {
       case TRIGGERS:
         return processShowTriggers();
       case CONTINUOUS_QUERY:
-        return processShowContinuousQueries();
+        throw new UnsupportedOperationException();
       case SCHEMA_TEMPLATE:
         return processShowSchemaTemplates();
       case NODES_IN_SCHEMA_TEMPLATE:
@@ -1120,41 +1109,6 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processShowContinuousQueries() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_NAME, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_BOUNDARY, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_QUERY_SQL, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_TARGET_PATH, false)),
-            Arrays.asList(
-                TSDataType.TEXT,
-                TSDataType.INT64,
-                TSDataType.INT64,
-                TSDataType.INT64,
-                TSDataType.TEXT,
-                TSDataType.TEXT));
-
-    List<ShowContinuousQueriesResult> continuousQueriesList =
-        ContinuousQueryService.getInstance().getShowContinuousQueriesResultList();
-
-    for (ShowContinuousQueriesResult result : continuousQueriesList) {
-      RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(result.getContinuousQueryName()), TSDataType.TEXT);
-      record.addField(result.getEveryInterval(), TSDataType.INT64);
-      record.addField(result.getForInterval(), TSDataType.INT64);
-      record.addField(result.getBoundary(), TSDataType.INT64);
-      record.addField(Binary.valueOf(result.getQuerySql()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(result.getTargetPath().getFullPath()), TSDataType.TEXT);
-      listDataSet.putRecord(record);
-    }
-
-    return listDataSet;
-  }
-
   private QueryDataSet processShowSchemaTemplates() {
     ListDataSet listDataSet =
         new ListDataSet(
@@ -1533,7 +1487,7 @@ public class PlanExecutor implements IPlanExecutor {
         if (!registeredSeries.contains(series)) {
           registeredSeries.add(series);
           IMeasurementSchema schema =
-              knownSchemas.get(new Path(series.getDevice(), series.getMeasurement()));
+              knownSchemas.get(new Path(series.getDevice(), series.getMeasurement(), true));
           if (schema == null) {
             throw new MetadataException(
                 String.format(
@@ -2298,7 +2252,7 @@ public class PlanExecutor implements IPlanExecutor {
           continue;
         }
         for (PartialPath path : nodeNameList) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
             RowRecord record = new RowRecord(index++);
             Field field = new Field(TSDataType.TEXT);
             field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -2353,7 +2307,7 @@ public class PlanExecutor implements IPlanExecutor {
           continue;
         }
         for (PartialPath path : nodeNameList) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
             RowRecord record = new RowRecord(index++);
             Field roleF = new Field(TSDataType.TEXT);
             roleF.setBinaryV(new Binary(""));
@@ -2382,7 +2336,7 @@ public class PlanExecutor implements IPlanExecutor {
             dataSet.putRecord(record);
           }
           for (PartialPath path : nodeNameList) {
-            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
               RowRecord record = new RowRecord(index++);
               Field roleF = new Field(TSDataType.TEXT);
               roleF.setBinaryV(new Binary(roleN));

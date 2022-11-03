@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 

@@ -30,8 +30,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -42,29 +40,35 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetFunctionTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -75,7 +79,6 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -90,21 +93,22 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
-import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
-import org.apache.iotdb.confignode.persistence.node.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionStatistics;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -895,6 +899,16 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void DropSchemaTemplateTest() throws IOException {
+    DropSchemaTemplatePlan dropSchemaTemplatePlan = new DropSchemaTemplatePlan("template");
+    DropSchemaTemplatePlan deserializedPlan =
+        (DropSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(dropSchemaTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        dropSchemaTemplatePlan.getTemplateName(), deserializedPlan.getTemplateName());
+  }
+
+  @Test
   public void CreatePipeSinkPlanTest() throws IOException {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("ip", "127.0.0.1");
@@ -941,7 +955,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void PreCreatePipePlanTest() throws IOException {
     PipeInfo pipeInfo =
         new TsFilePipeInfo(
-            "name", "demo", PipeStatus.PREPARE_CREATE, System.currentTimeMillis(), 999, false);
+            "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
     PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
     PreCreatePipePlan PreCreatePipePlan1 =
         (PreCreatePipePlan)
@@ -951,7 +965,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlan() throws IOException {
-    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PREPARE_CREATE);
+    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PARTIAL_CREATE);
     SetPipeStatusPlan setPipeStatusPlan1 =
         (SetPipeStatusPlan)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());
@@ -1000,6 +1014,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new PartialPath("root.test.**"),
             "test",
             "test.class",
+            true,
             "test.jar",
             null,
             TriggerEvent.AFTER_INSERT,
@@ -1046,6 +1061,72 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void ActiveCQPlanTest() throws IOException {
+    ActiveCQPlan activeCQPlan0 = new ActiveCQPlan("testCq", "testCq_md5");
+    ActiveCQPlan activeCQPlan1 =
+        (ActiveCQPlan) ConfigPhysicalPlan.Factory.create(activeCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(activeCQPlan0, activeCQPlan1);
+  }
+
+  @Test
+  public void AddCQPlanTest() throws IOException {
+    long executionTime = System.currentTimeMillis();
+    AddCQPlan addCQPlan0 =
+        new AddCQPlan(
+            new TCreateCQReq(
+                "testCq1",
+                1000,
+                0,
+                1000,
+                0,
+                (byte) 0,
+                "select s1 into root.backup.d1.s1 from root.sg.d1",
+                "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
+                "Asia",
+                "root"),
+            "testCq1_md5",
+            executionTime);
+    AddCQPlan addCQPlan1 =
+        (AddCQPlan) ConfigPhysicalPlan.Factory.create(addCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(addCQPlan0, addCQPlan1);
+  }
+
+  @Test
+  public void DropCQPlanTest() throws IOException {
+    DropCQPlan dropCQPlan0 = new DropCQPlan("testCq1");
+    DropCQPlan dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+
+    dropCQPlan0 = new DropCQPlan("testCq1", "testCq1_md5");
+    dropCQPlan1 =
+        (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropCQPlan0, dropCQPlan1);
+  }
+
+  @Test
+  public void ShowCQPlanTest() throws IOException {
+    ShowCQPlan showCQPlan0 = new ShowCQPlan();
+    ShowCQPlan showCQPlan1 =
+        (ShowCQPlan) ConfigPhysicalPlan.Factory.create(showCQPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(showCQPlan0, showCQPlan1);
+  }
+
+  @Test
+  public void UpdateCQLastExecTimePlanTest() throws IOException {
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
+        new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
+    UpdateCQLastExecTimePlan updateCQLastExecTimePlan1 =
+        (UpdateCQLastExecTimePlan)
+            ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
+  }
+
+  @Test
   public void GetTriggerJarPlanTest() throws IOException {
     List<String> jarNames = new ArrayList<>();
     jarNames.add("test1");
@@ -1087,31 +1168,6 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
-  }
-
-  @Test
-  public void UpdateLoadStatisticsPlanTest() throws IOException {
-    UpdateLoadStatisticsPlan updateLoadStatisticsPlan0 = new UpdateLoadStatisticsPlan();
-
-    for (int i = 0; i < 3; i++) {
-      updateLoadStatisticsPlan0.putNodeStatistics(
-          i, new NodeStatistics(i, NodeStatus.Running, null));
-    }
-
-    for (int i = 0; i < 10; i++) {
-      Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
-      for (int j = 0; j < 3; j++) {
-        regionStatisticsMap.put(j, new RegionStatistics(j, false, RegionStatus.Unknown));
-      }
-      updateLoadStatisticsPlan0.putRegionGroupStatistics(
-          new TConsensusGroupId(DataRegion, i),
-          new RegionGroupStatistics(-1, RegionGroupStatus.Available, regionStatisticsMap));
-    }
-
-    UpdateLoadStatisticsPlan updateLoadStatisticsPlan1 =
-        (UpdateLoadStatisticsPlan)
-            ConfigPhysicalPlan.Factory.create(updateLoadStatisticsPlan0.serializeToByteBuffer());
-    Assert.assertEquals(updateLoadStatisticsPlan0, updateLoadStatisticsPlan1);
   }
 
   @Test
@@ -1205,5 +1261,47 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getUDFTablePlan0.serializeToByteBuffer())
             instanceof GetFunctionTablePlan);
+  }
+
+  @Test
+  public void GetUDFJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("test1");
+    jarNames.add("test2");
+    GetUDFJarPlan getUDFJarPlan0 = new GetUDFJarPlan(jarNames);
+
+    GetUDFJarPlan getUDFJarPlan1 =
+        (GetUDFJarPlan) ConfigPhysicalPlan.Factory.create(getUDFJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getUDFJarPlan0.getJarNames(), getUDFJarPlan1.getJarNames());
+  }
+
+  @Test
+  public void PreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    PreUnsetSchemaTemplatePlan plan = new PreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    PreUnsetSchemaTemplatePlan deserializedPlan =
+        (PreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void RollbackPreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    RollbackPreUnsetSchemaTemplatePlan plan =
+        new RollbackPreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    RollbackPreUnsetSchemaTemplatePlan deserializedPlan =
+        (RollbackPreUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void UnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
+    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    UnsetSchemaTemplatePlan deserializedPlan =
+        (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
+    Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
   }
 }

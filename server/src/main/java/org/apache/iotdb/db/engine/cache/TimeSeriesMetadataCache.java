@@ -127,7 +127,8 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
+          reader.readTimeseriesMetadata(
+              new Path(key.device, key.measurement, true), ignoreNotExists);
       return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
           ? null
           : timeseriesMetadata;
@@ -147,7 +148,7 @@ public class TimeSeriesMetadataCache {
         // double check
         timeseriesMetadata = lruCache.getIfPresent(key);
         if (timeseriesMetadata == null) {
-          Path path = new Path(key.device, key.measurement);
+          Path path = new Path(key.device, key.measurement, true);
           // bloom filter part
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()

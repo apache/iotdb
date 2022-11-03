@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.db.protocol.mqtt.MPPPublishHandler;
-import org.apache.iotdb.db.protocol.mqtt.PublishHandler;
 
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
@@ -63,7 +62,7 @@ public class MQTTService implements IService {
     if (iotDBConfig.isMppMode()) {
       handlers.add(new MPPPublishHandler(iotDBConfig));
     } else {
-      handlers.add(new PublishHandler(iotDBConfig));
+      throw new UnsupportedOperationException();
     }
     IAuthenticator authenticator = new BrokerAuthenticator();
 

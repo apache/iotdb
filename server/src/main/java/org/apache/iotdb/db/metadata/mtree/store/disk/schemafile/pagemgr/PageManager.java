@@ -27,11 +27,15 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogReader;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -54,6 +58,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_CACHE_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_INDEX_MASK;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_LENGTH;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SCHEMA_FILE_LOG_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
@@ -82,22 +87,55 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
-  PageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
-    pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
-    dirtyPages = new ConcurrentHashMap<>();
-    evictLock = new ReentrantLock();
-    pageLocks = new PageLocks();
-    lastPageIndex = lpi >= 0 ? new AtomicInteger(lpi) : new AtomicInteger(0);
-    treeTrace = new int[16];
+  private final AtomicInteger logCounter;
+  private SchemaFileLogWriter logWriter;
+
+  PageManager(FileChannel channel, int lastPageIndex, String logPath)
+      throws IOException, MetadataException {
+    this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    this.dirtyPages = new ConcurrentHashMap<>();
+    this.evictLock = new ReentrantLock();
+    this.pageLocks = new PageLocks();
+    this.lastPageIndex =
+        lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
+    this.treeTrace = new int[16];
     this.channel = channel;
 
+    // recover if log exists
+    int pageAcc = (int) recoverFromLog(logPath) / PAGE_LENGTH;
+    this.logWriter = new SchemaFileLogWriter(logPath);
+    logCounter = new AtomicInteger(pageAcc);
+
     // construct first page if file to init
-    if (lpi < 0) {
+    if (lastPageIndex < 0) {
       ISegmentedPage rootPage = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), 0);
       rootPage.allocNewSegment(SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
       markDirty(rootPage);
     }
+  }
+
+  /** Load bytes from log, deserialize and flush directly into channel, return current length */
+  private long recoverFromLog(String logPath) throws IOException, MetadataException {
+    SchemaFileLogReader reader = new SchemaFileLogReader(logPath);
+    ISchemaPage page;
+    List<byte[]> res = reader.collectUpdatedEntries();
+    for (byte[] entry : res) {
+      // TODO check bytes semantic correctness with CRC32 or other way
+      page = ISchemaPage.loadSchemaPage(ByteBuffer.wrap(entry));
+      page.flushPageToChannel(this.channel);
+    }
+    reader.close();
+
+    // complete log file
+    if (res.size() != 0) {
+      FileOutputStream outputStream = new FileOutputStream(logPath, true);
+      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+      long length = outputStream.getChannel().size();
+      outputStream.close();
+      return length;
+    }
+    return 0L;
   }
 
   // region Framework Methods
@@ -169,7 +207,11 @@ public abstract class PageManager implements IPageManager {
           short actSegId = getSegIndex(actualAddress);
           short newSegSize =
               reEstimateSegSize(
-                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
+                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
+                  ICachedMNodeContainer.getCachedMNodeContainer(node)
+                      .getNewChildBuffer()
+                      .entrySet()
+                      .size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize);
 
           // with single segment, curSegAddr equals actualAddress
@@ -353,9 +395,27 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void flushDirtyPages() throws IOException {
+    if (dirtyPages.size() == 0) {
+      return;
+    }
+
+    // TODO: better performance expected while ensuring integrity when exception interrupts
+    if (logCounter.get() > SCHEMA_FILE_LOG_SIZE) {
+      logWriter = logWriter.renew();
+      logCounter.set(0);
+    }
+
+    logCounter.addAndGet(dirtyPages.size());
+    for (ISchemaPage page : dirtyPages.values()) {
+      page.syncPageBuffer();
+      logWriter.write(page);
+    }
+    logWriter.prepare();
+
     for (ISchemaPage page : dirtyPages.values()) {
       page.flushPageToChannel(channel);
     }
+    logWriter.commit();
     dirtyPages.clear();
   }
 
@@ -364,6 +424,7 @@ public abstract class PageManager implements IPageManager {
     dirtyPages.clear();
     pageInstCache.clear();
     lastPageIndex.set(0);
+    logWriter = logWriter.renew();
   }
 
   @Override
@@ -372,6 +433,11 @@ public abstract class PageManager implements IPageManager {
       builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
     }
     return builder;
+  }
+
+  @Override
+  public void close() throws IOException {
+    logWriter.close();
   }
 
   // endregion
@@ -522,30 +588,56 @@ public abstract class PageManager implements IPageManager {
    */
   private static short estimateSegmentSize(IMNode node) {
     int childNum = node.getChildren().size();
-    int tier = SEG_SIZE_LST.length;
-
-    for (int i = 1; i < SEG_SIZE_METRIC.length + 1; i++) {
-      if (childNum > SEG_SIZE_METRIC[i - 1]) {
-        return SEG_SIZE_LST[tier - i] > SEG_MIN_SIZ ? SEG_SIZE_LST[tier - i] : SEG_MIN_SIZ;
+    if (childNum < SEG_SIZE_METRIC[0]) {
+      // for record offset, length of string key
+      int totalSize = SEG_HEADER_SIZE + 6 * childNum;
+      for (IMNode child : node.getChildren().values()) {
+        totalSize += child.getName().getBytes().length;
+        if (child.isMeasurement()) {
+          totalSize +=
+              child.getAsMeasurementMNode().getAlias() == null
+                  ? 4
+                  : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
+          totalSize += 24; // slightly larger than actually HEADER size
+        } else {
+          totalSize += 16; // slightly larger
+        }
       }
+      return (short) totalSize > SEG_MIN_SIZ ? (short) totalSize : SEG_MIN_SIZ;
     }
 
-    // for childNum < 20, count for actually
-    int totalSize = SEG_HEADER_SIZE;
-    for (IMNode child : node.getChildren().values()) {
-      totalSize += child.getName().getBytes().length;
-      totalSize += 2 + 4; // for record offset, length of string key
-      if (child.isMeasurement()) {
-        totalSize +=
-            child.getAsMeasurementMNode().getAlias() == null
-                ? 4
-                : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
-        totalSize += 24; // slightly larger than actually HEADER size
-      } else {
-        totalSize += 16; // slightly larger
+    int tier = SEG_SIZE_LST.length - 1;
+    while (tier > 0) {
+      if (childNum > SEG_SIZE_METRIC[tier]) {
+        return SEG_SIZE_LST[tier];
       }
+      tier--;
     }
-    return (short) totalSize > SEG_MIN_SIZ ? (short) totalSize : SEG_MIN_SIZ;
+    return SEG_SIZE_LST[0];
+  }
+
+  /**
+   * This method {@linkplain #reEstimateSegSize} is called when {@linkplain
+   * SchemaPageOverflowException} occurs. It is designed to accelerate when there is lots of new
+   * children nodes, avoiding segments extend several times.
+   *
+   * @param expSize expected size calculated from next new record
+   * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
+   * @return estimated size
+   * @throws MetadataException
+   */
+  private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
+    if (batchSize < SEG_SIZE_METRIC[0]) {
+      return reEstimateSegSize(expSize);
+    }
+    int tier = SEG_SIZE_LST.length - 1;
+    while (tier > 0) {
+      if (batchSize > SEG_SIZE_METRIC[tier]) {
+        return SEG_SIZE_LST[tier];
+      }
+      tier--;
+    }
+    return SEG_SIZE_LST[0];
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {
