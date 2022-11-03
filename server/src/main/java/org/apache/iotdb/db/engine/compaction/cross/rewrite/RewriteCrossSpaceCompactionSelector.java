@@ -84,7 +84,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         (long)
             ((double)
                     (SystemInfo.getInstance().getMemorySizeForCompaction()
-                        / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
+                        / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount())
                 * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
@@ -366,7 +366,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @Override
   public List selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-    if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
+    if ((CompactionTaskManager.currentTaskNum.get() >= config.getCompactionThreadCount())
         || (!config.isEnableCrossSpaceCompaction())) {
       return Collections.emptyList();
     }

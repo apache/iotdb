@@ -130,7 +130,7 @@ public class ConfigNodeRemoveCheck {
   }
 
   public int getConsensusPort() {
-    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT));
+    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CN_CONSENSUS_PORT));
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {

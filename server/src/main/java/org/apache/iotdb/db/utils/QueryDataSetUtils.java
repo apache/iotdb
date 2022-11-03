@@ -32,12 +32,14 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -178,8 +180,9 @@ public class QueryDataSetUtils {
     return tsQueryDataSet;
   }
 
-  public static TSQueryDataSet convertTsBlockByFetchSize(
+  public static Pair<TSQueryDataSet, Boolean> convertTsBlockByFetchSize(
       IQueryExecution queryExecution, int fetchSize) throws IOException, IoTDBException {
+    boolean finished = false;
     int columnNum = queryExecution.getOutputValueColumnCount();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // one time column and each value column has an actual value buffer and a bitmap value to
@@ -200,6 +203,7 @@ public class QueryDataSetUtils {
     while (rowCount < fetchSize) {
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
+        finished = true;
         break;
       }
       TsBlock tsBlock = optionalTsBlock.get();
@@ -370,7 +374,34 @@ public class QueryDataSetUtils {
     }
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
-    return tsQueryDataSet;
+    return new Pair<>(tsQueryDataSet, finished);
+  }
+
+  /** pair.left is serialized TsBlock pair.right indicates if the query finished */
+  // To fetch required amounts of data and combine them through List
+  public static Pair<List<ByteBuffer>, Boolean> convertQueryResultByFetchSize(
+      IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
+    int rowCount = 0;
+    List<ByteBuffer> res = new ArrayList<>();
+    while (rowCount < fetchSize) {
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+      if (!optionalByteBuffer.isPresent()) {
+        break;
+      }
+      ByteBuffer byteBuffer = optionalByteBuffer.get();
+      byteBuffer.mark();
+      int valueColumnCount = byteBuffer.getInt();
+      for (int i = 0; i < valueColumnCount; i++) {
+        byteBuffer.get();
+      }
+      int positionCount = byteBuffer.getInt();
+      byteBuffer.reset();
+      if (positionCount != 0) {
+        res.add(byteBuffer);
+      }
+      rowCount += positionCount;
+    }
+    return new Pair<>(res, !queryExecution.hasNextResult());
   }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {

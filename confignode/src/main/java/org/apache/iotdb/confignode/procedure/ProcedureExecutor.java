@@ -700,7 +700,7 @@ public class ProcedureExecutor<Env> {
    */
   private long pushProcedure(Procedure<Env> procedure) {
     final long currentProcId = procedure.getProcId();
-    RootProcedureStack stack = new RootProcedureStack();
+    RootProcedureStack<Env> stack = new RootProcedureStack<>();
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
     scheduler.addBack(procedure);

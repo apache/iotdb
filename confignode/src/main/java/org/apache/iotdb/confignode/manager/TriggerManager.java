@@ -27,23 +27,23 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.consensus.request.read.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
-import org.apache.iotdb.confignode.consensus.response.TriggerJarResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerJarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -61,6 +61,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class TriggerManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
@@ -92,15 +93,27 @@ public class TriggerManager {
    * @return status of create this trigger
    */
   public TSStatus createTrigger(TCreateTriggerReq req) {
-    boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
-    TDataNodeLocation dataNodeLocation =
-        isStateful ? configManager.getNodeManager().getLowestLoadDataNode() : null;
+    final boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
+    TDataNodeLocation dataNodeLocation = null;
+    if (isStateful) {
+      Optional<TDataNodeLocation> targetDataNode =
+          configManager.getNodeManager().getLowestLoadDataNode();
+      if (targetDataNode.isPresent()) {
+        dataNodeLocation = targetDataNode.get();
+      } else {
+        return new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
+      }
+    }
+    final String triggerName = req.getTriggerName();
+    final boolean isUsingURI = req.isIsUsingURI(),
+        needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
     TriggerInformation triggerInformation =
         new TriggerInformation(
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
-            req.getTriggerName(),
+            triggerName,
             req.getClassName(),
-            req.getJarPath(),
+            isUsingURI,
+            req.getJarName(),
             req.getAttributes(),
             TriggerEvent.construct(req.triggerEvent),
             TTriggerState.INACTIVE,
@@ -110,7 +123,7 @@ public class TriggerManager {
             req.getJarMD5());
     return configManager
         .getProcedureManager()
-        .createTrigger(triggerInformation, new Binary(req.getJarFile()));
+        .createTrigger(triggerInformation, needToSaveJar ? new Binary(req.getJarFile()) : null);
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {
@@ -143,9 +156,9 @@ public class TriggerManager {
         .convertToThriftResponse();
   }
 
-  public TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req) {
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
     try {
-      return ((TriggerJarResp)
+      return ((JarResp)
               configManager
                   .getConsensusManager()
                   .read(new GetTriggerJarPlan(req.getJarNameList()))
@@ -153,7 +166,7 @@ public class TriggerManager {
           .convertToThriftResponse();
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetTriggerJarResp(
+      return new TGetJarInListResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());
@@ -165,8 +178,8 @@ public class TriggerManager {
    *
    * <p>Step2: Get all Transferring Triggers marked in Step1.
    *
-   * <p>Step3: For each trigger get in Step2, find the DataNode with the lowest load, then transfer
-   * the Stateful Trigger to it and update this information on all DataNodes.
+   * <p>Step3: For each trigger gotten in Step2, find the DataNode with the lowest load, then
+   * transfer the Stateful Trigger to it and update this information on all DataNodes.
    *
    * <p>Step4: Update the newest location on ConfigNodes.
    *

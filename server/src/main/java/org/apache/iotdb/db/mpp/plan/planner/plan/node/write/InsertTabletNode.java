@@ -40,6 +40,7 @@ import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -182,7 +183,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (deviceSchemaInfo == null) {
       throw new PathNotExistException(
           Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + s)
+              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
               .collect(Collectors.toList()));
     }
     if (deviceSchemaInfo.isAligned() != isAligned) {

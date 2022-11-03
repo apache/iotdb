@@ -23,9 +23,7 @@ import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -53,7 +51,6 @@ public class BufferedPipeDataQueueTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
     if (!pipeLogDir.exists()) {
       pipeLogDir.mkdirs();
     }
@@ -62,7 +59,6 @@ public class BufferedPipeDataQueueTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     FileUtils.deleteDirectory(pipeLogDir);
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -234,7 +230,7 @@ public class BufferedPipeDataQueueTest {
       }
       for (int i = 8; i < 11; i++) {
         PipeData pipeData =
-            new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake" + i)), i);
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
         pipeDataList.add(pipeData);
         pipeData.serialize(pipeLogOutput2);
       }
@@ -324,7 +320,7 @@ public class BufferedPipeDataQueueTest {
       }
       for (int i = 8; i < 11; i++) {
         PipeData pipeData =
-            new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake" + i)), i);
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
         pipeDataList.add(pipeData);
         pipeData.serialize(pipeLogOutput2);
       }
@@ -411,7 +407,7 @@ public class BufferedPipeDataQueueTest {
       }
       for (int i = 8; i < 11; i++) {
         PipeData pipeData =
-            new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake" + i)), i);
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
         pipeDataList.add(pipeData);
         pipeData.serialize(pipeLogOutput2);
       }
@@ -492,7 +488,7 @@ public class BufferedPipeDataQueueTest {
       }
       for (int i = 8; i < 11; i++) {
         PipeData pipeData =
-            new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake" + i)), i);
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
         pipeDataList.add(pipeData);
         pipeData.serialize(pipeLogOutput2);
       }
@@ -578,7 +574,7 @@ public class BufferedPipeDataQueueTest {
         pipeData.serialize(pipeLogOutput2);
       }
       PipeData schema10PipeData =
-          new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("fake10")), 10);
+          new DeletionPipeData(new Deletion(new PartialPath("fake" + 10), 0, 99), 10);
       pipeDataList.add(schema10PipeData);
       schema10PipeData.serialize(pipeLogOutput2);
       pipeLogOutput2.close();
