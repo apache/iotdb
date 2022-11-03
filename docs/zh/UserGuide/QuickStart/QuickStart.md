@@ -57,10 +57,24 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -f >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -b
 ```
+可选参数:
+- 默认不含任何参数时, iotdb 将在后台启动，并且不在控制台打印日志
+- "-v": 查看iotdb版本
+- "-f": 在控制台前台启动iotdb (v0.14前是默认设置)
+- "-b": 在后台启动iotdb，控制台不打印日志
+- "-p \<pidfile\>": 将pid保存到指定的文件中
+- "-h": 查看帮助
+- "printgc"(必须是最后一个参数): 打印GC日志 (从v0.14起，该参数将被-g取代)
+- "-g": 打印GC日志
+- "-c \<config folder\>": 设置IOTDB_CONF变量的值，从而修改配置文件所在文件夹
+- "-D <a=b>": 设置Java的系统环境变量或其他参数
+- "-H \<filePath\> 当OOM异常时存储堆快照到\<filePath\> (仅 Linux/Mac生效, 且要求iotdb内存小于16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\> (仅 Linux/Mac生效)"
+- "-X \<command\> 等价于JVM中 -XX:\<command\>"
 
 Windows 系统启动命令如下：
 

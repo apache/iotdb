@@ -93,49 +93,49 @@ public class ConfigNodeDescriptor {
 
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
-    if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-      return;
-    }
     Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
 
-      LOGGER.info("Start to read config file {}", url);
-      commonProperties.load(inputStream);
+        LOGGER.info("Start to read config file {}", url);
+        commonProperties.load(inputStream);
 
-    } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url, e);
-    } catch (IOException e) {
-      LOGGER.warn("Cannot load config file, use default configuration", e);
-    } catch (Exception e) {
-      LOGGER.warn("Incorrect format in config file, use default configuration", e);
+      } catch (FileNotFoundException e) {
+        LOGGER.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        LOGGER.warn("Incorrect format in config file, use default configuration", e);
+      }
+    } else {
+      LOGGER.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          CommonConfig.CONFIG_NAME);
     }
 
     url = getPropsUrl(ConfigNodeConstant.CONF_FILE_NAME);
-    if (url == null) {
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        LOGGER.info("start reading ConfigNode conf file: {}", url);
+        Properties properties = new Properties();
+        properties.load(inputStream);
+        commonProperties.putAll(properties);
+        loadProperties(commonProperties);
+      } catch (IOException | BadNodeUrlException e) {
+        LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+      } finally {
+        conf.updatePath();
+        commonDescriptor
+            .getConfig()
+            .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+        MetricConfigDescriptor.getInstance()
+            .getMetricConfig()
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+      }
+    } else {
       LOGGER.warn(
-          "Couldn't load the ConfigNode configuration from any of the known sources. Use default configuration.");
-      return;
-    }
-
-    try (InputStream inputStream = url.openStream()) {
-
-      LOGGER.info("start reading ConfigNode conf file: {}", url);
-
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      commonProperties.putAll(properties);
-      loadProperties(commonProperties);
-    } catch (IOException | BadNodeUrlException e) {
-      LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
-    } finally {
-      conf.updatePath();
-      commonDescriptor
-          .getConfig()
-          .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
-      MetricConfigDescriptor.getInstance()
-          .getMetricConfig()
-          .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+          "Couldn't load the configuration {} from any of the known sources.",
+          ConfigNodeConstant.CONF_FILE_NAME);
     }
   }
 
@@ -293,11 +293,11 @@ public class ConfigNodeDescriptor {
                 "procedure_completed_clean_interval",
                 String.valueOf(conf.getProcedureCompletedCleanInterval()))));
 
-    conf.setProcedureCoreWorkerThreadsSize(
+    conf.setProcedureCoreWorkerThreadsCount(
         Integer.parseInt(
             properties.getProperty(
-                "procedure_core_worker_thread_size",
-                String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
+                "procedure_core_worker_thread_count",
+                String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
@@ -334,6 +334,12 @@ public class ConfigNodeDescriptor {
                 "partition_region_ratis_snapshot_trigger_threshold",
                 String.valueOf(conf.getPartitionRegionRatisSnapshotTriggerThreshold()))));
 
+    conf.setPartitionRegionOneCopySnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_region_one_copy_snapshot_trigger_threshold",
+                String.valueOf(conf.getPartitionRegionOneCopySnapshotTriggerThreshold()))));
+
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
@@ -361,26 +367,26 @@ public class ConfigNodeDescriptor {
     conf.setDataRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "data_region_ratis_log_segment_size_max",
+                "data_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getDataRegionRatisLogSegmentSizeMax()))));
 
     conf.setPartitionRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_log_segment_size_max",
+                "partition_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getPartitionRegionRatisLogSegmentSizeMax()))));
 
     conf.setSchemaRegionRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "schema_region_ratis_log_segment_size_max",
+                "schema_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
-    conf.setPartitionRegionStandAloneLogSegmentSizeMax(
+    conf.setPartitionRegionOneCopyLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_standalone_log_segment_size_max",
-                String.valueOf(conf.getPartitionRegionStandAloneLogSegmentSizeMax()))));
+                "partition_region_one_copy_log_segment_size_max_in_byte",
+                String.valueOf(conf.getPartitionRegionOneCopyLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
@@ -535,7 +541,7 @@ public class ConfigNodeDescriptor {
     int cqSubmitThread =
         Integer.parseInt(
             properties.getProperty(
-                "continuous_query_submit_thread", String.valueOf(conf.getCqSubmitThread())));
+                "continuous_query_submit_thread_count", String.valueOf(conf.getCqSubmitThread())));
     if (cqSubmitThread <= 0) {
       LOGGER.warn(
           "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",

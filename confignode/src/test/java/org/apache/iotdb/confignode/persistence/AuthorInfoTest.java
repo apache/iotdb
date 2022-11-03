@@ -254,7 +254,7 @@ public class AuthorInfoTest {
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    // list privileges user
+    // list privileges user on root.ln.**
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.ListUserPrivilege,
@@ -264,6 +264,22 @@ public class AuthorInfoTest {
             "",
             new HashSet<>(),
             nodeNameList);
+    permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
+    status = permissionInfoResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
+
+    // list privileges user on root.**
+    authorPlan =
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListUserPrivilege,
+            "user0",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            Collections.singletonList("root.**"));
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -286,7 +302,7 @@ public class AuthorInfoTest {
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
-    // list privileges role
+    // list privileges role on root.ln.**
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.ListRolePrivilege,
@@ -300,6 +316,22 @@ public class AuthorInfoTest {
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     privilege.remove(0);
+    Assert.assertEquals(
+        0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
+
+    // list privileges role on root.**
+    authorPlan =
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListRolePrivilege,
+            "",
+            "role0",
+            "",
+            "",
+            new HashSet<>(),
+            Collections.singletonList("root.**"));
+    permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
+    status = permissionInfoResp.getStatus();
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 

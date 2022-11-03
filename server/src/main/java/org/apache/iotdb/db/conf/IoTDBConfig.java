@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -118,7 +118,7 @@ public class IoTDBConfig {
   private int influxDBRpcPort = 8086;
 
   /** Rpc Selector thread num */
-  private int rpcSelectorThreadNum = 1;
+  private int rpcSelectorThreadCount = 1;
 
   /** Min concurrent client number */
   private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
@@ -305,10 +305,10 @@ public class IoTDBConfig {
   private int batchSize = 100000;
 
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
-  private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+  private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -316,13 +316,13 @@ public class IoTDBConfig {
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
-  private int concurrentSubRawQueryThread = 8;
+  private int subRawQueryThreadCount = 8;
 
   /** Blocking queue size for read task in raw data query. */
   private int rawQueryBlockingQueueCapacity = 5;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
-  private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
+  private int windowEvaluationThreadCount = Runtime.getRuntime().availableProcessors();
 
   /**
    * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
@@ -569,7 +569,7 @@ public class IoTDBConfig {
   private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
-  private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
+  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -632,7 +632,7 @@ public class IoTDBConfig {
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /** How many threads will be set up to perform upgrade tasks. */
-  private int upgradeThreadNum = 1;
+  private int upgradeThreadCount = 1;
 
   /** How many threads will be set up to perform settle tasks. */
   private int settleThreadNum = 1;
@@ -657,7 +657,7 @@ public class IoTDBConfig {
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
    * equal to 0.
    */
-  private int concurrentCompactionThread = 10;
+  private int compactionThreadCount = 10;
 
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
@@ -748,7 +748,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /** Time partition interval for storage in milliseconds */
   private long timePartitionIntervalForStorage = 604_800_000;
@@ -863,6 +863,9 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
+  /** maximum number of logged pages before log erased */
+  private int schemaFileLogSize = 16384;
+
   /** Internal address for data node */
   private String internalAddress = "0.0.0.0";
 
@@ -879,22 +882,22 @@ public class IoTDBConfig {
   private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
-  /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
+  /** The time of data node waiting for the next retry to join into the cluster */
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
    */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup
@@ -1154,24 +1157,24 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
   private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    schemaDir = addHomeDir(schemaDir);
-    loadTsFileDir = addHomeDir(loadTsFileDir);
-    tracingDir = addHomeDir(tracingDir);
-    consensusDir = addHomeDir(consensusDir);
-    dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
-    schemaRegionConsensusDir = addHomeDir(schemaRegionConsensusDir);
-    indexRootFolder = addHomeDir(indexRootFolder);
-    extDir = addHomeDir(extDir);
-    udfDir = addHomeDir(udfDir);
-    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
-    triggerDir = addHomeDir(triggerDir);
-    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
-    mqttDir = addHomeDir(mqttDir);
+    systemDir = addDataHomeDir(systemDir);
+    schemaDir = addDataHomeDir(schemaDir);
+    loadTsFileDir = addDataHomeDir(loadTsFileDir);
+    tracingDir = addDataHomeDir(tracingDir);
+    consensusDir = addDataHomeDir(consensusDir);
+    dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
+    indexRootFolder = addDataHomeDir(indexRootFolder);
+    extDir = addDataHomeDir(extDir);
+    udfDir = addDataHomeDir(udfDir);
+    udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
+    triggerDir = addDataHomeDir(triggerDir);
+    triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    mqttDir = addDataHomeDir(mqttDir);
 
-    extPipeDir = addHomeDir(extPipeDir);
+    extPipeDir = addDataHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1180,9 +1183,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addHomeDir(queryDir);
+      queryDir = addDataHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1196,7 +1199,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
     // make sure old data directories not removed
@@ -1213,13 +1216,26 @@ public class IoTDBConfig {
     DirectoryManager.getInstance().updateFileFolders();
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
+  //  private String addHomeDir(String dir) {
+  //    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
+  //  }
+
+  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
+  // In this way, we can keep consistent with v0.13.0~2.
+  private String addDataHomeDir(String dir) {
+    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
+    if (dataHomeDir == null) {
+      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    }
+    return addDirPrefix(dataHomeDir, dir);
+  }
+
+  private String addDirPrefix(String prefix, String dir) {
+    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
+      if (!prefix.endsWith(File.separator)) {
+        dir = prefix + File.separatorChar + dir;
       } else {
-        dir = homeDir + dir;
+        dir = prefix + dir;
       }
     }
     return dir;
@@ -1459,20 +1475,20 @@ public class IoTDBConfig {
     this.maxMemtableNumber = maxMemtableNumber;
   }
 
-  public int getConcurrentFlushThread() {
-    return concurrentFlushThread;
+  public int getFlushThreadCount() {
+    return flushThreadCount;
   }
 
-  void setConcurrentFlushThread(int concurrentFlushThread) {
-    this.concurrentFlushThread = concurrentFlushThread;
+  void setFlushThreadCount(int flushThreadCount) {
+    this.flushThreadCount = flushThreadCount;
   }
 
-  public int getConcurrentQueryThread() {
-    return concurrentQueryThread;
+  public int getQueryThreadCount() {
+    return queryThreadCount;
   }
 
-  public void setConcurrentQueryThread(int concurrentQueryThread) {
-    this.concurrentQueryThread = concurrentQueryThread;
+  public void setQueryThreadCount(int queryThreadCount) {
+    this.queryThreadCount = queryThreadCount;
   }
 
   public int getMaxAllowedConcurrentQueries() {
@@ -1483,16 +1499,16 @@ public class IoTDBConfig {
     this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
-  public int getConcurrentSubRawQueryThread() {
-    return concurrentSubRawQueryThread;
+  public int getSubRawQueryThreadCount() {
+    return subRawQueryThreadCount;
   }
 
-  void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
-    this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  void setSubRawQueryThreadCount(int subRawQueryThreadCount) {
+    this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
   public long getMaxBytesPerQuery() {
-    return allocateMemoryForDataExchange / concurrentQueryThread;
+    return allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public int getRawQueryBlockingQueueCapacity() {
@@ -1503,12 +1519,12 @@ public class IoTDBConfig {
     this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
-  public int getConcurrentWindowEvaluationThread() {
-    return concurrentWindowEvaluationThread;
+  public int getWindowEvaluationThreadCount() {
+    return windowEvaluationThreadCount;
   }
 
-  public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
-    this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
+  public void setWindowEvaluationThreadCount(int windowEvaluationThreadCount) {
+    this.windowEvaluationThreadCount = windowEvaluationThreadCount;
   }
 
   public int getMaxPendingWindowEvaluationTasks() {
@@ -1535,12 +1551,12 @@ public class IoTDBConfig {
     this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
-  public int getRpcSelectorThreadNum() {
-    return rpcSelectorThreadNum;
+  public int getRpcSelectorThreadCount() {
+    return rpcSelectorThreadCount;
   }
 
-  public void setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-    this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
+    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
   }
 
   public int getRpcMinConcurrentClientNum() {
@@ -1856,12 +1872,12 @@ public class IoTDBConfig {
     this.enablePartialInsert = enablePartialInsert;
   }
 
-  public int getConcurrentCompactionThread() {
-    return concurrentCompactionThread;
+  public int getCompactionThreadCount() {
+    return compactionThreadCount;
   }
 
-  public void setConcurrentCompactionThread(int concurrentCompactionThread) {
-    this.concurrentCompactionThread = concurrentCompactionThread;
+  public void setCompactionThreadCount(int compactionThreadCount) {
+    this.compactionThreadCount = compactionThreadCount;
   }
 
   public int getContinuousQueryThreadNum() {
@@ -2348,16 +2364,16 @@ public class IoTDBConfig {
     this.hdfsPort = hdfsPort;
   }
 
-  public int getUpgradeThreadNum() {
-    return upgradeThreadNum;
+  public int getUpgradeThreadCount() {
+    return upgradeThreadCount;
   }
 
   public int getSettleThreadNum() {
     return settleThreadNum;
   }
 
-  void setUpgradeThreadNum(int upgradeThreadNum) {
-    this.upgradeThreadNum = upgradeThreadNum;
+  void setUpgradeThreadCount(int upgradeThreadCount) {
+    this.upgradeThreadCount = upgradeThreadCount;
   }
 
   String getDfsNameServices() {
@@ -2903,6 +2919,14 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
+  public int getSchemaFileLogSize() {
+    return schemaFileLogSize;
+  }
+
+  public void setSchemaFileLogSize(int schemaFileLogSize) {
+    this.schemaFileLogSize = schemaFileLogSize;
+  }
+
   public String getInternalAddress() {
     return internalAddress;
   }
@@ -2943,12 +2967,12 @@ public class IoTDBConfig {
     this.targetConfigNodeList = targetConfigNodeList;
   }
 
-  public long getJoinClusterTimeOutMs() {
-    return joinClusterTimeOutMs;
+  public long getJoinClusterRetryIntervalMs() {
+    return joinClusterRetryIntervalMs;
   }
 
-  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
-    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  public void setJoinClusterRetryIntervalMs(long joinClusterRetryIntervalMs) {
+    this.joinClusterRetryIntervalMs = joinClusterRetryIntervalMs;
   }
 
   public String getDataRegionConsensusProtocolClass() {

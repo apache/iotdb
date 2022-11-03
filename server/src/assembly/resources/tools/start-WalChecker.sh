@@ -23,11 +23,12 @@ echo ---------------------
 echo Starting WalChecker 
 echo ---------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/.."
-fi
+source "$(dirname "$0")/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+eval set -- "$VARS"
 
-IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
 #if [ -f "$IOTDB_CONF/datanode-env.sh" ]; then

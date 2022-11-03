@@ -135,21 +135,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void destroyDir() {
-    for (int i = 0; i < 3; i++) {
+    Exception lastException = null;
+    for (int i = 0; i < 10; i++) {
       try {
         // DO NOT use FileUtils.forceDelete, as it will follow the symbolic link to make libs
         // read-only, which causes permission denied in deletion.
         PathUtils.deleteDirectory(Paths.get(getNodePath()));
         return;
       } catch (IOException ex) {
-        logger.warn("Delete node dir failed. RetryTimes={}", i + 1, ex);
+        lastException = ex;
         try {
-          TimeUnit.SECONDS.sleep(3);
+          TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
           fail("Delete node dir failed. " + e);
         }
       }
     }
+    lastException.printStackTrace();
     fail("Delete node dir failed.");
   }
 

@@ -67,13 +67,12 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -795,55 +794,15 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
-  public void recoverRegionGroupCacheMap() {
-    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
-        partitionInfo.getRegionGroupStatisticsMap();
+  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  public void initRegionGroupHeartbeatCache() {
     regionGroupCacheMap.clear();
-
-    LOGGER.info("[InheritLoadStatistics] Start to inherit RegionGroupStatistics...");
-
     getAllReplicaSets()
         .forEach(
-            regionReplicaSet -> {
-              TConsensusGroupId groupId = regionReplicaSet.getRegionId();
-              if (regionGroupStatisticsMap.containsKey(groupId)) {
-                regionGroupCacheMap.put(groupId, new RegionGroupCache(groupId));
-                regionGroupCacheMap
-                    .get(groupId)
-                    .forceUpdate(
-                        regionGroupStatisticsMap.get(groupId).convertToRegionHeartbeatSampleMap());
-                LOGGER.info(
-                    "[InheritLoadStatistics]\t {}={}",
-                    groupId,
-                    regionGroupCacheMap.get(groupId).getStatistics());
-              }
-            });
-
-    LOGGER.info("[InheritLoadStatistics] Inherit RegionGroupStatistics finish");
-  }
-
-  /**
-   * @param regionGroupId The specified RegionGroup's index
-   * @param isLatest Is the RegionGroupStatistics latest
-   * @return RegionGroupStatistics in RegionGroupCache if the isLatest is set to True,
-   *     RegionGroupStatistics in PartitionInfo otherwise
-   */
-  public RegionGroupStatistics getRegionGroupStatistics(
-      TConsensusGroupId regionGroupId, boolean isLatest) {
-    if (isLatest) {
-      return regionGroupCacheMap.containsKey(regionGroupId)
-          ? regionGroupCacheMap.get(regionGroupId).getStatistics()
-          : RegionGroupStatistics.generateDefaultRegionGroupStatistics();
-    } else {
-      return partitionInfo.getRegionGroupStatisticsMap().containsKey(regionGroupId)
-          ? partitionInfo.getRegionGroupStatisticsMap().get(regionGroupId)
-          : RegionGroupStatistics.generateDefaultRegionGroupStatistics();
-    }
-  }
-
-  public RegionRouteMap getRegionRouteMap() {
-    return partitionInfo.getRegionRouteMap();
+            regionReplicaSet ->
+                regionGroupCacheMap.put(
+                    regionReplicaSet.getRegionId(),
+                    new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

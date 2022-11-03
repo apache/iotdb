@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -363,6 +364,9 @@ public interface IManager {
 
   /** Set system status on all DataNodes */
   TSStatus setSystemStatus(String status);
+
+  /** TestOnly. Set the target DataNode to the specified status */
+  TSStatus setDataNodeStatus(TSetDataNodeStatusReq req);
 
   /**
    * Get the latest RegionRouteMap

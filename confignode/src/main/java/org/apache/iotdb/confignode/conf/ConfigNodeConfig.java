@@ -50,16 +50,16 @@ public class ConfigNodeConfig {
   private int partitionRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = 1.0;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
@@ -129,7 +129,7 @@ public class ConfigNodeConfig {
   private int procedureCompletedCleanInterval = 30;
 
   /** Procedure core worker threads size */
-  private int procedureCoreWorkerThreadsSize =
+  private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
@@ -156,6 +156,7 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
+  private long partitionRegionOneCopySnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -169,7 +170,7 @@ public class ConfigNodeConfig {
 
   private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
-  private long partitionRegionStandAloneLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long partitionRegionOneCopyLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -496,12 +497,12 @@ public class ConfigNodeConfig {
     this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
   }
 
-  public int getProcedureCoreWorkerThreadsSize() {
-    return procedureCoreWorkerThreadsSize;
+  public int getProcedureCoreWorkerThreadsCount() {
+    return procedureCoreWorkerThreadsCount;
   }
 
-  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
-    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
+  public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
+    this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
   public long getHeartbeatIntervalInMs() {
@@ -619,6 +620,16 @@ public class ConfigNodeConfig {
         partitionRegionRatisSnapshotTriggerThreshold;
   }
 
+  public long getPartitionRegionOneCopySnapshotTriggerThreshold() {
+    return partitionRegionOneCopySnapshotTriggerThreshold;
+  }
+
+  public void setPartitionRegionOneCopySnapshotTriggerThreshold(
+      long partitionRegionOneCopySnapshotTriggerThreshold) {
+    this.partitionRegionOneCopySnapshotTriggerThreshold =
+        partitionRegionOneCopySnapshotTriggerThreshold;
+  }
+
   public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
     return partitionRegionRatisLogUnsafeFlushEnable;
   }
@@ -701,13 +712,13 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
-  public long getPartitionRegionStandAloneLogSegmentSizeMax() {
-    return partitionRegionStandAloneLogSegmentSizeMax;
+  public long getPartitionRegionOneCopyLogSegmentSizeMax() {
+    return partitionRegionOneCopyLogSegmentSizeMax;
   }
 
-  public void setPartitionRegionStandAloneLogSegmentSizeMax(
-      long partitionRegionStandAloneLogSegmentSizeMax) {
-    this.partitionRegionStandAloneLogSegmentSizeMax = partitionRegionStandAloneLogSegmentSizeMax;
+  public void setPartitionRegionOneCopyLogSegmentSizeMax(
+      long partitionRegionOneCopyLogSegmentSizeMax) {
+    this.partitionRegionOneCopyLogSegmentSizeMax = partitionRegionOneCopyLogSegmentSizeMax;
   }
 
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
