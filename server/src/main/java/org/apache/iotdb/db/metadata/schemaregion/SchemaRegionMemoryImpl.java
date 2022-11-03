@@ -2097,7 +2097,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
-        HashMap<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
         subTemplateSetInfo.put(
             entityMNode.getPartialPath(),
             Collections.singletonList(entityMNode.getSchemaTemplateId()));
@@ -2123,7 +2123,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         if (!entityMNode.isPreDeactivateTemplate()) {
           continue;
         }
-        HashMap<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
         subTemplateSetInfo.put(
             entityMNode.getPartialPath(),
             Collections.singletonList(entityMNode.getSchemaTemplateId()));
@@ -2144,7 +2144,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
-        HashMap<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
         subTemplateSetInfo.put(
             entityMNode.getPartialPath(),
             Collections.singletonList(entityMNode.getSchemaTemplateId()));

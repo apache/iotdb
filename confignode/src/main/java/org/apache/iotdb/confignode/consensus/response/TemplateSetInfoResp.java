@@ -30,7 +30,7 @@ import java.util.Map;
 public class TemplateSetInfoResp implements DataSet {
 
   private TSStatus status;
-  // <possible device paths for setting templates, possible set templates>
+  // <path pattern represents possible device paths, possible templates set on device>
   private Map<PartialPath, List<Template>> patternTemplateMap;
 
   public TemplateSetInfoResp() {}

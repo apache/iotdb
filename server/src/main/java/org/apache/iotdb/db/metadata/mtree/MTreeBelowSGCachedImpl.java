@@ -1753,13 +1753,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
-    List<IMNode> pinedNodes = new ArrayList<>();
+    List<IMNode> pinnedNodes = new ArrayList<>();
     IEntityMNode entityMNode = null;
 
     try {
       for (int i = levelOfSG + 1; i < nodes.length; i++) {
         cur = store.getChild(cur, nodes[i]);
-        pinedNodes.add(cur);
+        pinnedNodes.add(cur);
       }
       synchronized (this) {
         for (String measurement : template.getSchemaMap().keySet()) {
@@ -1792,7 +1792,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       if (entityMNode != null) {
         store.updateMNode(entityMNode);
       }
-      for (IMNode node : pinedNodes) {
+      for (IMNode node : pinnedNodes) {
         store.unPin(node);
       }
     }

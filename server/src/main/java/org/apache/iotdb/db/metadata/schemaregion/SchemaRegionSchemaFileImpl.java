@@ -939,7 +939,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         mtree.pinMNode(node);
         return node;
       } catch (MetadataException e) {
-        //         the node in mNodeCache has been evicted, thus get it via the following progress
+        // the node in mNodeCache has been evicted, thus get it via the following progress
         return mtree.getNodeByPath(path);
       }
     } catch (Exception e) {
