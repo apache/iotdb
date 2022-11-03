@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -61,7 +61,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
       int subTaskId,
-      FastCompactionPerformerSubTask.Summary summary) {
+      SubCompactionTaskSummary summary) {
     super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
     this.sortResources = sortedSourceFiles;
   }

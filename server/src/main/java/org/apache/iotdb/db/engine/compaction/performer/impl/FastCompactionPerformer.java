@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPe
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -70,9 +71,9 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   private CompactionTaskSummary summary;
 
-  private List<TsFileResource> targetFiles;
+  private final SubCompactionTaskSummary subTaskSummary = new SubCompactionTaskSummary();
 
-  private FastCompactionPerformerSubTask.Summary subTaskSummary;
+  private List<TsFileResource> targetFiles;
 
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
@@ -160,6 +161,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
+    SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
     new FastCompactionPerformerSubTask(
             fastCrossCompactionWriter,
             timeseriesMetadataOffsetMap,
@@ -167,8 +169,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
             modificationCache,
             sortedSourceFiles,
             measurementSchemas,
-            deviceId)
+            deviceId,
+            taskSummary)
         .call();
+    subTaskSummary.increase(taskSummary);
   }
 
   private void compactNonAlignedSeries(
@@ -198,11 +202,13 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     }
 
     // construct sub tasks and start compacting measurements in parallel
-    List<Future<FastCompactionPerformerSubTask.Summary>> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
+    List<SubCompactionTaskSummary> taskSummaryList = new ArrayList<>();
     for (int i = 0; i < subTaskNums; i++) {
+      SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
       futures.add(
           CompactionTaskManager.getInstance()
-              .submitFastSubTask(
+              .submitSubTask(
                   new FastCompactionPerformerSubTask(
                       fastCrossCompactionWriter,
                       timeseriesMetadataOffsetMap,
@@ -211,18 +217,16 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
                       sortedSourceFiles,
                       measurementsForEachSubTask[i],
                       deviceID,
+                      taskSummary,
                       i)));
+      taskSummaryList.add(taskSummary);
     }
 
     // wait for all sub tasks to finish
     for (int i = 0; i < subTaskNums; i++) {
       try {
-        if (subTaskSummary == null) {
-          subTaskSummary = futures.get(i).get();
-        } else {
-          subTaskSummary.increase(futures.get(i).get());
-        }
         futures.get(i).get();
+        subTaskSummary.increase(taskSummaryList.get(i));
       } catch (ExecutionException e) {
         LOGGER.error("[Compaction] SubCompactionTask meet errors ", e);
         throw new IOException(e);
@@ -254,7 +258,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     }
   }
 
-  public FastCompactionPerformerSubTask.Summary getSubTaskSummary() {
+  public SubCompactionTaskSummary getSubTaskSummary() {
     return subTaskSummary;
   }
 

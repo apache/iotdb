@@ -173,9 +173,9 @@ public class ReadPointCompactionPerformer
       compactionWriter.startMeasurement(measurementSchemas, 0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
-      compactionWriter.endChunkGroup();
       // update resource and check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
+      compactionWriter.endChunkGroup();
     }
   }
 
@@ -220,9 +220,9 @@ public class ReadPointCompactionPerformer
       for (Future<Void> future : futures) {
         future.get();
       }
-      compactionWriter.endChunkGroup();
       // update resource and check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
+      compactionWriter.endChunkGroup();
     }
   }
 

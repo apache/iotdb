@@ -66,7 +66,7 @@ public class AbstractCompactionTest {
   protected List<TsFileResource> unseqResources = new ArrayList<>();
   private int chunkGroupSize = 0;
   private int pageSize = 0;
-  protected String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
+  protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
   private TSDataType dataType;
 
   private static final long oldTargetChunkSize =
@@ -98,7 +98,7 @@ public class AbstractCompactionTest {
               + File.separator
               + "sequence"
               + File.separator
-              + "root.compactionTest");
+              + COMPACTION_TEST_SG);
   protected static File SEQ_DIRS =
       new File(
           TestConstant.BASE_OUTPUT_PATH
@@ -106,7 +106,7 @@ public class AbstractCompactionTest {
               + File.separator
               + "sequence"
               + File.separator
-              + "root.compactionTest"
+              + COMPACTION_TEST_SG
               + File.separator
               + "0"
               + File.separator
@@ -118,7 +118,7 @@ public class AbstractCompactionTest {
               + File.separator
               + "unsequence"
               + File.separator
-              + "root.compactionTest"
+              + COMPACTION_TEST_SG
               + File.separator
               + "0"
               + File.separator

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
@@ -278,14 +277,6 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
-    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
-      return subCompactionTaskExecutionPool.submit(subCompactionTask);
-    }
-    return null;
-  }
-
-  public synchronized Future<FastCompactionPerformerSubTask.Summary> submitFastSubTask(
-      Callable<FastCompactionPerformerSubTask.Summary> subCompactionTask) {
     if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
       return subCompactionTaskExecutionPool.submit(subCompactionTask);
     }

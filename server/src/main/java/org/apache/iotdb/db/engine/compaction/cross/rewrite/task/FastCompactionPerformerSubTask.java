@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.compaction.cross.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.cross.utils.NonAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -35,30 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-public class FastCompactionPerformerSubTask
-    implements Callable<FastCompactionPerformerSubTask.Summary> {
-  public class Summary {
-    public int CHUNK_NONE_OVERLAP;
-    public int CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
-    public int CHUNK_OVERLAP;
+public class FastCompactionPerformerSubTask implements Callable<Void> {
 
-    public int PAGE_NONE_OVERLAP;
-    public int PAGE_OVERLAP;
-    public int PAGE_FAKE_OVERLAP;
-    public int PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
-
-    public void increase(Summary summary) {
-      this.CHUNK_NONE_OVERLAP += summary.CHUNK_NONE_OVERLAP;
-      this.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
-      this.CHUNK_OVERLAP += summary.CHUNK_OVERLAP;
-      this.PAGE_NONE_OVERLAP += summary.PAGE_NONE_OVERLAP;
-      this.PAGE_OVERLAP += summary.PAGE_OVERLAP;
-      this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
-      this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
-    }
-  }
-
-  private final Summary summary = new Summary();
+  private SubCompactionTaskSummary summary;
 
   private FastCrossCompactionWriter compactionWriter;
 
@@ -94,6 +74,7 @@ public class FastCompactionPerformerSubTask
       List<TsFileResource> sortedSourceFiles,
       List<String> measurements,
       String deviceId,
+      SubCompactionTaskSummary summary,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
@@ -104,6 +85,7 @@ public class FastCompactionPerformerSubTask
     this.modificationCacheMap = modificationCacheMap;
     this.sortedSourceFiles = sortedSourceFiles;
     this.measurements = measurements;
+    this.summary = summary;
   }
 
   /** Used for aligned timeseries. */
@@ -114,7 +96,8 @@ public class FastCompactionPerformerSubTask
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
-      String deviceId) {
+      String deviceId,
+      SubCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -124,10 +107,11 @@ public class FastCompactionPerformerSubTask
     this.modificationCacheMap = modificationCacheMap;
     this.sortedSourceFiles = sortedSourceFiles;
     this.measurementSchemas = measurementSchemas;
+    this.summary = summary;
   }
 
   @Override
-  public Summary call()
+  public Void call()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     if (!isAligned) {
       NonAlignedSeriesCompactionExecutor seriesCompactionExecutor =
@@ -157,6 +141,6 @@ public class FastCompactionPerformerSubTask
               summary);
       seriesCompactionExecutor.excute();
     }
-    return summary;
+    return null;
   }
 }

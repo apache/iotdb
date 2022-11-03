@@ -20,8 +20,8 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -53,7 +53,7 @@ public abstract class SeriesCompactionExecutor {
         throws WriteProcessException, IOException, IllegalPathException;
   }
 
-  private FastCompactionPerformerSubTask.Summary summary;
+  private SubCompactionTaskSummary summary;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
@@ -88,7 +88,7 @@ public abstract class SeriesCompactionExecutor {
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
       int subTaskId,
-      FastCompactionPerformerSubTask.Summary summary) {
+      SubCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.deviceId = deviceId;
@@ -528,6 +528,7 @@ public abstract class SeriesCompactionExecutor {
       // metadata queue, we should find new overlapped chunks and deserialize them into page queue
       for (ChunkMetadataElement newOverlappedChunkMetadata :
           findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
+        summary.CHUNK_OVERLAP++;
         deserializeChunkIntoQueue(newOverlappedChunkMetadata);
         hasNewOverlappedChunks = true;
       }
