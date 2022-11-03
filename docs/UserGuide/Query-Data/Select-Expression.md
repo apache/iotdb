@@ -63,9 +63,6 @@ From this syntax definition, `selectExpr` can contain:
 
 ## Arithmetic Query
 
-
-> Please note that there is no difference between Aligned Timeseries and NonAligned Timeseries in the current version, both support Arithmetic Expression. 
-
 ### Operators
 
 #### Unary Arithmetic Operators
@@ -222,8 +219,6 @@ The time series generating function takes several time series as input and outpu
 All time series generating functions can accept * as input.
 
 IoTDB supports hybrid queries of time series generating function queries and raw data queries.
-
-> Please note that Aligned Timeseries has not been supported in queries with hybrid functions yet. An error message is expected if you use hybrid functions with Aligned Timeseries selected in a query statement.
 
 ### Mathematical Functions
 
