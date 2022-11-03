@@ -606,12 +606,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -651,12 +651,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -706,7 +706,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -952,7 +952,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1061,7 +1061,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1116,12 +1116,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1230,12 +1230,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1330,7 +1330,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1399,7 +1399,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1452,12 +1452,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1501,12 +1501,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1705,7 +1705,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1761,12 +1761,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1806,12 +1806,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1952,7 +1952,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2006,12 +2006,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2047,12 +2047,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2171,7 +2171,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2211,7 +2211,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2383,7 +2383,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2560,7 +2560,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2763,7 +2763,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2806,12 +2806,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2860,12 +2860,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override

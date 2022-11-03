@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.onecopy;
+package org.apache.iotdb.consensus.simple;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -27,12 +27,12 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
 
-public class OneCopyServerImpl implements IStateMachine {
+public class SimpleServerImpl implements IStateMachine {
 
   private final Peer peer;
   private final IStateMachine stateMachine;
 
-  public OneCopyServerImpl(Peer peer, IStateMachine stateMachine) {
+  public SimpleServerImpl(Peer peer, IStateMachine stateMachine) {
     this.peer = peer;
     this.stateMachine = stateMachine;
   }
