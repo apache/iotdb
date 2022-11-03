@@ -30,6 +30,7 @@ import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+@Ignore
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRestartIT {
 
