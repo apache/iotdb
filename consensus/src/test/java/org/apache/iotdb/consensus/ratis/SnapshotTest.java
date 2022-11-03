@@ -146,6 +146,11 @@ public class SnapshotTest {
     }
 
     @Override
+    public boolean takeSnapshot(File snapshotDir, String snapshotId) {
+      return takeSnapshot(snapshotDir);
+    }
+
+    @Override
     public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
       File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
       Assert.assertTrue(log.exists());

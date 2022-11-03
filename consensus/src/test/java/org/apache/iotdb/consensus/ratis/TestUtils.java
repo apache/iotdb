@@ -121,6 +121,11 @@ public class TestUtils {
     }
 
     @Override
+    public boolean takeSnapshot(File snapshotDir, String snapshotId) {
+      return takeSnapshot(snapshotDir);
+    }
+
+    @Override
     public void loadSnapshot(File latestSnapshotRootDir) {
       File snapshot =
           new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "snapshot");
