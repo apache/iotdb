@@ -110,10 +110,6 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public boolean updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
-    if (updateMap.isEmpty()) {
-      return false;
-    }
-
     for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       DeviceEntry deviceEntry = idTable.getDeviceEntry(entry.getKey());
       deviceEntry.updateFlushTimeMap(partitionId, entry.getValue());
