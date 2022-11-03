@@ -405,7 +405,10 @@ tagWhereClause
 
 // Select Statement
 selectStatement
-    : TRACING? selectClause intoClause? fromClause whereClause? specialClause?
+    : selectClause
+        intoClause?
+        fromClause
+        whereClause? specialClause?
     ;
 
 intoClause

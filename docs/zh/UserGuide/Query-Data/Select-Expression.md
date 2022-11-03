@@ -52,7 +52,7 @@ selectExpr
 
 - 时间序列路径后缀
 - 函数
-  - 内置聚合函数，详见 [聚合查询](./Aggregate-Query.md) 。
+  - 内置聚合函数，详见 [聚合查询](./Group-By.md) 。
   - 时间序列生成函数
   - 用户自定义函数，详见 [UDF](../Process-Data/UDF-User-Defined-Function.md) 。
 - 表达式

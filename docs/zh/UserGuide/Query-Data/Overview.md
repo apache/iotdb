@@ -21,35 +21,92 @@
 
 # 概述
 
-## 语法定义
+在 IoTDB 中，使用 `SELECT` 语句从一条或多条时间序列中查询数据。
 
-在 IoTDB 中，使用 `SELECT` 语句从一条或多条时间序列中查询数据。 下面是 `SELECT` 语句的语法定义：
+## 语法定义
 
 ```sql
 SELECT [LAST] resultColumn [, resultColumn] ...
     [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
     [WHERE whereCondition]
-    [GROUP BY ([startTime, endTime), interval, slidingStep)]
-    [GROUP BY LEVEL = levelNum [, levelNum] ...]
-    [FILL ({PREVIOUS | LINEAR | constant})]
+    [GROUP BY { 
+        ([startTime, endTime), interval, slidingStep) |
+        LEVEL = levelNum [, levelNum] ...
+    }]
     [HAVING havingCondition]
-    [ORDER BY TIME {ASC | DESC}]
+    [FILL ({PREVIOUS | LINEAR | constant})]
+    [ORDER BY sortKey {ASC | DESC}]
     [LIMIT rowLimit] [OFFSET rowOffset]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
     [ALIGN BY DEVICE]
 ```
 
-常用的子句如下：
+## 语法说明
 
-- 每个 `resultColumn` 对应查询结果的一列，支持时间序列后缀、时间序列生成函数（包括用户自定义函数）、聚合函数、数字常量、算数运算表达式。每个 `SELECT` 语句至少应该包含一个 `resultColumn` 。关于 `resultColumn`，详见 [选择表达式](./Select-Expression.md) 。
-- `fromClause` 包含要查询的一个或多个时间序列的前缀。
-- `whereCondition` 指定了查询的筛选条件。`whereCondition` 是一个逻辑表达式，查询结果返回计算结果为真的数据点。如果没有指定 `whereCondition`，则返回序列中所有数据点。关于 `whereCondition`，详见 [查询过滤条件](./Query-Filter.md) 。
-- 查询结果默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
+### `SELECT` 子句
+
+- `SELECT` 子句指定查询的输出，由若干个 `resultColumn` 组成。
+- 每个 `resultColumn` 定义查询结果中的一列或多列，它是一个由时间序列路径后缀、函数和运算符组成的表达式。
+- 支持使用`AS`为查询结果集中的列指定别名。
+- 在 `SELECT` 子句中使用 `LAST` 关键词可以指定查询为最新点查询，详细说明及示例见文档 [最新点查询](./Last-Query.md) 。
+- 详细说明及示例见文档 [SELECT 子句](./Select-Expression.md) 。
+
+### `INTO` 子句
+
+- `SELECT INTO` 用于将查询结果写入一系列指定的时间序列中。`INTO` 子句指定了查询结果写入的目标时间序列。
+- 详细说明及示例见文档 [SELECT INTO](../Process-Data/Select-Into.md) 。
+
+### `FROM` 子句
+
+- `FROM` 子句包含要查询的一个或多个时间序列的路径前缀，支持使用通配符。
+- 在执行查询时，会将 `FROM` 子句中的路径前缀和 `SELECT` 子句中的后缀进行拼接得到完整的查询目标序列。
+
+### `WHERE` 子句
+
+- `WHERE` 子句指定了对数据行的筛选条件，由一个 `whereCondition` 组成。
+- `whereCondition` 是一个逻辑表达式，对于要选择的每一行，其计算结果为真。如果没有 `WHERE` 子句，将选择所有行。
+- 在 `whereCondition` 中，可以使用除聚合函数之外的任何 IOTDB 支持的函数和运算符。
+- 详细说明及示例见文档 [WHERE 子句](./Where-Condition.md) 。
+
+### `GROUP BY` 子句
+
+- `GROUP BY` 子句指定对序列进行分段或分组聚合的方式。
+- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前仅支持**按时间区间分段**，未来将支持更多分段方式。
+- 分组聚合是指针对不同时间序列，在时间序列的潜在业务属性上分组，每个组包含若干条时间序列，每个组得到一个聚合值。支持**按路径层级分组**和**按序列标签分组**两种分组方式。
+- 分段聚合和分组聚合可以混合使用。
+- 详细说明及示例见文档 [GROUP BY 子句](./Group-By.md) 。
+
+### `HAVING` 子句
+
+- `HAVING` 子句指定了对聚合结果的筛选条件，由一个 `havingCondition` 组成。
+- `havingCondition` 是一个逻辑表达式，对于要选择的每聚合结果，其计算结果为真。如果没有 `HAVING` 子句，将选择所有聚合结果。
+- `HAVING` 要和聚合函数以及 `GROUP BY` 子句一起使用。
+- 详细说明及示例见文档 [HAVING 子句](./Having-Condition.md) 。
+
+### `FILL` 子句
+
+- `FILL` 子句用于指定数据缺失情况下的填充模式，允许用户按照特定的方法对任何查询的结果集填充空值。
+- 详细说明及示例见文档 [FILL 子句](./Fill.md) 。
+
+### `ORDER BY` 子句
+
+- `ORDER BY` 子句用户指定结果集的排序方式。
+- 默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
+
+### `LIMIT` 和 `OFFSET` 子句
+
 - 当查询结果数据量很大时，可以使用 `LIMIT/SLIMIT` 及 `OFFSET/SOFFSET` 对结果集进行分页，详见 [查询结果分页](./Pagination.md) 。
-- 查询结果集默认按照时间戳进行对齐，即以时间序列为列，每一行数据各列的时间戳相同。其他结果集对齐方式详见 [查询结果对齐格式](./Result-Format.md) 。
 
-## 基本示例
+### `SLIMIT` 和 `SOFFSET` 子句
+
+
+
+### `ALIGN BY` 子句
+
+- 查询结果集默认按照时间戳进行对齐，即以时间序列为列，每一行数据各列的时间戳相同。其他结果集对齐方式详见 [查询结果对齐格式](./Align-By.md) 。
+
+## SQL 示例
 
 ### 根据一个时间区间选择一列数据
 
@@ -217,7 +274,7 @@ It costs 0.016s
 - 在 JAVA / C++ / Python / Go 等编程语言 API 中执行查询语句，详见应用编程接口一章相关文档。接口原型如下：
 
   ```java
-  SessionDataSet executeQueryStatement(String sql)
+  SessionDataSet executeQueryStatement(String sql);
   ```
 
 - 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。

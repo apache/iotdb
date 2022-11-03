@@ -733,8 +733,8 @@ var config = {
 							['Query-Data/Select-Expression.md','Select Expression'],
 							['Query-Data/Query-Filter.md','Query Filter'],
 							['Query-Data/Pagination.md','Pagination'],
-							['Query-Data/Result-Format.md','Query Result Formats'],
-							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Align-By.md','Query Result Formats'],
+							['Query-Data/Group-By.md','Aggregate Query'],
 							['Query-Data/Last-Query.md','Last Query'],
 							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
 							['Query-Data/Without-Null.md','Without Null'],
@@ -918,8 +918,8 @@ var config = {
 							['Query-Data/Select-Expression.md','Select Expression'],
 							['Query-Data/Query-Filter.md','Query Filter'],
 							['Query-Data/Pagination.md','Pagination'],
-							['Query-Data/Result-Format.md','Query Result Formats'],
-							['Query-Data/Aggregate-Query.md','Aggregate Query'],
+							['Query-Data/Align-By.md','Query Result Formats'],
+							['Query-Data/Group-By.md','Aggregate Query'],
 							['Query-Data/Last-Query.md','Last Query'],
 							['Query-Data/Fill-Null-Value.md','Fill Null Value']
 						]
@@ -1665,8 +1665,8 @@ var config = {
 							['Query-Data/Select-Expression.md','选择表达式'],
 							['Query-Data/Query-Filter.md','查询过滤条件'],
 							['Query-Data/Pagination.md','查询结果分页'],
-							['Query-Data/Result-Format.md','查询结果对齐格式'],
-							['Query-Data/Aggregate-Query.md','聚合查询'],
+							['Query-Data/Align-By.md','查询结果对齐格式'],
+							['Query-Data/Group-By.md','聚合查询'],
 							['Query-Data/Last-Query.md','最新点查询'],
 							['Query-Data/Fill-Null-Value.md','空值填充'],
 							['Query-Data/Without-Null.md','空值过滤'],
@@ -1847,13 +1847,12 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Query-Data/Overview.md','概述'],
-							['Query-Data/Select-Expression.md','选择表达式'],
-							['Query-Data/Query-Filter.md','查询过滤条件'],
-							['Query-Data/Pagination.md','查询结果分页'],
-							['Query-Data/Result-Format.md','查询结果对齐格式'],
-							['Query-Data/Aggregate-Query.md','聚合查询'],
-							['Query-Data/Last-Query.md','最新点查询'],
-							['Query-Data/Fill-Null-Value.md','空值填充']
+							['Query-Data/Select-Expression.md','SELECT 子句'],
+							['Query-Data/where-Condition.md','WHERE 子句'],
+							['Query-Data/Group-By.md','GROUP BY 子句'],
+							['Query-Data/Fill.md','FILL 子句'],
+							['Query-Data/Align-By.md','ALIGN BY 子句'],
+							['Query-Data/Last-Query.md','最新点查询']
 						]
 					},
 					{
