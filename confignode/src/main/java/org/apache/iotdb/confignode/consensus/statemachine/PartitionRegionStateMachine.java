@@ -130,49 +130,7 @@ public class PartitionRegionStateMachine
     }
 
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      if (logFile.length() > LOG_FILE_MAX_SIZE) {
-        try {
-          logWriter.force();
-          File completedFilePath = new File(filePath + startIndex + "_" + endIndex);
-          Files.move(logFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-          LOGGER.error("Can't force logWriter for ConfigNode OneCopy mode", e);
-        }
-        for (int retry = 0; retry < 5; retry++) {
-          try {
-            logWriter.close();
-          } catch (IOException e) {
-            LOGGER.warn(
-                "Can't close StandAloneLog for ConfigNode OneCopy mode, filePath: {}, retry: {}",
-                logFile.getAbsolutePath(),
-                retry);
-            try {
-              // Sleep 1s and retry
-              TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e2) {
-              Thread.currentThread().interrupt();
-              LOGGER.warn("Unexpected interruption during the close method of logWriter");
-            }
-            continue;
-          }
-          break;
-        }
-        startIndex = endIndex + 1;
-        createLogFile(startIndex);
-      }
-      try {
-        ByteBuffer buffer = plan.serializeToByteBuffer();
-        // The method logWriter.write will execute flip() firstly, so we must make position==limit
-        buffer.position(buffer.limit());
-        logWriter.write(buffer);
-        endIndex = endIndex + 1;
-        File tmpLogFile = new File(progressFilePath + endIndex);
-        Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        logFile = tmpLogFile;
-        logWriter = new LogWriter(logFile, false);
-      } catch (IOException e) {
-        LOGGER.error("Can't serialize current ConfigPhysicalPlan for ConfigNode OneCopy mode", e);
-      }
+      writeLogForSimpleConsensus(plan);
     }
     return result;
   }
@@ -300,6 +258,55 @@ public class PartitionRegionStateMachine
     return RetryPolicy.super.getSleepTime();
   }
 
+  /** TODO optimize the lock usage */
+  private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
+    if (logFile.length() > LOG_FILE_MAX_SIZE) {
+      try {
+        logWriter.force();
+        File completedFilePath = new File(filePath + startIndex + "_" + endIndex);
+        Files.move(logFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        LOGGER.error("Can't force logWriter for ConfigNode SimpleConsensus mode", e);
+      }
+      for (int retry = 0; retry < 5; retry++) {
+        try {
+          logWriter.close();
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, filePath: {}, retry: {}",
+              logFile.getAbsolutePath(),
+              retry);
+          try {
+            // Sleep 1s and retry
+            TimeUnit.SECONDS.sleep(1);
+          } catch (InterruptedException e2) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during the close method of logWriter");
+          }
+          continue;
+        }
+        break;
+      }
+      startIndex = endIndex + 1;
+      createLogFile(startIndex);
+    }
+
+    try {
+      ByteBuffer buffer = plan.serializeToByteBuffer();
+      // The method logWriter.write will execute flip() firstly, so we must make position==limit
+      buffer.position(buffer.limit());
+      logWriter.write(buffer);
+      endIndex = endIndex + 1;
+      File tmpLogFile = new File(progressFilePath + endIndex);
+      Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      logFile = tmpLogFile;
+      logWriter = new LogWriter(logFile, false);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode", e);
+    }
+  }
+
   private void initStandAloneConfigNode() {
     File dir = new File(currentFileDir);
     dir.mkdirs();
@@ -350,10 +357,12 @@ public class PartitionRegionStateMachine
     try {
       logFile.createNewFile();
       logWriter = new LogWriter(logFile, false);
-      LOGGER.info("Create ConfigNode OneCopyLogFile: {}", logFile.getAbsolutePath());
+      LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", logFile.getAbsolutePath());
     } catch (Exception e) {
       LOGGER.warn(
-          "Create ConfigNode OneCopyLogFile failed, filePath: {}", logFile.getAbsolutePath(), e);
+          "Create ConfigNode SimpleConsensusFile failed, filePath: {}",
+          logFile.getAbsolutePath(),
+          e);
     }
   }
 }
