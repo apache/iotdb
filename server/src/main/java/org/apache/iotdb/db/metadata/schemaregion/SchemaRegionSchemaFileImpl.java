@@ -939,7 +939,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         mtree.pinMNode(node);
         return node;
       } catch (MetadataException e) {
-        // the node in mNodeCache has been evicted, thus get it via the following progress
+        //         the node in mNodeCache has been evicted, thus get it via the following progress
         return mtree.getNodeByPath(path);
       }
     } catch (Exception e) {
@@ -1990,11 +1990,15 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
-    try {
-      getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
-      mtree.activateTemplate(plan.getActivatePath(), template);
-      writeToMLog(plan);
+    try {
+      IMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());
+      try {
+        mtree.activateTemplate(plan.getActivatePath(), template);
+        writeToMLog(plan);
+      } finally {
+        mtree.unPinMNode(deviceNode);
+      }
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
       throw new MetadataException(e);
