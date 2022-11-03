@@ -1923,6 +1923,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         TemplateManager.getInstance().checkIsTemplateCompatible(template, node);
         mtree.checkIsTemplateCompatibleWithChild(node, template);
         node.setSchemaTemplate(template);
+        node.setSchemaTemplateId(template.hashCode());
         mtree.updateMNode(node);
       } finally {
         mtree.unPinMNode(node);
@@ -2058,7 +2059,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return result;
   }
 
-  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  private IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {
       throw new MetadataException(

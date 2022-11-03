@@ -747,9 +747,10 @@ public class Template implements Serializable {
 
   @Override
   public int hashCode() {
-    return rehashCode != 0
-        ? rehashCode
-        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return Math.abs(
+        rehashCode != 0
+            ? rehashCode
+            : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode());
   }
 
   /**

@@ -2144,10 +2144,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        HashMap<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.deactivateTemplate();
         mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
         try {
-          writeToMLog(plan);
+          writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
