@@ -23,8 +23,10 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
@@ -38,6 +40,8 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   /** record memory cost of map for each partitionId */
   private Map<Long, Long> memCostForEachPartition = new HashMap<>();
+
+  private Set<Long> partitionSet = new HashSet<>();
 
   public IDTableLastFlushTimeMap(IDTable idTable, TsFileManager tsFileManager) {
     this.idTable = idTable;
@@ -100,7 +104,7 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public boolean checkAndCreateFlushedTimePartition(long timePartitionId) {
-    return false;
+    return !partitionSet.add(timePartitionId);
   }
 
   @Override
@@ -155,6 +159,7 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
     for (DeviceEntry deviceEntry : idTable.getAllDeviceEntry()) {
       deviceEntry.removePartition(partitionId);
     }
+    partitionSet.remove(partitionId);
     memCostForEachPartition.remove(partitionId);
   }
 
