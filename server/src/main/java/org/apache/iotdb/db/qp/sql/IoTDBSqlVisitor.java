@@ -2679,10 +2679,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      String unWrapped =
+          nodeName
+              .substring(1, nodeName.length() - 1)
+              .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
       if (PathUtils.isRealNumber(unWrapped)
           || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
+        return TsFileConstant.BACK_QUOTE_STRING + unWrapped + TsFileConstant.BACK_QUOTE_STRING;
       }
       return unWrapped;
     }
@@ -2715,7 +2718,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
     }
@@ -2726,7 +2729,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
       if (PathUtils.isRealNumber(alias)
           || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
         throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
