@@ -70,6 +70,18 @@ public interface IStateMachine {
   boolean takeSnapshot(File snapshotDir);
 
   /**
+   * Take a snapshot of current statemachine. Snapshot.log will be stored under snapshotDir, The
+   * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
+   *
+   * @param snapshotDir required storage dir
+   * @param snapshotId the id of the snapshot
+   * @return true if snapshot is successfully taken
+   */
+  default boolean takeSnapshot(File snapshotDir, String snapshotId) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  /**
    * Load the latest snapshot from given dir
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
