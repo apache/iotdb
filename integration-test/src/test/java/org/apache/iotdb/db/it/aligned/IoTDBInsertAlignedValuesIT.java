@@ -337,4 +337,15 @@ public class IoTDBInsertAlignedValuesIT {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
     }
   }
+
+  @Test
+  public void testInsertLargeNumber() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.d1(time, s98, s99) aligned values(10, 2, 271840880000000000000000)");
+    } catch (SQLException e) {
+      fail();
+    }
+  }
 }
