@@ -542,7 +542,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     };
 
     String[] res = {
-      "b", "test", "`test.1`", "`1``1`", "test", "test", "`\\\\test`",
+      "b", "test", "`test.1`", "`1`1`", "test", "test", "`\\\\test`",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
