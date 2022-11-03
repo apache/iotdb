@@ -76,11 +76,9 @@ public class CommonDescriptor {
             .trim());
 
     config.setEncryptDecryptProviderParameter(
-        properties
-            .getProperty(
-                "iotdb_server_encrypt_decrypt_provider_parameter",
-                config.getEncryptDecryptProviderParameter())
-            .trim());
+        properties.getProperty(
+            "iotdb_server_encrypt_decrypt_provider_parameter",
+            config.getEncryptDecryptProviderParameter()));
 
     config.setDefaultTTLInMs(
         Long.parseLong(

@@ -779,9 +779,10 @@ public class IoTDBDescriptor {
 
     int rpcSelectorThreadNum =
         Integer.parseInt(
-            properties.getProperty(
-                "rpc_selector_thread_count",
-                Integer.toString(conf.getRpcSelectorThreadCount())).trim());
+            properties
+                .getProperty(
+                    "rpc_selector_thread_count", Integer.toString(conf.getRpcSelectorThreadCount()))
+                .trim());
     if (rpcSelectorThreadNum <= 0) {
       rpcSelectorThreadNum = 1;
     }
@@ -790,9 +791,11 @@ public class IoTDBDescriptor {
 
     int minConcurrentClientNum =
         Integer.parseInt(
-            properties.getProperty(
-                "rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum())).trim());
+            properties
+                .getProperty(
+                    "rpc_min_concurrent_client_num",
+                    Integer.toString(conf.getRpcMinConcurrentClientNum()))
+                .trim());
     if (minConcurrentClientNum <= 0) {
       minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
     }
@@ -801,9 +804,11 @@ public class IoTDBDescriptor {
 
     int maxConcurrentClientNum =
         Integer.parseInt(
-            properties.getProperty(
-                "rpc_max_concurrent_client_num",
-                Integer.toString(conf.getRpcMaxConcurrentClientNum())).trim());
+            properties
+                .getProperty(
+                    "rpc_max_concurrent_client_num",
+                    Integer.toString(conf.getRpcMaxConcurrentClientNum()))
+                .trim());
     if (maxConcurrentClientNum <= 0) {
       maxConcurrentClientNum = 65535;
     }
@@ -812,8 +817,9 @@ public class IoTDBDescriptor {
 
     conf.setEnableWatermark(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "watermark_module_opened", Boolean.toString(conf.isEnableWatermark())).trim()));
+            properties
+                .getProperty("watermark_module_opened", Boolean.toString(conf.isEnableWatermark()))
+                .trim()));
     conf.setWatermarkSecretKey(
         properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()).trim());
     conf.setWatermarkBitString(
@@ -1375,9 +1381,10 @@ public class IoTDBDescriptor {
   private void loadAutoCreateSchemaProps(Properties properties) {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_auto_create_schema",
-                Boolean.toString(conf.isAutoCreateSchemaEnabled())).trim()));
+            properties
+                .getProperty(
+                    "enable_auto_create_schema", Boolean.toString(conf.isAutoCreateSchemaEnabled()))
+                .trim()));
     conf.setBooleanStringInferType(
         TSDataType.valueOf(
             properties
@@ -1426,8 +1433,9 @@ public class IoTDBDescriptor {
             .getProperty("default_int64_encoding", conf.getDefaultInt64Encoding().toString())
             .trim());
     conf.setDefaultFloatEncoding(
-        properties.getProperty(
-            "default_float_encoding", conf.getDefaultFloatEncoding().toString()).trim());
+        properties
+            .getProperty("default_float_encoding", conf.getDefaultFloatEncoding().toString())
+            .trim());
     conf.setDefaultDoubleEncoding(
         properties
             .getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString())
