@@ -36,11 +36,18 @@
   <allow pkg="org\.slf4j.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
+    <allow class="org.apache.iotdb.commons.exception.StartupException" />
+    <allow class="org.apache.iotdb.db.constant.TestConstant" />
+    <allow class="org.apache.iotdb.db.engine.StorageEngine" />
+    <allow class="org.apache.iotdb.db.exception.StorageEngineException" />
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
     <allow pkg="org.apache.iotdb.db.it.utils" />
+    <allow pkg="org.apache.iotdb.db.utils" />
+    <allow pkg="org\.apache\.iotdb\.db\.conf.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>

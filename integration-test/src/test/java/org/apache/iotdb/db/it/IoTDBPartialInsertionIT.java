@@ -18,19 +18,17 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +43,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Ignore
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPartialInsertionIT {
   private final Logger logger = LoggerFactory.getLogger(IoTDBPartialInsertionIT.class);
@@ -72,7 +70,7 @@ public class IoTDBPartialInsertionIT {
       try {
         statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
         fail();
-      } catch (IoTDBSQLException e) {
+      } catch (SQLException e) {
         assertTrue(e.getMessage().contains("304: Path [root.sg1.s0] does not exist"));
       }
     }
@@ -89,11 +87,13 @@ public class IoTDBPartialInsertionIT {
 
       try {
         statement.execute("INSERT INTO root.sg.d1(time,s1,s2) VALUES(100,'test','test')");
-      } catch (IoTDBSQLException e) {
+      } catch (SQLException e) {
         // ignore
       }
     }
 
+    // TODO: replace restartDaemon() with new methods in Env.
+    /*
     long time = 0;
     try {
       EnvironmentUtils.restartDaemon();
@@ -109,6 +109,7 @@ public class IoTDBPartialInsertionIT {
     } catch (Exception e) {
       fail(e.getMessage());
     }
+     */
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
