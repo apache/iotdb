@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 
@@ -29,7 +30,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class TimePartitionManager {
-  Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
+  final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
 
   long memCost = 0;
   long timePartitionInfoMemoryThreshold =
@@ -47,7 +48,7 @@ public class TimePartitionManager {
                   timePartitionInfo.dataRegionId, k -> new TreeMap<>());
 
       Map.Entry<Long, TimePartitionInfo> entry =
-          timePartitionInfoMapForRegion.ceilingEntry(timePartitionInfo.partitionId);
+          timePartitionInfoMapForRegion.floorEntry(timePartitionInfo.partitionId);
       if (entry != null) {
         entry.getValue().isLatestPartition = false;
       }
@@ -73,7 +74,7 @@ public class TimePartitionManager {
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
         if (memCost > timePartitionInfoMemoryThreshold) {
-          evictOldMap();
+          evictOldPartition();
         }
       }
     }
@@ -91,7 +92,7 @@ public class TimePartitionManager {
     }
   }
 
-  private void evictOldMap() {
+  private void evictOldPartition() {
     TreeSet<TimePartitionInfo> treeSet = new TreeSet<>(TimePartitionInfo::comparePriority);
     synchronized (timePartitionInfoMap) {
       for (Map.Entry<DataRegionId, Map<Long, TimePartitionInfo>> entry :
@@ -102,9 +103,11 @@ public class TimePartitionManager {
       while (memCost > timePartitionInfoMemoryThreshold) {
         TimePartitionInfo timePartitionInfo = treeSet.first();
         memCost -= timePartitionInfo.memSize;
-        StorageEngineV2.getInstance()
-            .getDataRegion(timePartitionInfo.dataRegionId)
-            .releaseFlushTimeMap(timePartitionInfo.partitionId);
+        DataRegion dataRegion =
+            StorageEngineV2.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
+        if (dataRegion != null) {
+          dataRegion.releaseFlushTimeMap(timePartitionInfo.partitionId);
+        }
         timePartitionInfoMap
             .get(timePartitionInfo.dataRegionId)
             .remove(timePartitionInfo.partitionId);
@@ -124,6 +127,28 @@ public class TimePartitionManager {
         }
       }
     }
+  }
+
+  public TimePartitionInfo getTimePartitionInfo(DataRegionId dataRegionId, long timePartitionId) {
+    synchronized (timePartitionInfoMap) {
+      Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
+          timePartitionInfoMap.get(dataRegionId);
+      if (timePartitionInfoMapForDataRegion == null) {
+        return null;
+      }
+      return timePartitionInfoMapForDataRegion.get(timePartitionId);
+    }
+  }
+
+  public void clear() {
+    synchronized (timePartitionInfoMap) {
+      timePartitionInfoMap.clear();
+    }
+  }
+
+  @TestOnly
+  public void setTimePartitionInfoMemoryThreshold(long timePartitionInfoMemoryThreshold) {
+    this.timePartitionInfoMemoryThreshold = timePartitionInfoMemoryThreshold;
   }
 
   public static TimePartitionManager getInstance() {
