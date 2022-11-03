@@ -104,14 +104,22 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public void checkIfNeedDecodeTsFile() throws IOException {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
+    TTimePartitionSlot timePartitionSlot = null;
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
-      if (!TimePartitionUtils.getTimePartitionForRouting(resource.getStartTime(device))
-          .equals(TimePartitionUtils.getTimePartitionForRouting(resource.getEndTime(device)))) {
+      TTimePartitionSlot startSlot =
+          TimePartitionUtils.getTimePartitionForRouting(resource.getStartTime(device));
+      if (timePartitionSlot == null) {
+        timePartitionSlot = startSlot;
+      }
+      if (!startSlot.equals(timePartitionSlot)
+          || !TimePartitionUtils.getTimePartitionForRouting(resource.getEndTime(device))
+              .equals(timePartitionSlot)) {
         needDecodeTsFile = true;
         return;
       }
-      allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
+      allRegionReplicaSet.add(
+          dataPartition.getDataRegionReplicaSetForWriting(device, timePartitionSlot));
     }
     needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
     if (!needDecodeTsFile && !resource.resourceFileExists()) {
@@ -565,6 +573,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     try {
       if (deleteAfterLoad) {
         Files.deleteIfExists(tsFile.toPath());
+        Files.deleteIfExists(
+            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        Files.deleteIfExists(
+            new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
       }
     } catch (IOException e) {
       logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
