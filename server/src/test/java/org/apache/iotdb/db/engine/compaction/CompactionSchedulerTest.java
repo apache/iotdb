@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1818,7 +1819,6 @@ public class CompactionSchedulerTest {
             Collections.emptyMap());
       }
       for (int i = 0; i < 100; i++) {
-
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
         List<Long> pagePointsNum = new ArrayList<>();
         pagePointsNum.add(100L);
@@ -1893,6 +1893,107 @@ public class CompactionSchedulerTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
+  }
+
+  @Test
+  public void testLargeFileInLowerLevel() throws Exception {
+    logger.warn("Running test16");
+    int prevMaxCompactionCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+    long originTargetSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024 * 1024);
+    String sgName = COMPACTION_TEST_SG + "test17";
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      Set<String> fullPath = new HashSet<>();
+      for (String device : fullPaths) {
+        fullPath.add(sgName + device);
+      }
+      for (int i = 0; i < 10; i++) {
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            new TsFileResource(
+                new File(
+                    TestConstant.BASE_OUTPUT_PATH
+                        .concat(File.separator)
+                        .concat("sequence")
+                        .concat(File.separator)
+                        .concat(sgName)
+                        .concat(File.separator)
+                        .concat("0")
+                        .concat(File.separator)
+                        .concat("0")
+                        .concat(File.separator)
+                        .concat(
+                            (i + 1)
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + (i + 1)
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 1
+                                + IoTDBConstant.FILE_NAME_SEPARATOR
+                                + 0
+                                + ".tsfile")));
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
+      }
+
+      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+      List<Long> pagePointsNum = new ArrayList<>();
+      pagePointsNum.add(100000L);
+      chunkPagePointsNum.add(pagePointsNum);
+      TsFileResource tsFileResource =
+          new TsFileResource(
+              new File(
+                  TestConstant.BASE_OUTPUT_PATH
+                      .concat(File.separator)
+                      .concat("sequence")
+                      .concat(File.separator)
+                      .concat(sgName)
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat("0")
+                      .concat(File.separator)
+                      .concat(
+                          11
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 11
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + IoTDBConstant.FILE_NAME_SEPARATOR
+                              + 0
+                              + ".tsfile")));
+      CompactionFileGeneratorUtils.writeTsFile(
+          fullPath, chunkPagePointsNum, 100 * 10 + 100, tsFileResource);
+      tsFileManager.add(tsFileResource, true);
+
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      Thread.sleep(100);
+      long sleepTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 3) {
+        CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+        Thread.sleep(100);
+        sleepTime += 100;
+        if (sleepTime >= 20_000) {
+          fail();
+        }
+      }
+
+      stopCompactionTaskManager();
+      tsFileManager.setAllowCompaction(false);
+      assertEquals(3, tsFileManager.getTsFileList(true).size());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(originTargetSize);
     }
   }
 

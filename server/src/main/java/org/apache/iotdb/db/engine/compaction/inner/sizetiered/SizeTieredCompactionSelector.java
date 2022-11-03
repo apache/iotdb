@@ -106,10 +106,10 @@ public class SizeTieredCompactionSelector
       if (currentName.getInnerCompactionCnt() != level) {
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          shouldContinueToSearch = false;
         }
         selectedFileList = new ArrayList<>();
         selectedFileSize = 0L;
-        shouldContinueToSearch = false;
       } else if (currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
         selectedFileList.clear();
         selectedFileSize = 0L;
