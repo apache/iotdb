@@ -179,7 +179,6 @@ public class ConsensusManager {
                               CONF.getConfigNodeConsensusProtocolClass())));
     }
     consensusImpl.start();
-
     if (SystemPropertiesUtils.isRestarted()) {
       try {
         // Create ConsensusGroup from confignode-system.properties file when restart
