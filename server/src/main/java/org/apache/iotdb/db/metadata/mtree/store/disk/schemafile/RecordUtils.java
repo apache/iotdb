@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -323,20 +321,14 @@ public class RecordUtils {
     return node.getOffset();
   }
 
-  private static IMNode paddingTemplate(IMNode node, int templateId) throws MetadataException {
+  private static IMNode paddingTemplate(IMNode node, int templateId) {
     // TODO: Remove this conditional judgment after removing the standalone version
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       if (templateId > 0) {
         node.setSchemaTemplate(ClusterTemplateManager.getInstance().getTemplate(templateId));
       }
-      return node;
-    } else {
-      if (templateId != MetadataConstant.NON_TEMPLATE
-          && templateId != MetadataConstant.ALL_TEMPLATE) {
-        node.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateId));
-      }
-      return node;
     }
+    return node;
   }
 
   /** Including schema and pre-delete flag of a measurement, could be expanded further. */
