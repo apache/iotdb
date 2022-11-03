@@ -183,6 +183,10 @@ public class ConfigNodeProcedureEnv {
               invalidateSchemaStatus);
           return false;
         }
+      } else if (nodeStatus == NodeStatus.Unknown) {
+        LOG.warn(
+            "Invalidate cache failed, because DataNode {} is Unknown",
+            dataNodeConfiguration.getLocation().getInternalEndPoint());
       }
     }
     return true;
