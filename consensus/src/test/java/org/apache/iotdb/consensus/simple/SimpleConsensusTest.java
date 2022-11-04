@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.onecopy;
+package org.apache.iotdb.consensus.simple;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -57,7 +57,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class OneCopyConsensusTest {
+public class SimpleConsensusTest {
 
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
@@ -126,7 +126,7 @@ public class OneCopyConsensusTest {
   public void setUp() throws Exception {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.ONE_COPY_CONSENSUS,
+                ConsensusFactory.SIMPLE_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 6667))
@@ -146,7 +146,7 @@ public class OneCopyConsensusTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.ONE_COPY_CONSENSUS)));
+                            ConsensusFactory.SIMPLE_CONSENSUS)));
     consensusImpl.start();
   }
 

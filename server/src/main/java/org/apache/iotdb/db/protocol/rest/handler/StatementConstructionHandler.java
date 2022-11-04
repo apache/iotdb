@@ -125,7 +125,8 @@ public class StatementConstructionHandler {
             if (rawData.get(columnIndex).get(rowIndex) == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              doubleValues[rowIndex] = (double) rawData.get(columnIndex).get(rowIndex);
+              doubleValues[rowIndex] =
+                  Double.valueOf(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
             }
           }
           columns[columnIndex] = doubleValues;

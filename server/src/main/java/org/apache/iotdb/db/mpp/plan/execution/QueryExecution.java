@@ -579,6 +579,16 @@ public class QueryExecution implements IQueryExecution {
     return context.getQueryId().getId();
   }
 
+  @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
+  public Optional<String> getExecuteSQL() {
+    return Optional.ofNullable(context.getSql());
+  }
+
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
   }
