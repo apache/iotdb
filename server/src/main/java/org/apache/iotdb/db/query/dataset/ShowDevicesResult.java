@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.schemainfo.IDevicesSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -26,8 +26,10 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowDevicesResult extends ShowResult implements IDevicesSchemaInfo {
+public class ShowDevicesResult extends ShowResult implements IDeviceSchemaInfo {
   private boolean isAligned;
+
+  private String path;
 
   public ShowDevicesResult() {
     super();
@@ -41,6 +43,10 @@ public class ShowDevicesResult extends ShowResult implements IDevicesSchemaInfo 
   public ShowDevicesResult(String name, boolean isAligned) {
     super(name);
     this.isAligned = isAligned;
+  }
+
+  public ShowDevicesResult(String path) {
+    this.path = path;
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
@@ -92,5 +98,9 @@ public class ShowDevicesResult extends ShowResult implements IDevicesSchemaInfo 
   @Override
   public int hashCode() {
     return Objects.hash(name, isAligned, sgName);
+  }
+
+  public String getPath() {
+    return path;
   }
 }

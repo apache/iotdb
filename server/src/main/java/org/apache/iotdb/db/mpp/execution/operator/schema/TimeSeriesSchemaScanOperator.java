@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -86,7 +87,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected ISchemaReader<ShowTimeSeriesResult> createSchemaReader() throws MetadataException {
+  protected ISchemaReader<ITimeSeriesSchemaInfo> createSchemaReader() throws MetadataException {
     return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
         .getSchemaRegion()
         .getTimeseriesSchemaReader(convertToPhysicalPlan(), operatorContext.getInstanceContext());

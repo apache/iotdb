@@ -21,14 +21,15 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -57,16 +58,16 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
 
   @Override
   protected void setColumns(ISchemaInfo iSchemaInfo, TsBlockBuilder builder) {
-    String path = ((PathsUsingTemplateInfo) iSchemaInfo).getTemplateName();
+    String path = ((ShowDevicesResult) iSchemaInfo).getPath();
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(path));
     builder.declarePosition();
   }
 
   @Override
-  protected ISchemaReader<PathsUsingTemplateInfo> createSchemaReader() throws MetadataException {
+  protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() throws MetadataException {
     return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
         .getSchemaRegion()
-        .getTemplateSchemaReader(pathPatternList, templateId);
+        .getDeviceSchemaReader(pathPatternList, templateId);
   }
 }

@@ -39,8 +39,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
-import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -111,23 +111,14 @@ public interface ISchemaRegion {
   void loadSnapshot(File latestSnapshotRootDir);
   // endregion
 
-  ISchemaReader<ShowTimeSeriesResult> getTimeseriesSchemaReader(
+  ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
 
-  ISchemaReader<ShowDevicesResult> getDevicesSchemaReader(ShowDevicesPlan plan)
+  ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(ShowDevicesPlan plan)
       throws MetadataException;
 
-  ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
+  ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(
       List<PartialPath> pathPatterns, int templateId) throws MetadataException;
-
-  ISchemaReader<LevelTimeSeriesCountSchemaInfo> getLevelTimeSeriesCountSchemaInfoReader(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException;
 
   // region Interfaces for Timeseries operation
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;

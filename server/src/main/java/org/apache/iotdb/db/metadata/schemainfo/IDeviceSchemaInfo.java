@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.db.metadata.schemainfo;
 
-public interface IDevicesSchemaInfo extends ISchemaInfo {}
+public interface IDeviceSchemaInfo extends ISchemaInfo {}

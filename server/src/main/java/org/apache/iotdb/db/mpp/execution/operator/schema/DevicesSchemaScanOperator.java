@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.schemainfo.ISchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -55,10 +56,10 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   @Override
-  protected ISchemaReader<ShowDevicesResult> createSchemaReader() throws MetadataException {
+  protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() throws MetadataException {
     return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
         .getSchemaRegion()
-        .getDevicesSchemaReader(convertToPhysicalPlan());
+        .getDeviceSchemaReader(convertToPhysicalPlan());
   }
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online

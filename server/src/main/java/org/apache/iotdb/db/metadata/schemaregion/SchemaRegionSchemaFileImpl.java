@@ -74,8 +74,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
-import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -441,32 +441,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<ShowTimeSeriesResult> getTimeseriesSchemaReader(
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public ISchemaReader<ShowDevicesResult> getDevicesSchemaReader(ShowDevicesPlan plan)
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(ShowDevicesPlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(
       List<PartialPath> pathPatterns, int templateId) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public ISchemaReader<LevelTimeSeriesCountSchemaInfo> getLevelTimeSeriesCountSchemaInfoReader(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

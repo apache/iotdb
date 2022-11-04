@@ -79,8 +79,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
-import org.apache.iotdb.db.metadata.schemainfo.LevelTimeSeriesCountSchemaInfo;
-import org.apache.iotdb.db.metadata.schemainfo.PathsUsingTemplateInfo;
+import org.apache.iotdb.db.metadata.schemainfo.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.schemainfo.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemareader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemareader.SchemaReaderFakeImpl;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -120,7 +120,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -565,54 +564,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<ShowTimeSeriesResult> getTimeseriesSchemaReader(
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeseriesSchemaReader(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<ShowTimeSeriesResult> results = showTimeseries(plan, context).left;
-    return new SchemaReaderFakeImpl<>(results.iterator());
+    List<ITimeSeriesSchemaInfo> iTimeSeriesSchemaInfos =
+        new ArrayList<>(showTimeseries(plan, context).left);
+    return new SchemaReaderFakeImpl<>(iTimeSeriesSchemaInfos.iterator());
   }
 
   @Override
-  public ISchemaReader<ShowDevicesResult> getDevicesSchemaReader(ShowDevicesPlan plan)
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(ShowDevicesPlan plan)
       throws MetadataException {
-    List<ShowDevicesResult> results = getMatchedDevices(plan).left;
-    return new SchemaReaderFakeImpl<>(results.iterator());
+    List<IDeviceSchemaInfo> iDeviceSchemaInfos = new ArrayList<>(getMatchedDevices(plan).left);
+    return new SchemaReaderFakeImpl<>(iDeviceSchemaInfos.iterator());
   }
 
   @Override
-  public ISchemaReader<PathsUsingTemplateInfo> getTemplateSchemaReader(
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceSchemaReader(
       List<PartialPath> pathPatterns, int templateId) throws MetadataException {
-    List<String> results = new ArrayList<>();
+    List<IDeviceSchemaInfo> iDeviceSchemaInfos = new ArrayList<>();
     for (PartialPath pathPattern : pathPatterns) {
-      results.addAll(getPathsUsingTemplate(pathPattern, templateId));
+      List<String> paths = getPathsUsingTemplate(pathPattern, templateId);
+      for (String path : paths) {
+        iDeviceSchemaInfos.add(new ShowDevicesResult(path));
+      }
     }
-    Iterator<PathsUsingTemplateInfo> pathsUsingTemplateInfoIterator =
-        results.stream().map(PathsUsingTemplateInfo::new).iterator();
-    return new SchemaReaderFakeImpl<>(pathsUsingTemplateInfoIterator);
-  }
-
-  @Override
-  public ISchemaReader<LevelTimeSeriesCountSchemaInfo> getLevelTimeSeriesCountSchemaInfoReader(
-      PartialPath partialPath,
-      int level,
-      boolean isPrefixPath,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException {
-
-    Map<PartialPath, Integer> countMap;
-    if (key != null && value != null) {
-      countMap =
-          getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath, key, value, isContains);
-    } else {
-      countMap = getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
-    }
-    List<LevelTimeSeriesCountSchemaInfo> levelTimeSeriesCountSchemaInfos = new ArrayList<>();
-    for (Map.Entry<PartialPath, Integer> entry : countMap.entrySet()) {
-      levelTimeSeriesCountSchemaInfos.add(
-          new LevelTimeSeriesCountSchemaInfo(entry.getKey(), entry.getValue()));
-    }
-    return new SchemaReaderFakeImpl<>(levelTimeSeriesCountSchemaInfos.stream().iterator());
+    return new SchemaReaderFakeImpl<>(iDeviceSchemaInfos.iterator());
   }
 
   // endregion
