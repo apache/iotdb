@@ -16,28 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBDatetimeFormatIT {
 
   @Before
@@ -82,10 +84,10 @@ public class IoTDBDatetimeFormatIT {
       1641945723400L,
       1642032123400L
     };
-    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      connection.setTimeZone("+08:00");
+      connection.setClientInfo("time_zone", "+08:00");
 
       for (int i = 0; i < datetimeStrings.length; i++) {
         String insertSql =
@@ -94,17 +96,16 @@ public class IoTDBDatetimeFormatIT {
         statement.execute(insertSql);
       }
 
-      boolean hasResult = statement.execute("SELECT s1 FROM root.sg1.d1");
-      Assert.assertTrue(hasResult);
+      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
+      Assert.assertNotNull(resultSet);
 
       int cnt = 0;
-      ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
         Assert.assertEquals(timestamps[cnt], resultSet.getLong(1));
         cnt++;
       }
       Assert.assertEquals(timestamps.length, cnt);
-    } catch (SQLException | TException e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail();
     }
@@ -112,7 +113,7 @@ public class IoTDBDatetimeFormatIT {
 
   @Test
   public void testBigDateTime() {
-    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg");
