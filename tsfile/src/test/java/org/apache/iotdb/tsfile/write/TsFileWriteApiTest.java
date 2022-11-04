@@ -20,14 +20,27 @@ package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -36,7 +49,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TsFileWriteApiTest {
@@ -421,6 +436,255 @@ public class TsFileWriteApiTest {
     } catch (Throwable e) {
       e.printStackTrace();
       Assert.fail("Meet errors in test: " + e.getMessage());
+    }
+  }
+
+  /** Write an empty page and then write a nonEmpty page. */
+  @Test
+  public void writeAlignedTimeseriesWithEmptyPage() throws IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, true);
+
+      // example2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 30, 1000, 500, true);
+
+      // example3 : late data
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 60, 300000, 50, true);
+    }
+
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+    for (int i = 0; i < 3; i++) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
+              null);
+      QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
+
+      int cnt = 0;
+      while (queryDataSet.hasNext()) {
+        cnt++;
+        queryDataSet.next();
+      }
+      if (i < 2) {
+        Assert.assertEquals(60, cnt);
+      } else {
+        Assert.assertEquals(90, cnt);
+      }
+    }
+  }
+
+  /** Write a nonEmpty page and then write an empty page. */
+  @Test
+  public void writeAlignedTimeseriesWithEmptyPage2() throws IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 30, 0, 0, true);
+
+      // example2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 30, 1000, 500, true);
+    }
+
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+    for (int i = 0; i < 3; i++) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
+              null);
+      QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
+      int cnt = 0;
+      while (queryDataSet.hasNext()) {
+        cnt++;
+        queryDataSet.next();
+      }
+      if (i < 2) {
+        Assert.assertEquals(60, cnt);
+      } else {
+        Assert.assertEquals(30, cnt);
+      }
+    }
+  }
+
+  /** Write a nonEmpty page and then write an empty page. */
+  @Test
+  public void writeAlignedTimeseriesWithEmptyPage3() throws IOException, WriteProcessException {
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
+
+      TsFileIOWriter tsFileIOWriter = tsFileWriter.getIOWriter();
+      tsFileIOWriter.startChunkGroup(deviceId);
+
+      AlignedChunkWriterImpl alignedChunkWriter =
+          new AlignedChunkWriterImpl(writeMeasurementScheams);
+
+      // write one nonEmpty page
+      for (long time = 0; time < 30; time++) {
+        for (int i = 0; i < 4; i++) {
+          alignedChunkWriter.getValueChunkWriterByIndex(i).write(time, time, false);
+        }
+        alignedChunkWriter.write(time);
+      }
+      alignedChunkWriter.sealCurrentPage();
+
+      // write a nonEmpty page of s0 and s1, an empty page of s2 and s3
+      for (long time = 30; time < 60; time++) {
+        for (int i = 0; i < 2; i++) {
+          alignedChunkWriter.getValueChunkWriterByIndex(i).write(time, time, false);
+        }
+      }
+      for (int i = 2; i < 4; i++) {
+        alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
+      }
+      for (long time = 30; time < 60; time++) {
+        alignedChunkWriter.write(time);
+      }
+      alignedChunkWriter.writeToFileWriter(tsFileIOWriter);
+      tsFileIOWriter.endChunkGroup();
+    }
+
+    // read file
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(f.getAbsolutePath()));
+    for (int i = 0; i < 3; i++) {
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(
+                  new Path(deviceId, alignedMeasurementSchemas.get(i).getMeasurementId(), true)),
+              null);
+      QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
+      int cnt = 0;
+      while (queryDataSet.hasNext()) {
+        cnt++;
+        queryDataSet.next();
+      }
+      if (i < 2) {
+        Assert.assertEquals(60, cnt);
+      } else {
+        Assert.assertEquals(30, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void writeTsFileByFlushingPageDirectly() throws IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+
+    // create a tsfile with four pages in one timeseries
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerTimeseries(tsFileWriter);
+
+      List<MeasurementSchema> writeMeasurementSchemas = new ArrayList<>();
+      writeMeasurementSchemas.add(measurementSchemas.get(0));
+
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 0, 0, false);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 30, 30, false);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 60, 60, false);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementSchemas, 30, 90, 90, false);
+    }
+
+    ChunkWriterImpl chunkWriter = new ChunkWriterImpl(measurementSchemas.get(0));
+
+    // rewrite a new tsfile by flushing page directly
+    File file = FSFactoryProducer.getFSFactory().getFile("test.tsfile");
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(f.getAbsolutePath());
+        TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(file)) {
+      tsFileIOWriter.startChunkGroup(deviceId);
+      for (List<ChunkMetadata> chunkMetadatas :
+          reader.readChunkMetadataInDevice(deviceId).values()) {
+        for (ChunkMetadata chunkMetadata : chunkMetadatas) {
+          Chunk chunk = reader.readMemChunk(chunkMetadata);
+          ByteBuffer chunkDataBuffer = chunk.getData();
+          ChunkHeader chunkHeader = chunk.getHeader();
+          int pageNum = 0;
+          while (chunkDataBuffer.remaining() > 0) {
+            // deserialize a PageHeader from chunkDataBuffer
+            PageHeader pageHeader;
+            if (((byte) (chunkHeader.getChunkType() & 0x3F))
+                == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+              pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
+            } else {
+              pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+            }
+
+            // read compressed page data
+            int compressedPageBodyLength = pageHeader.getCompressedSize();
+            byte[] compressedPageBody = new byte[compressedPageBodyLength];
+            chunkDataBuffer.get(compressedPageBody);
+            chunkWriter.writePageHeaderAndDataIntoBuff(
+                ByteBuffer.wrap(compressedPageBody), pageHeader);
+            if (++pageNum % 2 == 0) {
+              chunkWriter.writeToFileWriter(tsFileIOWriter);
+            }
+          }
+        }
+      }
+      tsFileIOWriter.endChunkGroup();
+      tsFileIOWriter.endFile();
+
+      // read file
+      TsFileReader tsFileReader =
+          new TsFileReader(new TsFileSequenceReader(file.getAbsolutePath()));
+
+      QueryExpression queryExpression =
+          QueryExpression.create(
+              Collections.singletonList(
+                  new Path(deviceId, measurementSchemas.get(0).getMeasurementId(), true)),
+              null);
+      QueryDataSet queryDataSet = tsFileReader.query(queryExpression);
+      int cnt = 0;
+      while (queryDataSet.hasNext()) {
+        cnt++;
+        // Assert.assertEquals(queryDataSet);
+        queryDataSet.next();
+      }
+
+      Assert.assertEquals(120, cnt);
+
+    } catch (Throwable throwable) {
+      if (file.exists()) {
+        file.delete();
+      }
+      throw throwable;
     }
   }
 }

@@ -38,6 +38,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -297,6 +299,18 @@ public abstract class AbstractEnv implements BaseEnv {
     return session;
   }
 
+  @Override
+  public SessionPool getSessionPool(int maxSize) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool(
+        dataNode.getIp(),
+        dataNode.getPort(),
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        maxSize);
+  }
+
   protected NodeConnection getWriteConnection(
       Constant.Version version, String username, String password) throws SQLException {
     DataNodeWrapper dataNode;
@@ -429,9 +443,8 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         } catch (Exception e) {
           logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
-              configNodeWrapper.getIpAndPortString(),
-              e);
+              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
+              configNodeWrapper.getIpAndPortString());
         }
 
         // Sleep 1s before next retry

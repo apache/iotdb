@@ -343,7 +343,7 @@ The complete SQL syntax is as follows:
 ```sql
 // Create Trigger
 createTrigger
-    : CREATE triggerType TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation triggerAttributeClause?
+    : CREATE triggerType TRIGGER triggerName=identifier triggerEventClause ON pathPattern AS className=STRING_LITERAL uriClause? triggerAttributeClause?
     ;
 
 triggerType
@@ -353,11 +353,15 @@ triggerType
 triggerEventClause
     : (BEFORE | AFTER) INSERT
     ;
-
-jarLocation
-    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
+        
+uriClause
+    : USING URI uri
     ;
 
+uri
+    : STRING_LITERAL
+    ;
+    
 triggerAttributeClause
     : WITH LR_BRACKET triggerAttribute (COMMA triggerAttribute)* RR_BRACKET
     ;
@@ -372,9 +376,9 @@ Below is the explanation for the SQL syntax:
 - triggerName: The trigger ID, which is globally unique and used to distinguish different triggers, is case-sensitive.
 - triggerType: Trigger types are divided into two categories, STATELESS and STATEFUL.
 - triggerEventClause: when the trigger fires, BEFORE INSERT and AFTER INSERT are supported now.
-- prefixPath：The path pattern the trigger listens on, can contain wildcards * and **.
+- pathPattern：The path pattern the trigger listens on, can contain wildcards * and **.
 - className：The class name of the Trigger class.
-- jarLocation: The location where the JAR package is stored, which can be a file path or a URI for downloading the JAR package. We will copy the JAR package to a configurable directory (the configuration item is trigger_root_dir), which is ext/trigger by default.
+- jarLocation: Optional. When this option is not specified, by default, we consider that the DBA has placed the JAR package required to create the trigger in the trigger_root_dir directory (configuration item, default is IOTDB_HOME/ext/trigger) of each DataNode node. When this option is specified, we will download and distribute the file resource corresponding to the URI to the trigger_root_dir/install directory of each DataNode.
 - triggerAttributeClause: It is used to specify the parameters that need to be set when the trigger instance is created. This part is optional in the SQL syntax.
 
 Here is an example SQL statement to help you understand:
@@ -384,7 +388,7 @@ CREATE STATELESS TRIGGER triggerTest
 BEFORE INSERT
 ON root.sg.**
 AS 'org.apache.iotdb.trigger.ClusterAlertingExample'
-USING FILE '/jar/ClusterAlertingExample.jar'
+USING URI '/jar/ClusterAlertingExample.jar'
 WITH (
     "name" = "trigger",
     "limit" = "100"
@@ -397,7 +401,7 @@ The above SQL statement creates a trigger named triggerTest:
 - Fires before insertion.
 - Listens on path pattern root.sg.**
 - The implemented trigger class is named `org.apache.iotdb.trigger.ClusterAlertingExample`
-- The JAR package file path is /jar/ClusterAlertingExample.jar
+- The JAR package URI is http://jar/ClusterAlertingExample.jar
 - When creating the trigger instance, two parameters, name and limit, are passed in.
 
 ### Drop Trigger

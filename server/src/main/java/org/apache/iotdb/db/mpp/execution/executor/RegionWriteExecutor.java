@@ -35,9 +35,12 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -56,6 +59,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +69,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class RegionWriteExecutor {
 
@@ -261,7 +266,7 @@ public class RegionWriteExecutor {
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -295,7 +300,7 @@ public class RegionWriteExecutor {
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -327,7 +332,7 @@ public class RegionWriteExecutor {
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -344,14 +349,17 @@ public class RegionWriteExecutor {
             }
 
             // filter failed measurement and keep the rest for execution
-            for (Map.Entry<Integer, MetadataException> failingMeasurement :
-                failingMeasurementMap.entrySet()) {
-              entry.getValue().removeMeasurement(failingMeasurement.getKey());
-              LOGGER.error("Metadata error: ", failingMeasurement.getValue());
+            List<Integer> failingMeasurementIndexList =
+                failingMeasurementMap.keySet().stream().sorted().collect(Collectors.toList());
+            int removedNum = 0;
+            for (Integer index : failingMeasurementIndexList) {
+              entry.getValue().removeMeasurement(index - removedNum);
+              removedNum++;
+              LOGGER.error("Metadata error: ", failingMeasurementMap.get(index));
               failingStatus.add(
                   RpcUtils.getStatus(
-                      failingMeasurement.getValue().getErrorCode(),
-                      failingMeasurement.getValue().getMessage()));
+                      failingMeasurementMap.get(index).getErrorCode(),
+                      failingMeasurementMap.get(index).getMessage()));
             }
 
             if (entry.getValue().isEmpty()) {
@@ -397,7 +405,7 @@ public class RegionWriteExecutor {
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -481,6 +489,33 @@ public class RegionWriteExecutor {
         }
       } else {
         return super.visitInternalCreateTimeSeries(node, context);
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitActivateTemplate(
+        ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      // activate template operation shall be blocked by unset template check
+      context.getRegionWriteValidationRWLock().readLock().lock();
+      try {
+        Pair<Template, PartialPath> templateSetInfo =
+            ClusterTemplateManager.getInstance().checkTemplateSetInfo(node.getActivatePath());
+        if (templateSetInfo == null) {
+          // The activation has already been validated during analyzing.
+          // That means the template is being unset during the activation plan transport.
+          RegionExecutionResult result = new RegionExecutionResult();
+          result.setAccepted(false);
+          String message =
+              String.format(
+                  "Template is being unsetting from path %s. Please try activating later.",
+                  node.getPathSetTemplate());
+          result.setMessage(message);
+          result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+          return result;
+        }
+        return super.visitActivateTemplate(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().readLock().unlock();
       }
     }
   }

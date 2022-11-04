@@ -48,7 +48,7 @@ public class OfferRegionMaintainTasksPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.OfferRegionMaintainTasks.ordinal());
+    stream.writeShort(getType().getPlanType());
 
     stream.writeInt(regionMaintainTaskList.size());
     for (RegionMaintainTask task : regionMaintainTaskList) {

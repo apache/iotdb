@@ -74,7 +74,7 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.RatisConsensus,
+                  ConsensusFactory.RATIS_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNodeId(peers.get(i).getNodeId())
                       .setThisNode(peers.get(i).getEndpoint())
@@ -87,7 +87,7 @@ public class RatisConsensusTest {
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.RatisConsensus))));
+                              ConsensusFactory.RATIS_CONSENSUS))));
       servers.get(i).start();
     }
   }

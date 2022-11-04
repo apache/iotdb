@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
@@ -204,6 +204,7 @@ public class DeactivateTemplateProcedure
 
     // target timeseries has no data
     if (relatedDataRegionGroup.isEmpty()) {
+      setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
       return;
     }
 
@@ -387,7 +388,7 @@ public class DeactivateTemplateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(templateSetInfo.size(), stream);

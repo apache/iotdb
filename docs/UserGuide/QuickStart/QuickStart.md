@@ -64,21 +64,38 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -b
+```
 or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+```shell
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+```
 
+parameters:
+- by default, iotdb will run in the background
+- "-v": show iotdb version
+- "-f": run iotdb on the foreground and print logs on the console (by default)
+- "-b": run iotdb in the background which does not print logs on the console
+- "-p \<pidfile\>": save the pid into target pidfile
+- "-h": help
+- "printgc"(must be at the end of the command): print the GC log 
+- "-g": print the GC log
+- "-c \<config folder\>": set IOTDB_CONF parameter
+- "-D <a=b>": set system variables to IoTDB program.
+- "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\>"
+- "-X \<command\> equal to -XX:\<command\>"
+
+```
 # Windows
 > sbin\start-server.bat -c <conf_path>
 ```
 
-- "-c" is optional.
-- option "-c" specifies the system configuration file directory.
-
-if you want to use JMX to connect IOTDB, you may need to add 
+Notice that Windows OS only support -v, -c, -f and -b.
+if you want to use JMX to connect IOTDB, you may need to add/modify 
 
 ```
--Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
+-Dcom.sun.management.jmxremote.rmi.port=<PORT> -Djava.rmi.server.hostname=<IP> 
 ```
 to $IOTDB_JMX_OPTS in datanode-env.sh. or datanode-env.bat
 

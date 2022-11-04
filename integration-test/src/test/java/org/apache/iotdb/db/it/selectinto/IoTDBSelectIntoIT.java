@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.selectinto;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -48,6 +47,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSelectIntoIT {
 
   protected static int selectIntoInsertTabletPlanRowLimit;
+  protected static int numOfPointsPerPage;
 
   protected static final String[] SQLs =
       new String[] {
@@ -107,9 +107,6 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    selectIntoInsertTabletPlanRowLimit =
-        ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
-    ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(5);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
@@ -117,8 +114,6 @@ public class IoTDBSelectIntoIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
   }
 
   // -------------------------------------- ALIGN BY TIME ---------------------------------------

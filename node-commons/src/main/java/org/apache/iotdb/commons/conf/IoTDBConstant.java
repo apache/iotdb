@@ -50,14 +50,18 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  public static final String CONFIG_NODE_ID = "config_node_id";
-  public static final String DATA_NODE_ID = "data_node_id";
-  public static final String RPC_ADDRESS = "rpc_address";
-  public static final String RPC_PORT = "rpc_port";
-  public static final String INTERNAL_ADDRESS = "internal_address";
-  public static final String INTERNAL_PORT = "internal_port";
-  public static final String CONSENSUS_PORT = "consensus_port";
-  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+  public static final String DN_RPC_ADDRESS = "dn_rpc_address";
+  public static final String DN_RPC_PORT = "dn_rpc_port";
+
+  public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
+  public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
+
+  public static final String CN_INTERNAL_PORT = "cn_internal_port";
+  public static final String DN_INTERNAL_PORT = "dn_internal_port";
+  public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+
+  public static final String CN_TARGET_CONFIG_NODES = "cn_target_config_nodes";
+  public static final String DN_TARGET_CONFIG_NODES = "dn_target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -86,6 +90,8 @@ public class IoTDBConstant {
   public static final long KB = 1024L;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
+
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
@@ -278,6 +284,9 @@ public class IoTDBConstant {
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
   public static final String NODE_STATUS_RUNNING = "Running";
   public static final String NODE_STATUS_Down = "Down";
+
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   // client version number
   public enum ClientVersion {

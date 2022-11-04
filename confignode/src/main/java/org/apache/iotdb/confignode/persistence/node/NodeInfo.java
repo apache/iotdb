@@ -25,12 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -84,9 +84,6 @@ public class NodeInfo implements SnapshotProcessor {
   private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
 
-  // Node Statistics
-  private final Map<Integer, NodeStatistics> nodeStatisticsMap;
-
   private final String snapshotFileName = "node_info.bin";
 
   public NodeInfo() {
@@ -95,8 +92,6 @@ public class NodeInfo implements SnapshotProcessor {
 
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.registeredDataNodes = new ConcurrentHashMap<>();
-
-    this.nodeStatisticsMap = new ConcurrentHashMap<>();
   }
 
   /**
@@ -165,7 +160,7 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Persist Information about remove dataNode
    *
-   * @param req RemoveDataNodeReq
+   * @param req RemoveDataNodePlan
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
@@ -188,6 +183,25 @@ public class NodeInfo implements SnapshotProcessor {
         "{}, There are {} data node in cluster after executed remove-datanode.sh",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Update the specified DataNode‘s location
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return SUCCESS_STATUS if update DataNode info successfully, otherwise return
+   *     UPDATE_DATA_NODE_ERROR
+   */
+  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    dataNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      registeredDataNodes
+          .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
+          .setLocation(updateDataNodePlan.getDataNodeLocation());
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -353,29 +367,6 @@ public class NodeInfo implements SnapshotProcessor {
     return nextNodeId.incrementAndGet();
   }
 
-  /**
-   * Update NodeStatistics through consensus-write
-   *
-   * @param updateLoadStatisticsPlan UpdateLoadStatisticsPlan
-   */
-  public void updateNodeStatistics(UpdateLoadStatisticsPlan updateLoadStatisticsPlan) {
-    nodeStatisticsMap.putAll(updateLoadStatisticsPlan.getNodeStatisticsMap());
-
-    // Log current NodeStatistics
-    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry : nodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue());
-    }
-  }
-
-  /** Only used when the ConfigNode-Leader is switched */
-  public Map<Integer, NodeStatistics> getNodeStatisticsMap() {
-    return nodeStatisticsMap;
-  }
-
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException, TException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
@@ -399,8 +390,6 @@ public class NodeInfo implements SnapshotProcessor {
       serializeRegisteredConfigNode(fileOutputStream, protocol);
 
       serializeRegisteredDataNode(fileOutputStream, protocol);
-
-      serializeNodeStatistics(fileOutputStream);
 
       fileOutputStream.flush();
 
@@ -440,14 +429,6 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void serializeNodeStatistics(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(nodeStatisticsMap.size(), outputStream);
-    for (Map.Entry<Integer, NodeStatistics> nodeStatisticsEntry : nodeStatisticsMap.entrySet()) {
-      ReadWriteIOUtils.write(nodeStatisticsEntry.getKey(), outputStream);
-      nodeStatisticsEntry.getValue().serialize(outputStream);
-    }
-  }
-
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException, TException {
 
@@ -473,8 +454,6 @@ public class NodeInfo implements SnapshotProcessor {
       deserializeRegisteredConfigNode(fileInputStream, protocol);
 
       deserializeRegisteredDataNode(fileInputStream, protocol);
-
-      deserializeNodeStatistics(fileInputStream);
 
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
@@ -506,17 +485,6 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void deserializeNodeStatistics(InputStream inputStream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      int nodeId = ReadWriteIOUtils.readInt(inputStream);
-      NodeStatistics nodeStatistics = new NodeStatistics();
-      nodeStatistics.deserialize(inputStream);
-      nodeStatisticsMap.put(nodeId, nodeStatistics);
-      size--;
-    }
-  }
-
   public static int getMinimumDataNode() {
     return minimumDataNode;
   }
@@ -525,7 +493,6 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
     registeredConfigNodes.clear();
-    nodeStatisticsMap.clear();
   }
 
   @Override
@@ -535,12 +502,11 @@ public class NodeInfo implements SnapshotProcessor {
     NodeInfo nodeInfo = (NodeInfo) o;
     return registeredConfigNodes.equals(nodeInfo.registeredConfigNodes)
         && nextNodeId.get() == nodeInfo.nextNodeId.get()
-        && registeredDataNodes.equals(nodeInfo.registeredDataNodes)
-        && nodeStatisticsMap.equals(nodeInfo.nodeStatisticsMap);
+        && registeredDataNodes.equals(nodeInfo.registeredDataNodes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeStatisticsMap);
+    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes);
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
@@ -32,7 +33,7 @@ public class RegionStatisticsTest {
 
   @Test
   public void RegionStatisticsSerDeTest1() throws IOException {
-    RegionStatistics statistics0 = new RegionStatistics(20000522, true, RegionStatus.Running);
+    RegionStatistics statistics0 = new RegionStatistics(RegionStatus.Running);
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

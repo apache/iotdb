@@ -115,6 +115,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -222,7 +223,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
     if (config.isClusterMode()
-        && config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        && config
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       File schemaRegionDir = new File(schemaRegionDirPath);
       if (schemaRegionDir.exists()) {
         FileUtils.deleteDirectory(schemaRegionDir);
@@ -255,7 +258,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       if (!(config.isClusterMode()
           && config
               .getSchemaRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.RatisConsensus))) {
+              .equals(ConsensusFactory.RATIS_CONSENSUS))) {
         usingMLog = true;
         initMLog();
       } else {
@@ -2094,10 +2097,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.preDeactivateTemplate();
         preDeactivateNum++;
         try {
-          writeToMLog(plan);
+          writeToMLog(SchemaRegionPlanFactory.getPreDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -2116,9 +2123,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         if (!entityMNode.isPreDeactivateTemplate()) {
           continue;
         }
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.rollbackPreDeactivateTemplate();
         try {
-          writeToMLog(plan);
+          writeToMLog(
+              SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -2132,15 +2144,29 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.deactivateTemplate();
         mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
         try {
-          writeToMLog(plan);
+          writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
       }
     }
+  }
+
+  @Override
+  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException {
+    int result = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      result += mtree.countPathsUsingTemplate(pathPattern, templateId);
+    }
+    return result;
   }
 
   // endregion

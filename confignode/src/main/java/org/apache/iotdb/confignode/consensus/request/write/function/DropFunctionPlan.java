@@ -46,7 +46,7 @@ public class DropFunctionPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(functionName, stream);
   }
 

@@ -43,8 +43,6 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-// todo : add back when finishes new udf management
-@Ignore
 public class IoTDBUDTFHybridQueryIT {
 
   @BeforeClass

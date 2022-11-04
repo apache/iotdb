@@ -347,7 +347,7 @@ public class ClusterAlertingExample implements Trigger {
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
   AS "org.apache.iotdb.trigger.ClusterAlertingExample"
-  USING FILE '/jar/ClusterAlertingExample.jar'
+  USING URI 'http://jar/ClusterAlertingExample.jar'
 ```
 
 ## 写入数据

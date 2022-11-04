@@ -334,7 +334,7 @@ public class ClusterAlertingExample implements Trigger {
 ```sql
 // Create Trigger
 createTrigger
-    : CREATE triggerType TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation triggerAttributeClause?
+    : CREATE triggerType TRIGGER triggerName=identifier triggerEventClause ON pathPattern AS className=STRING_LITERAL uriClause? triggerAttributeClause?
     ;
 
 triggerType
@@ -345,8 +345,12 @@ triggerEventClause
     : (BEFORE | AFTER) INSERT
     ;
 
-jarLocation
-    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
+uriClause
+    : USING URI uri
+    ;
+
+uri
+    : STRING_LITERAL
     ;
 
 triggerAttributeClause
@@ -362,9 +366,9 @@ triggerAttribute
 - triggerName：触发器 ID，该 ID 是全局唯一的，用于区分不同触发器，大小写敏感。
 - triggerType：触发器类型，分为无状态（STATELESS）和有状态（STATEFUL）两类。
 - triggerEventClause：触发时机，目前仅支持写入前（BEFORE INSERT）和写入后（AFTER INSERT）两种。
-- prefixPath：触发器侦听的路径模式，可以包含通配符 * 和 **。
+- pathPattern：触发器侦听的路径模式，可以包含通配符 * 和 **。
 - className：触发器实现类的类名。
-- jarLocation：JAR 包存放的位置，可以是一个文件路径，或者是用于下载 JAR 包的 URI。我们会将 JAR 包复制到可配置的目录下（配置项为 trigger_root_dir），默认为 ext/trigger。
+- uriClause：可选项，当不指定该选项时，我们默认 DBA 已经在各个 DataNode 节点的 trigger_root_dir 目录（配置项，默认为 IOTDB_HOME/ext/trigger）下放置好创建该触发器需要的 JAR 包。当指定该选项时，我们会将该 URI 对应的文件资源下载并分发到各 DataNode 的 trigger_root_dir/install 目录下。
 - triggerAttributeClause：用于指定触发器实例创建时需要设置的参数，SQL 语法中该部分是可选项。
   
 
@@ -374,7 +378,7 @@ CREATE STATELESS TRIGGER triggerTest
 BEFORE INSERT
 ON root.sg.**
 AS 'org.apache.iotdb.trigger.ClusterAlertingExample'
-USING FILE '/jar/ClusterAlertingExample.jar'
+USING URI 'http://jar/ClusterAlertingExample.jar'
 WITH (
     "name" = "trigger",
     "limit" = "100"
@@ -386,7 +390,7 @@ WITH (
 - 在写入前触发（BEFORE INSERT）
 - 该触发器侦听路径模式为 root.sg.**
 - 所编写的触发器类名为 org.apache.iotdb.trigger.ClusterAlertingExample
-- JAR 包文件路径为 /jar/ClusterAlertingExample.jar
+- JAR 包的 URI 为 http://jar/ClusterAlertingExample.jar
 - 创建该触发器实例时会传入 name 和 limit 两个参数。
 
 ### 卸载触发器
