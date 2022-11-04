@@ -187,7 +187,8 @@ public class LinearFill extends IFill {
         aggregateResultList,
         null,
         null,
-        true);
+        true,
+        null);
 
     return convertToResult(minTimeResult, firstValueResult);
   }

@@ -124,6 +124,30 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.EXTREME:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
+      case SQLConstant.EXACT_MEDIAN:
+      case SQLConstant.EXACT_MEDIAN_OPT:
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
         return dataType.isNumeric();
       case SQLConstant.COUNT:
       case SQLConstant.MIN_TIME:
@@ -149,6 +173,30 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.MAX_VALUE:
       case SQLConstant.AVG:
       case SQLConstant.SUM:
+      case SQLConstant.EXACT_MEDIAN:
+      case SQLConstant.EXACT_MEDIAN_OPT:
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
         return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
       default:
         return true;

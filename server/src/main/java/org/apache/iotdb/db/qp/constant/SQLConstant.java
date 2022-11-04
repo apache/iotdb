@@ -70,6 +70,37 @@ public class SQLConstant {
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+  public static final String EXACT_MEDIAN = "exact_median";
+  public static final String EXACT_MEDIAN_OPT = "exact_median_opt";
+  public static final String EXACT_MEDIAN_OPT_2 = "exact_median_opt_2";
+  public static final String EXACT_MEDIAN_OPT_3 = "exact_median_opt_3";
+  public static final String EXACT_MEDIAN_OPT_4 = "exact_median_opt_4";
+  public static final String EXACT_MEDIAN_OPT_5 = "exact_median_opt_5";
+  public static final String EXACT_MEDIAN_AMORTIZED = "exact_median_amortized";
+  public static final String EXACT_MEDIAN_KLL_FLOATS = "exact_median_kll_floats";
+  public static final String EXACT_MEDIAN_AGGRESSIVE = "exact_median_aggressive";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT = "exact_median_bits_bucket_stat";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER =
+      "exact_median_bits_bucket_stat_filter";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE =
+      "exact_median_bits_bucket_stat_filter_aggressive";
+  public static final String EXACT_MEDIAN_KLL_STAT = "exact_median_kll_stat";
+  public static final String EXACT_MEDIAN_KLL_STAT_SINGLE = "exact_median_kll_stat_single";
+  public static final String EXACT_MEDIAN_KLL_FLOATS_SINGLE = "exact_median_kll_floats_single";
+  public static final String EXACT_MEDIAN_KLL_STAT_SINGLE_READ =
+      "exact_median_kll_stat_single_read";
+  public static final String EXACT_MEDIAN_KLL_DEBUG = "exact_median_kll_debug";
+  public static final String EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING =
+      "exact_median_kll_stat_debug_full_reading";
+  public static final String EXACT_MEDIAN_KLL_DEBUG_FULL_READING =
+      "exact_median_kll_debug_full_reading";
+  public static final String EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE =
+      "exact_median_kll_stat_debug_page_demand_rate";
+  public static final String EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE =
+      "exact_median_kll_stat_overlap_single";
+  public static final String TDIGEST_STAT_SINGLE = "tdigest_quantile";
+  public static final String SAMPLING_STAT_SINGLE = "sampling_quantile";
+  public static final String STRICT_KLL_STAT_SINGLE = "kll_quantile";
 
   public static final String ALL = "all";
 
@@ -85,7 +116,31 @@ public class SQLConstant {
               LAST_VALUE,
               COUNT,
               SUM,
-              AVG));
+              AVG,
+              EXACT_MEDIAN,
+              EXACT_MEDIAN_OPT,
+              EXACT_MEDIAN_OPT_2,
+              EXACT_MEDIAN_OPT_3,
+              EXACT_MEDIAN_OPT_4,
+              EXACT_MEDIAN_OPT_5,
+              EXACT_MEDIAN_AMORTIZED,
+              EXACT_MEDIAN_KLL_FLOATS,
+              EXACT_MEDIAN_AGGRESSIVE,
+              EXACT_MEDIAN_BITS_BUCKET_STAT,
+              EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER,
+              EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE,
+              EXACT_MEDIAN_KLL_STAT,
+              EXACT_MEDIAN_KLL_STAT_SINGLE,
+              EXACT_MEDIAN_KLL_FLOATS_SINGLE,
+              EXACT_MEDIAN_KLL_STAT_SINGLE_READ,
+              EXACT_MEDIAN_KLL_DEBUG,
+              EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING,
+              EXACT_MEDIAN_KLL_DEBUG_FULL_READING,
+              EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE,
+              EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE,
+              TDIGEST_STAT_SINGLE,
+              SAMPLING_STAT_SINGLE,
+              STRICT_KLL_STAT_SINGLE));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

@@ -28,6 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 import java.io.IOException;
 import java.util.List;
@@ -163,6 +167,14 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public BatchData nextPage() throws IOException {
     return seriesReader.nextPage().flip();
+  }
+  //  @Override
+  public MutableMap<IPointReader, Statistics> getPageStat() {
+    return seriesReader.mergeReader.pageStat;
+  }
+  //  @Override
+  public MutableMap<IPointReader, LongArrayList[]> getPageData() {
+    return seriesReader.mergeReader.pageData;
   }
 
   private boolean containedByTimeFilter(Statistics statistics) {

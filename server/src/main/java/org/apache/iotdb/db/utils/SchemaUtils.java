@@ -192,6 +192,30 @@ public class SchemaUtils {
         return TSDataType.INT64;
       case SQLConstant.AVG:
       case SQLConstant.SUM:
+      case SQLConstant.EXACT_MEDIAN:
+      case SQLConstant.EXACT_MEDIAN_OPT:
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
         return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:

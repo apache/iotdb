@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,11 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class AggregationPlan extends RawDataQueryPlan {
 
@@ -51,6 +48,8 @@ public class AggregationPlan extends RawDataQueryPlan {
   private GroupByLevelController groupByLevelController;
   // group by level aggregation result path
   private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
+  private final Map<String, TSDataType> groupedPathToTSDataType = new LinkedHashMap<>();
+  private final Map<AggregateResult, AggregateResult> resultToGroupedAhead = new HashMap<>();
 
   public AggregationPlan() {
     super();
@@ -140,10 +139,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       groupPathsResultMap.clear();
     }
     for (int i = 0; i < getDeduplicatedPaths().size(); i++) {
-      String rawPath =
-          String.format(
-              "%s(%s)",
-              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getFullPath());
+      String rawPath = getRawPath(i);
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
@@ -154,6 +150,77 @@ public class AggregationPlan extends RawDataQueryPlan {
       }
     }
     return groupPathsResultMap;
+  }
+
+  public Map<AggregateResult, AggregateResult> getresultToGroupedAhead() {
+    return resultToGroupedAhead;
+  }
+
+  public void groupAggResultByLevelBeforeAggregation(List<AggregateResult> aggregateResults) {
+    List<TSDataType> seriesDataTypes = this.getDeduplicatedDataTypes();
+    groupedPathToTSDataType.clear();
+    groupPathsResultMap.clear();
+    resultToGroupedAhead.clear();
+
+    if (!this.isGroupByLevel()) {
+      for (int i = 0; i < getDeduplicatedPaths().size(); i++) {
+        resultToGroupedAhead.put(aggregateResults.get(i), aggregateResults.get(i));
+      }
+      return;
+    }
+
+    // find the biggest(Double>Float>INT64>INT32) TsDataType for grouped AggregationResult
+    for (int i = 0; i < getDeduplicatedPaths().size(); i++)
+      if (aggregateResults.get(i).groupByLevelBeforeAggregation()) {
+        String rawPath = getRawPath(i);
+        String transformedPath = groupByLevelController.getGroupedPath(rawPath);
+        TSDataType dataType = groupedPathToTSDataType.get(transformedPath);
+        if (dataType == null || dataType.serialize() < seriesDataTypes.get(i).serialize()) {
+          groupedPathToTSDataType.put(transformedPath, seriesDataTypes.get(i));
+        }
+      }
+    for (int i = 0; i < getDeduplicatedPaths().size(); i++)
+      if (aggregateResults.get(i).groupByLevelBeforeAggregation()) {
+        String rawPath = getRawPath(i);
+        String transformedPath = groupByLevelController.getGroupedPath(rawPath);
+
+        AggregateResult groupedResult = groupPathsResultMap.get(transformedPath);
+        if (groupedResult == null) {
+          groupedResult =
+              AggregateResultFactory.getAggrResultByName(
+                  deduplicatedAggregations.get(i),
+                  groupedPathToTSDataType.get(transformedPath),
+                  aggregateResults.get(i).isAscending());
+          groupPathsResultMap.put(transformedPath, groupedResult);
+        }
+        resultToGroupedAhead.put(aggregateResults.get(i), groupedResult);
+      } else {
+        resultToGroupedAhead.put(aggregateResults.get(i), aggregateResults.get(i));
+      }
+  }
+
+  public Map<String, AggregateResult> groupAggResultByLevelAfterAggregation(
+      List<AggregateResult> aggregateResults) {
+    for (int i = 0; i < getDeduplicatedPaths().size(); i++)
+      if (!aggregateResults.get(i).groupByLevelBeforeAggregation()) {
+        String rawPath = getRawPath(i);
+        String transformedPath = groupByLevelController.getGroupedPath(rawPath);
+        AggregateResult result = groupPathsResultMap.get(transformedPath);
+        if (result == null) {
+          groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+        } else {
+          result.merge(aggregateResults.get(i));
+          groupPathsResultMap.put(transformedPath, result);
+        }
+      }
+    return groupPathsResultMap;
+  }
+
+  public String getRawPath(int aggrIndex) {
+    return String.format(
+        "%s(%s)",
+        deduplicatedAggregations.get(aggrIndex),
+        getDeduplicatedPaths().get(aggrIndex).getFullPath());
   }
 
   @Override

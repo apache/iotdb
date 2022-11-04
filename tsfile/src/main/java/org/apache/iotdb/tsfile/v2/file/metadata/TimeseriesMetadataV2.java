@@ -23,13 +23,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class TimeseriesMetadataV2 {
 
   private TimeseriesMetadataV2() {}
 
-  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
+  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
     timeseriesMetaData.setTSDataType(

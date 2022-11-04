@@ -2525,4 +2525,24 @@ public class IoTDBConfig {
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
+
+  private int aggregatorMemoryInKB = 128;
+
+  public void setAggregatorMemoryInKB(int kb) {
+    this.aggregatorMemoryInKB = kb;
+  }
+
+  public int getAggregatorMemoryInKB() {
+    return aggregatorMemoryInKB;
+  }
+
+  private int aggregationStrategy = 0;
+
+  public void setAggregationStrategy(int s) {
+    this.aggregationStrategy = s;
+  }
+
+  public int getAggregationStrategy() {
+    return aggregationStrategy;
+  }
 }

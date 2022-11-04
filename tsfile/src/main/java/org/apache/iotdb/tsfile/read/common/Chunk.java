@@ -67,6 +67,16 @@ public class Chunk {
     this.deleteIntervalList = list;
   }
 
+  //  private int calcStatisticsSizeForOnePage(){
+  //    int size=0;
+  //    if(chunkHeader.getDataType()== TSDataType.DOUBLE){
+  //      if(TSFileDescriptor.getInstance().getConfig().isEnableSynopsis())
+  //        size+=TSFileDescriptor.getInstance().getConfig().getSynopsisSizeInByte();
+  //      if(TSFileDescriptor.getInstance().getConfig().isEnableBloomFilter())
+  //        size+=STATISTICS_PAGE_MAXSIZE*
+  //            TSFileDescriptor.getInstance().getConfig().getBloomFilterBitsPerKey()/8+20;
+  //    }else size=chunk.chunkStatistic.getSerializedSize();
+  //  }
   public void mergeChunkByAppendPage(Chunk chunk) throws IOException {
     int dataSize = 0;
     // from where the page data of the merged chunk starts, if -1, it means the merged chunk has
@@ -112,6 +122,7 @@ public class Chunk {
       // the dataSize is equal to the before
       dataSize += chunkData.array().length;
     }
+    //    dataSize += STATISTICS_SERIALIZE_BYTE_CHUNK; // extra size for chunk statistics
     chunkHeader.setDataSize(dataSize);
     ByteBuffer newChunkData = ByteBuffer.allocate(dataSize);
     // the current chunk has more than one page, we can use its data part directly without any

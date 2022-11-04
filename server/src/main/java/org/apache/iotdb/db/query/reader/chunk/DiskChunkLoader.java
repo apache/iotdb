@@ -56,4 +56,11 @@ public class DiskChunkLoader implements IChunkLoader {
     chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
     return new ChunkReader(chunk, timeFilter);
   }
+
+  public IChunkReader getLazyChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetaData, debug);
+    chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+    return new ChunkReader(chunk, timeFilter, true);
+  }
 }

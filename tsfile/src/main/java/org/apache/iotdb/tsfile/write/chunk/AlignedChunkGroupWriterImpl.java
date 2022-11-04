@@ -41,19 +41,23 @@ import java.util.*;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
+  private final int maxNumberOfPointsInChunk;
 
   private final String deviceId;
 
   // measurementID -> ValueChunkWriter
-  private Map<String, ValueChunkWriter> valueChunkWriterMap = new LinkedHashMap<>();
-
-  private TimeChunkWriter timeChunkWriter;
+  private Map<String, List<ValueChunkWriter>> valueChunkWriterMap = new LinkedHashMap<>();
+  private List<TimeChunkWriter> timeChunkWriter = new ArrayList<>();
+  private int writingIndex;
 
   private Set<String> writenMeasurementSet = new HashSet<>();
 
   private long lastTime = -1;
 
   public AlignedChunkGroupWriterImpl(String deviceId) {
+    this.maxNumberOfPointsInChunk =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInChunk();
+    this.writingIndex = 0;
     this.deviceId = deviceId;
     String timeMeasurementId = "";
     CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -61,7 +65,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     Encoder encoder = TSEncodingBuilder.getEncodingBuilder(tsEncoding).getEncoder(timeType);
-    timeChunkWriter = new TimeChunkWriter(timeMeasurementId, compressionType, tsEncoding, encoder);
+    timeChunkWriter.add(
+        new TimeChunkWriter(timeMeasurementId, compressionType, tsEncoding, encoder));
   }
 
   @Override
@@ -74,7 +79,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
               measurementSchema.getType(),
               measurementSchema.getEncodingType(),
               measurementSchema.getValueEncoder());
-      valueChunkWriterMap.put(measurementSchema.getMeasurementId(), valueChunkWriter);
+      valueChunkWriterMap.putIfAbsent(measurementSchema.getMeasurementId(), new ArrayList<>());
+      valueChunkWriterMap.get(measurementSchema.getMeasurementId()).add(valueChunkWriter);
       tryToAddEmptyPageAndData(valueChunkWriter);
     }
   }
@@ -90,7 +96,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
                 schema.getType(),
                 schema.getEncodingType(),
                 schema.getValueEncoder());
-        valueChunkWriterMap.put(schema.getMeasurementId(), valueChunkWriter);
+        valueChunkWriterMap.putIfAbsent(schema.getMeasurementId(), new ArrayList<>());
+        valueChunkWriterMap.get(schema.getMeasurementId()).add(valueChunkWriter);
         tryToAddEmptyPageAndData(valueChunkWriter);
       }
     }
@@ -103,7 +110,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     for (DataPoint point : data) {
       writenMeasurementSet.add(point.getMeasurementId());
       boolean isNull = point.getValue() == null;
-      ValueChunkWriter valueChunkWriter = valueChunkWriterMap.get(point.getMeasurementId());
+      ValueChunkWriter valueChunkWriter =
+          valueChunkWriterMap.get(point.getMeasurementId()).get(writingIndex);
       switch (point.getType()) {
         case BOOLEAN:
           valueChunkWriter.write(time, (boolean) point.getValue(), isNull);
@@ -129,7 +137,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
       }
     }
     writeEmptyDataInOneRow(time);
-    timeChunkWriter.write(time);
+    timeChunkWriter.get(writingIndex).write(time);
     lastTime = time;
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
@@ -154,7 +162,9 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
           isNull = true;
         }
         ValueChunkWriter valueChunkWriter =
-            valueChunkWriterMap.get(measurementSchemas.get(columnIndex).getMeasurementId());
+            valueChunkWriterMap
+                .get(measurementSchemas.get(columnIndex).getMeasurementId())
+                .get(writingIndex);
         switch (measurementSchemas.get(columnIndex).getType()) {
           case BOOLEAN:
             valueChunkWriter.write(time, ((boolean[]) tablet.values[columnIndex])[row], isNull);
@@ -182,10 +192,36 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         }
       }
       writeEmptyDataInOneRow(time);
-      timeChunkWriter.write(time);
+      timeChunkWriter.get(writingIndex).write(time);
       lastTime = time;
+      //      System.out.println("\t\t"+time);
       if (checkPageSizeAndMayOpenANewPage()) {
         writePageToPageBuffer();
+      }
+      if (timeChunkWriter.get(writingIndex).getStatistics().getCount()
+          >= maxNumberOfPointsInChunk) {
+        sealAllChunks();
+        TimeChunkWriter lastTC = timeChunkWriter.get(writingIndex);
+        timeChunkWriter.add(
+            new TimeChunkWriter(
+                lastTC.measurementId,
+                lastTC.compressionType,
+                lastTC.encodingType,
+                lastTC.timeEncoder));
+
+        for (String key : valueChunkWriterMap.keySet()) {
+          ValueChunkWriter lastVC = valueChunkWriterMap.get(key).get(writingIndex);
+          valueChunkWriterMap
+              .get(key)
+              .add(
+                  new ValueChunkWriter(
+                      lastVC.measurementId,
+                      lastVC.compressionType,
+                      lastVC.dataType,
+                      lastVC.encodingType,
+                      lastVC.valueEncoder));
+        }
+        writingIndex++;
       }
       pointCount++;
     }
@@ -199,47 +235,63 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     // groupWriter.getCurrentChunkGroupSize().
     sealAllChunks();
     long currentChunkGroupSize = getCurrentChunkGroupSize();
-    timeChunkWriter.writeToFileWriter(tsfileWriter);
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      valueChunkWriter.writeToFileWriter(tsfileWriter);
+    for (int i = 0; i <= writingIndex; i++) {
+      LOG.debug(
+          "\twriting an AlignedChunk.  TimeChunkCount:{}",
+          timeChunkWriter.get(i).getStatistics().getCount());
+
+      timeChunkWriter.get(i).writeToFileWriter(tsfileWriter);
+      for (List<ValueChunkWriter> valueChunkWriter : valueChunkWriterMap.values()) {
+        valueChunkWriter.get(i).writeToFileWriter(tsfileWriter);
+      }
     }
     return currentChunkGroupSize;
   }
 
   @Override
-  public long updateMaxGroupMemSize() {
-    long bufferSize = timeChunkWriter.estimateMaxSeriesMemSize();
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      bufferSize += valueChunkWriter.estimateMaxSeriesMemSize();
+  public long updateMaxGroupMemSize() { // TODO
+    long bufferSize = 0;
+
+    for (int i = 0; i <= writingIndex; i++) {
+      bufferSize += timeChunkWriter.get(i).estimateMaxSeriesMemSize();
+
+      for (List<ValueChunkWriter> valueChunkWriter : valueChunkWriterMap.values()) {
+        bufferSize += valueChunkWriter.get(i).estimateMaxSeriesMemSize();
+      }
     }
     return bufferSize;
   }
 
   @Override
   public long getCurrentChunkGroupSize() {
-    long size = timeChunkWriter.getCurrentChunkSize();
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      size += valueChunkWriter.getCurrentChunkSize();
+    long size = 0;
+    for (int i = 0; i <= writingIndex; i++) {
+      size += timeChunkWriter.get(i).getCurrentChunkSize();
+      for (List<ValueChunkWriter> valueChunkWriter : valueChunkWriterMap.values()) {
+        size += valueChunkWriter.get(i).getCurrentChunkSize();
+      }
     }
     return size;
   }
 
   public void tryToAddEmptyPageAndData(ValueChunkWriter valueChunkWriter) {
     // add empty page
-    for (int i = 0; i < timeChunkWriter.getNumOfPages(); i++) {
+    for (int i = 0; i < timeChunkWriter.get(writingIndex).getNumOfPages(); i++) {
       valueChunkWriter.writeEmptyPageToPageBuffer();
     }
 
     // add empty data of currentPage
-    for (long i = 0; i < timeChunkWriter.getPageWriter().getStatistics().getCount(); i++) {
+    for (long i = 0;
+        i < timeChunkWriter.get(writingIndex).getPageWriter().getStatistics().getCount();
+        i++) {
       valueChunkWriter.write(0, 0, true);
     }
   }
 
   private void writeEmptyDataInOneRow(long time) {
-    for (Map.Entry<String, ValueChunkWriter> entry : valueChunkWriterMap.entrySet()) {
+    for (Map.Entry<String, List<ValueChunkWriter>> entry : valueChunkWriterMap.entrySet()) {
       if (!writenMeasurementSet.contains(entry.getKey())) {
-        entry.getValue().write(time, 0, true);
+        entry.getValue().get(writingIndex).write(time, 0, true);
       }
     }
     writenMeasurementSet.clear();
@@ -250,11 +302,11 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
    * to pageBuffer
    */
   private boolean checkPageSizeAndMayOpenANewPage() {
-    if (timeChunkWriter.checkPageSizeAndMayOpenANewPage()) {
+    if (timeChunkWriter.get(writingIndex).checkPageSizeAndMayOpenANewPage()) {
       return true;
     }
-    for (ValueChunkWriter writer : valueChunkWriterMap.values()) {
-      if (writer.checkPageSizeAndMayOpenANewPage()) {
+    for (List<ValueChunkWriter> writer : valueChunkWriterMap.values()) {
+      if (writer.get(writingIndex).checkPageSizeAndMayOpenANewPage()) {
         return true;
       }
     }
@@ -262,16 +314,16 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   private void writePageToPageBuffer() {
-    timeChunkWriter.writePageToPageBuffer();
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      valueChunkWriter.writePageToPageBuffer();
+    timeChunkWriter.get(writingIndex).writePageToPageBuffer();
+    for (List<ValueChunkWriter> valueChunkWriter : valueChunkWriterMap.values()) {
+      valueChunkWriter.get(writingIndex).writePageToPageBuffer();
     }
   }
 
   private void sealAllChunks() {
-    timeChunkWriter.sealCurrentPage();
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterMap.values()) {
-      valueChunkWriter.sealCurrentPage();
+    timeChunkWriter.get(writingIndex).sealCurrentPage();
+    for (List<ValueChunkWriter> valueChunkWriter : valueChunkWriterMap.values()) {
+      valueChunkWriter.get(writingIndex).sealCurrentPage();
     }
   }
 

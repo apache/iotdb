@@ -1309,7 +1309,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 while (dataSize > 0) {
                   // a new Page
                   PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-                  chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+                  chunkStatistics.mergeChunkMetadataStat(pageHeader.getStatistics());
                   this.skipPageData(pageHeader);
                   dataSize -= pageHeader.getSerializedPageSize();
                   chunkHeader.increasePageNums(1);
@@ -1570,7 +1570,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       while (dataSize > 0) {
         // a new Page
         PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-        chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+        chunkStatistics.mergeChunkMetadataStat(pageHeader.getStatistics());
         this.skipPageData(pageHeader);
         dataSize -= pageHeader.getSerializedPageSize();
         chunkHeader.increasePageNums(1);

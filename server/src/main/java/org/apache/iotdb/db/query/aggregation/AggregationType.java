@@ -35,7 +35,31 @@ public enum AggregationType {
   MIN_TIME,
   MAX_VALUE,
   MIN_VALUE,
-  EXTREME;
+  EXTREME,
+  EXACT_MEDIAN,
+  EXACT_MEDIAN_OPT,
+  EXACT_MEDIAN_OPT_2,
+  EXACT_MEDIAN_OPT_3,
+  EXACT_MEDIAN_OPT_4,
+  EXACT_MEDIAN_OPT_5,
+  EXACT_MEDIAN_AMORTIZED,
+  EXACT_MEDIAN_KLL_FLOATS,
+  EXACT_MEDIAN_AGGRESSIVE,
+  EXACT_MEDIAN_BITS_BUCKET_STAT,
+  EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER,
+  EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE,
+  EXACT_MEDIAN_KLL_STAT,
+  EXACT_MEDIAN_KLL_STAT_SINGLE,
+  EXACT_MEDIAN_KLL_FLOATS_SINGLE,
+  EXACT_MEDIAN_KLL_STAT_SINGLE_READ,
+  EXACT_MEDIAN_KLL_DEBUG,
+  EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING,
+  EXACT_MEDIAN_KLL_DEBUG_FULL_READING,
+  EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE,
+  EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE,
+  TDIGEST_STAT_SINGLE,
+  SAMPLING_STAT_SINGLE,
+  STRICT_KLL_STAT_SINGLE;
 
   /**
    * give an integer to return a data type.
@@ -65,6 +89,54 @@ public enum AggregationType {
         return MIN_VALUE;
       case 9:
         return EXTREME;
+      case 10:
+        return EXACT_MEDIAN;
+      case 11:
+        return EXACT_MEDIAN_OPT;
+      case 12:
+        return EXACT_MEDIAN_OPT_2;
+      case 13:
+        return EXACT_MEDIAN_OPT_3;
+      case 14:
+        return EXACT_MEDIAN_OPT_4;
+      case 15:
+        return EXACT_MEDIAN_OPT_5;
+      case 16:
+        return EXACT_MEDIAN_AMORTIZED;
+      case 17:
+        return EXACT_MEDIAN_KLL_FLOATS;
+      case 18:
+        return EXACT_MEDIAN_AGGRESSIVE;
+      case 19:
+        return EXACT_MEDIAN_BITS_BUCKET_STAT;
+      case 20:
+        return EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER;
+      case 21:
+        return EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE;
+      case 22:
+        return EXACT_MEDIAN_KLL_STAT;
+      case 23:
+        return EXACT_MEDIAN_KLL_STAT_SINGLE;
+      case 24:
+        return EXACT_MEDIAN_KLL_FLOATS_SINGLE;
+      case 25:
+        return EXACT_MEDIAN_KLL_STAT_SINGLE_READ;
+      case 26:
+        return EXACT_MEDIAN_KLL_DEBUG;
+      case 27:
+        return EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING;
+      case 28:
+        return EXACT_MEDIAN_KLL_DEBUG_FULL_READING;
+      case 29:
+        return EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE;
+      case 30:
+        return EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE;
+      case 31:
+        return TDIGEST_STAT_SINGLE;
+      case 32:
+        return SAMPLING_STAT_SINGLE;
+      case 33:
+        return STRICT_KLL_STAT_SINGLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -102,6 +174,78 @@ public enum AggregationType {
         break;
       case EXTREME:
         i = 9;
+        break;
+      case EXACT_MEDIAN:
+        i = 10;
+        break;
+      case EXACT_MEDIAN_OPT:
+        i = 11;
+        break;
+      case EXACT_MEDIAN_OPT_2:
+        i = 12;
+        break;
+      case EXACT_MEDIAN_OPT_3:
+        i = 13;
+        break;
+      case EXACT_MEDIAN_OPT_4:
+        i = 14;
+        break;
+      case EXACT_MEDIAN_OPT_5:
+        i = 15;
+        break;
+      case EXACT_MEDIAN_AMORTIZED:
+        i = 16;
+        break;
+      case EXACT_MEDIAN_KLL_FLOATS:
+        i = 17;
+        break;
+      case EXACT_MEDIAN_AGGRESSIVE:
+        i = 18;
+        break;
+      case EXACT_MEDIAN_BITS_BUCKET_STAT:
+        i = 19;
+        break;
+      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        i = 20;
+        break;
+      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        i = 21;
+        break;
+      case EXACT_MEDIAN_KLL_STAT:
+        i = 22;
+        break;
+      case EXACT_MEDIAN_KLL_STAT_SINGLE:
+        i = 23;
+        break;
+      case EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        i = 24;
+        break;
+      case EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        i = 25;
+        break;
+      case EXACT_MEDIAN_KLL_DEBUG:
+        i = 26;
+        break;
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        i = 27;
+        break;
+      case EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        i = 28;
+        break;
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        i = 29;
+        break;
+      case EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        i = 30;
+        break;
+      case TDIGEST_STAT_SINGLE:
+        i = 31;
+        break;
+      case SAMPLING_STAT_SINGLE:
+        i = 32;
+        break;
+      case STRICT_KLL_STAT_SINGLE:
+        i = 33;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

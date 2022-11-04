@@ -46,6 +46,7 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    System.out.println("\t\t[DEBUG Count] update from statistics:" + statistics.getCount());
     setLongValue(getLongValue() + statistics.getCount());
   }
 
@@ -89,6 +90,7 @@ public class CountAggrResult extends AggregateResult {
       cnt++;
     }
     setLongValue(getLongValue() + cnt);
+    //    System.out.println("\t\t[COUNT][updateResultUsingValues]"+getResult());
   }
 
   @Override

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -25,6 +26,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.hash.BloomFilter;
+import com.google.common.math.LongMath;
+import com.google.common.primitives.Ints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +36,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -60,6 +66,31 @@ public abstract class Statistics<T extends Serializable> {
 
   static final String STATS_UNSUPPORTED_MSG = "%s statistics does not support: %s";
 
+  public static Boolean ENABLE_SYNOPSIS = false;
+  public static Boolean ENABLE_BLOOM_FILTER = false;
+  public static int STATISTICS_PAGE_MAXSIZE = 8000;
+  public static int SYNOPSIS_SIZE_IN_BYTE = 1024;
+  public static int BLOOM_FILTER_BITS_PER_KEY = 8;
+  public static int BLOOM_FILTER_SIZE = 0;
+  public static int PAGE_SIZE_IN_BYTE = 65536;
+  public static int SUMMARY_TYPE = 0;
+
+  protected static double getFPP(double bitsPerKey) {
+    return Math.exp(-1 * bitsPerKey * Math.pow(Math.log(2.0D), 2));
+  }
+
+  protected static long optimalNumOfBits(long n, double p) {
+    return (long) (-n * Math.log(p) / (Math.log(2) * Math.log(2)));
+  }
+
+  protected static int getBFArrayLength(long bits) {
+    return Ints.checkedCast(LongMath.divide(bits, 64, RoundingMode.CEILING));
+  }
+
+  protected static int calcBFSize(long n, double p) {
+    return getBFArrayLength(optimalNumOfBits(n, p)) * 8 + 6;
+  }
+
   /**
    * static method providing statistic instance for respective data type.
    *
@@ -67,6 +98,26 @@ public abstract class Statistics<T extends Serializable> {
    * @return Statistics
    */
   public static Statistics<? extends Serializable> getStatsByType(TSDataType type) {
+    ENABLE_SYNOPSIS = TSFileDescriptor.getInstance().getConfig().isEnableSynopsis();
+    ENABLE_BLOOM_FILTER = TSFileDescriptor.getInstance().getConfig().isEnableBloomFilter();
+    SYNOPSIS_SIZE_IN_BYTE = TSFileDescriptor.getInstance().getConfig().getSynopsisSizeInByte();
+    BLOOM_FILTER_BITS_PER_KEY =
+        TSFileDescriptor.getInstance().getConfig().getBloomFilterBitsPerKey();
+    STATISTICS_PAGE_MAXSIZE =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    BLOOM_FILTER_SIZE = calcBFSize(STATISTICS_PAGE_MAXSIZE, getFPP(BLOOM_FILTER_BITS_PER_KEY));
+    PAGE_SIZE_IN_BYTE = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    SUMMARY_TYPE = TSFileDescriptor.getInstance().getConfig().getSummaryType();
+    //    System.out.println(
+    //        "\t[DEBUG][Statistics] enable kll/bf:"
+    //            + ENABLE_SYNOPSIS
+    //            + "/"
+    //            + ENABLE_BLOOM_FILTER
+    //            + "  kllSize:"
+    //            + SYNOPSIS_SIZE_IN_BYTE
+    //            + "  bitsPerKey:"
+    //            + BLOOM_FILTER_BITS_PER_KEY);
+
     switch (type) {
       case INT32:
         return new IntegerStatistics();
@@ -111,29 +162,51 @@ public abstract class Statistics<T extends Serializable> {
   public abstract TSDataType getType();
 
   public int getSerializedSize() {
+    return getSerializedSize(false);
+  }
+
+  public int getSerializedSize(boolean isChunkMetaData) {
     return ReadWriteForEncodingUtils.uVarIntSize(count) // count
         + 16 // startTime, endTime
-        + getStatsSize();
+        + (!isChunkMetaData ? getStatsSize() : getChunkMetaDataStatsSize());
   }
 
   public abstract int getStatsSize();
 
+  public int getChunkMetaDataStatsSize() {
+    return getStatsSize();
+  }
+
   public int serialize(OutputStream outputStream) throws IOException {
+    return serialize(outputStream, false);
+  }
+
+  public int serialize(OutputStream outputStream, boolean isChunkMetaData) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
-    byteLen += serializeStats(outputStream);
+    if (!isChunkMetaData) byteLen += serializeStats(outputStream);
+    else byteLen += serializeChunkMetadataStat(outputStream);
     return byteLen;
   }
 
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
+  int serializeChunkMetadataStat(OutputStream outputStream) throws IOException {
+    return serializeStats(outputStream);
+  }
+
   /** read data from the inputStream. */
   public abstract void deserialize(InputStream inputStream) throws IOException;
 
-  public abstract void deserialize(ByteBuffer byteBuffer);
+  public abstract void deserialize(ByteBuffer byteBuffer) throws IOException;
+
+  public void setPageStatFromChunkMetaDataStat(
+      Statistics<? extends Serializable> stat, int pageID) {
+    // no-op
+  }
 
   public abstract T getMinValue();
 
@@ -164,6 +237,31 @@ public abstract class Statistics<T extends Serializable> {
       // must be sure no overlap between two statistics
       this.count += stats.count;
       mergeStatisticsValue((Statistics<T>) stats);
+      isEmpty = false;
+    } else {
+      Class<?> thisClass = this.getClass();
+      Class<?> statsClass = stats.getClass();
+      LOG.warn("Statistics classes mismatched,no merge: {} v.s. {}", thisClass, statsClass);
+
+      throw new StatisticsClassException(thisClass, statsClass);
+    }
+  }
+
+  public void mergeChunkMetadataStatValue(Statistics<T> stats) {
+    mergeStatisticsValue((Statistics<T>) stats);
+  }
+
+  public void mergeChunkMetadataStat(Statistics<? extends Serializable> stats) {
+    if (this.getClass() == stats.getClass()) {
+      if (stats.startTime < this.startTime) {
+        this.startTime = stats.startTime;
+      }
+      if (stats.endTime > this.endTime) {
+        this.endTime = stats.endTime;
+      }
+      // must be sure no overlap between two statistics
+      this.count += stats.count;
+      mergeChunkMetadataStatValue((Statistics<T>) stats);
       isEmpty = false;
     } else {
       Class<?> thisClass = this.getClass();
@@ -212,6 +310,11 @@ public abstract class Statistics<T extends Serializable> {
       endTime = time;
     }
     count++;
+    if (ENABLE_BLOOM_FILTER) updateBF(time);
+  }
+
+  public void updateBF(long time) {
+    ; // no-op
   }
 
   public void update(long[] time, boolean[] values, int batchSize) {
@@ -252,6 +355,7 @@ public abstract class Statistics<T extends Serializable> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
+    if (ENABLE_BLOOM_FILTER) for (int i = 0; i < batchSize; i++) updateBF(time[i]);
   }
 
   protected abstract void mergeStatisticsValue(Statistics<T> stats);
@@ -335,7 +439,7 @@ public abstract class Statistics<T extends Serializable> {
   }
 
   public static Statistics<? extends Serializable> deserialize(
-      ByteBuffer buffer, TSDataType dataType) {
+      ByteBuffer buffer, TSDataType dataType) throws IOException {
     Statistics<? extends Serializable> statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
@@ -387,5 +491,33 @@ public abstract class Statistics<T extends Serializable> {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), count, startTime, endTime);
+  }
+
+  public boolean hasBf() {
+    return false;
+  }
+
+  public int getBfNum() {
+    return 0;
+  }
+
+  public List<BloomFilter<Long>> getBfList() {
+    return null;
+  }
+
+  public BloomFilter<Long> getBf(int bfId) {
+    return null;
+  }
+
+  public long getBfMinTime(int bfId) {
+    return Long.MAX_VALUE;
+  }
+
+  public long getBfMaxTime(int bfId) {
+    return Long.MIN_VALUE;
+  }
+
+  public long getBfCount(int bfId) {
+    return 0;
   }
 }

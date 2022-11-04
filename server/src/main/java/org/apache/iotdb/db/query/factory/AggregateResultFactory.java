@@ -67,6 +67,54 @@ public class AggregateResultFactory {
         return !ascending
             ? new LastValueDescAggrResult(dataType)
             : new LastValueAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -98,6 +146,54 @@ public class AggregateResultFactory {
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
         return new LastValueDescAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -130,6 +226,54 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case EXTREME:
         return new ExtremeAggrResult(dataType);
+      case EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

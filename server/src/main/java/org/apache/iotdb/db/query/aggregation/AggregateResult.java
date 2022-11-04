@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -30,8 +33,7 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
@@ -48,6 +50,8 @@ public abstract class AggregateResult {
   private Binary binaryValue;
 
   protected boolean hasCandidateResult;
+  protected int maxMemoryByte;
+  protected double QUANTILE;
 
   /**
    * construct.
@@ -58,6 +62,22 @@ public abstract class AggregateResult {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
     this.hasCandidateResult = false;
+    maxMemoryByte = IoTDBDescriptor.getInstance().getConfig().getAggregatorMemoryInKB() * 1024;
+    QUANTILE = TSFileDescriptor.getInstance().getConfig().getQUANTILE();
+    String quantileFile = TSFileDescriptor.getInstance().getConfig().getQuantileFile();
+    if (quantileFile.length() > 0) {
+      try {
+        File qf = new File(quantileFile);
+        BufferedReader reader = new BufferedReader(new FileReader(qf));
+        String str;
+        if ((str = reader.readLine()) != null) {
+          QUANTILE = Double.parseDouble(str);
+        }
+      } catch (IOException e) {
+        // no-op;
+      }
+    }
+    //    KLLBulkMergeB = TSFileDescriptor.getInstance().getConfig().getKLLBulkMergeB() * 1024;
   }
 
   public abstract Object getResult();
@@ -91,7 +111,7 @@ public abstract class AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException;
 
   /**
-   * This method calculates the aggregation using common timestamps of the cross series filter.
+   * This method updates the aggregation using common timestamps of the cross series filter.
    *
    * @throws IOException TsFile data read error
    */
@@ -103,6 +123,22 @@ public abstract class AggregateResult {
       long[] timestamps, int length, ValueIterator valueIterator);
 
   /**
+   * This method calculates the aggregation using common timestamps of the cross series filter.
+   * construct result based on timestamps in param
+   *
+   * @throws IOException TsFile data read error
+   */
+  public void constructResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    updateResultUsingTimestamps(timestamps, length, dataReader);
+  }
+
+  public void constructResultUsingValues(
+      long[] timestamps, int length, ValueIterator valueIterator) {
+    updateResultUsingValues(timestamps, length, valueIterator);
+  }
+
+  /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
    * does not need to compute the remaining data, it returns true.
    *
@@ -110,8 +146,17 @@ public abstract class AggregateResult {
    */
   public abstract boolean hasFinalResult();
 
+  // to drop
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
+
+  /**
+   * communication between 2 aggregateResults no-op if the aggregated result does not need to
+   * communicate (can merge easily)
+   */
+  public void communicate(AggregateResult another) {
+    // no-op
+  }
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
@@ -315,11 +360,47 @@ public abstract class AggregateResult {
     return aggregationType;
   }
 
-  /**
-   * Whether the AggregationResult accepts data in time ascending order, if it returns false, the
-   * data should be passed in time descending order.
-   */
   public boolean isAscending() {
     return true;
+  }
+
+  public boolean canUpdateFromStatistics(Statistics statistics) {
+    return true;
+  }
+
+  public boolean useStatisticsIfPossible() {
+    return true;
+  }
+
+  public boolean needMultiIterations() {
+    return false;
+  }
+
+  public int maxIteration() {
+    return 1;
+  }
+
+  public void startIteration() {
+    // no-op
+  }
+
+  public void finishIteration() {
+    // no-op
+  }
+
+  public boolean useOverlapStat() {
+    return false;
+  }
+
+  public void updateResultFromOverlap(IAggregateReader reader) {
+    // no-op
+  }
+
+  /**
+   * When group by level, QUANTILE needs to merge before aggregation, while aggregations like
+   * LAST_VALUE need to merge after aggregation
+   */
+  public boolean groupByLevelBeforeAggregation() {
+    return false;
   }
 }
