@@ -219,7 +219,7 @@
         <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.7</google.java.format.version>
         <!-- caffeine cache -->
-        <caffeine>2.9.1</caffeine>
+        <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
