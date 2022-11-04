@@ -143,6 +143,7 @@ public class TimePartitionManager {
   public void clear() {
     synchronized (timePartitionInfoMap) {
       timePartitionInfoMap.clear();
+      memCost = 0;
     }
   }
 
