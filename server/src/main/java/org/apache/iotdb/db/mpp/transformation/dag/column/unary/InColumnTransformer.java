@@ -47,7 +47,10 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       Set<String> values) {
     super(returnType, childColumnTransformer);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
-    this.childType = childColumnTransformer.getType().getTypeEnum();
+    this.childType =
+        childColumnTransformer.getType() == null
+            ? null
+            : childColumnTransformer.getType().getTypeEnum();
     initTypedSet(values);
   }
 
@@ -85,6 +88,9 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void initTypedSet(Set<String> values) {
+    if (childType == null) {
+      return;
+    }
     switch (childType) {
       case INT32:
         intSet = new HashSet<>();

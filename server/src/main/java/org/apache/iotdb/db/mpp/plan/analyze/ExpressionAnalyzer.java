@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -558,18 +559,13 @@ public class ExpressionAnalyzer {
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
         if (actualPaths.size() == 0) {
-          throw new SemanticException(
-              String.format(
-                  "the path '%s' in %s clause does not exist",
-                  concatPath, isWhere ? "WHERE" : "HAVING"));
+          return Collections.singletonList(new NullOperand());
         }
         noStarPaths.addAll(actualPaths);
       }
       return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (predicate instanceof TimestampOperand) {
+    } else if (predicate instanceof LeafOperand) {
       // do nothing in the case of "where time > 5"
-      return Collections.singletonList(predicate);
-    } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);
     } else {
       throw new IllegalArgumentException(
@@ -963,7 +959,7 @@ public class ExpressionAnalyzer {
       return resultExpressions;
     } else if (expression instanceof TimeSeriesOperand) {
       return Collections.singletonList(expression);
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+    } else if (expression instanceof LeafOperand) {
       return Collections.emptyList();
     } else {
       throw new IllegalArgumentException(
@@ -1094,6 +1090,8 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
     } else if (expression instanceof ConstantOperand) {
+      return false;
+    } else if (expression instanceof NullOperand) {
       return false;
     } else {
       throw new IllegalArgumentException(

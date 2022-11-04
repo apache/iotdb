@@ -26,7 +26,61 @@ import static java.util.Objects.requireNonNull;
  * This column is used to represent columns that only contain null values. But its positionCount has
  * to be consistent with corresponding valueColumn.
  */
-public class NullColumn {
+public class NullColumn implements Column {
+
+  private final int positionCount;
+
+  public NullColumn(int positionCount) {
+    this.positionCount = positionCount;
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return null;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.BYTE_ARRAY;
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return true;
+  }
+
+  @Override
+  public boolean isNull(int position) {
+    return true;
+  }
+
+  @Override
+  public boolean[] isNull() {
+    return null;
+  }
+
+  @Override
+  public int getPositionCount() {
+    return positionCount;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return 0;
+  }
+
+  @Override
+  public Column getRegion(int positionOffset, int length) {
+    return null;
+  }
+
+  @Override
+  public Column subColumn(int fromIndex) {
+    return null;
+  }
+
+  @Override
+  public void reverse() {}
 
   public static Column create(TSDataType dataType, int positionCount) {
     requireNonNull(dataType, "dataType is null");
