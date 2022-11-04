@@ -229,6 +229,11 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    return new long[] {startTime, endTime};
+  }
+
+  @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
     return new Pair<>(startTime, endTime);
   }
