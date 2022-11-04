@@ -1045,8 +1045,8 @@ public class IoTDBConfig {
   private long dataRatisConsensusPreserveWhenPurge = 1000L;
   private long schemaRatisConsensusPreserveWhenPurge = 1000L;
 
-  private long ratisFirstElectionTimeoutMinMs = 50L;
-  private long ratisFirstElectionTimeoutMaxMs = 150L;
+  private long ratisFirstElectionTimeoutMinMs = 2000L;
+  private long ratisFirstElectionTimeoutMaxMs = 4000L;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();

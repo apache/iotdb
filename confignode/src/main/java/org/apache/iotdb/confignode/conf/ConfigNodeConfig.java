@@ -220,8 +220,8 @@ public class ConfigNodeConfig {
   private long dataRegionRatisPreserveLogsWhenPurge = 1000;
 
   /* first election timeout shares between 3 regions */
-  private long ratisFirstElectionTimeoutMinMs = 50;
-  private long ratisFirstElectionTimeoutMaxMs = 150;
+  private long ratisFirstElectionTimeoutMinMs = 2000;
+  private long ratisFirstElectionTimeoutMaxMs = 4000;
 
   public ConfigNodeConfig() {
     // empty constructor

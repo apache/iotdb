@@ -222,10 +222,10 @@ public class RatisConfig {
       private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
 
       private TimeDuration firstElectionTimeoutMin =
-          TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
+          TimeDuration.valueOf(2000, TimeUnit.MILLISECONDS);
 
       private TimeDuration firstElectionTimeoutMax =
-          TimeDuration.valueOf(150, TimeUnit.MILLISECONDS);
+          TimeDuration.valueOf(4000, TimeUnit.MILLISECONDS);
 
       public Rpc build() {
         return new Rpc(
