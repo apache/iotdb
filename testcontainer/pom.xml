@@ -33,7 +33,7 @@
         <docker.build.executable>docker</docker.build.executable>
         <docker.build.single.argument>build -t apache/iotdb:maven-development -f ${basedir}/../docker/src/main/Dockerfile-single ${basedir}/../.</docker.build.single.argument>
         <docker.clean.single.argument>image rm apache/iotdb:maven-development</docker.clean.single.argument>
-        <docker.build.sync.argument>build -t apache/iotdb:sync-maven-development -f ${basedir}/../docker/src/main/Dockerfile-single-tc ${basedir}/../.</docker.build.sync.argument>
+        <docker.build.sync.argument>build -t apache/iotdb:sync-maven-development -f ${basedir}/../docker/src/main/Dockerfile-1c1d ${basedir}/../.</docker.build.sync.argument>
         <docker.clean.sync.argument>image rm apache/iotdb:sync-maven-development</docker.clean.sync.argument>
     </properties>
     <dependencies>
