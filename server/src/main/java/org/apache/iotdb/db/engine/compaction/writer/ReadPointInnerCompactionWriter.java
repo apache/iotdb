@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -32,23 +31,10 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
-    writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId, false);
-    isEmptyFile = false;
-  }
-
-  @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
-    synchronized (this) {
-      // we need to synchronized here to avoid multi-thread competition in sub-task
-      targetResource.updateStartTime(deviceId, timestamps.getStartTime());
-      targetResource.updateEndTime(deviceId, timestamps.getEndTime());
-    }
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId, false);
     isEmptyFile = false;

@@ -183,7 +183,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
           "Timestamp of the current point is "
               + timestamp
               + ", which should be later than the last time "
-              + lastTime);
+              + lastTime[subTaskId]);
     }
 
     int fileIndex = seqFileIndexArray[subTaskId];

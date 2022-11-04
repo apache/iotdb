@@ -1,21 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -32,12 +14,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
+public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
-  public FastCrossCompactionWriter(
-      List<TsFileResource> targetResources, List<TsFileResource> seqSourceResources)
-      throws IOException {
-    super(targetResources, seqSourceResources);
+  public FastInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
+    super(targetFileResource);
   }
 
   @Override
@@ -53,24 +33,18 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   public boolean flushChunkToFileWriter(
       IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
       throws IOException {
-    checkTimeAndMayFlushChunkToCurrentFile(iChunkMetadata.getStartTime(), subTaskId);
-    int fileIndex = seqFileIndexArray[subTaskId];
     boolean isUnsealedChunkLargeEnough =
         chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
             chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction);
-    if (!isUnsealedChunkLargeEnough
-        || (iChunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
+    if (!isUnsealedChunkLargeEnough) {
       // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
       // chunk
       return false;
     }
 
-    flushChunkToFileWriter(
-        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], reader, iChunkMetadata);
+    flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId], reader, iChunkMetadata);
 
-    isDeviceExistedInTargetFiles[fileIndex] = true;
-    isEmptyFile[fileIndex] = false;
+    isEmptyFile = false;
     lastTime[subTaskId] = iChunkMetadata.getEndTime();
     return true;
   }
@@ -88,15 +62,16 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       List<PageHeader> valuePageHeaders,
       int subTaskId)
       throws IOException, PageException {
-    checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
-    if (!checkIsPageSatisfied(timePageHeader, subTaskId)) {
+    boolean isUnsealedPageLargeEnough =
+        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+    if (!isUnsealedPageLargeEnough) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
-    int fileIndex = seqFileIndexArray[subTaskId];
     flushAlignedPageToChunkWriter(
-        targetFileWriters.get(fileIndex),
+        fileWriter,
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
         compressedTimePageData,
         timePageHeader,
@@ -104,8 +79,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         valuePageHeaders,
         subTaskId);
 
-    isDeviceExistedInTargetFiles[fileIndex] = true;
-    isEmptyFile[fileIndex] = false;
+    isEmptyFile = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
     return true;
   }
@@ -118,37 +92,23 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   public boolean flushPageToChunkWriter(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
-    checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);
-    if (!checkIsPageSatisfied(pageHeader, subTaskId)) {
+    boolean isUnsealedPageLargeEnough =
+        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+    if (!isUnsealedPageLargeEnough) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
-    int fileIndex = seqFileIndexArray[subTaskId];
     flushNonAlignedPageToChunkWriter(
-        targetFileWriters.get(fileIndex),
+        fileWriter,
         (ChunkWriterImpl) chunkWriters[subTaskId],
         compressedPageData,
         pageHeader,
         subTaskId);
 
-    isDeviceExistedInTargetFiles[fileIndex] = true;
-    isEmptyFile[fileIndex] = false;
+    isEmptyFile = false;
     lastTime[subTaskId] = pageHeader.getEndTime();
-    return true;
-  }
-
-  private boolean checkIsPageSatisfied(PageHeader pageHeader, int subTaskId) {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    boolean isUnsealedPageLargeEnough =
-        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
-    if (!isUnsealedPageLargeEnough
-        || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
-      // unsealed page is too small or page.endTime > file.endTime
-      return false;
-    }
     return true;
   }
 }
