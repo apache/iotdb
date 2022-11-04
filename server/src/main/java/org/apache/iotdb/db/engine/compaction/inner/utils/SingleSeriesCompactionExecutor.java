@@ -123,47 +123,67 @@ public class SingleSeriesCompactionExecutor {
           readerAndChunkMetadataList.removeFirst();
       TsFileSequenceReader reader = readerListPair.left;
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-        if (this.chunkWriter == null) {
-          constructChunkWriterFromReadChunk(currentChunk);
-        }
-
-        if (!checkDataType(currentChunk)) {
-          // after fetching the correct schema
-          // the datatype of current chunk is still inconsistent with schema
-          // abort current chunk
-          log.warn(
-              "Abort a chunk from {}, because the datatype is inconsistent, "
-                  + "type of schema is {}, but type of chunk is {}",
-              reader.getFileName(),
-              schema.getType().toString(),
-              currentChunk.getHeader().getDataType().toString());
-          continue;
-        }
-
-        CompactionMetricsRecorder.recordReadInfo(
-            currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
-
-        // if this chunk is modified, deserialize it into points
-        if (chunkMetadata.getDeleteIntervalList() != null) {
-          processModifiedChunk(currentChunk);
-          continue;
-        }
-
-        long chunkSize = getChunkSize(currentChunk);
-        long chunkPointNum = currentChunk.getChunkStatistic().getCount();
-        // we process this chunk in three different way according to the size of it
-        if (chunkSize >= targetChunkSize || chunkPointNum >= targetChunkPointNum) {
-          processLargeChunk(currentChunk, chunkMetadata);
-        } else if (chunkSize < chunkSizeLowerBound && chunkPointNum < chunkPointNumLowerBound) {
-          processSmallChunk(currentChunk);
-        } else {
-          processMiddleChunk(currentChunk, chunkMetadata);
-        }
-      }
+      compactDataInOneFile(reader, chunkMetadataList);
     }
 
+    flushRemainingDataInMemory();
+    updateResourceStartAndEndTime();
+  }
+
+  private void compactDataInOneFile(
+      TsFileSequenceReader reader, List<ChunkMetadata> chunkMetadataList)
+      throws IllegalPathException, IOException {
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+      if (this.chunkWriter == null) {
+        constructChunkWriterFromReadChunk(currentChunk);
+      }
+
+      if (!checkDataType(currentChunk)) {
+        // after fetching the correct schema
+        // the datatype of current chunk is still inconsistent with schema
+        // abort current chunk
+        log.warn(
+            "Abort a chunk from {}, because the datatype is inconsistent, "
+                + "type of schema is {}, but type of chunk is {}",
+            reader.getFileName(),
+            schema.getType().toString(),
+            currentChunk.getHeader().getDataType().toString());
+        continue;
+      }
+
+      CompactionMetricsRecorder.recordReadInfo(
+          currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
+
+      compactOneChunk(chunkMetadata, currentChunk);
+    }
+  }
+
+  private void compactOneChunk(ChunkMetadata chunkMetadata, Chunk chunk) throws IOException {
+    // if this chunk is modified, deserialize it into points
+    if (chunkMetadata.getDeleteIntervalList() != null) {
+      processModifiedChunk(chunk);
+      return;
+    }
+
+    long chunkSize = getChunkSize(chunk);
+    long chunkPointNum = chunk.getChunkStatistic().getCount();
+    // we process this chunk in three different way according to the size of it
+    if (chunkSize >= targetChunkSize || chunkPointNum >= targetChunkPointNum) {
+      processLargeChunk(chunk, chunkMetadata);
+    } else if (chunkSize < chunkSizeLowerBound && chunkPointNum < chunkPointNumLowerBound) {
+      processSmallChunk(chunk);
+    } else {
+      processMiddleChunk(chunk, chunkMetadata);
+    }
+  }
+
+  /**
+   * Flush the remaining data in chunk writer or cached chunk to disk.
+   *
+   * @throws IOException
+   */
+  private void flushRemainingDataInMemory() throws IOException {
     // after all the chunk of this sensor is read, flush the remaining data
     if (cachedChunk != null) {
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
@@ -173,6 +193,9 @@ public class SingleSeriesCompactionExecutor {
       flushChunkWriter();
     }
     fileWriter.checkMetadataSizeAndMayFlush();
+  }
+
+  private void updateResourceStartAndEndTime() {
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
   }
