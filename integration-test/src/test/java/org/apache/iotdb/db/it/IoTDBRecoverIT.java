@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -90,13 +89,11 @@ public class IoTDBRecoverIT {
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
-    EnvironmentUtils.envSetUp();
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     EnvFactory.getEnv().cleanAfterTest();
   }
 
@@ -157,7 +154,7 @@ public class IoTDBRecoverIT {
 
     // we want to recover
     // TODO: replace stopDaemon() and activeDaemon() with new methods in Env.
-    EnvironmentUtils.stopDaemon();
+    // EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -165,7 +162,7 @@ public class IoTDBRecoverIT {
       e.printStackTrace();
       Thread.currentThread().interrupt();
     }
-    EnvironmentUtils.activeDaemon();
+    // EnvironmentUtils.activeDaemon();
 
     // count test
     retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
@@ -221,7 +218,7 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    EnvironmentUtils.stopDaemon();
+    // EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -230,7 +227,7 @@ public class IoTDBRecoverIT {
       Thread.currentThread().interrupt();
     }
 
-    EnvironmentUtils.activeDaemon();
+    // EnvironmentUtils.activeDaemon();
 
     // maxminValueTest
 
@@ -293,7 +290,7 @@ public class IoTDBRecoverIT {
     }
 
     // we want to recover
-    EnvironmentUtils.stopDaemon();
+    // EnvironmentUtils.stopDaemon();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -301,7 +298,7 @@ public class IoTDBRecoverIT {
       e.printStackTrace();
       Thread.currentThread().interrupt();
     }
-    EnvironmentUtils.activeDaemon();
+    // EnvironmentUtils.activeDaemon();
 
     // count test
     String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
@@ -359,8 +356,6 @@ public class IoTDBRecoverIT {
 
   private void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        /*DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");*/
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {

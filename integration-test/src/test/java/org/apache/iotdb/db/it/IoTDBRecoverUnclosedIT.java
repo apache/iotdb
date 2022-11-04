@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -100,19 +98,17 @@ public class IoTDBRecoverUnclosedIT {
     EnvFactory.getEnv().initBeforeClass();
     prevWALMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
-    EnvironmentUtils.envSetUp();
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     config.setWalMode(prevWALMode);
     EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
-  public void test() throws SQLException, IOException, StartupException {
+  public void test() throws SQLException, IOException {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -168,13 +164,13 @@ public class IoTDBRecoverUnclosedIT {
 
     // TODO: replace restartDaemon() with new methods in Env.
     try {
-      EnvironmentUtils.restartDaemon();
+      // EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
       fail();
     }
     insertMoreData();
     try {
-      EnvironmentUtils.restartDaemon();
+      // EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
       fail();
     }
