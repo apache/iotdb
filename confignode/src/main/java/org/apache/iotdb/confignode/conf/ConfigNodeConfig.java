@@ -156,7 +156,7 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long configNodeRatisSnapshotTriggerThreshold = 400000L;
-  private long configNodeOneCopySnapshotTriggerThreshold = 400000L;
+  private long configNodeSimpleConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -170,7 +170,7 @@ public class ConfigNodeConfig {
 
   private long configNodeRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
-  private long configNodeOneCopyLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long configNodeSimpleConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -619,13 +619,14 @@ public class ConfigNodeConfig {
     this.configNodeRatisSnapshotTriggerThreshold = configNodeRatisSnapshotTriggerThreshold;
   }
 
-  public long getConfigNodeOneCopySnapshotTriggerThreshold() {
-    return configNodeOneCopySnapshotTriggerThreshold;
+  public long getConfigNodeSimpleConsensusSnapshotTriggerThreshold() {
+    return configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
-  public void setConfigNodeOneCopySnapshotTriggerThreshold(
-      long configNodeOneCopySnapshotTriggerThreshold) {
-    this.configNodeOneCopySnapshotTriggerThreshold = configNodeOneCopySnapshotTriggerThreshold;
+  public void setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
+      long configNodeSimpleConsensusSnapshotTriggerThreshold) {
+    this.configNodeSimpleConsensusSnapshotTriggerThreshold =
+        configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
   public boolean isConfigNodeRatisLogUnsafeFlushEnable() {
@@ -708,12 +709,13 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
-  public long getConfigNodeOneCopyLogSegmentSizeMax() {
-    return configNodeOneCopyLogSegmentSizeMax;
+  public long getConfigNodeSimpleConsensusLogSegmentSizeMax() {
+    return configNodeSimpleConsensusLogSegmentSizeMax;
   }
 
-  public void setConfigNodeOneCopyLogSegmentSizeMax(long configNodeOneCopyLogSegmentSizeMax) {
-    this.configNodeOneCopyLogSegmentSizeMax = configNodeOneCopyLogSegmentSizeMax;
+  public void setConfigNodeSimpleConsensusLogSegmentSizeMax(
+      long configNodeSimpleConsensusLogSegmentSizeMax) {
+    this.configNodeSimpleConsensusLogSegmentSizeMax = configNodeSimpleConsensusLogSegmentSizeMax;
   }
 
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
