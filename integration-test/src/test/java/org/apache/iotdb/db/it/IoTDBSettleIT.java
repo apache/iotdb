@@ -16,27 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-@Category({LocalStandaloneTest.class})
+// Todo: settle does not support mpp currently.
+@Ignore
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSettleIT {
   private static List<String> sqls = new ArrayList<>();
   private static Connection connection;
@@ -44,14 +49,14 @@ public class IoTDBSettleIT {
   @BeforeClass
   public static void setUp() throws Exception {
     initCreateSQLStatement();
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
     executeSql();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @Test
@@ -84,9 +89,7 @@ public class IoTDBSettleIT {
   }
 
   private static void executeSql() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    connection = EnvFactory.getEnv().getConnection();
     try (Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);

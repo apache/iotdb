@@ -20,11 +20,11 @@ package org.apache.iotdb.it.env;
 
 public enum EnvType {
   Remote,
-  OneCopy,
+  Simple,
   Cluster1;
 
   public static EnvType getSystemEnvType() {
-    String envValue = System.getProperty("TestEnv", OneCopy.name());
+    String envValue = System.getProperty("TestEnv", Simple.name());
     return EnvType.valueOf(envValue);
   }
 }

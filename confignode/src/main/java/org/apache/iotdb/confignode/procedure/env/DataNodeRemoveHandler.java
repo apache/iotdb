@@ -611,11 +611,10 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.ONE_COPY_CONSENSUS)) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
-      status.setMessage("standalone protocol is not supported to remove data node");
+      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }
     return status;
   }

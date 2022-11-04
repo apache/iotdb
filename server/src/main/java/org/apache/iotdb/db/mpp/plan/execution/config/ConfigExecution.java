@@ -219,4 +219,14 @@ public class ConfigExecution implements IQueryExecution {
   public String getQueryId() {
     return context.getQueryId().getId();
   }
+
+  @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
+  public Optional<String> getExecuteSQL() {
+    return Optional.ofNullable(context.getSql());
+  }
 }

@@ -119,6 +119,11 @@ struct TDataNodeConfigurationResp {
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
+}
+
 // StorageGroup
 struct TSetStorageGroupReq {
   1: required TStorageGroupSchema storageGroup
@@ -913,6 +918,9 @@ service IConfigNodeRPCService {
 
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
+
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
   // ======================================================
   // Cluster Tools
