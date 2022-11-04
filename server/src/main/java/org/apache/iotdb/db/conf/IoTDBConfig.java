@@ -305,11 +305,11 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
+   * one {@linkplain org.apache.iotdb.db.index} share a total common buffer size. With the
+   * memory-control mechanism, the occupied memory of all raw data and index structures will be
+   * counted. If the memory buffer size reaches this threshold, the indexes will be flushed to the
+   * disk file. As a result, data in one series may be divided into more than one part and indexed
+   * separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -1005,18 +1005,19 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
   private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    schemaDir = addHomeDir(schemaDir);
-    syncDir = addHomeDir(syncDir);
-    tracingDir = addHomeDir(tracingDir);
-    walDir = addHomeDir(walDir);
-    indexRootFolder = addHomeDir(indexRootFolder);
-    extDir = addHomeDir(extDir);
-    udfDir = addHomeDir(udfDir);
-    triggerDir = addHomeDir(triggerDir);
-    operationSyncLogDir = addHomeDir(operationSyncLogDir);
+
+    systemDir = addDataHomeDir(systemDir);
+    schemaDir = addDataHomeDir(schemaDir);
+    syncDir = addDataHomeDir(syncDir);
+    tracingDir = addDataHomeDir(tracingDir);
+    walDir = addDataHomeDir(walDir);
+    indexRootFolder = addDataHomeDir(indexRootFolder);
+    extDir = addDataHomeDir(extDir);
+    udfDir = addDataHomeDir(udfDir);
+    triggerDir = addDataHomeDir(triggerDir);
+    operationSyncLogDir = addDataHomeDir(operationSyncLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1025,9 +1026,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addHomeDir(queryDir);
+      queryDir = addDataHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1040,7 +1041,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
     this.dataDirs = dataDirs;
@@ -1048,12 +1049,25 @@ public class IoTDBConfig {
   }
 
   private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
+    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
+  }
+
+  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
+  // In this way, we can keep consistent with v0.13.0~2.
+  private String addDataHomeDir(String dir) {
+    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
+    if (dataHomeDir == null) {
+      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    }
+    return addDirPrefix(dataHomeDir, dir);
+  }
+
+  private String addDirPrefix(String prefix, String dir) {
+    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
+      if (!prefix.endsWith(File.separator)) {
+        dir = prefix + File.separatorChar + dir;
       } else {
-        dir = homeDir + dir;
+        dir = prefix + dir;
       }
     }
     return dir;

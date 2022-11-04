@@ -52,6 +52,7 @@ public class IoTDBConstant {
   public static final long KB = 1024L;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
@@ -63,6 +64,9 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   // show info
   public static final String COLUMN_ITEM = "                             item";

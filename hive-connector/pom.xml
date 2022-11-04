@@ -169,6 +169,12 @@
                 <artifactId>commons-httpclient</artifactId>
                 <version>3.1</version>
             </dependency>
+            <!-- for hive connector-->
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>11.0.6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <profiles>
