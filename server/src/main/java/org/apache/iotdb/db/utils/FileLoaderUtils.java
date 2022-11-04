@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
@@ -250,5 +251,16 @@ public class FileLoaderUtils {
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, timeFilter);
     return chunkReader.loadPageReaderList();
+  }
+
+  public static List<IPageReader> loadLazyPageReaderList(
+      IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
+    if (chunkMetaData == null) {
+      throw new IOException("Can't init null chunkMeta");
+    }
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    IChunkReader chunkReader =
+        ((DiskChunkLoader) chunkLoader).getLazyChunkReader(chunkMetaData, timeFilter);
+    return chunkReader.loadPageReaderList(); // same method to get lazy reader.
   }
 }

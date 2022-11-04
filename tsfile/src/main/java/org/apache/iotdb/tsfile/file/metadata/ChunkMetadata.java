@@ -156,7 +156,7 @@ public class ChunkMetadata implements IChunkMetadata {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
     if (serializeStatistic) {
-      byteLen += statistics.serialize(outputStream);
+      byteLen += statistics.serialize(outputStream, true);
     }
     return byteLen;
   }
@@ -168,7 +168,7 @@ public class ChunkMetadata implements IChunkMetadata {
    * @return ChunkMetaData object
    */
   public static ChunkMetadata deserializeFrom(
-      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
+      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) throws IOException {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
     chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
@@ -291,7 +291,7 @@ public class ChunkMetadata implements IChunkMetadata {
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
-    this.statistics.mergeStatistics(statistics);
+    this.statistics.mergeChunkMetadataStat(statistics); // TODO
     this.ramSize = calculateRamSize();
   }
 

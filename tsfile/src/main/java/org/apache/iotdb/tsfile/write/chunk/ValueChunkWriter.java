@@ -43,13 +43,15 @@ public class ValueChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ValueChunkWriter.class);
 
-  private final String measurementId;
+  public final String measurementId;
 
-  private final TSEncoding encodingType;
+  public final TSEncoding encodingType;
 
-  private final TSDataType dataType;
+  public final TSDataType dataType;
 
-  private final CompressionType compressionType;
+  public final CompressionType compressionType;
+
+  public final Encoder valueEncoder;
 
   /** all pages of this chunk. */
   private final PublicBAOS pageBuffer;
@@ -88,6 +90,8 @@ public class ValueChunkWriter {
     this.encodingType = encodingType;
     this.dataType = dataType;
     this.compressionType = compressionType;
+    this.valueEncoder = valueEncoder;
+
     this.pageBuffer = new PublicBAOS();
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage =
@@ -178,7 +182,7 @@ public class ValueChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.statistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeChunkMetadataStat(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {

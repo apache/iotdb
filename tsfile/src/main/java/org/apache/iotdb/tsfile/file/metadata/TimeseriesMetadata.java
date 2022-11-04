@@ -99,7 +99,8 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
   }
 
-  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata) {
+  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata)
+      throws IOException {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));

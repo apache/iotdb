@@ -33,5 +33,12 @@ public class TsFileConstant {
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
 
+  //  public static final int STATISTICS_MEMORY_BYTE = 1 << 20;
+  //  public static final int STATISTICS_SERIALIZE_BYTE_PAGE = 565;
+  //  public static final int STATISTICS_SERIALIZE_NUM_LEN_PAGE = 61 + 7;
+  //  public static final int STATISTICS_SERIALIZE_BYTE_CHUNK = 1024 * 13;
+  //  public static final int STATISTICS_PAGE_MAXSIZE = 8000;
+  //  public static final int STATISTICS_CHUNK_MAXSIZE = 1600000;
+
   private TsFileConstant() {}
 }

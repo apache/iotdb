@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -37,7 +38,7 @@ public class ChunkMetadataV2 {
    * @param buffer ByteBuffer
    * @return ChunkMetaData object
    */
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) {
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
 
     String measurementUid = ReadWriteIOUtils.readString(buffer);
     long offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);

@@ -132,6 +132,32 @@ public class IoTDBDescriptor {
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
 
+      conf.setEnableSeqSpaceCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_seq_space_compaction",
+                  Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
+      conf.setEnableUnseqSpaceCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_unseq_space_compaction",
+                  Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
+      conf.setEnableCrossSpaceCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_cross_space_compaction",
+                  Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
+
+      conf.setAggregatorMemoryInKB(
+          Integer.parseInt(
+              properties.getProperty(
+                  "aggregator_memory_in_kb", Integer.toString(conf.getAggregatorMemoryInKB()))));
+
+      conf.setAggregationStrategy(
+          Integer.parseInt(
+              properties.getProperty(
+                  "aggregation_strategy", Integer.toString(conf.getAggregationStrategy()))));
+
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -986,6 +1012,85 @@ public class IoTDBDescriptor {
   }
 
   private void loadTsFileProps(Properties properties) {
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEnableSynopsis(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "enable_synopsis",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isEnableSynopsis()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEnableBloomFilter(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "enable_bloom_filter",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isEnableBloomFilter()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setSynopsisSizeInByte(
+            Integer.parseInt(
+                properties.getProperty(
+                    "synopsis_size_in_byte",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getSynopsisSizeInByte()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setKLLBulkMergeB(
+            Integer.parseInt(
+                properties.getProperty(
+                    "kll_bulk_merge_b",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getKLLBulkMergeB()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setSummaryType(
+            Integer.parseInt(
+                properties.getProperty(
+                    "summary_type",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getSummaryType()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setQUANTILE(
+            Double.parseDouble(
+                properties.getProperty(
+                    "quantile",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getQUANTILE()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setQuantileFile(
+            (properties.getProperty(
+                "quantile_file", (TSFileDescriptor.getInstance().getConfig().getQuantileFile()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setBloomFilterBitsPerKey(
+            Integer.parseInt(
+                properties.getProperty(
+                    "bloom_filter_bits_per_key",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getBloomFilterBitsPerKey()))));
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxNumberOfPointsInChunk(
+            Integer.parseInt(
+                properties.getProperty(
+                    "max_number_of_points_in_chunk",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getMaxNumberOfPointsInChunk()))));
+
     TSFileDescriptor.getInstance()
         .getConfig()
         .setGroupSizeInByte(

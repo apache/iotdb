@@ -334,7 +334,7 @@ public class TsFileIOWriter implements AutoCloseable {
     Statistics seriesStatistics = Statistics.getStatsByType(dataType);
 
     int chunkMetadataListLength = 0;
-    boolean serializeStatistic = (chunkMetadataList.size() > 1);
+    boolean serializeStatistic = true /*(chunkMetadataList.size() > 1)*/;
     // flush chunkMetadataList one by one
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       if (!chunkMetadata.getDataType().equals(dataType)) {

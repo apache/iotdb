@@ -33,6 +33,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+// import static
+// org.apache.iotdb.tsfile.common.constant.TsFileConstant.STATISTICS_SERIALIZE_BYTE_CHUNK;
+
 public class IMetadataQuerierByFileImplTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
@@ -59,7 +62,8 @@ public class IMetadataQuerierByFileImplTest {
               + chunkMetaData.getMeasurementUid().getBytes().length
               + Long.BYTES
               + Short.BYTES
-              + chunkMetaData.getStatistics().getSerializedSize();
+              + chunkMetaData.getStatistics().getSerializedSize()
+      /*+ STATISTICS_SERIALIZE_BYTE_CHUNK*/ ;
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
 
@@ -74,7 +78,8 @@ public class IMetadataQuerierByFileImplTest {
               + chunkMetaData.getMeasurementUid().getBytes().length
               + Long.BYTES
               + Short.BYTES
-              + chunkMetaData.getStatistics().getSerializedSize();
+              + chunkMetaData.getStatistics().getSerializedSize()
+      /*+ STATISTICS_SERIALIZE_BYTE_CHUNK*/ ;
       d2chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
   }

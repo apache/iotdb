@@ -54,4 +54,8 @@ public interface IAggregateReader {
   BatchData nextPage() throws IOException;
 
   boolean isAscending();
+  //
+  //  public MutableMap<IPointReader, Statistics> getPageStat();
+  //  public MutableMap<IPointReader, LongArrayList[]> getPageData();
+
 }

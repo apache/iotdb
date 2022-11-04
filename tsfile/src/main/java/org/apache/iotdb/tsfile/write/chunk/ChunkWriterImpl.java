@@ -253,6 +253,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    * to pageBuffer
    */
   private void checkPageSizeAndMayOpenANewPage() {
+    //    System.out.println(
+    //        "\tcheckPageSize" + pageWriter.getPointNumber() + " <= " + maxNumberOfPointsInPage);
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
       logger.debug("current line count reaches the upper bound, write page {}", measurementSchema);
       writePageToPageBuffer();
@@ -297,7 +299,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.statistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeChunkMetadataStat(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -390,7 +392,7 @@ public class ChunkWriterImpl implements IChunkWriter {
           measurementSchema.getMeasurementId(),
           pageBuffer.size());
 
-      statistics.mergeStatistics(header.getStatistics());
+      statistics.mergeChunkMetadataStat(header.getStatistics());
 
     } catch (IOException e) {
       throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);

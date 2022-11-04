@@ -157,5 +157,23 @@ public class GroupByLevelDataSetTest {
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertTrue(dataSet.hasNext());
     assertEquals("0\t590.0\t106\t120\t4", dataSet.next().toString());
+
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select exact_median_kll_floats(s0) from root.** where s0!=0 or time<10 group by level=0");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t120.0", dataSet.next().toString());
+
+    // median (without value filter)
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                /*"select exact_median(s0) from root.** where time<10 align by device"*/
+                "select exact_median_kll_floats(s0) from root.** where time<10 group by level=0");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t127.0", dataSet.next().toString());
   }
 }
