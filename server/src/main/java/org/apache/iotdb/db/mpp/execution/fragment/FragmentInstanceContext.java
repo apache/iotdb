@@ -188,6 +188,12 @@ public class FragmentInstanceContext extends QueryContext {
         .collect(Collectors.joining("; "));
   }
 
+  public List<FragmentInstanceFailureInfo> getFailureInfoList() {
+    return stateMachine.getFailureCauses().stream()
+        .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+        .collect(Collectors.toList());
+  }
+
   public void finished() {
     stateMachine.finished();
   }
@@ -213,7 +219,8 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+    return new FragmentInstanceInfo(
+        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
