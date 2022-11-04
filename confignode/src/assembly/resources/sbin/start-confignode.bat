@@ -119,7 +119,7 @@ for /f "tokens=1* delims==" %%1 in ("%%a") do (
 @REM echo 1=%%1 "|||" 2=%%2
 if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%CONFIGNODE_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
 if "%%1"=="-f" ( set foreground=yes)
-if "%%1"=="-b" ( set foreground=0)
+if "%%1"=="-d" ( set foreground=0)
 )
 set COMMANSLINE=%%b
 goto STR_VISTOR
