@@ -153,8 +153,9 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
-    // TODO: Enable multiple target_config_nodes
-    String targetConfigNodes = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODES, null);
+    // TODO: Enable multiple target_config_node_list
+    String targetConfigNodes =
+        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
     if (targetConfigNodes != null) {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
     }
@@ -570,7 +571,7 @@ public class ConfigNodeDescriptor {
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the target_config_nodes points to itself
+   * @return True if the target_config_node_list points to itself
    */
   public boolean isSeedConfigNode() {
     return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
