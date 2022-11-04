@@ -80,7 +80,7 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 ### `HAVING` 子句
 
 - `HAVING` 子句指定了对聚合结果的筛选条件，由一个 `havingCondition` 组成。
-- `havingCondition` 是一个逻辑表达式，对于要选择的每聚合结果，其计算结果为真。如果没有 `HAVING` 子句，将选择所有聚合结果。
+- `havingCondition` 是一个逻辑表达式，对于要选择的聚合结果，其计算结果为真。如果没有 `HAVING` 子句，将选择所有聚合结果。
 - `HAVING` 要和聚合函数以及 `GROUP BY` 子句一起使用。
 - 详细说明及示例见文档 [HAVING 子句](./Having-Condition.md) 。
 
@@ -96,11 +96,11 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 
 ### `LIMIT` 和 `OFFSET` 子句
 
-- 当查询结果数据量很大时，可以使用 `LIMIT/SLIMIT` 及 `OFFSET/SOFFSET` 对结果集进行分页，详见 [查询结果分页](./Pagination.md) 。
+- `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
 
 ### `SLIMIT` 和 `SOFFSET` 子句
 
-
+- `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列无效。
 
 ### `ALIGN BY` 子句
 
