@@ -195,7 +195,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
             RegionMigrateProcedure regionMigrateProcedure =
                 new RegionMigrateProcedure(regionId, disableDataNodeLocation, destDataNode);
             addChildProcedure(regionMigrateProcedure);
-            LOG.info("Submit child procedure, {}", regionMigrateProcedure);
+            LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
           }
         });
   }
