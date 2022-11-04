@@ -62,7 +62,7 @@ public class UDFManager {
   private final long planSizeLimit =
       ConfigNodeDescriptor.getInstance()
               .getConf()
-              .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+              .getConfigNodeRatisConsensusLogAppenderBufferSize()
           - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
 
   public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {
@@ -104,7 +104,7 @@ public class UDFManager {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
                     udfName));
       }
 

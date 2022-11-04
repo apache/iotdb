@@ -203,7 +203,7 @@ public class NodeManager {
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
-    ratisConfig.setSchemaPreserveWhenPurge(conf.getPartitionRegionRatisPreserveLogsWhenPurge());
+    ratisConfig.setSchemaPreserveWhenPurge(conf.getConfigNodeRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
 
     ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());

@@ -111,7 +111,7 @@ public class ProcedureManager {
     this.planSizeLimit =
         ConfigNodeDescriptor.getInstance()
                 .getConf()
-                .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+                .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
   }
 
@@ -366,7 +366,7 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
