@@ -870,6 +870,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
+    conf.setMaxMeasurementNumOfInternalRequest(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_measurement_num_of_internal_request",
+                String.valueOf(conf.getMaxMeasurementNumOfInternalRequest()))));
+
     // mqtt
     loadMqttProps(properties);
 
