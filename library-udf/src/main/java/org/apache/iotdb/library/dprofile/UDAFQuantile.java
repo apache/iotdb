@@ -36,11 +36,6 @@ import java.util.HashMap;
 
 /** calculate the approximate percentile */
 public class UDAFQuantile implements UDTF {
-  public static HashMap<Integer, Long> intDic;
-  public static HashMap<Long, Long> longDic;
-  public static HashMap<Float, Long> floatDic;
-  public static HashMap<Double, Long> doubleDic;
-  private ExactOrderStatistics statistics;
   private org.apache.iotdb.library.dprofile.util.HeapLongKLLSketch sketch;
   private double rank;
   private TSDataType dataType;
