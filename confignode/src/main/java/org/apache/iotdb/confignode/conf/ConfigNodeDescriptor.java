@@ -153,8 +153,9 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
-    // TODO: Enable multiple target_config_nodes
-    String targetConfigNodes = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODES, null);
+    // TODO: Enable multiple target_config_node_list
+    String targetConfigNodes =
+        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
     if (targetConfigNodes != null) {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
     }
@@ -334,11 +335,11 @@ public class ConfigNodeDescriptor {
                 "config_node_ratis_snapshot_trigger_threshold",
                 String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))));
 
-    conf.setConfigNodeOneCopySnapshotTriggerThreshold(
+    conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
                 "config_node_one_copy_snapshot_trigger_threshold",
-                String.valueOf(conf.getConfigNodeOneCopySnapshotTriggerThreshold()))));
+                String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))));
 
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
@@ -382,11 +383,11 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
-    conf.setConfigNodeOneCopyLogSegmentSizeMax(
+    conf.setConfigNodeSimpleConsensusLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
                 "config_node_one_copy_log_segment_size_max_in_byte",
-                String.valueOf(conf.getConfigNodeOneCopyLogSegmentSizeMax()))));
+                String.valueOf(conf.getConfigNodeSimpleConsensusLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
@@ -570,7 +571,7 @@ public class ConfigNodeDescriptor {
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the target_config_nodes points to itself
+   * @return True if the target_config_node_list points to itself
    */
   public boolean isSeedConfigNode() {
     return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())

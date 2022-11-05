@@ -1837,7 +1837,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES);
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));

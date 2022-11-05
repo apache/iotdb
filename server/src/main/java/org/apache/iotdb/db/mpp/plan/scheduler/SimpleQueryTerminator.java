@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +46,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   protected ScheduledExecutorService scheduledExecutor;
   private final QueryId queryId;
   private final MPPQueryContext queryContext;
+
+  private final IFragInstanceStateTracker stateTracker;
   private List<TEndPoint> relatedHost;
   private Map<TEndPoint, List<TFragmentInstanceId>> ownedFragmentInstance;
 
@@ -57,11 +58,13 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       ScheduledExecutorService scheduledExecutor,
       MPPQueryContext queryContext,
       List<FragmentInstance> fragmentInstances,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
+      IFragInstanceStateTracker stateTracker) {
     this.scheduledExecutor = scheduledExecutor;
     this.queryId = queryContext.getQueryId();
     this.queryContext = queryContext;
     this.internalServiceClientManager = internalServiceClientManager;
+    this.stateTracker = stateTracker;
     calculateParameter(fragmentInstances);
   }
 
@@ -85,19 +88,28 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   }
 
   public Boolean syncTerminate() {
+    boolean succeed = true;
     for (TEndPoint endPoint : relatedHost) {
+      // we only send cancel query request if there is remaining unfinished FI in that node
+      List<TFragmentInstanceId> unfinishedFIs =
+          stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
+      if (unfinishedFIs.isEmpty()) {
+        continue;
+      }
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
-        client.cancelQuery(
-            new TCancelQueryReq(queryId.getId(), ownedFragmentInstance.get(endPoint)));
+        client.cancelQuery(new TCancelQueryReq(queryId.getId(), unfinishedFIs));
       } catch (IOException e) {
-        logger.error("can't connect to node {}", endPoint, e);
-        return false;
-      } catch (TException e) {
-        return false;
+        logger.warn("can't connect to node {}", endPoint, e);
+        // we shouldn't return here and need to cancel queryTasks in other nodes
+        succeed = false;
+      } catch (Throwable t) {
+        logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
+        // we shouldn't return here and need to cancel queryTasks in other nodes
+        succeed = false;
       }
     }
-    return true;
+    return succeed;
   }
 
   private List<TEndPoint> getRelatedHost(List<FragmentInstance> fragmentInstances) {
