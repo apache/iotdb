@@ -470,7 +470,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * update a region location
+   * Update the location info of given regionId
    *
    * @param req UpdateRegionLocationReq
    * @return TSStatus

@@ -432,7 +432,7 @@ public class StorageGroupPartitionTable {
   private void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn("Cannot find RegionGroup in addRegionNewLocation for region {}", regionId);
       return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
@@ -445,12 +445,12 @@ public class StorageGroupPartitionTable {
   private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn("Cannot find RegionGroup in removeRegionOldLocation for region {}", regionId);
       return;
     }
     if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is Not in region locations, no need to remove it, node: {}, region: {}",
+          "Node is not in region locations, no need to remove it, node: {}, region: {}",
           node,
           regionId);
       return;

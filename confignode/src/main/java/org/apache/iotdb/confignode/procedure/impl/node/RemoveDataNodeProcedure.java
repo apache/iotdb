@@ -196,6 +196,12 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
                 new RegionMigrateProcedure(regionId, disableDataNodeLocation, destDataNode);
             addChildProcedure(regionMigrateProcedure);
             LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
+          } else {
+            LOG.error(
+                "{}, Cannot find target DataNode to remove the region: {}",
+                REMOVE_DATANODE_PROCESS,
+                regionId);
+            // TODO terminate all the uncompleted remove datanode process
           }
         });
   }
