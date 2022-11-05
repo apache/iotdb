@@ -481,8 +481,8 @@ public class PartitionInfo implements SnapshotProcessor {
     TDataNodeLocation oldNode = req.getOldNode();
     TDataNodeLocation newNode = req.getNewNode();
     storageGroupPartitionTables
-        .values()
-        .forEach(s -> s.updateRegionLocation(regionId, oldNode, newNode));
+        .values().stream().filter(sgPartitionTable -> sgPartitionTable.containRegion(regionId))
+        .forEach(sgPartitionTable -> sgPartitionTable.updateRegionLocation(regionId, oldNode, newNode));
 
     return status;
   }
