@@ -35,6 +35,7 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function median as 'org.apache.iotdb.library.dprofile.UDAFMedian'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function mode as 'org.apache.iotdb.library.dprofile.UDAFMode'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function percentile as 'org.apache.iotdb.library.dprofile.UDAFPercentile'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function quantile as 'org.apache.iotdb.library.dprofile.UDAFQuantile'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function period as 'org.apache.iotdb.library.dprofile.UDAFPeriod'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function qlb as 'org.apache.iotdb.library.dprofile.UDTFQLB'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function re_sample as 'org.apache.iotdb.library.dprofile.UDTFResample'"

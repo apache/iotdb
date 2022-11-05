@@ -50,9 +50,9 @@ public class ConfigNodeStartupCheck {
 
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
-    // When the ConfigNode consensus protocol is set to ONE_COPY_CONSENSUS,
+    // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the target_config_nodes needs to point to itself
-    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
+    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
             || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
@@ -61,9 +61,9 @@ public class ConfigNodeStartupCheck {
           CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }
 
-    // When the data region consensus protocol is set to ONE_COPY_CONSENSUS,
+    // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
     // the data replication factor must be 1
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && CONF.getDataReplicationFactor() != 1) {
       throw new ConfigurationException(
           "data_replication_factor",
@@ -71,9 +71,9 @@ public class ConfigNodeStartupCheck {
           String.valueOf(1));
     }
 
-    // When the schema region consensus protocol is set to ONE_COPY_CONSENSUS,
+    // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
     // the schema replication factor must be 1
-    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && CONF.getSchemaReplicationFactor() != 1) {
       throw new ConfigurationException(
           "schema_replication_factor",
@@ -89,7 +89,7 @@ public class ConfigNodeStartupCheck {
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.ONE_COPY_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
+              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
     // The routing policy is limited

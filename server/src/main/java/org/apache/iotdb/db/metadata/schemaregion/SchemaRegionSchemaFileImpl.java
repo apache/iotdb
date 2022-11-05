@@ -291,6 +291,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     initialized = true;
   }
 
+  public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
+    if (!isRecovering) {
+      logWriter.write(schemaRegionPlan);
+    }
+  }
+
   @Override
   public void forceMlog() {
     if (!initialized) {
@@ -549,7 +555,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
           }
           plan.setTagOffset(offset);
-          logWriter.write(plan);
+          writeToMLog(plan);
         }
         if (offset != -1) {
           leafMNode.setOffset(offset);
@@ -720,7 +726,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             }
           }
           plan.setTagOffsets(tagOffsets);
-          logWriter.write(plan);
+          writeToMLog(plan);
         }
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -793,11 +799,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             preDeletedNum++;
             measurementMNode.setPreDeleted(true);
             mtree.updateMNode(measurementMNode);
-            if (!isRecovering) {
-              logWriter.write(
-                  SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
-                      measurementMNode.getPartialPath()));
-            }
+            writeToMLog(
+                SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+                    measurementMNode.getPartialPath()));
           } catch (IOException e) {
             throw new MetadataException(e);
           }
@@ -818,11 +822,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         try {
           measurementMNode.setPreDeleted(false);
           mtree.updateMNode(measurementMNode);
-          if (!isRecovering) {
-            logWriter.write(
-                SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
-                    measurementMNode.getPartialPath()));
-          }
+          writeToMLog(
+              SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
+                  measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
         } finally {
@@ -850,10 +852,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
-          if (!isRecovering) {
-            logWriter.write(
-                SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
-          }
+          writeToMLog(
+              SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -903,8 +903,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
         }
-        logWriter.write(
-            SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
+        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -976,9 +975,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     node = mtree.getDeviceNodeWithAutoCreating(path);
-    if (!isRecovering) {
-      logWriter.write(SchemaRegionPlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
-    }
+    writeToMLog(SchemaRegionPlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
 
@@ -986,12 +983,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
     IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     mtree.unPinMNode(node);
-    if (!isRecovering) {
-      try {
-        logWriter.write(plan);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(plan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
   // endregion
@@ -1030,7 +1025,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+    return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
   }
 
   @Override
@@ -1472,9 +1467,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     try {
-      if (!isRecovering) {
-        logWriter.write(SchemaRegionPlanFactory.getChangeAliasPlan(path, alias));
-      }
+      writeToMLog(SchemaRegionPlanFactory.getChangeAliasPlan(path, alias));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1509,7 +1502,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
-        logWriter.write(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+        writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
@@ -1540,7 +1533,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
       mtree.setAlias(leafMNode, alias);
       // persist to WAL
-      logWriter.write(SchemaRegionPlanFactory.getChangeAliasPlan(fullPath, alias));
+      writeToMLog(SchemaRegionPlanFactory.getChangeAliasPlan(fullPath, alias));
     }
   }
 
@@ -1558,7 +1551,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
-        logWriter.write(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+        writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         return;
@@ -1584,7 +1577,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
-        logWriter.write(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+        writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
         // update inverted Index map
@@ -1965,9 +1958,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           .markSchemaRegion(template, storageGroupFullPath, schemaRegionId);
 
       // write wal
-      if (!isRecovering) {
-        logWriter.write(plan);
-      }
+      writeToMLog(plan);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1992,9 +1983,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       TemplateManager.getInstance()
           .unmarkSchemaRegion(template, storageGroupFullPath, schemaRegionId);
       // write wal
-      if (!isRecovering) {
-        logWriter.write(plan);
-      }
+      writeToMLog(plan);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -2027,39 +2016,75 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+
+    try {
+      IMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());
+      try {
+        mtree.activateTemplate(plan.getActivatePath(), template);
+        writeToMLog(plan);
+      } finally {
+        mtree.unPinMNode(deviceNode);
+      }
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    return mtree.getPathsUsingTemplate(pathPattern, templateId);
   }
 
   @Override
   public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(SchemaRegionPlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+    return resultTemplateSetInfo.size();
   }
 
   @Override
   public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(
+          SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    int result = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      result += mtree.countPathsUsingTemplate(pathPattern, templateId);
+    }
+    return result;
   }
 
-  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  private IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {
       throw new MetadataException(
@@ -2090,12 +2115,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());
     }
-    if (!isRecovering) {
-      try {
-        logWriter.write(SchemaRegionPlanFactory.getActivateTemplatePlan(node.getPartialPath()));
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(SchemaRegionPlanFactory.getActivateTemplatePlan(node.getPartialPath()));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
     return mountedMNode;
   }

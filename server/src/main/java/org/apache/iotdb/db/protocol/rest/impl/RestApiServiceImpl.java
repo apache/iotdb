@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
+import org.apache.iotdb.db.protocol.rest.handler.ExecuteStatementHandler;
 import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.StatementConstructionHandler;
@@ -85,6 +86,16 @@ public class RestApiServiceImpl extends RestApiService {
 
       Statement statement =
           StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+
+      if (!ExecuteStatementHandler.validateStatement(statement)) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+            .build();
+      }
+
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
         return response;
@@ -122,6 +133,16 @@ public class RestApiServiceImpl extends RestApiService {
 
       Statement statement =
           StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+
+      if (ExecuteStatementHandler.validateStatement(statement)) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+            .build();
+      }
+
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
         return response;
@@ -148,7 +169,6 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         return QueryDataSetHandler.fillQueryDataSet(
             queryExecution,
