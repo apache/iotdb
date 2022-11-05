@@ -338,7 +338,7 @@ public class ConfigNodeDescriptor {
     conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
-                "config_node_one_copy_snapshot_trigger_threshold",
+                "config_node_simple_snapshot_trigger_threshold",
                 String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))));
 
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
@@ -386,7 +386,7 @@ public class ConfigNodeDescriptor {
     conf.setConfigNodeSimpleConsensusLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "config_node_one_copy_log_segment_size_max_in_byte",
+                "config_node_simple_log_segment_size_max_in_byte",
                 String.valueOf(conf.getConfigNodeSimpleConsensusLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
