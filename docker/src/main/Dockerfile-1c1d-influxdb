@@ -31,9 +31,9 @@ RUN apt update \
   && mv /apache-iotdb-* /iotdb \
   && mv /start-1c1d.sh /iotdb/sbin \
   && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/conf/iotdb-common.properties \
-  && sed -i '/^ dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i '/^ dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i '/^ cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
+  && sed -i '/^dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
+  && sed -i '/^dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
+  && sed -i '/^cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
