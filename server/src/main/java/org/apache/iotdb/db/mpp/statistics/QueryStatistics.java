@@ -66,6 +66,10 @@ public class QueryStatistics {
     }
   }
 
+  public static QueryStatistics getInstance() {
+    return QueryStatisticsHolder.INSTANCE;
+  }
+
   public void addCost(String key, long costTimeInNanos) {
     if (tracing.get()) {
       operationStatistics
@@ -114,5 +118,12 @@ public class QueryStatistics {
           + "us"
           + '}';
     }
+  }
+
+  private static class QueryStatisticsHolder {
+
+    private static final QueryStatistics INSTANCE = new QueryStatistics();
+
+    private QueryStatisticsHolder() {}
   }
 }
