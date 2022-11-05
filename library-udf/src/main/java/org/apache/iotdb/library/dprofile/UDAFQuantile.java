@@ -20,7 +20,6 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
@@ -31,8 +30,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
-
-import java.util.HashMap;
 
 /** calculate the approximate percentile */
 public class UDAFQuantile implements UDTF {
