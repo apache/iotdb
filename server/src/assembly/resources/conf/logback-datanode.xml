@@ -265,6 +265,23 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_STATISTICS">
+        <file>${IOTDB_HOME}/logs/log_datanode_query_statistics.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-slow-sql-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>168</maxHistory>
+            <totalSizeCap>512MB</totalSizeCap>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
     <root level="info">
         <appender-ref ref="FILETRACE"/>
         <appender-ref ref="FILEDEBUG"/>
@@ -298,5 +315,8 @@
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
+    </logger>
+    <logger level="info" name="QUERY_STATISTICS">
+        <appender-ref ref="QUERY_STATISTICS"/>
     </logger>
 </configuration>
