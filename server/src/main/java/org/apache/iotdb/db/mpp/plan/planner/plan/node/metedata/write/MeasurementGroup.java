@@ -153,6 +153,10 @@ public class MeasurementGroup {
     int totalSize = measurements.size();
     int num = totalSize / targetSize + (totalSize % targetSize == 0 ? 0 : 1);
     List<MeasurementGroup> result = new ArrayList<>(num);
+    if (totalSize <= targetSize) {
+      result.add(this);
+      return result;
+    }
     for (int i = 0; i < num - 1; i++) {
       result.add(getSubMeasurementGroup(i * targetSize, i * targetSize + targetSize));
     }
