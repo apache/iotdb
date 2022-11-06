@@ -868,7 +868,7 @@ public class IoTDBConfig {
    * Maximum number of measurement in one create timeseries plan node. If the number of measurement
    * in user request exceeds this limit, the request will be split.
    */
-  private int maxMeasurementNumOfInternalRequest = 5000;
+  private int maxMeasurementNumOfInternalRequest = 10000;
 
   /** Internal address for data node */
   private String internalAddress = "0.0.0.0";
