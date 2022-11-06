@@ -390,7 +390,6 @@ public class SinkHandle implements ISinkHandle {
       try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
         logger.debug("[NotifyNoMoreTsBlock]");
         int attempt = 0;
-        boolean success = false;
         TEndOfDataBlockEvent endOfDataBlockEvent =
             new TEndOfDataBlockEvent(
                 remoteFragmentInstanceId,
@@ -402,13 +401,13 @@ public class SinkHandle implements ISinkHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
-            success = true;
             break;
           } catch (Throwable e) {
             logger.error("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
-              logger.error("Failed to send end of data block event after all retry}", e);
+              logger.error("Failed to send end of data block event after all retry", e);
               sinkHandleListener.onFailure(SinkHandle.this, e);
+              return;
             }
             try {
               Thread.sleep(retryIntervalInMs);
@@ -418,9 +417,7 @@ public class SinkHandle implements ISinkHandle {
             }
           }
         }
-        if (success) {
-          noMoreTsBlocks = true;
-        }
+        noMoreTsBlocks = true;
         if (isFinished()) {
           sinkHandleListener.onFinish(SinkHandle.this);
         }
