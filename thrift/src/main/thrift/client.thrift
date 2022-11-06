@@ -431,11 +431,10 @@ struct TSFetchWindowSetReq {
 
 struct TSFetchWindowSetResp {
   1: required common.TSStatus status
-  2: required i64 queryId
-  3: required list<string> columnNameList
-  4: required list<string> columnTypeList
-  5: required map<string, i32> columnNameIndexMap
-  6: required list<list<binary>> queryResultList
+  2: required list<string> columnNameList
+  3: required list<string> columnTypeList
+  4: required map<string, i32> columnNameIndexMap
+  5: required list<TSQueryDataSet> windowSet
 }
 
 // The sender and receiver need to check some info to confirm validity
