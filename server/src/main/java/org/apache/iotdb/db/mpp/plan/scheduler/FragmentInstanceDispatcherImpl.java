@@ -155,7 +155,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       for (Throwable t : throwableList) {
         if (t instanceof FragmentInstanceDispatchException) {
           failureStatusList.add(((FragmentInstanceDispatchException) t).getFailureStatus());
-
         } else {
           logger.error("[DispatchFailed]", t);
           return immediateFuture(
@@ -164,7 +163,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
         }
       }
-      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+      if (failureStatusList.size() == 1) {
+        return immediateFuture(new FragInstanceDispatchResult(failureStatusList.get(0)));
+      } else {
+        return immediateFuture(
+            new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+      }
     }
   }
 
