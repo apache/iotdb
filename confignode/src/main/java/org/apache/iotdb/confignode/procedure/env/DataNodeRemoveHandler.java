@@ -249,11 +249,11 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {}, destDataNode: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
         REMOVE_DATANODE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(selectedDataNode.get()),
-        destDataNode);
+        getIdWithRpcEndpoint(destDataNode));
     return status;
   }
 
@@ -365,8 +365,8 @@ public class DataNodeRemoveHandler {
         "UpdateRegionLocationCache finished, region:{}, result:{}, old:{}, new:{}",
         regionId,
         status,
-            getIdWithRpcEndpoint(originalDataNode),
-            getIdWithRpcEndpoint(destDataNode));
+        getIdWithRpcEndpoint(originalDataNode),
+        getIdWithRpcEndpoint(destDataNode));
 
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
@@ -412,7 +412,7 @@ public class DataNodeRemoveHandler {
    * @param dataNode old data node
    */
   public void stopDataNode(TDataNodeLocation dataNode) {
-    LOGGER.info("{}, Begin to stop Data Node {}", REMOVE_DATANODE_PROCESS, dataNode);
+    LOGGER.info("{}, Begin to stop DataNode {}", REMOVE_DATANODE_PROCESS, dataNode);
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
