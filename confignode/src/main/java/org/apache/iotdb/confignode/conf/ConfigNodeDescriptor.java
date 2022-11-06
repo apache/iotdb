@@ -153,8 +153,9 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
-    // TODO: Enable multiple target_config_nodes
-    String targetConfigNodes = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODES, null);
+    // TODO: Enable multiple target_config_node_list
+    String targetConfigNodes =
+        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
     if (targetConfigNodes != null) {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
     }
@@ -310,11 +311,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_log_appender_buffer_size_max",
                 String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))));
 
-    conf.setPartitionRegionRatisConsensusLogAppenderBufferSize(
+    conf.setConfigNodeRatisConsensusLogAppenderBufferSize(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_log_appender_buffer_size_max",
-                String.valueOf(conf.getPartitionRegionRatisConsensusLogAppenderBufferSize()))));
+                "config_node_ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getConfigNodeRatisConsensusLogAppenderBufferSize()))));
 
     conf.setSchemaRegionRatisConsensusLogAppenderBufferSize(
         Long.parseLong(
@@ -328,17 +329,17 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_snapshot_trigger_threshold",
                 String.valueOf(conf.getDataRegionRatisSnapshotTriggerThreshold()))));
 
-    conf.setPartitionRegionRatisSnapshotTriggerThreshold(
+    conf.setConfigNodeRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_snapshot_trigger_threshold",
-                String.valueOf(conf.getPartitionRegionRatisSnapshotTriggerThreshold()))));
+                "config_node_ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))));
 
-    conf.setPartitionRegionOneCopySnapshotTriggerThreshold(
+    conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_one_copy_snapshot_trigger_threshold",
-                String.valueOf(conf.getPartitionRegionOneCopySnapshotTriggerThreshold()))));
+                "config_node_simple_consensus_snapshot_trigger_threshold",
+                String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))));
 
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
@@ -352,11 +353,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_log_unsafe_flush_enable",
                 String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))));
 
-    conf.setPartitionRegionRatisLogUnsafeFlushEnable(
+    conf.setConfigNodeRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties.getProperty(
-                "partition_region_ratis_log_unsafe_flush_enable",
-                String.valueOf(conf.isPartitionRegionRatisLogUnsafeFlushEnable()))));
+                "config_node_ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isConfigNodeRatisLogUnsafeFlushEnable()))));
 
     conf.setSchemaRegionRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
@@ -370,11 +371,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getDataRegionRatisLogSegmentSizeMax()))));
 
-    conf.setPartitionRegionRatisLogSegmentSizeMax(
+    conf.setConfigNodeRatisLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_log_segment_size_max_in_byte",
-                String.valueOf(conf.getPartitionRegionRatisLogSegmentSizeMax()))));
+                "config_node_ratis_log_segment_size_max_in_byte",
+                String.valueOf(conf.getConfigNodeRatisLogSegmentSizeMax()))));
 
     conf.setSchemaRegionRatisLogSegmentSizeMax(
         Long.parseLong(
@@ -382,11 +383,11 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_log_segment_size_max_in_byte",
                 String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))));
 
-    conf.setPartitionRegionOneCopyLogSegmentSizeMax(
+    conf.setConfigNodeSimpleConsensusLogSegmentSizeMax(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_one_copy_log_segment_size_max_in_byte",
-                String.valueOf(conf.getPartitionRegionOneCopyLogSegmentSizeMax()))));
+                "config_node_simple_consensus_log_segment_size_max_in_byte",
+                String.valueOf(conf.getConfigNodeSimpleConsensusLogSegmentSizeMax()))));
 
     conf.setDataRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
@@ -394,11 +395,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_grpc_flow_control_window",
                 String.valueOf(conf.getDataRegionRatisGrpcFlowControlWindow()))));
 
-    conf.setPartitionRegionRatisGrpcFlowControlWindow(
+    conf.setConfigNodeRatisGrpcFlowControlWindow(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_grpc_flow_control_window",
-                String.valueOf(conf.getPartitionRegionRatisGrpcFlowControlWindow()))));
+                "config_node_ratis_grpc_flow_control_window",
+                String.valueOf(conf.getConfigNodeRatisGrpcFlowControlWindow()))));
 
     conf.setSchemaRegionRatisGrpcFlowControlWindow(
         Long.parseLong(
@@ -412,11 +413,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_rpc_leader_election_timeout_min_ms",
                 String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs()))));
 
-    conf.setPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(
+    conf.setConfigNodeRatisRpcLeaderElectionTimeoutMinMs(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_rpc_leader_election_timeout_min_ms",
-                String.valueOf(conf.getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs()))));
+                "config_node_ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getConfigNodeRatisRpcLeaderElectionTimeoutMinMs()))));
 
     conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
         Long.parseLong(
@@ -430,11 +431,11 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_rpc_leader_election_timeout_max_ms",
                 String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
 
-    conf.setPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(
+    conf.setConfigNodeRatisRpcLeaderElectionTimeoutMaxMs(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_rpc_leader_election_timeout_max_ms",
-                String.valueOf(conf.getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
+                "config_node_ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getConfigNodeRatisRpcLeaderElectionTimeoutMaxMs()))));
 
     conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
         Long.parseLong(
@@ -442,11 +443,11 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_rpc_leader_election_timeout_max_ms",
                 String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()))));
 
-    conf.setPartitionRegionRatisRequestTimeoutMs(
+    conf.setConfigNodeRatisRequestTimeoutMs(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_request_timeout_ms",
-                String.valueOf(conf.getPartitionRegionRatisRequestTimeoutMs()))));
+                "config_node_ratis_request_timeout_ms",
+                String.valueOf(conf.getConfigNodeRatisRequestTimeoutMs()))));
     conf.setSchemaRegionRatisRequestTimeoutMs(
         Long.parseLong(
             properties.getProperty(
@@ -458,21 +459,21 @@ public class ConfigNodeDescriptor {
                 "data_region_ratis_request_timeout_ms",
                 String.valueOf(conf.getDataRegionRatisRequestTimeoutMs()))));
 
-    conf.setPartitionRegionRatisMaxRetryAttempts(
+    conf.setConfigNodeRatisMaxRetryAttempts(
         Integer.parseInt(
             properties.getProperty(
-                "partition_region_ratis_max_retry_attempts",
-                String.valueOf(conf.getPartitionRegionRatisMaxRetryAttempts()))));
-    conf.setPartitionRegionRatisInitialSleepTimeMs(
+                "config_node_ratis_max_retry_attempts",
+                String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))));
+    conf.setConfigNodeRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_initial_sleep_time_ms",
-                String.valueOf(conf.getPartitionRegionRatisInitialSleepTimeMs()))));
-    conf.setPartitionRegionRatisMaxSleepTimeMs(
+                "config_node_ratis_initial_sleep_time_ms",
+                String.valueOf(conf.getConfigNodeRatisInitialSleepTimeMs()))));
+    conf.setConfigNodeRatisMaxSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_max_sleep_time_ms",
-                String.valueOf(conf.getPartitionRegionRatisMaxSleepTimeMs()))));
+                "config_node_ratis_max_sleep_time_ms",
+                String.valueOf(conf.getConfigNodeRatisMaxSleepTimeMs()))));
 
     conf.setDataRegionRatisMaxRetryAttempts(
         Integer.parseInt(
@@ -506,11 +507,11 @@ public class ConfigNodeDescriptor {
                 "schema_region_ratis_max_sleep_time_ms",
                 String.valueOf(conf.getSchemaRegionRatisMaxSleepTimeMs()))));
 
-    conf.setPartitionRegionRatisPreserveLogsWhenPurge(
+    conf.setConfigNodeRatisPreserveLogsWhenPurge(
         Long.parseLong(
             properties.getProperty(
-                "partition_region_ratis_preserve_logs_num_when_purge",
-                String.valueOf(conf.getPartitionRegionRatisPreserveLogsWhenPurge()))));
+                "config_node_ratis_preserve_logs_num_when_purge",
+                String.valueOf(conf.getConfigNodeRatisPreserveLogsWhenPurge()))));
 
     conf.setSchemaRegionRatisPreserveLogsWhenPurge(
         Long.parseLong(
@@ -570,7 +571,7 @@ public class ConfigNodeDescriptor {
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the target_config_nodes points to itself
+   * @return True if the target_config_node_list points to itself
    */
   public boolean isSeedConfigNode() {
     return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
