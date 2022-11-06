@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -31,6 +32,8 @@ public class SyncStatus {
   private final MultiLeaderConfig config;
   private final IndexController controller;
   private final List<PendingBatch> pendingBatches = new LinkedList<>();
+  private final MultiLeaderMemoryManager multiLeaderMemoryManager =
+      MultiLeaderMemoryManager.getInstance();
 
   public SyncStatus(IndexController controller, MultiLeaderConfig config) {
     this.controller = controller;
@@ -42,6 +45,11 @@ public class SyncStatus {
     synchronized (this) {
       while (pendingBatches.size() >= config.getReplication().getMaxPendingBatch()) {
         wait();
+      }
+      for (TLogBatch logBatch : batch.getBatches()) {
+        if (logBatch.isFromWAL()) {
+          multiLeaderMemoryManager.reserve(logBatch.bufferForData().capacity(), false);
+        }
       }
       pendingBatches.add(batch);
     }
@@ -61,6 +69,7 @@ public class SyncStatus {
         while (current.isSynced()) {
           controller.updateAndGet(current.getEndIndex());
           iterator.remove();
+          free(current);
           if (iterator.hasNext()) {
             current = iterator.next();
           } else {
@@ -71,6 +80,31 @@ public class SyncStatus {
         notifyAll();
       }
     }
+  }
+
+  /** free the space of requests in PendingBatch when removeBatch */
+  public void free(PendingBatch pendingBatch) {
+    synchronized (this) {
+      long size = 0;
+      for (TLogBatch logBatch : pendingBatch.getBatches()) {
+        size += logBatch.bufferForData().capacity();
+      }
+      multiLeaderMemoryManager.free(size);
+    }
+  }
+
+  /** free all spaces of PendingBatches when stop LogDispatcher */
+  public void free() {
+    long size = 0;
+    synchronized (this) {
+      for (PendingBatch pendingBatch : pendingBatches) {
+        for (TLogBatch logBatch : pendingBatch.getBatches()) {
+          size += logBatch.bufferForData().capacity();
+        }
+      }
+      pendingBatches.clear();
+    }
+    multiLeaderMemoryManager.free(size);
   }
 
   /** Gets the first index that is not currently synchronized */

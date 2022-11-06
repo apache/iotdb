@@ -35,9 +35,9 @@ public class MultiLeaderMemoryManager {
     MetricService.getInstance().addMetricSet(new MultiLeaderMemoryManagerMetrics(this));
   }
 
-  public boolean reserve(long size) {
+  public boolean reserve(long size, boolean useConstraint) {
     synchronized (this) {
-      if (size > maxMemorySizeInByte - memorySizeInByte.get()) {
+      if (useConstraint && size > maxMemorySizeInByte - memorySizeInByte.get()) {
         logger.debug(
             "consensus memory limited. required: {}, used: {}, total: {}",
             size,

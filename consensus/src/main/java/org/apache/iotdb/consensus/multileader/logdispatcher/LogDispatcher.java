@@ -235,7 +235,7 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
+      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize(), true)) {
         return false;
       }
       boolean success;
@@ -253,19 +253,21 @@ public class LogDispatcher {
       return success;
     }
 
-    /** try to remove a request from queue with memory control */
-    private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
-      multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
-    }
-
     public void stop() {
       stopped = true;
-      for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
-        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      long size = 0;
+      synchronized (this) {
+        for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
+          size += indexedConsensusRequest.getSerializedSize();
+        }
+        for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
+          size += indexedConsensusRequest.getSerializedSize();
+        }
+        pendingRequest.clear();
+        bufferedRequest.clear();
       }
-      for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
-        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
-      }
+      multiLeaderMemoryManager.free(size);
+      syncStatus.free();
       MetricService.getInstance().removeMetricSet(metrics);
     }
 
@@ -358,7 +360,6 @@ public class LogDispatcher {
           IndexedConsensusRequest request = iterator.next();
           if (request.getSearchIndex() < startIndex) {
             iterator.remove();
-            releaseReservedMemory(request);
           } else {
             break;
           }
@@ -388,7 +389,6 @@ public class LogDispatcher {
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         iterator.remove();
-        releaseReservedMemory(prev);
         while (iterator.hasNext()
             && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
           IndexedConsensusRequest current = iterator.next();
@@ -411,7 +411,6 @@ public class LogDispatcher {
           // current function, but that's fine, we'll continue processing these elements in the
           // bufferedRequest the next time we go into the function, they're never lost
           iterator.remove();
-          releaseReservedMemory(current);
         }
         batch = new PendingBatch(logBatches);
         logger.debug(
