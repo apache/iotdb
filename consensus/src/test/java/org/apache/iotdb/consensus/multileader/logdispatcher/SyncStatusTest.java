@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -64,7 +65,7 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      TLogBatch logBatch = new TLogBatch();
+      TLogBatch logBatch = new TLogBatch(ByteBuffer.wrap(new byte[0]), 0, false);
       logBatch.setSearchIndex(i);
       PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
@@ -93,7 +94,7 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      TLogBatch logBatch = new TLogBatch();
+      TLogBatch logBatch = new TLogBatch(ByteBuffer.wrap(new byte[0]), 0, false);
       logBatch.setSearchIndex(i);
       PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
@@ -128,7 +129,7 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      TLogBatch logBatch = new TLogBatch();
+      TLogBatch logBatch = new TLogBatch(ByteBuffer.wrap(new byte[0]), 0, false);
       logBatch.setSearchIndex(i);
       PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
@@ -174,7 +175,7 @@ public class SyncStatusTest {
     List<PendingBatch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
-      TLogBatch logBatch = new TLogBatch();
+      TLogBatch logBatch = new TLogBatch(ByteBuffer.wrap(new byte[0]), 0, false);
       logBatch.setSearchIndex(i);
       PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
       batchList.add(batch);
@@ -193,7 +194,7 @@ public class SyncStatusTest {
     CompletableFuture<Boolean> future =
         CompletableFuture.supplyAsync(
             () -> {
-              TLogBatch logBatch = new TLogBatch();
+              TLogBatch logBatch = new TLogBatch(ByteBuffer.wrap(new byte[0]), 0, false);
               logBatch.setSearchIndex(config.getReplication().getMaxPendingBatch());
               PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
               batchList.add(batch);
