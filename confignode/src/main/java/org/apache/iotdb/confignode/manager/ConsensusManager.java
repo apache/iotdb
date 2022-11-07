@@ -248,8 +248,14 @@ public class ConsensusManager {
                     new Peer(consensusGroupId, node.getConfigNodeId(), node.getConsensusEndPoint()))
             .collect(Collectors.toList());
 
-    LOGGER.info(
-        "addNewNodeToExistedGroup---, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
+    try {
+      TimeUnit.SECONDS.sleep(7);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
+    }
+
+    LOGGER.info("AddNewNodeToExistedGroup, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
 
     ConsensusGenericResponse response =
         consensusImpl.addNewNodeToExistedGroup(consensusGroupId, newPeer, originalPeers);
