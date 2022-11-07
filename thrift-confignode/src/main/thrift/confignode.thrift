@@ -119,6 +119,11 @@ struct TDataNodeConfigurationResp {
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
+}
+
 // StorageGroup
 struct TSetStorageGroupReq {
   1: required TStorageGroupSchema storageGroup
@@ -502,7 +507,8 @@ struct TShowPipeInfo {
   3: required string role
   4: required string remote
   5: required string status
-  6: required string message
+  6: required string attributes
+  7: required string message
 }
 
 struct TGetAllPipeInfoResp{
@@ -912,6 +918,9 @@ service IConfigNodeRPCService {
 
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
+
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
   // ======================================================
   // Cluster Tools

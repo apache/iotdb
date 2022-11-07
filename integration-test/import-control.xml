@@ -36,11 +36,15 @@
   <allow pkg="org\.slf4j.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
+    <allow class="org.apache.iotdb.db.constant.TestConstant" />
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="org.apache.iotdb.db.utils.MathUtils" />
+    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
     <allow pkg="org.apache.iotdb.db.it.utils" />
+    <allow pkg="org\.apache\.iotdb\.db\.conf.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
     <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>
@@ -65,6 +69,7 @@
     <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
     <allow class="org.apache.iotdb.commons.cq.CQState" />
     <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
+    <allow class="org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils" />
     <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true" />
@@ -84,6 +89,8 @@
     <allow class="org.apache.iotdb.db.exception.TriggerManagementException" />
     <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
     <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />

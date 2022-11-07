@@ -302,7 +302,7 @@ public class IoTDBStatement implements Statement {
                 execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
-                true);
+                execResp.moreData);
       }
       return true;
     }
@@ -457,7 +457,8 @@ public class IoTDBStatement implements Statement {
               execResp.operationType,
               execResp.columns,
               execResp.sgColumns,
-              aliasColumn);
+              aliasColumn,
+              execResp.moreData);
     }
     return resultSet;
   }

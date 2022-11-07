@@ -46,11 +46,11 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -79,6 +79,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -141,30 +142,49 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes();
+    NodeManager nodeManager = configManager.getNodeManager();
+    List<TDataNodeConfiguration> allDataNodes = nodeManager.getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      final TSStatus invalidateSchemaStatus =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                  invalidateCacheReq,
-                  DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
-      final TSStatus invalidatePartitionStatus =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                  invalidateCacheReq,
-                  DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
+      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+
+      // if the node is not alive, sleep 1 second and try again
+      NodeStatus nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+      if (nodeStatus == NodeStatus.Unknown) {
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+        }
+        nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+      }
+
+      if (nodeStatus == NodeStatus.Running) {
+        final TSStatus invalidateSchemaStatus =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                    invalidateCacheReq,
+                    DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
+        final TSStatus invalidatePartitionStatus =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                    invalidateCacheReq,
+                    DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
+        if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+          LOG.error(
+              "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
+              invalidatePartitionStatus,
+              invalidateSchemaStatus);
+          return false;
+        }
+      } else if (nodeStatus == NodeStatus.Unknown) {
+        LOG.warn(
+            "Invalidate cache failed, because DataNode {} is Unknown",
+            dataNodeConfiguration.getLocation().getInternalEndPoint());
       }
     }
     return true;
@@ -487,7 +507,7 @@ public class ConfigNodeProcedureEnv {
 
     // Select leader greedily for multi-leader consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.MultiLeaderConsensus.equals(
+        && ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
             ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
       List<Integer> availableDataNodes = new ArrayList<>();
       for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {

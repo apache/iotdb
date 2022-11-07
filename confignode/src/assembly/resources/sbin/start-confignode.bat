@@ -18,10 +18,10 @@
 @REM
 
 @echo off
+
 echo ```````````````````````````
 echo Starting IoTDB ConfigNode
 echo ```````````````````````````
-
 
 set PATH="%JAVA_HOME%\bin\";%PATH%
 set "FULL_VERSION="
@@ -107,17 +107,42 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %CONFIGNODE_HEAP_OPTS% -cp %CLASSPATH% %CONFIGNODE_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+@REM SET PARA
+
+@REM Before v0.14, iotdb-server runs in foreground by default
+@REM set foreground=0
+set foreground=yes
+
+:checkPara
+set COMMANSLINE=%*
+@REM setlocal ENABLEDELAYEDEXPANSION
+:STR_VISTOR
+for /f "tokens=1* delims= " %%a in ("%COMMANSLINE%") do (
+@REM -----more para-----
+for /f "tokens=1* delims==" %%1 in ("%%a") do (
+@REM echo 1=%%1 "|||" 2=%%2
+if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%CONFIGNODE_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
+if "%%1"=="-f" ( set foreground=yes)
+if "%%1"=="-d" ( set foreground=0)
+)
+set COMMANSLINE=%%b
+goto STR_VISTOR
+)
+
+@REM ----------------------------------------------------------------------------
+@REM START
+:start
+if %foreground%==yes (
+	java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %CONFIGNODE_HEAP_OPTS% -cp %CLASSPATH% %CONFIGNODE_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	) ELSE (
+	start javaw %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %CONFIGNODE_HEAP_OPTS% -cp %CLASSPATH% %CONFIGNODE_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	)
 goto finally
 
 :err
 echo JAVA_HOME environment variable must be set!
 pause
 
-
-@REM -----------------------------------------------------------------------------
 :finally
-
+@ENDLOCAL
 pause
-
-ENDLOCAL

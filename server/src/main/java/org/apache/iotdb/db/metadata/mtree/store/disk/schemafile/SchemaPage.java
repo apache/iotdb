@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundExceptio
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -73,10 +74,21 @@ public abstract class SchemaPage implements ISchemaPage {
 
   @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
-    this.syncPageBuffer();
     this.pageBuffer.clear();
     channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
     dirtyFlag = false;
+  }
+
+  @Override
+  public void flushPageToStream(OutputStream stream) throws IOException {
+    if (pageIndex < 0) {
+      // mark as check point
+      stream.write(new byte[] {(byte) pageIndex});
+      return;
+    }
+
+    this.pageBuffer.clear();
+    stream.write(pageBuffer.array());
   }
 
   @Override

@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -45,6 +46,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -61,10 +65,16 @@ public class PartitionRegionStateMachine
   private ConfigManager configManager;
   private LogWriter logWriter;
   private File logFile;
-  private int logFileId;
-  private static final String fileDir = CONF.getConsensusDir();
-  private static final String filePath = fileDir + File.separator + "log_inprogress_";
-  private static final long FILE_MAX_SIZE = CONF.getPartitionRegionStandAloneLogSegmentSizeMax();
+  private int startIndex;
+  private int endIndex;
+
+  private static final String currentFileDir =
+      CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
+  private static final String progressFilePath =
+      currentFileDir + File.separator + "log_inprogress_";
+  private static final String filePath = currentFileDir + File.separator + "log_";
+  private static final long LOG_FILE_MAX_SIZE =
+      CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -120,6 +130,9 @@ public class PartitionRegionStateMachine
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      writeLogForSimpleConsensus(plan);
+    }
     return result;
   }
 
@@ -176,8 +189,8 @@ public class PartitionRegionStateMachine
           newLeaderId,
           currentNodeTEndPoint);
 
-      // Recover HeartbeatCache by inheriting old-leader's statistics result
-      configManager.getLoadManager().recoverHeartbeatCache();
+      // Always initiate all kinds of HeartbeatCache first
+      configManager.getLoadManager().initHeartbeatCache();
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
@@ -212,7 +225,11 @@ public class PartitionRegionStateMachine
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      initStandAloneConfigNode();
+    }
+  }
 
   @Override
   public void stop() {
@@ -242,17 +259,77 @@ public class PartitionRegionStateMachine
     return RetryPolicy.super.getSleepTime();
   }
 
+  /** TODO optimize the lock usage */
+  private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
+    if (logFile.length() > LOG_FILE_MAX_SIZE) {
+      try {
+        logWriter.force();
+        File completedFilePath = new File(filePath + startIndex + "_" + endIndex);
+        Files.move(logFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        LOGGER.error("Can't force logWriter for ConfigNode SimpleConsensus mode", e);
+      }
+      for (int retry = 0; retry < 5; retry++) {
+        try {
+          logWriter.close();
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, filePath: {}, retry: {}",
+              logFile.getAbsolutePath(),
+              retry);
+          try {
+            // Sleep 1s and retry
+            TimeUnit.SECONDS.sleep(1);
+          } catch (InterruptedException e2) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during the close method of logWriter");
+          }
+          continue;
+        }
+        break;
+      }
+      startIndex = endIndex + 1;
+      createLogFile(startIndex);
+    }
+
+    try {
+      ByteBuffer buffer = plan.serializeToByteBuffer();
+      // The method logWriter.write will execute flip() firstly, so we must make position==limit
+      buffer.position(buffer.limit());
+      logWriter.write(buffer);
+      endIndex = endIndex + 1;
+      File tmpLogFile = new File(progressFilePath + endIndex);
+      Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      logFile = tmpLogFile;
+      logWriter = new LogWriter(logFile, false);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode", e);
+    }
+  }
+
   private void initStandAloneConfigNode() {
-    String[] list = new File(fileDir).list();
+    File dir = new File(currentFileDir);
+    dir.mkdirs();
+    String[] list = new File(currentFileDir).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
-        File logFile = SystemFileFactory.INSTANCE.getFile(fileDir + File.separator + logFileName);
+        int tmp = Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_") + 1));
+        if (logFileName.startsWith("log_inprogress")) {
+          endIndex = tmp;
+        } else {
+          if (startIndex < tmp) {
+            startIndex = tmp;
+          }
+        }
+        File logFile =
+            SystemFileFactory.INSTANCE.getFile(currentFileDir + File.separator + logFileName);
         SingleFileLogReader logReader;
         try {
           logReader = new SingleFileLogReader(logFile);
         } catch (FileNotFoundException e) {
           LOGGER.error(
-              "initStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              "InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
               logFile.getAbsolutePath(),
               e);
           continue;
@@ -268,31 +345,25 @@ public class PartitionRegionStateMachine
         }
         logReader.close();
       }
+    } else {
+      startIndex = 0;
+      endIndex = 0;
     }
-    for (int ID = 0; ID < Integer.MAX_VALUE; ID++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath);
-      if (!file.exists()) {
-        logFileId = ID;
-        break;
-      }
-    }
-    createLogFile(logFileId);
+    startIndex = startIndex + 1;
+    createLogFile(endIndex);
   }
 
-  private void createLogFile(int logFileId) {
-    logFile = SystemFileFactory.INSTANCE.getFile(filePath + logFileId);
+  private void createLogFile(int endIndex) {
+    logFile = SystemFileFactory.INSTANCE.getFile(progressFilePath + endIndex);
     try {
-      if (logFile.createNewFile()) {
-        logWriter = new LogWriter(logFile, false);
-        LOGGER.info("Create StandaloneLog: {}", logFile.getAbsolutePath());
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Can't create StandaloneLog: {}, retrying...", logFile.getAbsolutePath());
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException ignored) {
-        // Ignore and retry
-      }
+      logFile.createNewFile();
+      logWriter = new LogWriter(logFile, false);
+      LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", logFile.getAbsolutePath());
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Create ConfigNode SimpleConsensusFile failed, filePath: {}",
+          logFile.getAbsolutePath(),
+          e);
     }
   }
 }

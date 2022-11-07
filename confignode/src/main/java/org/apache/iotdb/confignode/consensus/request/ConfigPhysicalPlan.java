@@ -64,7 +64,6 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.statistics.UpdateLoadStatisticsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -131,6 +130,13 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
   protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
+
+  public int getSerializedSize() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeImpl(outputStream);
+    return byteArrayOutputStream.size();
+  }
 
   public static class Factory {
 
@@ -342,9 +348,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetSeriesSlotList:
           plan = new GetSeriesSlotListPlan();
-          break;
-        case UpdateLoadStatistics:
-          plan = new UpdateLoadStatisticsPlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();

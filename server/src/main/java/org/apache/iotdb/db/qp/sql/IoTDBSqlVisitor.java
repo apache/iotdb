@@ -235,16 +235,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   /** 2. Data Definition Language (DDL) */
 
   // Create Storage Group
-
-  @Override
-  public Operator visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
-    SetStorageGroupOperator setStorageGroupOperator =
-        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupOperator.setPath(path);
-    return setStorageGroupOperator;
-  }
-
   @Override
   public Operator visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupOperator setStorageGroupOperator =
@@ -876,7 +866,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
     if (alterTimeSeriesOperator != null && ctx.ALIAS() != null) {
-      alterTimeSeriesOperator.setAlias(parseAlias(ctx.alias()));
+      alterTimeSeriesOperator.setAlias(parseAliasNode(ctx.alias()));
     }
   }
 
@@ -2386,8 +2376,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
             true,
             true);
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
+    if (ctx.loadFileAttributeClauses() != null) {
+      for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
+          ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
+        parseLoadFileAttributeClause(loadFilesOperator, attributeContext);
+      }
     }
     return loadFilesOperator;
   }
@@ -2399,17 +2392,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    * @param operator the result operator, setting by clause context
    * @param ctx context of property statement
    */
-  private void parseLoadFiles(
-      LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+  private void parseLoadFileAttributeClause(
+      LoadFilesOperator operator, IoTDBSqlParser.LoadFileAttributeClauseContext ctx) {
     if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else if (ctx.ONSUCCESS() != null) {
       operator.setDeleteAfterLoad(ctx.DELETE() != null);
-    }
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 
@@ -2724,13 +2714,28 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // alias
 
-  /** function for parsing Alias. */
+  /** function for parsing Alias of ResultColumn . */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
+    }
+    return alias;
+  }
+
+  /** function for parsing AliasNode. */
+  private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseConstant(ctx.constant());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
+      }
+    } else {
+      alias = parseNodeString(ctx.identifier().getText());
     }
     return alias;
   }

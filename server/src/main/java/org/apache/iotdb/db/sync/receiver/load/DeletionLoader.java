@@ -60,7 +60,7 @@ public class DeletionLoader implements ILoader {
       }
 
       Statement statement = generateStatement();
-      long queryId = SessionManager.getInstance().requestQueryId(false);
+      long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
               .execute(

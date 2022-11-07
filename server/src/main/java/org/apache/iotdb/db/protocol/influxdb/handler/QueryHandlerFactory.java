@@ -39,7 +39,7 @@ public class QueryHandlerFactory {
       }
       return new NewQueryHandler();
     } else {
-      return new QueryHandler();
+      throw new UnsupportedOperationException();
     }
   }
 }

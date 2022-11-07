@@ -161,12 +161,12 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 * data\_region\_consensus\_protocol\_class
 
-|名字| data\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|描述| 数据副本的共识协议，1 副本时可以使用 StandAloneConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
-|类型| String |
-|默认值| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|名字| data\_region\_consensus\_protocol\_class                                              |
+|:---:|:--------------------------------------------------------------------------------------|
+|描述| 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
+|类型| String                                                                                |
+|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus                                     |
+|改后生效方式| 仅允许在第一次启动服务前修改                                                                        |
 
 * schema\_replication\_factor
 
@@ -181,9 +181,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 |名字| schema\_region\_consensus\_protocol\_class |
 |:---:|:---|
-|描述| 元数据副本的共识协议，1 副本时可以使用 StandAloneConsensus 协议，多副本时只能使用 RatisConsensus |
+|描述| 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
 |类型| String |
-|默认值| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
+|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
 * region\_allocate\_strategy

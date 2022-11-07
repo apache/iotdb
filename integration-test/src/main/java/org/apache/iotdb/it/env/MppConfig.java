@@ -80,7 +80,8 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
+    engineProperties.setProperty(
+        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -264,15 +265,15 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
-        "partition_region_ratis_snapshot_trigger_threshold",
+        "config_node_ratis_snapshot_trigger_threshold",
         String.valueOf(ratisSnapshotTriggerThreshold));
     return this;
   }
 
   @Override
-  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
     confignodeProperties.setProperty(
-        "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));
+        "compaction_thread_count", String.valueOf(concurrentCompactionThread));
     return this;
   }
 
