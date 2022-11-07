@@ -203,7 +203,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       if (s.isQuery()) {
-        QueryStatistics.getInstance().addCost("Parser", System.nanoTime() - startTimeInNano);
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.PARSER, System.nanoTime() - startTimeInNano);
       }
 
       // permission check

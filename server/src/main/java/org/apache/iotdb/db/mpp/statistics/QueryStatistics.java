@@ -46,6 +46,14 @@ public class QueryStatistics {
 
   private final Map<String, OperationStatistic> operationStatistics = new ConcurrentHashMap<>();
 
+  public static final String PARSER = "Parser";
+  public static final String ANALYZER = "Analyzer";
+  public static final String SCHEMA_FETCHER = "SchemaFetcher";
+  public static final String PARTITION_FETCHER = "PartitionFetcher";
+  public static final String LOGICAL_PLANNER = "LogicalPlanner";
+  public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
+  public static final String DISPATCHER = "Dispatcher";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");

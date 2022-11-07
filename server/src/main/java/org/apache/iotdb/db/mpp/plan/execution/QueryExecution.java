@@ -288,7 +288,8 @@ public class QueryExecution implements IQueryExecution {
                 internalServiceClientManager);
     this.scheduler.start();
     if (rawStatement.isQuery()) {
-      QueryStatistics.getInstance().addCost("Dispatcher", System.nanoTime() - startTime);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.DISPATCHER, System.nanoTime() - startTime);
     }
   }
 

@@ -87,7 +87,8 @@ public class DistributionPlanner {
             logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
 
     if (analysis.getStatement().isQuery()) {
-      QueryStatistics.getInstance().addCost("DistributionPlanner", System.nanoTime() - startTime);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
     return distributedQueryPlan;
   }

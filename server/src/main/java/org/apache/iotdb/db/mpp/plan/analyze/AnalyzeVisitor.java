@@ -204,7 +204,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
-      QueryStatistics.getInstance().addCost("SchemaFetcher", System.nanoTime() - t1);
+      QueryStatistics.getInstance().addCost(QueryStatistics.SCHEMA_FETCHER, System.nanoTime() - t1);
 
       logger.debug("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -285,7 +285,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // fetch partition information
       long t2 = System.nanoTime();
       analyzeDataPartition(analysis, queryStatement, schemaTree);
-      QueryStatistics.getInstance().addCost("PartitionFetcher", System.nanoTime() - t2);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.PARTITION_FETCHER, System.nanoTime() - t2);
 
     } catch (StatementAnalyzeException e) {
       logger.error("Meet error when analyzing the query statement: ", e);

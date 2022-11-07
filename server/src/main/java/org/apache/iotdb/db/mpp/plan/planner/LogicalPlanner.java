@@ -44,7 +44,8 @@ public class LogicalPlanner {
 
     // optimize the query logical plan
     if (analysis.getStatement().isQuery()) {
-      QueryStatistics.getInstance().addCost("LogicalPlanner", System.nanoTime() - startTime);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.LOGICAL_PLANNER, System.nanoTime() - startTime);
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
