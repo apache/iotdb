@@ -50,7 +50,7 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 - 每个 `resultColumn` 定义查询结果中的一列或多列，它是一个由时间序列路径后缀、函数和运算符组成的表达式。
 - 支持使用`AS`为查询结果集中的列指定别名。
 - 在 `SELECT` 子句中使用 `LAST` 关键词可以指定查询为最新点查询，详细说明及示例见文档 [最新点查询](./Last-Query.md) 。
-- 详细说明及示例见文档 [SELECT 子句](./Select-Expression.md) 。
+- 详细说明及示例见文档 [选择表达式](./Select-Expression.md) 。
 
 ### `INTO` 子句
 
@@ -67,7 +67,7 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 - `WHERE` 子句指定了对数据行的筛选条件，由一个 `whereCondition` 组成。
 - `whereCondition` 是一个逻辑表达式，对于要选择的每一行，其计算结果为真。如果没有 `WHERE` 子句，将选择所有行。
 - 在 `whereCondition` 中，可以使用除聚合函数之外的任何 IOTDB 支持的函数和运算符。
-- 详细说明及示例见文档 [WHERE 子句](./Where-Condition.md) 。
+- 详细说明及示例见文档 [查询过滤条件](./Where-Condition.md) 。
 
 ### `GROUP BY` 子句
 
@@ -75,19 +75,19 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 - 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前仅支持**按时间区间分段**，未来将支持更多分段方式。
 - 分组聚合是指针对不同时间序列，在时间序列的潜在业务属性上分组，每个组包含若干条时间序列，每个组得到一个聚合值。支持**按路径层级分组**和**按序列标签分组**两种分组方式。
 - 分段聚合和分组聚合可以混合使用。
-- 详细说明及示例见文档 [GROUP BY 子句](./Group-By.md) 。
+- 详细说明及示例见文档 [分段分组聚合](./Group-By.md) 。
 
 ### `HAVING` 子句
 
 - `HAVING` 子句指定了对聚合结果的筛选条件，由一个 `havingCondition` 组成。
 - `havingCondition` 是一个逻辑表达式，对于要选择的聚合结果，其计算结果为真。如果没有 `HAVING` 子句，将选择所有聚合结果。
 - `HAVING` 要和聚合函数以及 `GROUP BY` 子句一起使用。
-- 详细说明及示例见文档 [HAVING 子句](./Having-Condition.md) 。
+- 详细说明及示例见文档 [聚合结果过滤](./Having-Condition.md) 。
 
 ### `FILL` 子句
 
 - `FILL` 子句用于指定数据缺失情况下的填充模式，允许用户按照特定的方法对任何查询的结果集填充空值。
-- 详细说明及示例见文档 [FILL 子句](./Fill.md) 。
+- 详细说明及示例见文档 [结果集补空值](./Fill.md) 。
 
 ### `ORDER BY` 子句
 
@@ -97,14 +97,17 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 ### `LIMIT` 和 `OFFSET` 子句
 
 - `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
+- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
 
 ### `SLIMIT` 和 `SOFFSET` 子句
 
 - `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列无效。
+- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
 
 ### `ALIGN BY` 子句
 
-- 查询结果集默认按照时间戳进行对齐，即以时间序列为列，每一行数据各列的时间戳相同。其他结果集对齐方式详见 [查询结果对齐格式](./Align-By.md) 。
+- 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
+- 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。详细说明及示例见文档 [按设备对齐查询](./Align-By.md) 。
 
 ## SQL 示例
 

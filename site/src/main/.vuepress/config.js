@@ -1853,11 +1853,13 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Query-Data/Overview.md','概述'],
-							['Query-Data/Select-Expression.md','SELECT 子句'],
-							['Query-Data/where-Condition.md','WHERE 子句'],
-							['Query-Data/Group-By.md','GROUP BY 子句'],
-							['Query-Data/Fill.md','FILL 子句'],
-							['Query-Data/Align-By.md','ALIGN BY 子句'],
+							['Query-Data/Select-Expression.md','选择表达式'],
+							['Query-Data/where-Condition.md','查询过滤条件'],
+							['Query-Data/Group-By.md','分段分组聚合'],
+							['Query-Data/Having-Condition.md','聚合结果过滤'],
+							['Query-Data/Pagination.md','查询结果分页'],
+							['Query-Data/Fill.md','结果集补空值'],
+							['Query-Data/Align-By.md','按设备对齐查询'],
 							['Query-Data/Last-Query.md','最新点查询']
 						]
 					},
