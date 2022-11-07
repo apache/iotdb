@@ -894,10 +894,13 @@ var config = {
 						]
 					},
 					{
-						title: 'Write Data',
+						title: 'Write Data (Update Data)',
 						sidebarDepth: 1,
 						children: [
-							['Write-Data/Write-Data','Write Data'],
+							['Write-Data/Write-Data','CLI Write'],
+							['Write-Data/Session','Native API Write'],
+							['Write-Data/REST-API','REST API'],
+							['Write-Data/MQTT','MQTT Write'],
 							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
 							['Write-Data/CSV-Tool','CSV Tool'],
 						]
@@ -931,6 +934,7 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
+							['Process-Data/Triggers','Triggers'],
 						]
 					},
 					{
@@ -938,7 +942,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Alert/Alerting','Alerting'],
-							['Alert/Triggers','Triggers'],
 						]
 					},
 					{
@@ -1826,10 +1829,13 @@ var config = {
 						]
 					},
 					{
-						title: '数据写入',
+						title: '数据写入（更新）',
 						sidebarDepth: 1,
 						children: [
-							['Write-Data/Write-Data','写入数据'],
+							['Write-Data/Write-Data','CLI 工具写入'],
+							['Write-Data/Session','原生接口写入'],
+							['Write-Data/REST-API','REST 服务'],
+							['Write-Data/MQTT','MQTT写入'],
 							['Write-Data/Load-External-Tsfile','加载 TsFile'],
 							['Write-Data/CSV-Tool','导入导出 CSV']
 						]
@@ -1862,6 +1868,7 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
 						]
 					},
 					{
@@ -1869,7 +1876,6 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Alert/Alerting','告警机制'],
-							['Alert/Triggers','触发器'],
 						]
 					},
 					{

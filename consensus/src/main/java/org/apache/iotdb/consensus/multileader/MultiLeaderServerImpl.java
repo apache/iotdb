@@ -167,6 +167,8 @@ public class MultiLeaderServerImpl {
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
               MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
               "getStateMachineLock",
               Tag.REGION.toString(),
@@ -199,6 +201,8 @@ public class MultiLeaderServerImpl {
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
               MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
               "checkingBeforeWrite",
               Tag.REGION.toString(),
@@ -219,6 +223,8 @@ public class MultiLeaderServerImpl {
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
               MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
               "writeStateMachine",
               Tag.REGION.toString(),
@@ -240,6 +246,8 @@ public class MultiLeaderServerImpl {
             .getOrCreateHistogram(
                 Metric.STAGE.toString(),
                 MetricLevel.CORE,
+                Tag.NAME.toString(),
+                Metric.MULTI_LEADER.toString(),
                 Tag.TYPE.toString(),
                 "offerRequestToQueue",
                 Tag.REGION.toString(),
@@ -257,6 +265,8 @@ public class MultiLeaderServerImpl {
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
               MetricLevel.CORE,
+              Tag.NAME.toString(),
+              Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
               "consensusWrite",
               Tag.REGION.toString(),

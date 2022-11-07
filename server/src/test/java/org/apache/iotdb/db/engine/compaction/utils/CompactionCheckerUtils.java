@@ -21,12 +21,14 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -101,6 +103,9 @@ public class CompactionCheckerUtils {
    */
   public static Map<String, List<TimeValuePair>> readFiles(List<TsFileResource> tsFileResources)
       throws IOException, IllegalPathException {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     Map<String, Map<Long, TimeValuePair>> mapResult = new HashMap<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
@@ -499,10 +504,10 @@ public class CompactionCheckerUtils {
       throws IllegalPathException, IOException {
     Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
+      FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
 
       PartialPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new LinkedList<>();

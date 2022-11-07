@@ -63,7 +63,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES, this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, this.targetConfigNode);
     }
     properties.setProperty("max_tsblock_size_in_bytes", "1024");
     properties.setProperty("page_size_in_byte", "1024");

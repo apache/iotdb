@@ -141,27 +141,11 @@ for /f "tokens=1* delims==" %%1 in ("%%a") do (
 @REM echo 1=%%1 "|||" 2=%%2
 if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%IOTDB_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
 if "%%1"=="-f" ( set foreground=yes)
-if "%%1"=="-b" ( set foreground=0)
+if "%%1"=="-d" ( set foreground=0)
 )
 set COMMANSLINE=%%b
 goto STR_VISTOR
 )
-
-@REM SETLOCAL DISABLEDELAYEDEXPANSION
-
-echo ````````````````````````
-echo Starting IoTDB
-echo ````````````````````````
-
-@REM ----------------------------------------------------------------------------
-@REM SOURCE iotdb-env.bat
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat" %1
-    ) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
-    )
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
-if NOT DEFINED JAVA_HOME goto :err
 
 @REM ----------------------------------------------------------------------------
 @REM START

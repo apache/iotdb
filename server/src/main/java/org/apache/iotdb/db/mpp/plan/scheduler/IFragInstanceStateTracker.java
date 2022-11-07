@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
+import java.util.List;
+
 public interface IFragInstanceStateTracker {
   void start();
 
   void abort();
+
+  List<TFragmentInstanceId> filterUnFinishedFIs(List<TFragmentInstanceId> instanceIds);
 }

@@ -119,6 +119,11 @@ struct TDataNodeConfigurationResp {
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
+}
+
 // StorageGroup
 struct TSetStorageGroupReq {
   1: required TStorageGroupSchema storageGroup
@@ -714,9 +719,12 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-  // Node Management TODO: @MarcosZyk add interface annotation
-  // ======================================================
+    // Node Management
+    // ======================================================
 
+  /**
+   * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
+   */
   TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   // ======================================================
@@ -914,6 +922,9 @@ service IConfigNodeRPCService {
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
 
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
+
   // ======================================================
   // Cluster Tools
   // ======================================================
@@ -944,27 +955,48 @@ service IConfigNodeRPCService {
   TRegionRouteMapResp getLatestRegionRouteMap()
 
   // ======================================================
-  // Template TODO: @MarcosZyk add interface annotation
+  // Template
   // ======================================================
 
+  /**
+   * Create schema template
+   */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
+  /**
+   * Get all schema template info and template set info for DataNode registeration
+   */
   TGetAllTemplatesResp getAllTemplates()
 
+  /**
+   * Get one schema template info
+   */
   TGetTemplateResp getTemplate(string req)
 
+  /**
+   * Set given schema template to given path
+   */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
+  /**
+   * Get paths setting given schema template
+   */
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  /**
+   * Deactivate schema template from paths matched by given pattern tree in cluster
+   */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
+  /**
+   * Unset schema template from given path
+   */
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
-     * Drop schema template
-     */
-    common.TSStatus dropSchemaTemplate(string req)
+   * Drop schema template
+   */
+  common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
