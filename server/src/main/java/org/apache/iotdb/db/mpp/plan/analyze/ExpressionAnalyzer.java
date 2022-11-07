@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -756,10 +755,7 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        throw new MeasurementNotExistException(
-            String.format(
-                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
-                measurement, devicePath));
+        return Collections.singletonList(new NullOperand());
       }
       return reconstructTimeSeriesOperands(noStarPaths);
     } else if (predicate instanceof TimestampOperand) {
@@ -838,7 +834,10 @@ public class ExpressionAnalyzer {
       Pair<Filter, Boolean> childResultPair =
           extractGlobalTimeFilter(
               ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
-      return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
+      if (childResultPair.left != null) {
+        return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
+      }
+      return new Pair<>(null, true);
     } else if (predicate.isCompareBinaryExpression()) {
       Filter timeInLeftFilter =
           constructTimeFilter(
