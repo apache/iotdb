@@ -322,8 +322,7 @@ public class IoTDBDescriptor {
     if (systemDir == null) {
       systemDir = properties.getProperty("base_dir");
       if (systemDir != null) {
-        systemDir =
-            FilePathUtils.regularizePath(systemDir.trim()) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
       } else {
         systemDir = conf.getSystemDir();
       }
@@ -336,27 +335,23 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()).trim());
+    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
 
-    conf.setDataDirs(
-        properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).trim().split(","));
+    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
-    conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()).trim());
+    conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
     int mlogBufferSize =
         Integer.parseInt(
-            properties
-                .getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize()))
-                .trim());
+            properties.getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
     if (mlogBufferSize > 0) {
       conf.setMlogBufferSize(mlogBufferSize);
     }
 
     long forceMlogPeriodInMs =
         Long.parseLong(
-            properties
-                .getProperty("sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs()))
-                .trim());
+            properties.getProperty(
+                "sync_mlog_period_in_ms", Long.toString(conf.getSyncMlogPeriodInMs())));
     if (forceMlogPeriodInMs > 0) {
       conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
     }
@@ -373,13 +368,12 @@ public class IoTDBDescriptor {
 
     conf.setBatchSize(
         Integer.parseInt(
-            properties.getProperty("batch_size", Integer.toString(conf.getBatchSize())).trim()));
+            properties.getProperty("batch_size", Integer.toString(conf.getBatchSize()))));
 
     conf.setEnableMemControl(
         (Boolean.parseBoolean(
-            properties
-                .getProperty("enable_mem_control", Boolean.toString(conf.isEnableMemControl()))
-                .trim())));
+            properties.getProperty(
+                "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
     logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
     long seqTsFileSize =
@@ -412,151 +406,114 @@ public class IoTDBDescriptor {
 
     conf.setTvListSortAlgorithm(
         TVListSortAlgorithm.valueOf(
-            properties
-                .getProperty("tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())
-                .trim()));
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "avg_series_point_number_threshold",
-                    Integer.toString(conf.getAvgSeriesPointNumberThreshold()))
-                .trim()));
+            properties.getProperty(
+                "avg_series_point_number_threshold",
+                Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "check_period_when_insert_blocked",
-                    Integer.toString(conf.getCheckPeriodWhenInsertBlocked()))
-                .trim()));
+            properties.getProperty(
+                "check_period_when_insert_blocked",
+                Integer.toString(conf.getCheckPeriodWhenInsertBlocked()))));
 
     conf.setMaxWaitingTimeWhenInsertBlocked(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_waiting_time_when_insert_blocked",
-                    Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))
-                .trim()));
+            properties.getProperty(
+                "max_waiting_time_when_insert_blocked",
+                Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "io_task_queue_size_for_flushing",
-                    Integer.toString(conf.getIoTaskQueueSizeForFlushing()))
-                .trim()));
+            properties.getProperty(
+                "io_task_queue_size_for_flushing",
+                Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "compaction_schedule_interval_in_ms",
-                    Long.toString(conf.getCompactionScheduleIntervalInMs()))
-                .trim()));
+            properties.getProperty(
+                "compaction_schedule_interval_in_ms",
+                Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
     conf.setCompactionSubmissionIntervalInMs(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "compaction_submission_interval_in_ms",
-                    Long.toString(conf.getCompactionSubmissionIntervalInMs()))
-                .trim()));
+            properties.getProperty(
+                "compaction_submission_interval_in_ms",
+                Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_cross_space_compaction",
-                    Boolean.toString(conf.isEnableCrossSpaceCompaction()))
-                .trim()));
+            properties.getProperty(
+                "enable_cross_space_compaction",
+                Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
 
     conf.setEnableSeqSpaceCompaction(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_seq_space_compaction",
-                    Boolean.toString(conf.isEnableSeqSpaceCompaction()))
-                .trim()));
+            properties.getProperty(
+                "enable_seq_space_compaction",
+                Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
 
     conf.setEnableUnseqSpaceCompaction(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_unseq_space_compaction",
-                    Boolean.toString(conf.isEnableUnseqSpaceCompaction()))
-                .trim()));
+            properties.getProperty(
+                "enable_unseq_space_compaction",
+                Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
     conf.setCrossCompactionSelector(
         CrossCompactionSelector.getCrossCompactionSelector(
-            properties
-                .getProperty("cross_selector", conf.getCrossCompactionSelector().toString())
-                .trim()));
+            properties.getProperty(
+                "cross_selector", conf.getCrossCompactionSelector().toString())));
 
     conf.setInnerSequenceCompactionSelector(
         InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
-            properties
-                .getProperty(
-                    "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())
-                .trim()));
+            properties.getProperty(
+                "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
 
     conf.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
-            properties
-                .getProperty(
-                    "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())
-                .trim()));
+            properties.getProperty(
+                "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
 
     conf.setInnerSeqCompactionPerformer(
         InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
-            properties
-                .getProperty(
-                    "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())
-                .trim()));
+            properties.getProperty(
+                "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
 
     conf.setInnerUnseqCompactionPerformer(
         InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
-            properties
-                .getProperty(
-                    "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())
-                .trim()));
+            properties.getProperty(
+                "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
 
     conf.setCrossCompactionPerformer(
         CrossCompactionPerformer.getCrossCompactionPerformer(
-            properties
-                .getProperty("cross_performer", conf.getCrossCompactionPerformer().toString())
-                .trim()));
+            properties.getProperty(
+                "cross_performer", conf.getCrossCompactionPerformer().toString())));
 
     conf.setCompactionPriority(
         CompactionPriority.valueOf(
-            properties
-                .getProperty("compaction_priority", conf.getCompactionPriority().toString())
-                .trim()));
+            properties.getProperty(
+                "compaction_priority", conf.getCompactionPriority().toString())));
 
     int subtaskNum =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "sub_compaction_thread_count", Integer.toString(conf.getSubCompactionTaskNum()))
-                .trim());
+            properties.getProperty(
+                "sub_compaction_thread_count", Integer.toString(conf.getSubCompactionTaskNum())));
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
 
     conf.setQueryTimeoutThreshold(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))
-                .trim()));
+            properties.getProperty(
+                "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "session_timeout_threshold",
-                    Integer.toString(conf.getSessionTimeoutThreshold()))
-                .trim()));
+            properties.getProperty(
+                "session_timeout_threshold", Integer.toString(conf.getSessionTimeoutThreshold()))));
     conf.setMaxNumberOfSyncFileRetry(
         Integer.parseInt(
             properties
@@ -565,50 +522,43 @@ public class IoTDBDescriptor {
                     Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                 .trim()));
 
-    conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()).trim());
+    conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
     conf.setFlushThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty("flush_thread_count", Integer.toString(conf.getFlushThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "flush_thread_count", Integer.toString(conf.getFlushThreadCount()))));
 
     if (conf.getFlushThreadCount() <= 0) {
       conf.setFlushThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     // start: index parameter setting
-    conf.setIndexRootFolder(
-        properties.getProperty("index_root_dir", conf.getIndexRootFolder()).trim());
+    conf.setIndexRootFolder(properties.getProperty("index_root_dir", conf.getIndexRootFolder()));
 
     conf.setEnableIndex(
         Boolean.parseBoolean(
-            properties.getProperty("enable_index", Boolean.toString(conf.isEnableIndex())).trim()));
+            properties.getProperty("enable_index", Boolean.toString(conf.isEnableIndex()))));
 
     conf.setConcurrentIndexBuildThread(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "concurrent_index_build_thread",
-                    Integer.toString(conf.getConcurrentIndexBuildThread()))
-                .trim()));
+            properties.getProperty(
+                "concurrent_index_build_thread",
+                Integer.toString(conf.getConcurrentIndexBuildThread()))));
     if (conf.getConcurrentIndexBuildThread() <= 0) {
       conf.setConcurrentIndexBuildThread(Runtime.getRuntime().availableProcessors());
     }
 
     conf.setDefaultIndexWindowRange(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "default_index_window_range",
-                    Integer.toString(conf.getDefaultIndexWindowRange()))
-                .trim()));
+            properties.getProperty(
+                "default_index_window_range",
+                Integer.toString(conf.getDefaultIndexWindowRange()))));
 
     conf.setQueryThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty("query_thread_count", Integer.toString(conf.getQueryThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "query_thread_count", Integer.toString(conf.getQueryThreadCount()))));
 
     if (conf.getQueryThreadCount() <= 0) {
       conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
@@ -616,11 +566,9 @@ public class IoTDBDescriptor {
 
     conf.setMaxAllowedConcurrentQueries(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_allowed_concurrent_queries",
-                    Integer.toString(conf.getMaxAllowedConcurrentQueries()))
-                .trim()));
+            properties.getProperty(
+                "max_allowed_concurrent_queries",
+                Integer.toString(conf.getMaxAllowedConcurrentQueries()))));
 
     if (conf.getMaxAllowedConcurrentQueries() <= 0) {
       conf.setMaxAllowedConcurrentQueries(1000);
@@ -628,10 +576,8 @@ public class IoTDBDescriptor {
 
     conf.setSubRawQueryThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
 
     if (conf.getSubRawQueryThreadCount() <= 0) {
       conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
@@ -639,11 +585,9 @@ public class IoTDBDescriptor {
 
     conf.setRawQueryBlockingQueueCapacity(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "raw_query_blocking_queue_capacity",
-                    Integer.toString(conf.getRawQueryBlockingQueueCapacity()))
-                .trim()));
+            properties.getProperty(
+                "raw_query_blocking_queue_capacity",
+                Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
     conf.setSchemaRegionDeviceNodeCacheSize(
         Integer.parseInt(
@@ -665,123 +609,92 @@ public class IoTDBDescriptor {
 
     if (properties.containsKey("chunk_buffer_pool_enable")) {
       conf.setChunkBufferPoolEnable(
-          Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable").trim()));
+          Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
 
     conf.setEnableExternalSort(
         Boolean.parseBoolean(
-            properties
-                .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))
-                .trim()));
+            properties.getProperty(
+                "enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
     conf.setExternalSortThreshold(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))
-                .trim()));
+            properties.getProperty(
+                "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
     conf.setUpgradeThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty("upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "cross_compaction_file_selection_time_budget",
-                    Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))
-                .trim()));
+            properties.getProperty(
+                "cross_compaction_file_selection_time_budget",
+                Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
     conf.setMergeIntervalSec(
         Long.parseLong(
-            properties
-                .getProperty("merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))
-                .trim()));
+            properties.getProperty(
+                "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
     conf.setCompactionThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))));
     conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
-            properties
-                .getProperty(
-                    "chunk_metadata_size_proportion",
-                    Double.toString(conf.getChunkMetadataSizeProportion()))
-                .trim()));
+            properties.getProperty(
+                "chunk_metadata_size_proportion",
+                Double.toString(conf.getChunkMetadataSizeProportion()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "target_compaction_file_size",
-                    Long.toString(conf.getTargetCompactionFileSize()))
-                .trim()));
+            properties.getProperty(
+                "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
     conf.setTargetChunkSize(
         Long.parseLong(
-            properties
-                .getProperty("target_chunk_size", Long.toString(conf.getTargetChunkSize()))
-                .trim()));
+            properties.getProperty("target_chunk_size", Long.toString(conf.getTargetChunkSize()))));
     conf.setTargetChunkPointNum(
         Long.parseLong(
-            properties
-                .getProperty("target_chunk_point_num", Long.toString(conf.getTargetChunkPointNum()))
-                .trim()));
+            properties.getProperty(
+                "target_chunk_point_num", Long.toString(conf.getTargetChunkPointNum()))));
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "chunk_size_lower_bound_in_compaction",
-                    Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))
-                .trim()));
+            properties.getProperty(
+                "chunk_size_lower_bound_in_compaction",
+                Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "chunk_size_lower_bound_in_compaction",
-                    Long.toString(conf.getChunkSizeLowerBoundInCompaction()))
-                .trim()));
+            properties.getProperty(
+                "chunk_size_lower_bound_in_compaction",
+                Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
     conf.setMaxInnerCompactionCandidateFileNum(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_inner_compaction_candidate_file_num",
-                    Integer.toString(conf.getMaxInnerCompactionCandidateFileNum()))
-                .trim()));
+            properties.getProperty(
+                "max_inner_compaction_candidate_file_num",
+                Integer.toString(conf.getMaxInnerCompactionCandidateFileNum()))));
     conf.setMaxCrossCompactionCandidateFileNum(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_cross_compaction_candidate_file_num",
-                    Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))
-                .trim()));
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_num",
+                Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
     conf.setMaxCrossCompactionCandidateFileSize(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "max_cross_compaction_candidate_file_size",
-                    Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))
-                .trim()));
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "compaction_write_throughput_mb_per_sec",
-                    Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))
-                .trim()));
+            properties.getProperty(
+                "compaction_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
-            properties
-                .getProperty("enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))
-                .trim()));
+            properties.getProperty(
+                "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
     int rpcSelectorThreadNum =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "rpc_selector_thread_count", Integer.toString(conf.getRpcSelectorThreadCount()))
-                .trim());
+            properties.getProperty(
+                "rpc_selector_thread_count",
+                Integer.toString(conf.getRpcSelectorThreadCount()).trim()));
     if (rpcSelectorThreadNum <= 0) {
       rpcSelectorThreadNum = 1;
     }
@@ -790,11 +703,9 @@ public class IoTDBDescriptor {
 
     int minConcurrentClientNum =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "rpc_min_concurrent_client_num",
-                    Integer.toString(conf.getRpcMinConcurrentClientNum()))
-                .trim());
+            properties.getProperty(
+                "rpc_min_concurrent_client_num",
+                Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
     if (minConcurrentClientNum <= 0) {
       minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
     }
@@ -803,11 +714,9 @@ public class IoTDBDescriptor {
 
     int maxConcurrentClientNum =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "rpc_max_concurrent_client_num",
-                    Integer.toString(conf.getRpcMaxConcurrentClientNum()))
-                .trim());
+            properties.getProperty(
+                "rpc_max_concurrent_client_num",
+                Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
     if (maxConcurrentClientNum <= 0) {
       maxConcurrentClientNum = 65535;
     }
@@ -816,94 +725,74 @@ public class IoTDBDescriptor {
 
     conf.setEnableWatermark(
         Boolean.parseBoolean(
-            properties
-                .getProperty("watermark_module_opened", Boolean.toString(conf.isEnableWatermark()))
-                .trim()));
+            properties.getProperty(
+                "watermark_module_opened", Boolean.toString(conf.isEnableWatermark()).trim())));
     conf.setWatermarkSecretKey(
-        properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()).trim());
+        properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
     conf.setWatermarkBitString(
-        properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()).trim());
-    conf.setWatermarkMethod(
-        properties.getProperty("watermark_method", conf.getWatermarkMethod()).trim());
+        properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
+    conf.setWatermarkMethod(properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
     loadAutoCreateSchemaProps(properties);
 
     conf.setTsFileStorageFs(
-        properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()).trim());
-    conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()).trim());
-    conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()).trim());
-    conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).trim().split(","));
-    conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()).trim());
-    conf.setDfsNameServices(
-        properties.getProperty("dfs_nameservices", conf.getDfsNameServices()).trim());
+        properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
+    conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
+    conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
+    conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
+    conf.setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
+    conf.setDfsNameServices(properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
     conf.setDfsHaNamenodes(
-        properties.getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes()).trim().split(","));
+        properties.getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes()).split(","));
     conf.setDfsHaAutomaticFailoverEnabled(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "dfs_ha_automatic_failover_enabled",
-                    String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))
-                .trim()));
+            properties.getProperty(
+                "dfs_ha_automatic_failover_enabled",
+                String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
     conf.setDfsClientFailoverProxyProvider(
-        properties
-            .getProperty(
-                "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider())
-            .trim());
+        properties.getProperty(
+            "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     conf.setUseKerberos(
         Boolean.parseBoolean(
-            properties
-                .getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))
-                .trim()));
+            properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
     conf.setKerberosKeytabFilePath(
-        properties
-            .getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath())
-            .trim());
+        properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
-        properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()).trim());
+        properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
     // the num of memtables in each storage group
     conf.setConcurrentWritingTimePartition(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "concurrent_writing_time_partition",
-                    String.valueOf(conf.getConcurrentWritingTimePartition()))
-                .trim()));
+            properties.getProperty(
+                "concurrent_writing_time_partition",
+                String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
     // the default fill interval in LinearFill and PreviousFill
     conf.setDefaultFillInterval(
         Integer.parseInt(
-            properties
-                .getProperty("default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))
-                .trim()));
+            properties.getProperty(
+                "default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))));
 
     conf.setTagAttributeTotalSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))
-                .trim()));
+            properties.getProperty(
+                "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))));
 
     conf.setTagAttributeFlushInterval(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "tag_attribute_flush_interval",
-                    String.valueOf(conf.getTagAttributeFlushInterval()))
-                .trim()));
+            properties.getProperty(
+                "tag_attribute_flush_interval",
+                String.valueOf(conf.getTagAttributeFlushInterval()))));
 
     conf.setPrimitiveArraySize(
         (Integer.parseInt(
-            properties
-                .getProperty("primitive_array_size", String.valueOf(conf.getPrimitiveArraySize()))
-                .trim())));
+            properties.getProperty(
+                "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
 
     conf.setThriftMaxFrameSize(
         Integer.parseInt(
-            properties
-                .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))
-                .trim()));
+            properties.getProperty(
+                "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
     if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
       conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
@@ -911,98 +800,74 @@ public class IoTDBDescriptor {
 
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))
-                .trim()));
+            properties.getProperty(
+                "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
     conf.setFrequencyIntervalInMinute(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "frequency_interval_in_minute",
-                    String.valueOf(conf.getFrequencyIntervalInMinute()))
-                .trim()));
+            properties.getProperty(
+                "frequency_interval_in_minute",
+                String.valueOf(conf.getFrequencyIntervalInMinute()))));
 
     conf.setSlowQueryThreshold(
         Long.parseLong(
-            properties
-                .getProperty("slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))
-                .trim()));
+            properties.getProperty(
+                "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
     conf.setDataRegionNum(
         Integer.parseInt(
-            properties
-                .getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))
-                .trim()));
+            properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
 
     conf.setRecoveryLogIntervalInMs(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "recovery_log_interval_in_ms",
-                    String.valueOf(conf.getRecoveryLogIntervalInMs()))
-                .trim()));
+            properties.getProperty(
+                "recovery_log_interval_in_ms", String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
     conf.setEnableDiscardOutOfOrderData(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_discard_out_of_order_data",
-                    Boolean.toString(conf.isEnableDiscardOutOfOrderData()))
-                .trim()));
+            properties.getProperty(
+                "enable_discard_out_of_order_data",
+                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
     conf.setWindowEvaluationThreadCount(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "window_evaluation_thread_count",
-                    Integer.toString(conf.getWindowEvaluationThreadCount()))
-                .trim()));
+            properties.getProperty(
+                "window_evaluation_thread_count",
+                Integer.toString(conf.getWindowEvaluationThreadCount()))));
     if (conf.getWindowEvaluationThreadCount() <= 0) {
       conf.setWindowEvaluationThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
     conf.setMaxPendingWindowEvaluationTasks(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_pending_window_evaluation_tasks",
-                    Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))
-                .trim()));
+            properties.getProperty(
+                "max_pending_window_evaluation_tasks",
+                Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))));
     if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
       conf.setMaxPendingWindowEvaluationTasks(64);
     }
 
     // id table related configuration
     conf.setDeviceIDTransformationMethod(
-        properties
-            .getProperty("device_id_transformation_method", conf.getDeviceIDTransformationMethod())
-            .trim());
+        properties.getProperty(
+            "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
 
     conf.setEnableIDTable(
         Boolean.parseBoolean(
-            properties
-                .getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))
-                .trim()));
+            properties.getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))));
 
     conf.setEnableIDTableLogFile(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))
-                .trim()));
+            properties.getProperty(
+                "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
 
     conf.setSchemaEngineMode(
-        properties
-            .getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode()))
-            .trim());
+        properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
 
     conf.setEnableLastCache(
         Boolean.parseBoolean(
-            properties
-                .getProperty("enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))
-                .trim()));
+            properties.getProperty(
+                "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
 
     if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
       conf.setEnableLastCache(false);
@@ -1010,158 +875,122 @@ public class IoTDBDescriptor {
 
     conf.setCachedMNodeSizeInSchemaFileMode(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "cached_mnode_size_in_schema_file_mode",
-                    String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))
-                .trim()));
+            properties.getProperty(
+                "cached_mnode_size_in_schema_file_mode",
+                String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
 
     conf.setMinimumSegmentInSchemaFile(
         Short.parseShort(
-            properties
-                .getProperty(
-                    "minimum_schema_file_segment_in_bytes",
-                    String.valueOf(conf.getMinimumSegmentInSchemaFile()))
-                .trim()));
+            properties.getProperty(
+                "minimum_schema_file_segment_in_bytes",
+                String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
 
     conf.setPageCacheSizeInSchemaFile(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "page_cache_in_schema_file",
-                    String.valueOf(conf.getPageCacheSizeInSchemaFile()))
-                .trim()));
+            properties.getProperty(
+                "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
 
     conf.setSchemaFileLogSize(
         Integer.parseInt(
-            properties
-                .getProperty("schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))
-                .trim()));
+            properties.getProperty(
+                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
     // mqtt
     loadMqttProps(properties);
 
     conf.setEnablePartition(
         Boolean.parseBoolean(
-            properties
-                .getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))
-                .trim()));
+            properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
 
     conf.setTimePartitionIntervalForStorage(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "time_partition_interval_for_storage",
-                    String.valueOf(conf.getTimePartitionIntervalForStorage()))
-                .trim()));
+            properties.getProperty(
+                "time_partition_interval_for_storage",
+                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
 
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "select_into_insert_tablet_plan_row_limit",
-                    String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))
-                .trim()));
+            properties.getProperty(
+                "select_into_insert_tablet_plan_row_limit",
+                String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "insert_multi_tablet_enable_multithreading_column_threshold",
-                    String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))
-                .trim()));
+            properties.getProperty(
+                "insert_multi_tablet_enable_multithreading_column_threshold",
+                String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()
         .setTSFileStorageFs(
             FSType.valueOf(
-                properties
-                    .getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())
-                    .trim()));
+                properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()).trim());
+        .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()).trim());
+        .setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).trim().split(","));
+        .setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()).trim());
+        .setHdfsPort(properties.getProperty("hdfs_port", conf.getHdfsPort()));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setDfsNameServices(
-            properties.getProperty("dfs_nameservices", conf.getDfsNameServices()).trim());
+        .setDfsNameServices(properties.getProperty("dfs_nameservices", conf.getDfsNameServices()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setDfsHaNamenodes(
-            properties
-                .getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes())
-                .trim()
-                .split(","));
+            properties.getProperty("dfs_ha_namenodes", conf.getRawDfsHaNamenodes()).split(","));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setDfsHaAutomaticFailoverEnabled(
             Boolean.parseBoolean(
-                properties
-                    .getProperty(
-                        "dfs_ha_automatic_failover_enabled",
-                        String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))
-                    .trim()));
+                properties.getProperty(
+                    "dfs_ha_automatic_failover_enabled",
+                    String.valueOf(conf.isDfsHaAutomaticFailoverEnabled()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setDfsClientFailoverProxyProvider(
-            properties
-                .getProperty(
-                    "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider())
-                .trim());
+            properties.getProperty(
+                "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setPatternMatchingThreshold(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "pattern_matching_threshold",
-                        String.valueOf(conf.getPatternMatchingThreshold()))
-                    .trim()));
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setUseKerberos(
             Boolean.parseBoolean(
-                properties
-                    .getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))
-                    .trim()));
+                properties.getProperty("hdfs_use_kerberos", String.valueOf(conf.isUseKerberos()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setKerberosKeytabFilePath(
-            properties
-                .getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath())
-                .trim());
+            properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setKerberosPrincipal(
-            properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()).trim());
+            properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
     conf.setCoordinatorReadExecutorSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "coordinator_read_executor_size",
-                    Integer.toString(conf.getCoordinatorReadExecutorSize()))
-                .trim()));
+            properties.getProperty(
+                "coordinator_read_executor_size",
+                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
     conf.setCoordinatorWriteExecutorSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "coordinator_write_executor_size",
-                    Integer.toString(conf.getCoordinatorWriteExecutorSize()))
-                .trim()));
+            properties.getProperty(
+                "coordinator_write_executor_size",
+                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
     // commons
     commonDescriptor.loadCommonProps(properties);
@@ -1206,15 +1035,12 @@ public class IoTDBDescriptor {
   private void loadAuthorCache(Properties properties) {
     conf.setAuthorCacheSize(
         Integer.parseInt(
-            properties
-                .getProperty("author_cache_size", String.valueOf(conf.getAuthorCacheSize()))
-                .trim()));
+            properties.getProperty(
+                "author_cache_size", String.valueOf(conf.getAuthorCacheSize()))));
     conf.setAuthorCacheExpireTime(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))
-                .trim()));
+            properties.getProperty(
+                "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
   // to keep consistent with the cluster module.
@@ -1246,42 +1072,36 @@ public class IoTDBDescriptor {
 
   private void loadWALProps(Properties properties) {
     conf.setWalMode(
-        WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()).trim())));
+        WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
     int maxWalNodesNum =
         Integer.parseInt(
-            properties
-                .getProperty("max_wal_nodes_num", Integer.toString(conf.getMaxWalNodesNum()))
-                .trim());
+            properties.getProperty(
+                "max_wal_nodes_num", Integer.toString(conf.getMaxWalNodesNum())));
     if (maxWalNodesNum > 0) {
       conf.setMaxWalNodesNum(maxWalNodesNum);
     }
 
     int walBufferSize =
         Integer.parseInt(
-            properties
-                .getProperty("wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize()))
-                .trim());
+            properties.getProperty(
+                "wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize())));
     if (walBufferSize > 0) {
       conf.setWalBufferSize(walBufferSize);
     }
 
     int walBufferEntrySize =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize()))
-                .trim());
+            properties.getProperty(
+                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
     if (walBufferEntrySize > 0) {
       conf.setWalBufferEntrySize(walBufferEntrySize);
     }
 
     int walBufferQueueCapacity =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "wal_buffer_queue_capacity", Integer.toString(conf.getWalBufferQueueCapacity()))
-                .trim());
+            properties.getProperty(
+                "wal_buffer_queue_capacity", Integer.toString(conf.getWalBufferQueueCapacity())));
     if (walBufferQueueCapacity > 0) {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
@@ -1292,86 +1112,71 @@ public class IoTDBDescriptor {
   private void loadWALHotModifiedProps(Properties properties) {
     long fsyncWalDelayInMs =
         Long.parseLong(
-            properties
-                .getProperty("fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs()))
-                .trim());
+            properties.getProperty(
+                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
     if (fsyncWalDelayInMs > 0) {
       conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
     }
 
     long walFileSizeThreshold =
         Long.parseLong(
-            properties
-                .getProperty(
-                    "wal_file_size_threshold_in_byte",
-                    Long.toString(conf.getWalFileSizeThresholdInByte()))
-                .trim());
+            properties.getProperty(
+                "wal_file_size_threshold_in_byte",
+                Long.toString(conf.getWalFileSizeThresholdInByte())));
     if (walFileSizeThreshold > 0) {
       conf.setWalFileSizeThresholdInByte(walFileSizeThreshold);
     }
 
     double walMinEffectiveInfoRatio =
         Double.parseDouble(
-            properties
-                .getProperty(
-                    "wal_min_effective_info_ratio",
-                    Double.toString(conf.getWalMinEffectiveInfoRatio()))
-                .trim());
+            properties.getProperty(
+                "wal_min_effective_info_ratio",
+                Double.toString(conf.getWalMinEffectiveInfoRatio())));
     if (walMinEffectiveInfoRatio > 0) {
       conf.setWalMinEffectiveInfoRatio(walMinEffectiveInfoRatio);
     }
 
     long walMemTableSnapshotThreshold =
         Long.parseLong(
-            properties
-                .getProperty(
-                    "wal_memtable_snapshot_threshold_in_byte",
-                    Long.toString(conf.getWalMemTableSnapshotThreshold()))
-                .trim());
+            properties.getProperty(
+                "wal_memtable_snapshot_threshold_in_byte",
+                Long.toString(conf.getWalMemTableSnapshotThreshold())));
     if (walMemTableSnapshotThreshold > 0) {
       conf.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
     }
 
     int maxWalMemTableSnapshotNum =
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_wal_memtable_snapshot_num",
-                    Integer.toString(conf.getMaxWalMemTableSnapshotNum()))
-                .trim());
+            properties.getProperty(
+                "max_wal_memtable_snapshot_num",
+                Integer.toString(conf.getMaxWalMemTableSnapshotNum())));
     if (maxWalMemTableSnapshotNum > 0) {
       conf.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
     }
 
     long deleteWalFilesPeriod =
         Long.parseLong(
-            properties
-                .getProperty(
-                    "delete_wal_files_period_in_ms",
-                    Long.toString(conf.getDeleteWalFilesPeriodInMs()))
-                .trim());
+            properties.getProperty(
+                "delete_wal_files_period_in_ms",
+                Long.toString(conf.getDeleteWalFilesPeriodInMs())));
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
     long throttleDownThresholdInByte =
         Long.parseLong(
-            properties
-                .getProperty(
-                    "multi_leader_throttle_threshold_in_byte",
-                    Long.toString(conf.getThrottleThreshold()))
-                .trim());
+            properties.getProperty(
+                "multi_leader_throttle_threshold_in_byte",
+                Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
 
     long cacheWindowInMs =
         Long.parseLong(
-            properties
-                .getProperty(
-                    "multi_leader_cache_window_time_in_ms",
-                    Long.toString(conf.getCacheWindowTimeInMs()))
-                .trim());
+            properties.getProperty(
+                "multi_leader_cache_window_time_in_ms",
+                Long.toString(conf.getCacheWindowTimeInMs())));
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
@@ -1380,69 +1185,51 @@ public class IoTDBDescriptor {
   private void loadAutoCreateSchemaProps(Properties properties) {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_auto_create_schema", Boolean.toString(conf.isAutoCreateSchemaEnabled()))
-                .trim()));
+            properties.getProperty(
+                "enable_auto_create_schema",
+                Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
     conf.setBooleanStringInferType(
         TSDataType.valueOf(
-            properties
-                .getProperty(
-                    "boolean_string_infer_type", conf.getBooleanStringInferType().toString())
-                .trim()));
+            properties.getProperty(
+                "boolean_string_infer_type", conf.getBooleanStringInferType().toString())));
     conf.setIntegerStringInferType(
         TSDataType.valueOf(
-            properties
-                .getProperty(
-                    "integer_string_infer_type", conf.getIntegerStringInferType().toString())
-                .trim()));
+            properties.getProperty(
+                "integer_string_infer_type", conf.getIntegerStringInferType().toString())));
     conf.setLongStringInferType(
         TSDataType.valueOf(
-            properties
-                .getProperty("long_string_infer_type", conf.getLongStringInferType().toString())
-                .trim()));
+            properties.getProperty(
+                "long_string_infer_type", conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(
-            properties
-                .getProperty(
-                    "floating_string_infer_type", conf.getFloatingStringInferType().toString())
-                .trim()));
+            properties.getProperty(
+                "floating_string_infer_type", conf.getFloatingStringInferType().toString())));
     conf.setNanStringInferType(
         TSDataType.valueOf(
-            properties
-                .getProperty("nan_string_infer_type", conf.getNanStringInferType().toString())
-                .trim()));
+            properties.getProperty(
+                "nan_string_infer_type", conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "default_storage_group_level",
-                    Integer.toString(conf.getDefaultStorageGroupLevel()))
-                .trim()));
+            properties.getProperty(
+                "default_storage_group_level",
+                Integer.toString(conf.getDefaultStorageGroupLevel()))));
     conf.setDefaultBooleanEncoding(
-        properties
-            .getProperty("default_boolean_encoding", conf.getDefaultBooleanEncoding().toString())
-            .trim());
+        properties.getProperty(
+            "default_boolean_encoding", conf.getDefaultBooleanEncoding().toString()));
     conf.setDefaultInt32Encoding(
-        properties
-            .getProperty("default_int32_encoding", conf.getDefaultInt32Encoding().toString())
-            .trim());
+        properties.getProperty(
+            "default_int32_encoding", conf.getDefaultInt32Encoding().toString()));
     conf.setDefaultInt64Encoding(
-        properties
-            .getProperty("default_int64_encoding", conf.getDefaultInt64Encoding().toString())
-            .trim());
+        properties.getProperty(
+            "default_int64_encoding", conf.getDefaultInt64Encoding().toString()));
     conf.setDefaultFloatEncoding(
-        properties
-            .getProperty("default_float_encoding", conf.getDefaultFloatEncoding().toString())
-            .trim());
+        properties.getProperty(
+            "default_float_encoding", conf.getDefaultFloatEncoding().toString()));
     conf.setDefaultDoubleEncoding(
-        properties
-            .getProperty("default_double_encoding", conf.getDefaultDoubleEncoding().toString())
-            .trim());
+        properties.getProperty(
+            "default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
     conf.setDefaultTextEncoding(
-        properties
-            .getProperty("default_text_encoding", conf.getDefaultTextEncoding().toString())
-            .trim());
+        properties.getProperty("default_text_encoding", conf.getDefaultTextEncoding().toString()));
   }
 
   private void loadTsFileProps(Properties properties) {
@@ -1450,22 +1237,18 @@ public class IoTDBDescriptor {
         .getConfig()
         .setGroupSizeInByte(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "group_size_in_byte",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))
-                    .trim()));
+                properties.getProperty(
+                    "group_size_in_byte",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setPageSizeInByte(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "page_size_in_byte",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))
-                    .trim()));
+                properties.getProperty(
+                    "page_size_in_byte",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()))));
     if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
         > TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()) {
       logger.warn("page_size is greater than group size, will set it as the same with group size");
@@ -1477,86 +1260,66 @@ public class IoTDBDescriptor {
         .getConfig()
         .setMaxNumberOfPointsInPage(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "max_number_of_points_in_page",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance()
-                                .getConfig()
-                                .getMaxNumberOfPointsInPage()))
-                    .trim()));
+                properties.getProperty(
+                    "max_number_of_points_in_page",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxStringLength(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "max_string_length",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))
-                    .trim()));
+                properties.getProperty(
+                    "max_string_length",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxStringLength()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setBloomFilterErrorRate(
             Double.parseDouble(
-                properties
-                    .getProperty(
-                        "bloom_filter_error_rate",
-                        Double.toString(
-                            TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate()))
-                    .trim()));
+                properties.getProperty(
+                    "bloom_filter_error_rate",
+                    Double.toString(
+                        TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setFloatPrecision(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "float_precision",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))
-                    .trim()));
+                properties.getProperty(
+                    "float_precision",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setTimeEncoder(
-            properties
-                .getProperty(
-                    "time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder())
-                .trim());
+            properties.getProperty(
+                "time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setValueEncoder(
-            properties
-                .getProperty(
-                    "value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder())
-                .trim());
+            properties.getProperty(
+                "value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setCompressor(
-            properties
-                .getProperty(
-                    "compressor",
-                    TSFileDescriptor.getInstance().getConfig().getCompressor().toString())
-                .trim());
+            properties.getProperty(
+                "compressor",
+                TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxDegreeOfIndexNode(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "max_degree_of_index_node",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))
-                    .trim()));
+                properties.getProperty(
+                    "max_degree_of_index_node",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockSizeInBytes(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "max_tsblock_size_in_bytes",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()))
-                    .trim()));
+                properties.getProperty(
+                    "max_tsblock_size_in_bytes",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()))));
 
     // min(default_size, maxBytesForQuery)
     TSFileDescriptor.getInstance()
@@ -1571,46 +1334,42 @@ public class IoTDBDescriptor {
         .getConfig()
         .setMaxTsBlockLineNumber(
             Integer.parseInt(
-                properties
-                    .getProperty(
-                        "max_tsblock_line_number",
-                        Integer.toString(
-                            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()))
-                    .trim()));
+                properties.getProperty(
+                    "max_tsblock_line_number",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()))));
   }
 
   // Mqtt related
   private void loadMqttProps(Properties properties) {
-    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()).trim());
+    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
 
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
-      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME).trim());
+      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
-      conf.setMqttPort(
-          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME).trim()));
+      conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
       conf.setMqttHandlerPoolSize(
-          Integer.parseInt(
-              properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME).trim()));
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
       conf.setMqttPayloadFormatter(
-          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME).trim());
+          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
     }
 
     if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
       conf.setEnableMQTTService(
-          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT).trim()));
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
       conf.setMqttMaxMessageSize(
-          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE).trim()));
+          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
     }
   }
 
@@ -1618,11 +1377,9 @@ public class IoTDBDescriptor {
   private void loadTimedService(Properties properties) {
     conf.setEnableTimedFlushSeqMemtable(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_timed_flush_seq_memtable",
-                    Boolean.toString(conf.isEnableTimedFlushSeqMemtable()))
-                .trim()));
+            properties.getProperty(
+                "enable_timed_flush_seq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushSeqMemtable()))));
 
     long seqMemTableFlushInterval =
         Long.parseLong(
@@ -1648,11 +1405,9 @@ public class IoTDBDescriptor {
 
     conf.setEnableTimedFlushUnseqMemtable(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_timed_flush_unseq_memtable",
-                    Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))
-                .trim()));
+            properties.getProperty(
+                "enable_timed_flush_unseq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
 
     long unseqMemTableFlushInterval =
         Long.parseLong(
@@ -1682,14 +1437,14 @@ public class IoTDBDescriptor {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.trim().split(","));
+        conf.reloadDataDirs(dataDirs.split(","));
       }
 
       // update dir strategy, must update after data dirs
       String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
-        conf.setMultiDirStrategyClassName(multiDirStrategyClassName.trim());
+        conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
         conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
@@ -1735,42 +1490,33 @@ public class IoTDBDescriptor {
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(
-              properties
-                  .getProperty(
-                      "max_deduplicated_path_num",
-                      Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))
-                  .trim()));
+              properties.getProperty(
+                  "max_deduplicated_path_num",
+                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
-              properties
-                  .getProperty(
-                      "frequency_interval_in_minute",
-                      Integer.toString(conf.getFrequencyIntervalInMinute()))
-                  .trim()));
+              properties.getProperty(
+                  "frequency_interval_in_minute",
+                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(
-              properties
-                  .getProperty("slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))
-                  .trim()));
+              properties.getProperty(
+                  "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
       conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
-              properties
-                  .getProperty(
-                      "merge_write_throughput_mb_per_sec",
-                      Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))
-                  .trim()));
+              properties.getProperty(
+                  "merge_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
-              properties
-                  .getProperty(
-                      "select_into_insert_tablet_plan_row_limit",
-                      String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))
-                  .trim()));
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
       // update sync config
       conf.setMaxNumberOfSyncFileRetry(
@@ -1780,16 +1526,14 @@ public class IoTDBDescriptor {
                       "max_number_of_sync_file_retry",
                       Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
-      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()).trim());
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       // update enable query memory estimation for memory control
       conf.setEnableQueryMemoryEstimation(
           Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_query_memory_estimation",
-                      Boolean.toString(conf.isEnableQueryMemoryEstimation()))
-                  .trim()));
+              properties.getProperty(
+                  "enable_query_memory_estimation",
+                  Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
@@ -1871,22 +1615,18 @@ public class IoTDBDescriptor {
 
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_deduplicated_path_num",
-                    Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))
-                .trim()));
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
     conf.setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_query_memory_estimation",
-                    Boolean.toString(conf.isEnableQueryMemoryEstimation()))
-                .trim()));
+            properties.getProperty(
+                "enable_query_memory_estimation",
+                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
     String queryMemoryAllocateProportion =
-        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion").trim();
+        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1937,8 +1677,7 @@ public class IoTDBDescriptor {
   }
 
   private void initStorageEngineAllocate(Properties properties) {
-    String allocationRatio =
-        properties.getProperty("storage_engine_memory_proportion", "8:2").trim();
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
     String[] proportions = allocationRatio.split(":");
     int proportionForMemTable = Integer.parseInt(proportions[0].trim());
     int proportionForCompaction = Integer.parseInt(proportions[1].trim());
@@ -2001,29 +1740,27 @@ public class IoTDBDescriptor {
         properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
       conf.setUdfInitialByteArrayLengthForMemoryControl(
-          Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
+          Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
 
-    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
+    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
 
     String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
       conf.setUdfMemoryBudgetInMB(
           (float)
-              Math.min(
-                  Float.parseFloat(memoryBudgetInMb.trim()),
-                  0.2 * conf.getAllocateMemoryForRead()));
+              Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
     }
 
     String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
     if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB.trim()));
+      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =
         properties.getProperty("udf_reader_transformer_collector_memory_proportion");
     if (readerTransformerCollectorMemoryProportion != null) {
-      String[] proportions = readerTransformerCollectorMemoryProportion.trim().split(":");
+      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
       int proportionSum = 0;
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
@@ -2046,112 +1783,89 @@ public class IoTDBDescriptor {
   }
 
   private void loadTriggerProps(Properties properties) {
-    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()).trim());
+    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
     conf.setTriggerTemporaryLibDir(
-        properties
-            .getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir())
-            .trim());
+        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
     conf.setRetryNumToFindStatefulTrigger(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "stateful_trigger_retry_num_when_not_found",
-                    Integer.toString(conf.getRetryNumToFindStatefulTrigger()))
-                .trim()));
+            properties.getProperty(
+                "stateful_trigger_retry_num_when_not_found",
+                Integer.toString(conf.getRetryNumToFindStatefulTrigger()))));
 
     int tlogBufferSize =
         Integer.parseInt(
-            properties
-                .getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize()))
-                .trim());
+            properties.getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize())));
     if (tlogBufferSize > 0) {
       conf.setTlogBufferSize(tlogBufferSize);
     }
 
     conf.setTriggerForwardMaxQueueNumber(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_max_queue_number",
-                    Integer.toString(conf.getTriggerForwardMaxQueueNumber()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_max_queue_number",
+                Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
     conf.setTriggerForwardMaxSizePerQueue(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_max_size_per_queue",
-                    Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_max_size_per_queue",
+                Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
     conf.setTriggerForwardBatchSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_batch_size",
-                    Integer.toString(conf.getTriggerForwardBatchSize()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_batch_size",
+                Integer.toString(conf.getTriggerForwardBatchSize()))));
     conf.setTriggerForwardHTTPPoolSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_http_pool_size",
-                    Integer.toString(conf.getTriggerForwardHTTPPoolSize()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_http_pool_size",
+                Integer.toString(conf.getTriggerForwardHTTPPoolSize()))));
     conf.setTriggerForwardHTTPPOOLMaxPerRoute(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_http_pool_max_per_route",
-                    Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_http_pool_max_per_route",
+                Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))));
     conf.setTriggerForwardMQTTPoolSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "trigger_forward_mqtt_pool_size",
-                    Integer.toString(conf.getTriggerForwardMQTTPoolSize()))
-                .trim()));
+            properties.getProperty(
+                "trigger_forward_mqtt_pool_size",
+                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
   private void loadCQProps(Properties properties) {
     conf.setContinuousQueryThreadNum(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "continuous_query_thread_num",
-                    Integer.toString(conf.getContinuousQueryThreadNum()))
-                .trim()));
+            properties.getProperty(
+                "continuous_query_thread_num",
+                Integer.toString(conf.getContinuousQueryThreadNum()))));
     if (conf.getContinuousQueryThreadNum() <= 0) {
       conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
     }
 
     conf.setMaxPendingContinuousQueryTasks(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_pending_continuous_query_tasks",
-                    Integer.toString(conf.getMaxPendingContinuousQueryTasks()))
-                .trim()));
+            properties.getProperty(
+                "max_pending_continuous_query_tasks",
+                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
     if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
       conf.setMaxPendingContinuousQueryTasks(64);
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
-            properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
+            properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 
     conf.setCqlogBufferSize(
         Integer.parseInt(
-            properties
-                .getProperty("cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))
-                .trim()));
+            properties.getProperty(
+                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   public void loadClusterProps(Properties properties) {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
     if (configNodeUrls != null) {
       try {
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls.trim()));
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
             "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
@@ -2159,83 +1873,62 @@ public class IoTDBDescriptor {
     }
 
     conf.setInternalAddress(
-        properties
-            .getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress())
-            .trim());
+        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))
-                .trim()));
+            properties.getProperty(
+                IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_data_region_consensus_port",
-                    Integer.toString(conf.getDataRegionConsensusPort()))
-                .trim()));
+            properties.getProperty(
+                "dn_data_region_consensus_port",
+                Integer.toString(conf.getDataRegionConsensusPort()))));
 
     conf.setSchemaRegionConsensusPort(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_schema_region_consensus_port",
-                    Integer.toString(conf.getSchemaRegionConsensusPort()))
-                .trim()));
+            properties.getProperty(
+                "dn_schema_region_consensus_port",
+                Integer.toString(conf.getSchemaRegionConsensusPort()))));
     conf.setJoinClusterRetryIntervalMs(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "dn_join_cluster_retry_interval_ms",
-                    Long.toString(conf.getJoinClusterRetryIntervalMs()))
-                .trim()));
+            properties.getProperty(
+                "dn_join_cluster_retry_interval_ms",
+                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
   }
 
   public void loadShuffleProps(Properties properties) {
     conf.setMppDataExchangePort(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))
-                .trim()));
+            properties.getProperty(
+                "dn_mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
     conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "mpp_data_exchange_core_pool_size",
-                    Integer.toString(conf.getMppDataExchangeCorePoolSize()))
-                .trim()));
+            properties.getProperty(
+                "mpp_data_exchange_core_pool_size",
+                Integer.toString(conf.getMppDataExchangeCorePoolSize()))));
     conf.setMppDataExchangeMaxPoolSize(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "mpp_data_exchange_max_pool_size",
-                    Integer.toString(conf.getMppDataExchangeMaxPoolSize()))
-                .trim()));
+            properties.getProperty(
+                "mpp_data_exchange_max_pool_size",
+                Integer.toString(conf.getMppDataExchangeMaxPoolSize()))));
     conf.setMppDataExchangeKeepAliveTimeInMs(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "mpp_data_exchange_keep_alive_time_in_ms",
-                    Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))
-                .trim()));
+            properties.getProperty(
+                "mpp_data_exchange_keep_alive_time_in_ms",
+                Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
     conf.setPartitionCacheSize(
         Integer.parseInt(
-            properties
-                .getProperty("partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))
-                .trim()));
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
 
     conf.setDriverTaskExecutionTimeSliceInMs(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "driver_task_execution_time_slice_in_ms",
-                    Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))
-                .trim()));
+            properties.getProperty(
+                "driver_task_execution_time_slice_in_ms",
+                Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
   /** Get default encode algorithm by data type */
