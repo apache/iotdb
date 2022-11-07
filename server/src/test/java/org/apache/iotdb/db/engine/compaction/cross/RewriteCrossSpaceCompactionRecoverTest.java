@@ -56,7 +56,8 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
   private final String oldThreadName = Thread.currentThread().getName();
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");

@@ -360,7 +360,7 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 ## 完整 Maven 项目示例
 
-如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目** udf-example**。您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/udf) 找到它。
+如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目**udf-example**。您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/udf) 找到它。
 
 ## UDF 注册
 
@@ -416,13 +416,9 @@ UDF 的使用方法与普通内建函数的类似。
 
 * `SLIMIT` / `SOFFSET`
 * `LIMIT` / `OFFSET`
-* `NON ALIGN`
 * 支持值过滤
 * 支持时间过滤
 
-### 对齐时间序列查询
-
-UDF 查询目前不支持对对齐时间序列(Aligned Timeseries)进行查询，当您在`SELECT`子句中选择的序列中包含对齐时间序列时，会提示错误。
 
 ### 带 * 查询
 
@@ -502,14 +498,14 @@ SHOW FUNCTIONS
 
 #### 源代码
 
-1. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin`或者它的子文件夹中创建 UDF 主类和相关的辅助类。
-2. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`中注册您编写的 UDF。
+1. 在`node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin`中创建 UDF 主类和相关的辅助类。
+2. 在`node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/BuiltinTimeSeriesGeneratingFunction.java`中注册您编写的 UDF。
 
 #### 测试用例
 
 您至少需要为您贡献的 UDF 编写集成测试。
 
-您可以在`server/src/test/java/org/apache/iotdb/db/integration`中为您贡献的 UDF 新增一个测试类进行测试。
+您可以在`integration-test/src/test/java/org/apache/iotdb/db/it/udf`中为您贡献的 UDF 新增一个测试类进行测试。
 
 #### 使用说明
 

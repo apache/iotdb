@@ -91,15 +91,15 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | thrift_active_threads | name="{{thriftThread}}"  | core      | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 1.3.3.2. Task
-| Metric                        | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
-| ----------------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                         | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count       | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max         | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum         | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
-| data_written_total            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written_total{name="compaction",type="total",} 10240                                     |
-| data_read_total               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read_total{name="compaction",} 10240                                                    |
-| compaction_task_count_total   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                       |
+| Metric                      | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| queue                       | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count     | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max       | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum       | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| data_written_total          | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written_total{name="compaction",type="total",} 10240                               |
+| data_read_total             | name="compaction"                                                             | important | The size of data read in compaction                      | data_read_total{name="compaction",} 10240                                               |
+| compaction_task_count_total | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                 |
 
 #### 1.3.3.3. Memory Usage
 
@@ -123,6 +123,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 1.3.3.6. Cluster
 
+##### The status of cluster
 | Metric                    | Tag                                                                | level     | Description                                                                                  | Sample                                                                       |
 | ------------------------- | ------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
@@ -135,6 +136,20 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
 | region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
 | slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+
+##### 1.3.3.6.2. MultiLeader
+| Metric       | Tag                                                                                          | level     | 说明                                                                          | 示例                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core      | The searchIndex and safeIndex of region in multiLeader                        | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | important | The currentSyncIndex of LogDispatcherThread of related region                 | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[7]",type="currentSyncIndex",} 1945.0        |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | important | The total size of queues that buffers requests in LogDispatcher               | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[9]",type="cachedRequestInMemoryQueue",} 0.0 |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | core      | The time consumed to get lock of statemachine in multiLeader                  | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | core      | The time consumed to check before write in multiLeader                        | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | core      | The time consumed to write consensus request into statemachine in multiLeader | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | core      | The time consumed to try to offer request into queue in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | core      | The total time consumed to write a consensus request in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | core      | The time consumed to construct batch in LogDispatcher per request             | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | core      | The time consumed to sync one request in multiLeader                          | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
 
 ### 1.3.4. IoTDB PreDefined Metrics Set
 
@@ -174,11 +189,11 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 ##### 1.3.4.1.4. Classes
 
-| Metric                             | Tag                                           | level     | Description                                                                               | Sample                                                                              |
-| ---------------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes       | None                                          | Important | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes 680.0                                            |
-| jvm_classes_loaded_classes         | None                                          | Important | The number of classes that are currently loaded in the Java virtual machine               | jvm_classes_loaded_classes 5975.0                                                   |
-| jvm_compilation_time_ms            | {compiler="HotSpot 64-Bit Tiered Compilers",} | Important | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
+| Metric                       | Tag                                           | level     | Description                                                                               | Sample                                                                        |
+| ---------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| jvm_classes_unloaded_classes | None                                          | Important | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes 680.0                                            |
+| jvm_classes_loaded_classes   | None                                          | Important | The number of classes that are currently loaded in the Java virtual machine               | jvm_classes_loaded_classes 5975.0                                             |
+| jvm_compilation_time_ms      | {compiler="HotSpot 64-Bit Tiered Compilers",} | Important | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
 #### 1.3.4.2. File
 
@@ -237,7 +252,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 ## 1.4. How to get these metrics？
 
-The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-metric.yml```, Currently, it also supports hot loading via `load configuration` after startup.
+The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-{datanode/confignode}-metric.yml```, Currently, it also supports hot loading via `load configuration` after startup.
 
 ### 1.4.1. Iotdb-metric.yml
 
@@ -269,13 +284,13 @@ ioTDBReporterConfig:
   username: root
   password: root
   maxConnectionNumber: 3
-  database: _metric
+  location: metric
   pushPeriodInSecond: 15
 ```
 
 Then you can get metrics data as follows
 
-1. Enable metrics switch in ```iotdb-metric.yml```
+1. Enable metrics switch in ```iotdb-{datanode/confignode}-metric.yml```
 2. You can just stay other config params as default.
 3. Start/Restart your IoTDB server/cluster
 4. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
@@ -372,70 +387,97 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
-   1. `The number of entity`: The number of entities, currently including the number of timeseries.
-   2. `write point per minute`: the cumulative number of write points per minute.
-   3. `storage group used memory`: The memory size used by each storage group.
+   1. `The number of entity`: The number of entities, currently including the number of timeseries
+   2. `write point per minute`: the cumulative number of write points per minute
+   3. `storage group used memory`: The memory size used by each storage group
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second
    2. `The time consumed of Interface`: The average time consumed by the system interface
-   3. `Cache hit rate`: Cache hit rate.
+   3. `Cache hit rate`: Cache hit rate
 3. `Engine`:
-   1. `Task number (pending and active)`: The number of tasks in different states in the system.
-   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system.
+   1. `Task number (pending and active)`: The number of tasks in different states in the system
+   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system
 4. `System`:
-   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq.
-   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq.
-   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC.
-   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
-   5. `Heap Memory`: The heap memory of IoTDB.
-   6. `Off-heap Memory`: The off-heap memory of IoTDB.
-   7. `The number of Java Thread`: The number of threads in different states of IoTDB.
+   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
+   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
+   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC
+   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC
+   5. `Heap Memory`: The heap memory of IoTDB
+   6. `Off-heap Memory`: The off-heap memory of IoTDB
+   7. `The number of Java Thread`: The number of threads in different states of IoTDB
 
 #### 1.4.3.3. Apache IoTDB ConfigNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
-   1. `Online ConfigNode`: the number of online ConfigNodes
-   2. `Online DataNode`: the number of online DataNodes
-   3. `Storage Group`: the number of storage groups
-   4. `TotalRegion`: The total number of Regions
-   5. `DataRegion`: The total number of DataRegions
-   6. `SchemaRegion`: The total number of SchemaRegions
-2. `Region`:
+   1. `Online ConfigNode`：The number of online confignode
+   2. `Registered ConfigNode`：The number of registered confignode
+   3. `Unknown ConfigNode`：The number of unknown confignode
+   4. `Online DataNode`：The number of online datanode
+   5. `Registered DataNode`：The number of registered datanode
+   6. `Unknown DataNode`：The number of unknown datanode
+   7. `TotalRegion`：The number of region
+   8. `DataRegion`：The number of data region
+   9. `SchemaRegion`：The number of schema region
+2. `Node Info`
+   1. `The status of cluster node`：The status of cluster node
+   2. `Leadership distribution`：The distribution of leaderShip
+3. `Region`:
    1. `Total Region in Node`: The total number of Regions in different Nodes
    2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
    3. `Region in Storage Group` (Normal level): The number of Regions in different storage groups, including SchemaRegion, DataRegion
    4. `Slot in Storage Group` (Normal level): The number of Slots in different storage groups, including the number of DataSlots and the number of SchemaSlots
-3. `System`:
+4. `System`:
    1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
    2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
    3. `Heap Memory`: The heap memory of IoTDB.
    4. `Off-heap Memory`: The off-heap memory of IoTDB.
    5. `The number of Java Thread`: The number of threads in different states of IoTDB.
    6. `The time consumed of Interface`: The average time consumed by the system interface
+   7. `CPU Load`：The load of cpu
+   8. `Memory`：The size of system memory and used system memory
 
 #### 1.4.3.4. Apache IoTDB DataNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
-   1. `The number of entity`: The number of entities, currently including the number of timeseries.
-   2. `write point per minute`: the cumulative number of write points per minute.
-   3. `storage group used memory`: The memory size used by each storage group.
+   1. `The number of entity`: The number of entities, currently including the number of timeseries
+   2. `write point per minute`: the cumulative number of write points per minute
+   3. `storage group used memory`: The memory size used by each storage group
+   4. `Memory`：The size of system memory and used system memory
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second
    2. `The time consumed of Interface`: The average time consumed by the system interface
-3. `Engine`:
-   1. `Task number (pending and active)`: The number of tasks in different states in the system.
-   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system.
    3. `Cache hit rate`: Cache hit rate
-4. `System`:
-   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq.
-   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq.
-   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC.
-   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
-   5. `Heap Memory`: The heap memory of IoTDB.
-   6. `Off-heap Memory`: The off-heap memory of IoTDB.
-   7. `The number of Java Thread`: The number of threads in different states of IoTDB.
+3. `Engine`:
+   1. `Task number (pending and active)`: The number of tasks in different states in the system
+   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system
+4. `MultiLeader`：
+   1. `MultiLeader Used Memory`：The size of the memory used by multiLeader consensus
+   2. `MultiLeader Sync Index`：the searchIndex and safeIndex of region
+   3. `MultiLeader Overview`：The total sync lag and total size of buffered requests of node
+   4. `The time consumed of different stages(50%)`：The median  of the time consumed of different stages
+   5. `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
+   6. `The time consumed of different stages(100%)`：The max of the time consumed of different stages
+   7. `MultiLeader Search Index Rate`：The increasing rate of searchIndex of region
+   8. `MultiLeader Safe Index Rate`：The increasing rate of safeIndex of region
+   9. `MultiLeader LogDispatcher Request Size`：The number of requests buffered in logDispatcher
+   10. `Sync Lag`：The sync lag of region
+   11. `Min Peer Sync Lag`：The sync lag between the searchIndex of multiLeaderServerImpl and the max currentSyncIndex of LogDispatcher
+   12. `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min currentSyncIndex of LogDispatcher
+5. `CPU`:
+   1. `CPU Load`：The load of CPU
+   2. `Process CPU Load`：The cpu load of iotdb process
+6. `File System`：
+   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
+   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
+   3. `Disk Space`：The total size and remaining size of the disk mounted by the current data directory
+7. `JVM`：
+   1. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC
+   2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC
+   3. `Heap Memory`: The heap memory of IoTDB
+   4. `Off-heap Memory`: The off-heap memory of IoTDB
+   5. `The number of Java Thread`: The number of threads in different states of IoTDB
 
 # 2. System Status Monitoring
 
@@ -452,13 +494,13 @@ This section describes how to use the JConsole ```Mbean```tab of jconsole to mon
 
 ## 4.1. Introduction
 
-To grasp the performance of iotdb, this module is added to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
+The performance monitoring module is used to monitor the time-consuming of each operation of IOTDB, so that users can better understand the overall performance of the database. The module counts the lower quartile, median, upper quartile, and maximum value for each operation. Current operations include `EXECUTE_BATCH`, `EXECUTE_ONE_SQL_IN_BATCH`, and `EXECUTE_QUERY`.
 
 ## 4.2. Configuration parameter
 
-location：conf/iotdb-datanode.properties
+- location
+  - datanode：conf/iotdb-datanode-metric.yml
+  - confignode：conf/iotdb-confignode-metric.yml
 
 <center>
 

@@ -121,7 +121,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
         if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
-          logger.warn(
+          logger.debug(
               "received ACK event but target FragmentInstance[{}] is not found.",
               e.getSourceFragmentInstanceId());
           return;
@@ -160,7 +160,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           // may
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
           // FragmentInstance may be finished, although the upstream is still working.
-          logger.warn(
+          logger.debug(
               "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
@@ -194,7 +194,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
                 .isFinished()) {
-          logger.warn(
+          logger.debug(
               "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
@@ -225,7 +225,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.warn("[ScHListenerAlreadyReleased]");
+        logger.debug("[ScHListenerAlreadyReleased]");
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -286,7 +286,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
       if (sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId()) == null) {
-        logger.warn("[RemoveNoSinkHandle]");
+        logger.debug("[RemoveNoSinkHandle]");
       } else {
         logger.debug("[RemoveSinkHandle]");
       }

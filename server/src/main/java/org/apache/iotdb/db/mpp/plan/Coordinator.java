@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -59,7 +60,10 @@ public class Coordinator {
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final Logger SLOW_SQL_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -135,7 +139,7 @@ public class Coordinator {
               queryContext,
               partitionFetcher,
               schemaFetcher,
-              timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold(),
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
               startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -168,13 +172,13 @@ public class Coordinator {
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
-        config.isClusterMode() ? config.getCoordinatorReadExecutorSize() : 1;
+        CONFIG.isClusterMode() ? CONFIG.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize = config.getCoordinatorWriteExecutorSize();
+    int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }
@@ -196,6 +200,15 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup();
         queryExecutionMap.remove(queryId);
+        if (queryExecution.isQuery()) {
+          long costTime = System.currentTimeMillis() - queryExecution.getStartExecutionTime();
+          if (costTime >= CONFIG.getSlowQueryThreshold()) {
+            SLOW_SQL_LOGGER.info(
+                "Cost: {} ms, sql is {}",
+                costTime,
+                queryExecution.getExecuteSQL().orElse("UNKNOWN"));
+          }
+        }
       }
     }
   }

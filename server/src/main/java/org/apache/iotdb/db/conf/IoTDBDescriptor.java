@@ -1841,7 +1841,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES);
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
@@ -1870,6 +1870,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_schema_region_consensus_port",
                 Integer.toString(conf.getSchemaRegionConsensusPort()))));
+    conf.setJoinClusterRetryIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_join_cluster_retry_interval_ms",
+                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
   }
 
   public void loadShuffleProps(Properties properties) {

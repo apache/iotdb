@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -132,7 +133,7 @@ public class TsFileIOWriterMemoryControlTest {
               writer.chunkGroupMetadataList,
               writer.endPosInCMTForDevice);
       for (int i = 0; iterator.hasNext(); ++i) {
-        Pair<String, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
+        Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
         TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
         Assert.assertEquals(sortedSeriesId.get(i % 5), timeseriesMetadata.getMeasurementId());
         Assert.assertEquals(
@@ -169,8 +170,8 @@ public class TsFileIOWriterMemoryControlTest {
           TSMIterator.getTSMIteratorInDisk(
               writer.chunkMetadataTempFile, new ArrayList<>(), writer.endPosInCMTForDevice);
       for (int i = 0; iterator.hasNext(); ++i) {
-        Pair<String, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
-        String fullPath = timeseriesMetadataPair.left;
+        Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
+        String fullPath = timeseriesMetadataPair.left.getFullPath();
         TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
         Assert.assertEquals(measurementIds.get(i), fullPath);
         Assert.assertEquals(
@@ -233,8 +234,8 @@ public class TsFileIOWriterMemoryControlTest {
           TSMIterator.getTSMIteratorInDisk(
               writer.chunkMetadataTempFile, new ArrayList<>(), writer.endPosInCMTForDevice);
       for (int i = 0; i < originChunkMetadataList.size(); ++i) {
-        Pair<String, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
-        Assert.assertEquals(seriesIds.get(i), timeseriesMetadataPair.left);
+        Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = iterator.next();
+        Assert.assertEquals(seriesIds.get(i), timeseriesMetadataPair.left.getFullPath());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getDataType(),
             timeseriesMetadataPair.right.getTSDataType());

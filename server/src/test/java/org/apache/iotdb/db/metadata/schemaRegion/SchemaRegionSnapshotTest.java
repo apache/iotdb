@@ -67,7 +67,7 @@ public class SchemaRegionSnapshotTest {
 
     config.setMppMode(true);
     config.setClusterMode(true);
-    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     config.setAllocateMemoryForSchemaRegion(1024 * 1024 * 1024);
     EnvironmentUtils.envSetUp();
   }

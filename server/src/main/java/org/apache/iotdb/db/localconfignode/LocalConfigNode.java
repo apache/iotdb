@@ -1212,7 +1212,7 @@ public class LocalConfigNode {
         continue;
       }
       for (PartialPath path : authorStatement.getNodeNameList()) {
-        if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
           rolePrivilegeSet.add(pathPrivilege.toString());
         }
       }
@@ -1251,7 +1251,7 @@ public class LocalConfigNode {
           continue;
         }
         for (PartialPath path : authorStatement.getNodeNameList()) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
               && !userPrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add("");
             userPrivilegeSet.add(pathPrivilege.toString());
@@ -1273,7 +1273,7 @@ public class LocalConfigNode {
             continue;
           }
           for (PartialPath path : authorStatement.getNodeNameList()) {
-            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
                 && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
               rolePrivileges.add(roleN);
               rolePrivilegeSet.add(pathPrivilege.toString());

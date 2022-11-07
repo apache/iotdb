@@ -35,17 +35,21 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest ]
+        include:
+          - java: 8
+            os: macos-latest
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
+          distribution: liberica
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -55,4 +59,4 @@ jobs:
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean test -Dtest.port.closed=true -P '!testcontainer'
+        run: mvn -B clean test -Dtest.port.closed=true -P '!testcontainer' -P compile-library-udf

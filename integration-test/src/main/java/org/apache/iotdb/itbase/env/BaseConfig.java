@@ -215,7 +215,7 @@ public interface BaseConfig {
   }
 
   default String getConfigNodeConsesusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaRegionConsensusProtocolClass(
@@ -224,7 +224,7 @@ public interface BaseConfig {
   }
 
   default String getSchemaRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
@@ -232,7 +232,7 @@ public interface BaseConfig {
   }
 
   default String getDataRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
