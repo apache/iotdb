@@ -35,19 +35,7 @@ public interface ChunkData extends TsFileData {
 
   TTimePartitionSlot getTimePartitionSlot();
 
-  void addDataSize(long pageSize);
-
-  void setNotDecode(IChunkMetadata chunkMetadata);
-
   void setNotDecode();
-
-  boolean needDecodeChunk();
-
-  void setHeadPageNeedDecode(boolean headPageNeedDecode);
-
-  void setTailPageNeedDecode(boolean tailPageNeedDecode);
-
-  void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
 
   boolean isAligned();
 
@@ -67,13 +55,6 @@ public interface ChunkData extends TsFileData {
     return isAligned
         ? AlignedChunkData.deserialize(stream)
         : NonAlignedChunkData.deserialize(stream);
-  }
-
-  static ChunkData createChunkData(
-      boolean isAligned, long offset, String device, ChunkHeader chunkHeader) {
-    return isAligned
-        ? new AlignedChunkData(offset, device, chunkHeader)
-        : new NonAlignedChunkData(offset, device, chunkHeader);
   }
 
   static ChunkData createChunkData(

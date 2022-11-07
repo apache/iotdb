@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -35,8 +34,6 @@ public interface TsFileData {
   void writeToFileWriter(TsFileIOWriter writer) throws IOException;
 
   boolean isModification();
-
-  void serialize(DataOutputStream stream, File tsFile) throws IOException;
 
   void serialize(DataOutputStream stream) throws IOException;
 

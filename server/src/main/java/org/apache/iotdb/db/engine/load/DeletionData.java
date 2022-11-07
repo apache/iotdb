@@ -60,12 +60,6 @@ public class DeletionData implements TsFileData {
   }
 
   @Override
-  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
-    ReadWriteIOUtils.write(isModification(), stream);
-    deletion.serializeWithoutFileOffset(stream);
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(isModification(), stream);
     deletion.serializeWithoutFileOffset(stream);
