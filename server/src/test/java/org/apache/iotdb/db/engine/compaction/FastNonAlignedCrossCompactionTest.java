@@ -78,7 +78,8 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
