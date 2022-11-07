@@ -280,7 +280,12 @@ public class RegionMigrateService implements IService {
         } catch (Throwable e) {
           addPeerSucceed = false;
           taskLogger.error(
-              "{}, Add new peer {} for region {} error, retry times: {}", REMOVE_DATANODE_PROCESS, newPeerNode, regionId, i, e);
+              "{}, Add new peer {} for region {} error, retry times: {}",
+              REMOVE_DATANODE_PROCESS,
+              newPeerNode,
+              regionId,
+              i,
+              e);
           status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
           status.setMessage(
               String.format(
@@ -293,7 +298,11 @@ public class RegionMigrateService implements IService {
       }
       if (!addPeerSucceed || resp == null || !resp.isSuccess()) {
         taskLogger.error(
-            "{}, Add new peer {} for region {} failed, resp: {}", REMOVE_DATANODE_PROCESS, newPeerNode, regionId, resp);
+            "{}, Add new peer {} for region {} failed, resp: {}",
+            REMOVE_DATANODE_PROCESS,
+            newPeerNode,
+            regionId,
+            resp);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(
             String.format(
@@ -302,7 +311,11 @@ public class RegionMigrateService implements IService {
         return status;
       }
 
-      taskLogger.info("{}, Succeed to add peer {} for region {}", REMOVE_DATANODE_PROCESS, newPeerNode, regionId);
+      taskLogger.info(
+          "{}, Succeed to add peer {} for region {}",
+          REMOVE_DATANODE_PROCESS,
+          newPeerNode,
+          regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("add peer " + newPeerNode + " for region " + regionId + " succeed");
       return status;
