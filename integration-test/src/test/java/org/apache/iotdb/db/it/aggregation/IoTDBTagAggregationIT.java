@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.aggregation;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
@@ -28,6 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,6 +42,7 @@ import java.util.Set;
 
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBTagAggregationIT {
   private static final String[] DATASET =
@@ -506,6 +509,22 @@ public class IoTDBTagAggregationIT {
     } catch (SQLException e) {
       Assert.assertTrue(
           e.getMessage().contains("Only time filters are supported in GROUP BY TAGS query"));
+    }
+  }
+
+  @Test
+  public void testWithHaving() {
+    String query =
+        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) HAVING COUNT(t) > 3";
+    // Having is not supported yet
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet ignored = statement.executeQuery(query)) {
+        Assert.fail();
+      }
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Having clause is not supported yet in GROUP BY TAGS query"));
     }
   }
 }

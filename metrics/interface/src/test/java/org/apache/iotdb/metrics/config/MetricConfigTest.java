@@ -56,7 +56,6 @@ public class MetricConfigTest {
     assertEquals(3, metricConfig.getMetricReporterList().size());
     assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
-    assertEquals(5, metricConfig.getPredefinedMetrics().size());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
 
@@ -66,7 +65,7 @@ public class MetricConfigTest {
     assertEquals("user", reporterConfig.getUsername());
     assertEquals("password", reporterConfig.getPassword());
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
-    assertEquals("metric", reporterConfig.getDatabase());
+    assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
   }
 }

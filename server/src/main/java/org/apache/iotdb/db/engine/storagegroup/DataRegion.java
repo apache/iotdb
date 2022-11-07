@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -87,7 +88,6 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
@@ -315,7 +315,7 @@ public class DataRegion {
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
         && !StorageEngineV2.getInstance().isAllSgReady()) {
       logger.debug(
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
@@ -1778,10 +1778,11 @@ public class DataRegion {
         resource.remove();
         tsFileManager.remove(resource, isSeq);
         logger.info(
-            "Removed a file {} before {} by ttl ({}ms)",
+            "Removed a file {} before {} by ttl ({} {})",
             resource.getTsFilePath(),
             new Date(ttlLowerBound),
-            dataTTL);
+            dataTTL,
+            config.getTimestampPrecision());
       } finally {
         resource.writeUnlock();
       }
@@ -3075,9 +3076,10 @@ public class DataRegion {
           return false;
         }
         if (insertPos == -1) {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, 0);
+          tsFileManager.insertToPartitionFileList(tsFileResource, filePartitionId, true, 0);
         } else {
-          tsFileManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
+          tsFileManager.insertToPartitionFileList(
+              tsFileResource, filePartitionId, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
@@ -3155,15 +3157,13 @@ public class DataRegion {
       } catch (IOException e) {
         logger.error(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
-            resourceFileToLoad.getAbsolutePath(),
+            modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),
             e);
         throw new LoadFileException(
             String.format(
                 "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                resourceFileToLoad.getAbsolutePath(),
-                targetModFile.getAbsolutePath(),
-                e.getMessage()));
+                modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
       } finally {
         // ModFile will be updated during the next call to `getModFile`
         tsFileResource.setModFile(null);
@@ -3767,6 +3767,10 @@ public class DataRegion {
     return new ArrayList<>(partitionMaxFileVersions.keySet());
   }
 
+  public Long getLatestTimePartition() {
+    return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
+  }
+
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
   }
@@ -3783,7 +3787,7 @@ public class DataRegion {
   public IWALNode getWALNode() {
     if (!config
         .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

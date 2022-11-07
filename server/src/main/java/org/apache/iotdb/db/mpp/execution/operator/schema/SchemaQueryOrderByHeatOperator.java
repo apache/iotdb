@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,14 +35,15 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static java.util.Objects.requireNonNull;
 
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private boolean isFinished = false;
   private final List<Operator> operators;
   private final List<TsBlock> showTimeSeriesResult;
   private final List<TsBlock> lastQueryResult;
@@ -51,7 +51,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final List<TSDataType> outputDataTypes;
   private final int columnCount;
 
-  private int currentIndex;
+  private final boolean[] noMoreTsBlocks;
+  private List<TsBlock> resultTsBlockList;
+  private int currentIndex = 0;
 
   public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> operators) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
@@ -64,15 +66,54 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
             .collect(Collectors.toList());
     this.columnCount = outputDataTypes.size();
 
-    currentIndex = 0;
+    noMoreTsBlocks = new boolean[operators.size()];
   }
 
   @Override
   public TsBlock next() {
-    isFinished = true;
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    if (resultTsBlockList != null) {
+      currentIndex++;
+      return resultTsBlockList.get(currentIndex - 1);
+    }
 
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    boolean allChildrenReady = true;
+    Operator operator;
+    for (int i = 0; i < operators.size(); i++) {
+      if (!noMoreTsBlocks[i]) {
+        operator = operators.get(i);
+        if (operator.isFinished()) {
+          noMoreTsBlocks[i] = true;
+        } else {
+          if (operator.hasNext()) {
+            TsBlock tsBlock = operator.next();
+            if (null != tsBlock && !tsBlock.isEmpty()) {
+              if (isShowTimeSeriesBlock(tsBlock)) {
+                showTimeSeriesResult.add(tsBlock);
+              } else {
+                lastQueryResult.add(tsBlock);
+              }
+            }
+          }
+        }
+      }
+      if (!noMoreTsBlocks[i]) {
+        allChildrenReady = false;
+      }
+    }
 
+    if (allChildrenReady) {
+      generateResultTsBlockList();
+      currentIndex++;
+      return resultTsBlockList.get(currentIndex - 1);
+    } else {
+      return null;
+    }
+  }
+
+  private void generateResultTsBlockList() {
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
     for (TsBlock tsBlock : lastQueryResult) {
@@ -103,23 +144,25 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     timestamps.sort(Comparator.reverseOrder());
 
     // Step 4: generate result
-    for (Long time : timestamps) {
-      List<Object[]> rows = lastTimestampToTsSchema.get(time);
-      for (Object[] row : rows) {
-        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-        for (int i = 0; i < columnCount; i++) {
-          Object value = row[i];
-          if (null == value) {
-            tsBlockBuilder.getColumnBuilder(i).appendNull();
-          } else {
-            tsBlockBuilder.getColumnBuilder(i).writeBinary(new Binary(value.toString()));
-          }
-        }
-        tsBlockBuilder.declarePosition();
-      }
-    }
-
-    return tsBlockBuilder.build();
+    this.resultTsBlockList =
+        SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+            timestamps.iterator(),
+            outputDataTypes,
+            (time, tsBlockBuilder) -> {
+              List<Object[]> rows = lastTimestampToTsSchema.get(time);
+              for (Object[] row : rows) {
+                tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+                for (int i = 0; i < columnCount; i++) {
+                  Object value = row[i];
+                  if (null == value) {
+                    tsBlockBuilder.getColumnBuilder(i).appendNull();
+                  } else {
+                    tsBlockBuilder.getColumnBuilder(i).writeBinary(new Binary(value.toString()));
+                  }
+                }
+                tsBlockBuilder.declarePosition();
+              }
+            });
   }
 
   @Override
@@ -129,41 +172,17 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    Operator operator;
-    ListenableFuture<?> blocked;
-    while (currentIndex < operators.size()) {
-      operator = operators.get(currentIndex);
-      blocked = readCurrentChild(operator);
-      if (blocked != null) {
-        // not null means blocked
-        return blocked;
-      } else {
-        // null means current operator is finished
-        currentIndex++;
+    List<ListenableFuture<?>> listenableFutureList = new ArrayList<>(operators.size());
+    for (int i = 0; i < operators.size(); i++) {
+      if (noMoreTsBlocks[i]) {
+        continue;
+      }
+      ListenableFuture<?> isBlocked = operators.get(i).isBlocked();
+      if (!isBlocked.isDone()) {
+        listenableFutureList.add(isBlocked);
       }
     }
-
-    return NOT_BLOCKED;
-  }
-
-  private ListenableFuture<?> readCurrentChild(Operator operator) {
-    while (!operator.isFinished()) {
-      ListenableFuture<?> blocked = operator.isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
-      }
-      if (operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (null != tsBlock && !tsBlock.isEmpty()) {
-          if (isShowTimeSeriesBlock(tsBlock)) {
-            showTimeSeriesResult.add(tsBlock);
-          } else {
-            lastQueryResult.add(tsBlock);
-          }
-        }
-      }
-    }
-    return null;
+    return listenableFutureList.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutureList);
   }
 
   private boolean isShowTimeSeriesBlock(TsBlock tsBlock) {
@@ -172,7 +191,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return !isFinished;
+    return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
   @Override
@@ -184,7 +203,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return isFinished;
+    return !hasNext();
   }
 
   @Override

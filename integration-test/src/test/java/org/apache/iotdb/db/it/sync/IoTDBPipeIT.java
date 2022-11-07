@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.it.sync;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -42,6 +44,13 @@ import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 public class IoTDBPipeIT {
   private static String ip;
   private static int port;
+  private static final String SHOW_PIPE_HEADER =
+      StringUtils.join(
+              ColumnHeaderConstant.showPipeColumnHeaders.stream()
+                  .map(ColumnHeader::getColumnName)
+                  .toArray(),
+              ",")
+          + ",";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -65,49 +74,94 @@ public class IoTDBPipeIT {
   public void testOperatePipe() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+
+      try {
+        // check exception1: PIPESINK not exist
+        statement.execute("CREATE PIPE p to demo;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo] does not exist"));
+      }
+
       statement.execute(
           String.format("CREATE PIPESINK demo AS IoTDB (ip='%s',port='%d');", ip, port));
-      statement.execute("CREATE PIPE p to demo;");
-      String expectedHeader =
-          ColumnHeaderConstant.COLUMN_PIPE_CREATE_TIME
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_NAME
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_ROLE
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_REMOTE
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_STATUS
-              + ","
-              + ColumnHeaderConstant.COLUMN_PIPE_MESSAGE
-              + ",";
-
-      String createTime = getCreateTime("p");
+      statement.execute(
+          "CREATE PIPE p1 to demo FROM (select ** from root where time>=1648569600000) WITH SyncDelOp=false;");
+      statement.execute("CREATE PIPE p2 to demo WITH SyncDelOp=true;");
+      try {
+        // check exception2: PIPE already exist
+        statement.execute("CREATE PIPE p2 to demo;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p2] is STOP, please retry after drop it"));
+      }
+      // check pipe operation
+      String createTime1 = getCreateTime(statement, "p1");
+      String createTime2 = getCreateTime(statement, "p2");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,STOP,NORMAL,", createTime)};
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+            new String[] {
+              String.format(
+                  "%s,p1,sender,demo,STOP,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  createTime1),
+              String.format(
+                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
+            };
+        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
-      statement.execute("START PIPE p;");
+      statement.execute("START PIPE p1;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
             new String[] {
               // there is no data now, so no connection in receiver
-              String.format("%s,p,sender,demo,RUNNING,NORMAL,", createTime),
+              String.format(
+                  "%s,p1,sender,demo,RUNNING,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  createTime1),
+              String.format(
+                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
             };
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
-      statement.execute("STOP PIPE p;");
+      try {
+        statement.execute("START PIPE p3;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p3] does not exist"));
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW PIPE p1")) {
+        String[] expectedRetSet =
+            new String[] {
+              String.format(
+                  "%s,p1,sender,demo,RUNNING,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  createTime1)
+            };
+        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
+      }
+      statement.execute("STOP PIPE p1;");
+      statement.execute("STOP PIPE p2;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,STOP,NORMAL,", createTime)};
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+            new String[] {
+              String.format(
+                  "%s,p1,sender,demo,STOP,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  createTime1),
+              String.format(
+                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
+            };
+        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
-      statement.execute("DROP PIPE p;");
+      try {
+        statement.execute("STOP PIPE p3;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p3] does not exist"));
+      }
+      statement.execute("DROP PIPE p1;");
+      statement.execute("DROP PIPE p2;");
+      statement.execute("DROP PIPE p3;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
-        String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,DROP,NORMAL,", createTime)};
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        String[] expectedRetSet = new String[] {};
+        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -115,14 +169,11 @@ public class IoTDBPipeIT {
     }
   }
 
-  private String getCreateTime(String pipeName) throws Exception {
+  private String getCreateTime(Statement statement, String pipeName) throws Exception {
     String createTime = "";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SHOW PIPE " + pipeName)) {
-        Assert.assertTrue(resultSet.next());
-        createTime = resultSet.getString(1);
-      }
+    try (ResultSet resultSet = statement.executeQuery("SHOW PIPE " + pipeName)) {
+      Assert.assertTrue(resultSet.next());
+      createTime = resultSet.getString(1);
     }
     Assert.assertNotEquals("", createTime);
     return createTime;

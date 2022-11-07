@@ -25,13 +25,13 @@ under the License.
 
 Apache IoTDB Cluster contains two types of nodes: ConfigNode and DataNode, each is a process that could be deployed independently.
 
-A illustrate of the cluster architecture：
+An illustration of the cluster architecture：
 
 <img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
 
-ConfigNode is the control node of the cluster, which manage the node status of cluster, partition information, etc. All ConfigNodes in the cluster form a high available group, which is fully replicated.
+ConfigNode is the control node of the cluster, which manages the node status of cluster, partition information, etc. All ConfigNodes in the cluster form a highly available group, which is fully replicated.
 
-DataNode stores the data and schema of cluster, which manage multiple data regions and schema regions. Data is the time-value pair, and schema is the path and data type of each timeseries.
+DataNode stores the data and schema of cluster, which manages multiple data regions and schema regions. Data is a time-value pair, and schema is the path and data type of each time series.
 
 Client could only connect to the DataNode for operation.
 
@@ -41,9 +41,9 @@ Client could only connect to the DataNode for operation.
     * All modules are designed for cluster.
     * Standalone is a special form of Cluster.
 * High Scalability
-    * Support add nodes in a few seconds without data migration.
+    * Support adding nodes in a few seconds without data migration.
 * Massive Parallel Processing Architecture
-    * Adopt the MPP architecture and volcano module for data processing, which has high extensibility.
+    * Adopt the MPP architecture and volcano module for data processing, which have high extensibility.
 * Configurable Consensus Protocol
     * We could adopt different consensus protocol for data replicas and schema replicas.
 * Extensible Partition Strategy
@@ -64,7 +64,7 @@ The storage group contains multiple SchemaRegions (schema shards) and DataRegion
 * Data partition strategy
     * For a time series data point, the ConfigNode will map to a series\_partition\_slot (vertical partition) according to the device ID, and then map it to a time\_partition\_slot (horizontal partition) according to the data timestamp, and allocate this data partition to a DataRegion group.
   
-IoTDB uses a slot-based partitioning strategy, so the size of the partition information is controllable and does not grow infinitely with time series or the number of devices.
+IoTDB uses a slot-based partitioning strategy, so the size of the partition information is controllable and does not grow infinitely with the number of time series or devices.
 
 Multiple replicas of a Region will be allocated to different DataNodes to avoid single point of failure, and the load balance of different DataNodes will be ensured when Regions are allocated.
 
@@ -79,7 +79,7 @@ A region is the basic unit of replication. Multiple replicas of a region constru
   * Data: The cluster has multiple DataRegion groups, and each DataRegion group has multiple DataRegions with the same id.
   * Schema: The cluster has multiple SchemaRegion groups, and each SchemaRegion group has multiple SchemaRegions with the same id.
 
-A illustration of the partition allocation in cluster:
+An illustration of the partition allocation in cluster:
 
 <img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Data-Partition.png?raw=true">
 
@@ -93,8 +93,8 @@ Among multiple replicas of each region group, data consistency is guaranteed thr
 
 * Current supported consensus protocol
   * Standalone：Could only be used when replica is 1, which is the empty implementation of the consensus protocol.
-  * MultiLeader：Could be used in any number of replicas, only for DataRegion, writes can be applied on each replica and replicated asynchronously to other replicas.
-  * Ratis：Raft consensus protocol, Could be used in any number of replicas, could be used for any region groups。
+  * MultiLeader：Could be used in any number of replicas, only for DataRegion, writings can be applied on each replica and replicated asynchronously to other replicas.
+  * Ratis：Raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。
   
 ## 0.14.0-preview1 Function Map
 

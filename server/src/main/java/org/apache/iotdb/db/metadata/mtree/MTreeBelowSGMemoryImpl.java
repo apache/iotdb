@@ -90,8 +90,6 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
@@ -205,17 +203,22 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(path.getDevicePath());
-    IMNode device = pair.left;
+    PartialPath devicePath = path.getDevicePath();
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
+    IMNode deviceParent = pair.left;
     Template upperTemplate = pair.right;
-
-    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
-
-    String leafName = path.getMeasurement();
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent, upperTemplate);
+      IMNode device = pair.left;
+      upperTemplate = pair.right;
+
+      MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
+
+      String leafName = path.getMeasurement();
+
       if (alias != null && device.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
@@ -293,12 +296,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     List<IMeasurementMNode> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
-    IMNode device = pair.left;
+    IMNode deviceParent = pair.left;
     Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild operation be atomic.
     // only write operations on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent, upperTemplate);
+      IMNode device = pair.left;
+      upperTemplate = pair.right;
+
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
           IMNode node = device.getChild(measurements.get(i));
@@ -320,61 +327,64 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
         }
       }
-    }
 
-    if (upperTemplate != null) {
-      for (String measurement : measurements) {
-        if (upperTemplate.getDirectNode(measurement) != null) {
-          throw new TemplateImcompatibeException(
-              devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+      if (upperTemplate != null) {
+        for (String measurement : measurements) {
+          if (upperTemplate.getDirectNode(measurement) != null) {
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
+          }
         }
       }
-    }
 
-    if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
-      throw new AlignedTimeseriesException(
-          "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
-          devicePath.getFullPath());
-    }
-
-    IEntityMNode entityMNode;
-    if (device.isEntity()) {
-      entityMNode = device.getAsEntityMNode();
-    } else {
-      entityMNode = store.setToEntity(device);
-      entityMNode.setAligned(true);
-      if (entityMNode.isStorageGroup()) {
-        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
       }
-    }
 
-    for (int i = 0; i < measurements.size(); i++) {
-      IMeasurementMNode measurementMNode =
-          MeasurementMNode.getMeasurementMNode(
-              entityMNode,
-              measurements.get(i),
-              new MeasurementSchema(
-                  measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
-              aliasList == null ? null : aliasList.get(i));
-      store.addChild(entityMNode, measurements.get(i), measurementMNode);
-      if (aliasList != null && aliasList.get(i) != null) {
-        entityMNode.addAlias(aliasList.get(i), measurementMNode);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = store.setToEntity(device);
+        entityMNode.setAligned(true);
+        if (entityMNode.isStorageGroup()) {
+          this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+        }
       }
-      measurementMNodeList.add(measurementMNode);
+
+      for (int i = 0; i < measurements.size(); i++) {
+        IMeasurementMNode measurementMNode =
+            MeasurementMNode.getMeasurementMNode(
+                entityMNode,
+                measurements.get(i),
+                new MeasurementSchema(
+                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
+                aliasList == null ? null : aliasList.get(i));
+        store.addChild(entityMNode, measurements.get(i), measurementMNode);
+        if (aliasList != null && aliasList.get(i) != null) {
+          entityMNode.addAlias(aliasList.get(i), measurementMNode);
+        }
+        measurementMNodeList.add(measurementMNode);
+      }
+      return measurementMNodeList;
     }
-    return measurementMNodeList;
   }
 
   private Pair<IMNode, Template> checkAndAutoCreateInternalPath(PartialPath devicePath)
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
+    if (nodeNames.length == levelOfSG + 1) {
+      return new Pair<>(null, null);
+    }
     IMNode cur = storageGroupMNode;
     IMNode child;
     String childName;
     Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+    for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
       if (child == null) {
@@ -397,6 +407,37 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(cur, upperTemplate);
   }
 
+  private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
+      String deviceName, IMNode deviceParent, Template upperTemplate)
+      throws PathAlreadyExistException, TemplateImcompatibeException {
+    if (deviceParent == null) {
+      // device is sg
+      return new Pair<>(storageGroupMNode, null);
+    }
+    IMNode device = store.getChild(deviceParent, deviceName);
+    if (device == null) {
+      if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {
+        throw new TemplateImcompatibeException(
+            deviceParent.getPartialPath().concatNode(deviceName).getFullPath(),
+            upperTemplate.getName(),
+            deviceName);
+      }
+      device =
+          store.addChild(deviceParent, deviceName, new InternalMNode(deviceParent, deviceName));
+    }
+
+    if (device.isMeasurement()) {
+      throw new PathAlreadyExistException(device.getFullPath());
+    }
+
+    if (device.getSchemaTemplate() != null) {
+      upperTemplate = device.getSchemaTemplate();
+    }
+
+    return new Pair<>(device, upperTemplate);
+  }
+
+  @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     IMNode device = null;
@@ -465,11 +506,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.addAlias(deletedNode.getAlias(), deletedNode);
     }
-    IMNode curNode = parent;
-    if (!parent.isUseTemplate()) {
+    return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
+  }
+
+  /** Used when delete timeseries or deactivate template */
+  public PartialPath deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode) {
+    IMNode curNode = entityMNode;
+    if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
       IMNode child;
-      IMNodeIterator iterator = store.getChildrenIterator(parent);
+      IMNodeIterator iterator = store.getChildrenIterator(entityMNode);
       while (iterator.hasNext()) {
         child = iterator.next();
         if (child.isMeasurement()) {
@@ -480,7 +526,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
       if (!hasMeasurement) {
         synchronized (this) {
-          curNode = store.setToInternal(parent);
+          curNode = store.setToInternal(entityMNode);
           if (curNode.isStorageGroup()) {
             this.storageGroupMNode = curNode.getAsStorageGroupMNode();
           }
@@ -492,12 +538,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     while (isEmptyInternalMNode(curNode)) {
       // if current storage group has no time series, return the storage group name
       if (curNode.isStorageGroup()) {
-        return new Pair<>(curNode.getPartialPath(), deletedNode);
+        return curNode.getPartialPath();
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
-    return new Pair<>(null, deletedNode);
+    return null;
   }
 
   @Override
@@ -509,6 +555,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         && node.getChildren().isEmpty();
   }
 
+  @Override
   public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
@@ -527,11 +574,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
-  /**
-   * Get all the devices of pre-deleted timeseries matched by given pathPattern. For example, given
-   * path pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the
-   * result set is {root.sg.d1, root.sg.d2}.
-   */
+  @Override
   public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
@@ -777,6 +820,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
+  @Override
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
@@ -785,9 +829,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
-            if (node.isPreDeleted()) {
-              return;
-            }
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
@@ -800,6 +841,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setTemplateMap(templateMap);
+    collector.setSkipPreDeletedSchema(true);
     collector.traverse();
     return result;
   }
@@ -978,6 +1020,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  @Override
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
@@ -1164,6 +1207,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return leafMNodes;
   }
 
+  @Override
   public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
       throws MetadataException {
     List<IMeasurementMNode> result = new ArrayList<>();
@@ -1589,23 +1633,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return null;
   }
 
-  public void activateTemplate(PartialPath activatePath, int templateSetLevel, Template template)
+  @Override
+  public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
-    if (templateSetLevel <= levelOfSG) {
-      IMNode ancestor = storageGroupMNode;
-      for (int i = levelOfSG; i > templateSetLevel; i--) {
-        ancestor = ancestor.getParent();
-      }
-      ancestor.setSchemaTemplateId(template.getId());
-    }
-
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
-      if (i == templateSetLevel) {
-        cur.setSchemaTemplateId(template.getId());
-      }
     }
 
     IEntityMNode entityMNode;
@@ -1636,17 +1670,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       entityMNode.setAligned(template.isDirectAligned());
     }
     entityMNode.setUseTemplate(true);
+    entityMNode.setSchemaTemplateId(template.getId());
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateSetLevel, int templateId, boolean isAligned) {
+      PartialPath activatePath, int templateId, boolean isAligned) {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
-      if (i == templateSetLevel) {
-        cur.setSchemaTemplateId(templateId);
-      }
     }
 
     IEntityMNode entityMNode;
@@ -1663,39 +1695,82 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       entityMNode.setAligned(isAligned);
     }
     entityMNode.setUseTemplate(true);
+    entityMNode.setSchemaTemplateId(templateId);
   }
 
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
-    List<String> result = new ArrayList<>();
+  @Override
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    Set<String> result = new HashSet<>();
 
-    CollectorTraverser<Set<String>> usingTemplatePaths =
-        new CollectorTraverser<Set<String>>(
-            storageGroupMNode, new PartialPath(ALL_RESULT_NODES), store) {
+    EntityCollector<Set<String>> collector =
+        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+          protected void collectEntity(IEntityMNode node) {
+            if (node.getSchemaTemplateId() == templateId) {
+              result.add(node.getFullPath());
+            }
+          }
+        };
+    collector.traverse();
+    return new ArrayList<>(result);
+  }
+
+  public List<IEntityMNode> getDeviceMNodeUsingTargetTemplate(
+      PartialPath pathPattern, List<Integer> templateIdList) throws MetadataException {
+    List<IEntityMNode> result = new ArrayList<>();
+    EntityCollector<List<IEntityMNode>> collector =
+        new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectEntity(IEntityMNode node) {
+            if (templateIdList.contains(node.getSchemaTemplateId())) {
+              result.add(node);
+            }
+          }
+        };
+    collector.traverse();
+    return result;
+  }
+
+  public List<IEntityMNode> getPreDeactivatedDeviceMNode(
+      PartialPath pathPattern, List<Integer> templateIdList) throws MetadataException {
+    List<IEntityMNode> result = new ArrayList<>();
+    EntityCollector<List<IEntityMNode>> collector =
+        new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectEntity(IEntityMNode node) {
+            if (templateIdList.contains(node.getSchemaTemplateId())
+                && node.isPreDeactivateTemplate()) {
+              result.add(node);
+            }
+          }
+        };
+    collector.traverse();
+    return result;
+  }
+
+  @Override
+  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    CounterTraverser counterTraverser =
+        new CounterTraverser(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
             return false;
           }
 
           @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-            if (node.isMeasurement()) {
-              return true;
-            }
-            if (node.getSchemaTemplateId() != NON_TEMPLATE
-                && templateId != ALL_TEMPLATE
-                && node.getSchemaTemplateId() != templateId) {
-              // skip subTree
-              return true;
-            }
-            if (node.isUseTemplate()) {
-              result.add(node.getFullPath());
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
+              count++;
             }
             return false;
           }
         };
-
-    usingTemplatePaths.traverse();
-    return result;
+    counterTraverser.traverse();
+    return counterTraverser.getCount();
   }
 
   // endregion

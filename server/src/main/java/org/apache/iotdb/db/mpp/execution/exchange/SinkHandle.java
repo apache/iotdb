@@ -171,7 +171,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws Exception {
-    logger.info("[NotifyNoMoreTsBlock]");
+    logger.debug("[NotifyNoMoreTsBlock]");
     int attempt = 0;
     TEndOfDataBlockEvent endOfDataBlockEvent =
         new TEndOfDataBlockEvent(
@@ -197,7 +197,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.info("[StartSetNoMoreTsBlocks]");
+    logger.debug("[StartSetNoMoreTsBlocks]");
     if (aborted || closed) {
       return;
     }
@@ -216,7 +216,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void abort() {
-    logger.info("[StartAbortSinkHandle]");
+    logger.debug("[StartAbortSinkHandle]");
     sequenceIdToTsBlock.clear();
     aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -227,12 +227,12 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onAborted(this);
-    logger.info("[EndAbortSinkHandle]");
+    logger.debug("[EndAbortSinkHandle]");
   }
 
   @Override
   public synchronized void close() {
-    logger.info("[StartCloseSinkHandle]");
+    logger.debug("[StartCloseSinkHandle]");
     sequenceIdToTsBlock.clear();
     closed = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
@@ -243,7 +243,7 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onFinish(this);
-    logger.info("[EndCloseSinkHandle]");
+    logger.debug("[EndCloseSinkHandle]");
   }
 
   @Override
@@ -308,7 +308,7 @@ public class SinkHandle implements ISinkHandle {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
-        logger.info("[ACKTsBlock] {}.", entry.getKey());
+        logger.debug("[ACKTsBlock] {}.", entry.getKey());
       }
     }
     if (isFinished()) {
@@ -381,7 +381,7 @@ public class SinkHandle implements ISinkHandle {
     @Override
     public void run() {
       try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
-        logger.info(
+        logger.debug(
             "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
         int attempt = 0;
         TNewDataBlockEvent newDataBlockEvent =

@@ -32,10 +32,10 @@ public class ConfigNodeConfig {
   /**
    * the config node id for cluster mode, the default value -1 should be changed after join cluster
    */
-  private int configNodeId = 0;
+  private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** used for communication between data node and config node */
   private int internalPort = 22277;
@@ -50,16 +50,16 @@ public class ConfigNodeConfig {
   private int partitionRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = 1.0;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
@@ -129,11 +129,14 @@ public class ConfigNodeConfig {
   private int procedureCompletedCleanInterval = 30;
 
   /** Procedure core worker threads size */
-  private int procedureCoreWorkerThreadsSize =
+  private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
-  private long heartbeatInterval = 1000;
+  private long heartbeatIntervalInMs = 1000;
+
+  /** The unknown DataNode detect interval in milliseconds */
+  private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
@@ -143,7 +146,7 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, Max size for a single log append request from leader */
   private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
 
-  private long partitionRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long configNodeRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
 
   /**
@@ -152,38 +155,73 @@ public class ConfigNodeConfig {
    */
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
-  private long partitionRegionRatisSnapshotTriggerThreshold = 400000L;
+  private long configNodeRatisSnapshotTriggerThreshold = 400000L;
+  private long configNodeSimpleConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
   private boolean dataRegionRatisLogUnsafeFlushEnable = false;
 
-  private boolean partitionRegionRatisLogUnsafeFlushEnable = false;
+  private boolean configNodeRatisLogUnsafeFlushEnable = false;
   private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
 
   /** RatisConsensus protocol, max capacity of a single Raft Log segment */
   private long dataRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
 
-  private long partitionRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long configNodeRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
+  private long configNodeSimpleConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
-  private long partitionRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+  private long configNodeRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   /** RatisConsensus protocol, min election timeout for leader election */
   private long dataRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
 
-  private long partitionRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
+  private long configNodeRatisRpcLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
 
   /** RatisConsensus protocol, max election timeout for leader election */
   private long dataRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
 
-  private long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+  private long configNodeRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
+
+  /** CQ related */
+  private int cqSubmitThread = 2;
+
+  private long cqMinEveryIntervalInMs = 1_000;
+
+  /** RatisConsensus protocol, request timeout for ratis client */
+  private long dataRegionRatisRequestTimeoutMs = 10000L;
+
+  private long configNodeRatisRequestTimeoutMs = 10000L;
+  private long schemaRegionRatisRequestTimeoutMs = 10000L;
+
+  /** RatisConsensus protocol, exponential back-off retry policy params */
+  private int configNodeRatisMaxRetryAttempts = 10;
+
+  private long configNodeRatisInitialSleepTimeMs = 100;
+  private long configNodeRatisMaxSleepTimeMs = 10000;
+
+  private int dataRegionRatisMaxRetryAttempts = 10;
+  private long dataRegionRatisInitialSleepTimeMs = 100;
+  private long dataRegionRatisMaxSleepTimeMs = 10000;
+
+  private int schemaRegionRatisMaxRetryAttempts = 10;
+  private long schemaRegionRatisInitialSleepTimeMs = 100;
+  private long schemaRegionRatisMaxSleepTimeMs = 10000;
+
+  private long configNodeRatisPreserveLogsWhenPurge = 1000;
+  private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
+  private long dataRegionRatisPreserveLogsWhenPurge = 1000;
+
+  /* first election timeout shares between 3 regions */
+  private long ratisFirstElectionTimeoutMinMs = 50;
+  private long ratisFirstElectionTimeoutMaxMs = 150;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -286,35 +324,35 @@ public class ConfigNodeConfig {
     this.timePartitionInterval = timePartitionInterval;
   }
 
-  public int getRpcMaxConcurrentClientNum() {
+  public int getCnRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
-  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+  public void setCnRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
-  public boolean isRpcAdvancedCompressionEnable() {
+  public boolean isCnRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
 
-  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+  public void setCnRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
   }
 
-  public int getThriftMaxFrameSize() {
+  public int getCnThriftMaxFrameSize() {
     return thriftMaxFrameSize;
   }
 
-  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+  public void setCnThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 
-  public int getThriftDefaultBufferSize() {
+  public int getCnThriftDefaultBufferSize() {
     return thriftDefaultBufferSize;
   }
 
-  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+  public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
@@ -459,20 +497,28 @@ public class ConfigNodeConfig {
     this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
   }
 
-  public int getProcedureCoreWorkerThreadsSize() {
-    return procedureCoreWorkerThreadsSize;
+  public int getProcedureCoreWorkerThreadsCount() {
+    return procedureCoreWorkerThreadsCount;
   }
 
-  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
-    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
+  public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
+    this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
-  public long getHeartbeatInterval() {
-    return heartbeatInterval;
+  public long getHeartbeatIntervalInMs() {
+    return heartbeatIntervalInMs;
   }
 
-  public void setHeartbeatInterval(long heartbeatInterval) {
-    this.heartbeatInterval = heartbeatInterval;
+  public void setHeartbeatIntervalInMs(long heartbeatIntervalInMs) {
+    this.heartbeatIntervalInMs = heartbeatIntervalInMs;
+  }
+
+  public long getUnknownDataNodeDetectInterval() {
+    return unknownDataNodeDetectInterval;
+  }
+
+  public void setUnknownDataNodeDetectInterval(long unknownDataNodeDetectInterval) {
+    this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
   public String getRoutingPolicy() {
@@ -554,70 +600,77 @@ public class ConfigNodeConfig {
         dataRegionRatisRpcLeaderElectionTimeoutMaxMs;
   }
 
-  public long getPartitionRegionRatisConsensusLogAppenderBufferSize() {
-    return partitionRegionRatisConsensusLogAppenderBufferSize;
+  public long getConfigNodeRatisConsensusLogAppenderBufferSize() {
+    return configNodeRatisConsensusLogAppenderBufferSize;
   }
 
-  public void setPartitionRegionRatisConsensusLogAppenderBufferSize(
-      long partitionRegionRatisConsensusLogAppenderBufferSize) {
-    this.partitionRegionRatisConsensusLogAppenderBufferSize =
-        partitionRegionRatisConsensusLogAppenderBufferSize;
+  public void setConfigNodeRatisConsensusLogAppenderBufferSize(
+      long configNodeRatisConsensusLogAppenderBufferSize) {
+    this.configNodeRatisConsensusLogAppenderBufferSize =
+        configNodeRatisConsensusLogAppenderBufferSize;
   }
 
-  public long getPartitionRegionRatisSnapshotTriggerThreshold() {
-    return partitionRegionRatisSnapshotTriggerThreshold;
+  public long getConfigNodeRatisSnapshotTriggerThreshold() {
+    return configNodeRatisSnapshotTriggerThreshold;
   }
 
-  public void setPartitionRegionRatisSnapshotTriggerThreshold(
-      long partitionRegionRatisSnapshotTriggerThreshold) {
-    this.partitionRegionRatisSnapshotTriggerThreshold =
-        partitionRegionRatisSnapshotTriggerThreshold;
+  public void setConfigNodeRatisSnapshotTriggerThreshold(
+      long configNodeRatisSnapshotTriggerThreshold) {
+    this.configNodeRatisSnapshotTriggerThreshold = configNodeRatisSnapshotTriggerThreshold;
   }
 
-  public boolean isPartitionRegionRatisLogUnsafeFlushEnable() {
-    return partitionRegionRatisLogUnsafeFlushEnable;
+  public long getConfigNodeSimpleConsensusSnapshotTriggerThreshold() {
+    return configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
-  public void setPartitionRegionRatisLogUnsafeFlushEnable(
-      boolean partitionRegionRatisLogUnsafeFlushEnable) {
-    this.partitionRegionRatisLogUnsafeFlushEnable = partitionRegionRatisLogUnsafeFlushEnable;
+  public void setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
+      long configNodeSimpleConsensusSnapshotTriggerThreshold) {
+    this.configNodeSimpleConsensusSnapshotTriggerThreshold =
+        configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
-  public long getPartitionRegionRatisLogSegmentSizeMax() {
-    return partitionRegionRatisLogSegmentSizeMax;
+  public boolean isConfigNodeRatisLogUnsafeFlushEnable() {
+    return configNodeRatisLogUnsafeFlushEnable;
   }
 
-  public void setPartitionRegionRatisLogSegmentSizeMax(long partitionRegionRatisLogSegmentSizeMax) {
-    this.partitionRegionRatisLogSegmentSizeMax = partitionRegionRatisLogSegmentSizeMax;
+  public void setConfigNodeRatisLogUnsafeFlushEnable(boolean configNodeRatisLogUnsafeFlushEnable) {
+    this.configNodeRatisLogUnsafeFlushEnable = configNodeRatisLogUnsafeFlushEnable;
   }
 
-  public long getPartitionRegionRatisGrpcFlowControlWindow() {
-    return partitionRegionRatisGrpcFlowControlWindow;
+  public long getConfigNodeRatisLogSegmentSizeMax() {
+    return configNodeRatisLogSegmentSizeMax;
   }
 
-  public void setPartitionRegionRatisGrpcFlowControlWindow(
-      long partitionRegionRatisGrpcFlowControlWindow) {
-    this.partitionRegionRatisGrpcFlowControlWindow = partitionRegionRatisGrpcFlowControlWindow;
+  public void setConfigNodeRatisLogSegmentSizeMax(long configNodeRatisLogSegmentSizeMax) {
+    this.configNodeRatisLogSegmentSizeMax = configNodeRatisLogSegmentSizeMax;
   }
 
-  public long getPartitionRegionRatisRpcLeaderElectionTimeoutMinMs() {
-    return partitionRegionRatisRpcLeaderElectionTimeoutMinMs;
+  public long getConfigNodeRatisGrpcFlowControlWindow() {
+    return configNodeRatisGrpcFlowControlWindow;
   }
 
-  public void setPartitionRegionRatisRpcLeaderElectionTimeoutMinMs(
-      long partitionRegionRatisRpcLeaderElectionTimeoutMinMs) {
-    this.partitionRegionRatisRpcLeaderElectionTimeoutMinMs =
-        partitionRegionRatisRpcLeaderElectionTimeoutMinMs;
+  public void setConfigNodeRatisGrpcFlowControlWindow(long configNodeRatisGrpcFlowControlWindow) {
+    this.configNodeRatisGrpcFlowControlWindow = configNodeRatisGrpcFlowControlWindow;
   }
 
-  public long getPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs() {
-    return partitionRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  public long getConfigNodeRatisRpcLeaderElectionTimeoutMinMs() {
+    return configNodeRatisRpcLeaderElectionTimeoutMinMs;
   }
 
-  public void setPartitionRegionRatisRpcLeaderElectionTimeoutMaxMs(
-      long partitionRegionRatisRpcLeaderElectionTimeoutMaxMs) {
-    this.partitionRegionRatisRpcLeaderElectionTimeoutMaxMs =
-        partitionRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  public void setConfigNodeRatisRpcLeaderElectionTimeoutMinMs(
+      long configNodeRatisRpcLeaderElectionTimeoutMinMs) {
+    this.configNodeRatisRpcLeaderElectionTimeoutMinMs =
+        configNodeRatisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public long getConfigNodeRatisRpcLeaderElectionTimeoutMaxMs() {
+    return configNodeRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setConfigNodeRatisRpcLeaderElectionTimeoutMaxMs(
+      long configNodeRatisRpcLeaderElectionTimeoutMaxMs) {
+    this.configNodeRatisRpcLeaderElectionTimeoutMaxMs =
+        configNodeRatisRpcLeaderElectionTimeoutMaxMs;
   }
 
   public long getSchemaRegionRatisConsensusLogAppenderBufferSize() {
@@ -656,6 +709,15 @@ public class ConfigNodeConfig {
     this.schemaRegionRatisLogSegmentSizeMax = schemaRegionRatisLogSegmentSizeMax;
   }
 
+  public long getConfigNodeSimpleConsensusLogSegmentSizeMax() {
+    return configNodeSimpleConsensusLogSegmentSizeMax;
+  }
+
+  public void setConfigNodeSimpleConsensusLogSegmentSizeMax(
+      long configNodeSimpleConsensusLogSegmentSizeMax) {
+    this.configNodeSimpleConsensusLogSegmentSizeMax = configNodeSimpleConsensusLogSegmentSizeMax;
+  }
+
   public long getSchemaRegionRatisGrpcFlowControlWindow() {
     return schemaRegionRatisGrpcFlowControlWindow;
   }
@@ -683,5 +745,158 @@ public class ConfigNodeConfig {
       long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs) {
     this.schemaRegionRatisRpcLeaderElectionTimeoutMaxMs =
         schemaRegionRatisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public int getCqSubmitThread() {
+    return cqSubmitThread;
+  }
+
+  public void setCqSubmitThread(int cqSubmitThread) {
+    this.cqSubmitThread = cqSubmitThread;
+  }
+
+  public long getCqMinEveryIntervalInMs() {
+    return cqMinEveryIntervalInMs;
+  }
+
+  public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
+    this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
+  }
+
+  public long getDataRegionRatisRequestTimeoutMs() {
+    return dataRegionRatisRequestTimeoutMs;
+  }
+
+  public void setDataRegionRatisRequestTimeoutMs(long dataRegionRatisRequestTimeoutMs) {
+    this.dataRegionRatisRequestTimeoutMs = dataRegionRatisRequestTimeoutMs;
+  }
+
+  public long getConfigNodeRatisRequestTimeoutMs() {
+    return configNodeRatisRequestTimeoutMs;
+  }
+
+  public void setConfigNodeRatisRequestTimeoutMs(long configNodeRatisRequestTimeoutMs) {
+    this.configNodeRatisRequestTimeoutMs = configNodeRatisRequestTimeoutMs;
+  }
+
+  public long getSchemaRegionRatisRequestTimeoutMs() {
+    return schemaRegionRatisRequestTimeoutMs;
+  }
+
+  public void setSchemaRegionRatisRequestTimeoutMs(long schemaRegionRatisRequestTimeoutMs) {
+    this.schemaRegionRatisRequestTimeoutMs = schemaRegionRatisRequestTimeoutMs;
+  }
+
+  public int getConfigNodeRatisMaxRetryAttempts() {
+    return configNodeRatisMaxRetryAttempts;
+  }
+
+  public void setConfigNodeRatisMaxRetryAttempts(int configNodeRatisMaxRetryAttempts) {
+    this.configNodeRatisMaxRetryAttempts = configNodeRatisMaxRetryAttempts;
+  }
+
+  public long getConfigNodeRatisInitialSleepTimeMs() {
+    return configNodeRatisInitialSleepTimeMs;
+  }
+
+  public void setConfigNodeRatisInitialSleepTimeMs(long configNodeRatisInitialSleepTimeMs) {
+    this.configNodeRatisInitialSleepTimeMs = configNodeRatisInitialSleepTimeMs;
+  }
+
+  public long getConfigNodeRatisMaxSleepTimeMs() {
+    return configNodeRatisMaxSleepTimeMs;
+  }
+
+  public void setConfigNodeRatisMaxSleepTimeMs(long configNodeRatisMaxSleepTimeMs) {
+    this.configNodeRatisMaxSleepTimeMs = configNodeRatisMaxSleepTimeMs;
+  }
+
+  public int getDataRegionRatisMaxRetryAttempts() {
+    return dataRegionRatisMaxRetryAttempts;
+  }
+
+  public void setDataRegionRatisMaxRetryAttempts(int dataRegionRatisMaxRetryAttempts) {
+    this.dataRegionRatisMaxRetryAttempts = dataRegionRatisMaxRetryAttempts;
+  }
+
+  public long getDataRegionRatisInitialSleepTimeMs() {
+    return dataRegionRatisInitialSleepTimeMs;
+  }
+
+  public void setDataRegionRatisInitialSleepTimeMs(long dataRegionRatisInitialSleepTimeMs) {
+    this.dataRegionRatisInitialSleepTimeMs = dataRegionRatisInitialSleepTimeMs;
+  }
+
+  public long getDataRegionRatisMaxSleepTimeMs() {
+    return dataRegionRatisMaxSleepTimeMs;
+  }
+
+  public void setDataRegionRatisMaxSleepTimeMs(long dataRegionRatisMaxSleepTimeMs) {
+    this.dataRegionRatisMaxSleepTimeMs = dataRegionRatisMaxSleepTimeMs;
+  }
+
+  public int getSchemaRegionRatisMaxRetryAttempts() {
+    return schemaRegionRatisMaxRetryAttempts;
+  }
+
+  public void setSchemaRegionRatisMaxRetryAttempts(int schemaRegionRatisMaxRetryAttempts) {
+    this.schemaRegionRatisMaxRetryAttempts = schemaRegionRatisMaxRetryAttempts;
+  }
+
+  public long getSchemaRegionRatisInitialSleepTimeMs() {
+    return schemaRegionRatisInitialSleepTimeMs;
+  }
+
+  public void setSchemaRegionRatisInitialSleepTimeMs(long schemaRegionRatisInitialSleepTimeMs) {
+    this.schemaRegionRatisInitialSleepTimeMs = schemaRegionRatisInitialSleepTimeMs;
+  }
+
+  public long getSchemaRegionRatisMaxSleepTimeMs() {
+    return schemaRegionRatisMaxSleepTimeMs;
+  }
+
+  public void setSchemaRegionRatisMaxSleepTimeMs(long schemaRegionRatisMaxSleepTimeMs) {
+    this.schemaRegionRatisMaxSleepTimeMs = schemaRegionRatisMaxSleepTimeMs;
+  }
+
+  public long getConfigNodeRatisPreserveLogsWhenPurge() {
+    return configNodeRatisPreserveLogsWhenPurge;
+  }
+
+  public void setConfigNodeRatisPreserveLogsWhenPurge(long configNodeRatisPreserveLogsWhenPurge) {
+    this.configNodeRatisPreserveLogsWhenPurge = configNodeRatisPreserveLogsWhenPurge;
+  }
+
+  public long getSchemaRegionRatisPreserveLogsWhenPurge() {
+    return schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setSchemaRegionRatisPreserveLogsWhenPurge(
+      long schemaRegionRatisPreserveLogsWhenPurge) {
+    this.schemaRegionRatisPreserveLogsWhenPurge = schemaRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getDataRegionRatisPreserveLogsWhenPurge() {
+    return dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public void setDataRegionRatisPreserveLogsWhenPurge(long dataRegionRatisPreserveLogsWhenPurge) {
+    this.dataRegionRatisPreserveLogsWhenPurge = dataRegionRatisPreserveLogsWhenPurge;
+  }
+
+  public long getRatisFirstElectionTimeoutMinMs() {
+    return ratisFirstElectionTimeoutMinMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMinMs(long ratisFirstElectionTimeoutMinMs) {
+    this.ratisFirstElectionTimeoutMinMs = ratisFirstElectionTimeoutMinMs;
+  }
+
+  public long getRatisFirstElectionTimeoutMaxMs() {
+    return ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
+    this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 }

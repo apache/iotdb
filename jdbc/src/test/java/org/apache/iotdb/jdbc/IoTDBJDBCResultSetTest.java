@@ -28,8 +28,9 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,8 +38,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
@@ -48,7 +47,7 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Matchers.any;
@@ -123,17 +122,17 @@ public class IoTDBJDBCResultSetTest {
 
     statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
-    execResp.queryDataSet = FakedFirstFetchResult();
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
 
     when(connection.isClosed()).thenReturn(false);
-    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);
     when(execResp.getStatus()).thenReturn(successStatus);
 
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
     when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
 
-    when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
+    when(client.fetchResultsV2(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(successStatus);
 
     TSStatus closeResp = successStatus;
@@ -245,127 +244,7 @@ public class IoTDBJDBCResultSetTest {
     }
 
     // The client get TSQueryDataSet at the first request
-    verify(fetchResultsResp, times(1)).getStatus();
-  }
-
-  // fake the first-time fetched result of 'testSql' from an IoTDB server
-  private TSQueryDataSet FakedFirstFetchResult() throws IOException {
-    List<TSDataType> tsDataTypeList = new ArrayList<>();
-    tsDataTypeList.add(TSDataType.FLOAT); // root.vehicle.d0.s2
-    tsDataTypeList.add(TSDataType.INT64); // root.vehicle.d0.s1
-    tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
-
-    Object[][] input = {
-      {
-        2L, 2.22F, 40000L, null,
-      },
-      {
-        3L, 3.33F, null, null,
-      },
-      {
-        4L, 4.44F, null, null,
-      },
-      {
-        50L, null, 50000L, null,
-      },
-      {
-        100L, null, 199L, null,
-      },
-      {
-        101L, null, 199L, null,
-      },
-      {
-        103L, null, 199L, null,
-      },
-      {
-        105L, 11.11F, 199L, 33333,
-      },
-      {
-        1000L, 1000.11F, 55555L, 22222,
-      }
-    };
-
-    int columnNum = tsDataTypeList.size();
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to
-    // indicate whether it is a null
-    int columnNumWithTime = columnNum * 2 + 1;
-    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
-    for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
-      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
-    }
-
-    int rowCount = input.length;
-    int[] valueOccupation = new int[columnNum];
-    // used to record a bitmap for every 8 row record
-    int[] bitmap = new int[columnNum];
-    for (int i = 0; i < rowCount; i++) {
-      Object[] row = input[i];
-      // use columnOutput to write byte array
-      dataOutputStreams[0].writeLong((long) row[0]);
-      for (int k = 0; k < columnNum; k++) {
-        Object value = row[1 + k];
-        DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
-        if (value == null) {
-          bitmap[k] = (bitmap[k] << 1);
-        } else {
-          bitmap[k] = (bitmap[k] << 1) | 0x01;
-          if (k == 0) { // TSDataType.FLOAT
-            dataOutputStream.writeFloat((float) value);
-            valueOccupation[k] += 4;
-          } else if (k == 1) { // TSDataType.INT64
-            dataOutputStream.writeLong((long) value);
-            valueOccupation[k] += 8;
-          } else { // TSDataType.INT32
-            dataOutputStream.writeInt((int) value);
-            valueOccupation[k] += 4;
-          }
-        }
-      }
-      if (i % 8 == 7) {
-        for (int j = 0; j < bitmap.length; j++) {
-          DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-          dataBitmapOutputStream.writeByte(bitmap[j]);
-          // we should clear the bitmap every 8 row record
-          bitmap[j] = 0;
-        }
-      }
-    }
-
-    // feed the remaining bitmap
-    for (int j = 0; j < bitmap.length; j++) {
-      DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-      dataBitmapOutputStream.writeByte(bitmap[j] << (8 - rowCount % 8));
-    }
-
-    // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
-
-    // calculate the bitmap buffer size
-    int bitmapOccupation = rowCount / 8 + 1;
-
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
-    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
-      valueBuffer.flip();
-      valueList.add(valueBuffer);
-
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
-      bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
-    }
-    tsQueryDataSet.setBitmapList(bitmapList);
-    tsQueryDataSet.setValueList(valueList);
-    return tsQueryDataSet;
+    verify(fetchResultsResp, times(0)).getStatus();
   }
 
   private void constructObjectList(List<Object> standardObject) {
@@ -401,5 +280,74 @@ public class IoTDBJDBCResultSetTest {
     for (Object[] row : input) {
       standardObject.addAll(Arrays.asList(row));
     }
+  }
+
+  // fake the first-time fetched result of 'testSql' from an IoTDB server
+  private List<ByteBuffer> FakedFirstFetchTsBlockResult() {
+    List<TSDataType> tsDataTypeList = new ArrayList<>();
+    tsDataTypeList.add(TSDataType.FLOAT); // root.vehicle.d0.s2
+    tsDataTypeList.add(TSDataType.INT64); // root.vehicle.d0.s1
+    tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
+
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
+
+    Object[][] input = {
+      {
+        2L, 2.22F, 40000L, null,
+      },
+      {
+        3L, 3.33F, null, null,
+      },
+      {
+        4L, 4.44F, null, null,
+      },
+      {
+        50L, null, 50000L, null,
+      },
+      {
+        100L, null, 199L, null,
+      },
+      {
+        101L, null, 199L, null,
+      },
+      {
+        103L, null, 199L, null,
+      },
+      {
+        105L, 11.11F, 199L, 33333,
+      },
+      {
+        1000L, 1000.11F, 55555L, 22222,
+      }
+    };
+    for (int row = 0; row < input.length; row++) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong((long) input[row][0]);
+      if (input[row][1] != null) {
+        tsBlockBuilder.getColumnBuilder(0).writeFloat((float) input[row][1]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(0).appendNull();
+      }
+      if (input[row][2] != null) {
+        tsBlockBuilder.getColumnBuilder(1).writeLong((long) input[row][2]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(1).appendNull();
+      }
+      if (input[row][3] != null) {
+        tsBlockBuilder.getColumnBuilder(2).writeInt((int) input[row][3]);
+      } else {
+        tsBlockBuilder.getColumnBuilder(2).appendNull();
+      }
+
+      tsBlockBuilder.declarePosition();
+    }
+
+    ByteBuffer tsBlock = null;
+    try {
+      tsBlock = new TsBlockSerde().serialize(tsBlockBuilder.build());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return Collections.singletonList(tsBlock);
   }
 }

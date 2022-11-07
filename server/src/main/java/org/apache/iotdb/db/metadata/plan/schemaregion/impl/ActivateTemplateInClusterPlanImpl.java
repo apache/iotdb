@@ -53,8 +53,8 @@ public class ActivateTemplateInClusterPlanImpl implements IActivateTemplateInClu
   }
 
   @Override
-  public void setTemplateId(int templateSetLevel) {
-    this.templateSetLevel = templateSetLevel;
+  public void setTemplateId(int templateId) {
+    this.templateId = templateId;
   }
 
   @Override
@@ -63,8 +63,8 @@ public class ActivateTemplateInClusterPlanImpl implements IActivateTemplateInClu
   }
 
   @Override
-  public void setTemplateSetLevel(int templateId) {
-    this.templateId = templateId;
+  public void setTemplateSetLevel(int templateSetLevel) {
+    this.templateSetLevel = templateSetLevel;
   }
 
   @Override

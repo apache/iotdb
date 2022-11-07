@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -73,7 +74,7 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.RatisConsensus,
+                  ConsensusFactory.RATIS_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNodeId(peers.get(i).getNodeId())
                       .setThisNode(peers.get(i).getEndpoint())
@@ -86,7 +87,7 @@ public class RatisConsensusTest {
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.RatisConsensus))));
+                              ConsensusFactory.RATIS_CONSENSUS))));
       servers.get(i).start();
     }
   }
@@ -146,6 +147,19 @@ public class RatisConsensusTest {
 
     Assert.assertEquals(stateMachines.get(0).getConfiguration().size(), 3);
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
+  }
+
+  @Test
+  public void createAndAddMemberToGroup() throws Exception {
+    List<Peer> original = peers.subList(0, 1);
+    servers.get(0).createPeer(gid, original);
+    doConsensus(servers.get(0), gid, 10, 10);
+
+    ConsensusGenericResponse resp =
+        servers.get(0).addNewNodeToExistedGroup(gid, peers.get(1), original);
+    Assert.assertTrue(resp.isSuccess());
+
+    doConsensus(servers.get(0), gid, 10, 20);
   }
 
   @Test

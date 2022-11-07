@@ -27,6 +27,7 @@ import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +49,8 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_USERNAME;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ZONE_ID;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.SET_TIMESTAMP_DISPLAY;
 
+// TODO remember to add it back after new standalone iotdb is finished
+@Ignore
 public class IoTDBInterpreterTest {
 
   private IoTDBInterpreter interpreter;

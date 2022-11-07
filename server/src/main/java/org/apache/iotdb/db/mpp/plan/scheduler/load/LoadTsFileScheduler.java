@@ -133,6 +133,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean dispatchOneTsFile(LoadSingleTsFileNode node) {
+    logger.info(
+        String.format(
+            "Start dispatching TsFile %s", node.getTsFileResource().getTsFile().getPath()));
     for (Map.Entry<TRegionReplicaSet, List<LoadTsFilePieceNode>> entry :
         node.getReplicaSet2Pieces().entrySet()) {
       allReplicaSets.add(entry.getKey());
@@ -143,7 +146,8 @@ public class LoadTsFileScheduler implements IScheduler {
                 fragmentId.genFragmentInstanceId(),
                 null,
                 queryContext.getQueryType(),
-                queryContext.getTimeOut());
+                queryContext.getTimeOut(),
+                queryContext.getSession());
         instance.setDataRegionAndHost(entry.getKey());
         Future<FragInstanceDispatchResult> dispatchResultFuture =
             dispatcher.dispatch(Collections.singletonList(instance));
@@ -194,6 +198,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid) {
+    logger.info(String.format("Start dispatching Load command for uuid %s", uuid));
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
@@ -224,6 +229,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) {
+    logger.info(
+        String.format(
+            "Start load TsFile %s locally.", node.getTsFileResource().getTsFile().getPath()));
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -231,7 +239,8 @@ public class LoadTsFileScheduler implements IScheduler {
               fragmentId.genFragmentInstanceId(),
               null,
               queryContext.getQueryType(),
-              queryContext.getTimeOut());
+              queryContext.getTimeOut(),
+              queryContext.getSession());
       instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {

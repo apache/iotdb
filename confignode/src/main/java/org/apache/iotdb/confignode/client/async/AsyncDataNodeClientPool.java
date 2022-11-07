@@ -28,18 +28,22 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteTimeSeriesRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
@@ -47,10 +51,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
@@ -136,13 +145,13 @@ public class AsyncDataNodeClientPool {
           break;
         case CREATE_FUNCTION:
           client.createFunction(
-              (TCreateFunctionRequest) clientHandler.getRequest(requestId),
+              (TCreateFunctionInstanceReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DROP_FUNCTION:
           client.dropFunction(
-              (TDropFunctionRequest) clientHandler.getRequest(requestId),
+              (TDropFunctionInstanceReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
@@ -167,6 +176,12 @@ public class AsyncDataNodeClientPool {
         case INACTIVE_TRIGGER_INSTANCE:
           client.inactiveTriggerInstance(
               (TInactiveTriggerInstanceReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case UPDATE_TRIGGER_LOCATION:
+          client.updateTriggerLocation(
+              (TUpdateTriggerLocationReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
@@ -213,13 +228,13 @@ public class AsyncDataNodeClientPool {
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
               (TConstructSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
               (TRollbackSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case FETCH_SCHEMA_BLACK_LIST:
@@ -234,16 +249,16 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case DELETE_DATA_FOR_DELETE_TIMESERIES:
-          client.deleteDataForDeleteTimeSeries(
-              (TDeleteDataForDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+        case DELETE_DATA_FOR_DELETE_SCHEMA:
+          client.deleteDataForDeleteSchema(
+              (TDeleteDataForDeleteSchemaReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries(
               (TDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
-              (DeleteTimeSeriesRPCHandler)
+              (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case PRE_CREATE_PIPE:
@@ -256,6 +271,42 @@ public class AsyncDataNodeClientPool {
           client.operatePipeOnDataNode(
               (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case ROLLBACK_OPERATE_PIPE:
+          client.operatePipeOnDataNodeForRollback(
+              (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+          client.constructSchemaBlackListWithTemplate(
+              (TConstructSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
+          client.rollbackSchemaBlackListWithTemplate(
+              (TRollbackSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case DEACTIVATE_TEMPLATE:
+          client.deactivateTemplate(
+              (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case UPDATE_TEMPLATE:
+          client.updateTemplate(
+              (TUpdateTemplateReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case COUNT_PATHS_USING_TEMPLATE:
+          client.countPathsUsingTemplate(
+              (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
+              (CountPathsUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         default:
@@ -280,6 +331,11 @@ public class AsyncDataNodeClientPool {
    */
   public void resetClient(TEndPoint endPoint) {
     clientManager.clear(endPoint);
+  }
+
+  public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
+      throws IOException {
+    return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 
   // TODO: Is the ClientPool must be a singleton?

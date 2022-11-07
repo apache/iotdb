@@ -59,7 +59,9 @@ public class LoadTsFileStatement extends Statement {
     } else {
       if (file.listFiles() == null) {
         throw new FileNotFoundException(
-            "Can not find %s on this machine, notice that load can only handle files on this machine.");
+            String.format(
+                "Can not find %s on this machine, notice that load can only handle files on this machine.",
+                filePath));
       }
       findAllTsFile(file);
     }
@@ -99,6 +101,10 @@ public class LoadTsFileStatement extends Statement {
 
   public void setVerifySchema(boolean verifySchema) {
     this.verifySchema = verifySchema;
+  }
+
+  public void setAutoCreateSchema(boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
   }
 
   public boolean isVerifySchema() {

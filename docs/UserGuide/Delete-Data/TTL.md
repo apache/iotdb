@@ -23,6 +23,8 @@
 
 IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
 
+The default unit of TTL is milliseconds. If the time precision in the configuration file changes to another, the TTL is still set to milliseconds.
+
 ## Set TTL
 
 The SQL Statement for setting TTL is as follow:
@@ -31,7 +33,7 @@ The SQL Statement for setting TTL is as follow:
 IoTDB> set ttl to root.ln 3600000
 ```
 
-This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
+This example means that for data in `root.ln`, only 3600000 ms, that is, the latest 1 hour will remain, the older one is removed or made invisible.
 
 ```
 IoTDB> set ttl to root.sgcc.** 3600000
@@ -72,7 +74,17 @@ IoTDB> SHOW TTL ON StorageGroupNames
 ```
 
 The SHOW ALL TTL example gives the TTL for all storage groups.
-The SHOW TTL ON  root.group1 , root.group2 , root.group3 example shows the TTL for the three storage 
+The SHOW TTL ON root.ln,root.sgcc,root.DB example shows the TTL for the three storage 
 groups specified.
 Note: the TTL for storage groups that do not have a TTL set will display as null.
 
+```
+IoTDB> show all ttl
++-------------+-------+
+|storage group|ttl(ms)|
++-------------+-------+
+|      root.ln|3600000|
+|    root.sgcc|   null|
+|      root.DB|3600000|
++-------------+-------+
+```

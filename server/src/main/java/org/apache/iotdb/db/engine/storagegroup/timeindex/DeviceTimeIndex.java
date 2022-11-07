@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -247,7 +248,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   private long getTimePartitionWithCheck() {
     long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
     for (int index : deviceToIndex.values()) {
-      long p = StorageEngine.getTimePartition(startTimes[index]);
+      long p = StorageEngineV2.getTimePartition(startTimes[index]);
       if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
         partitionId = p;
       } else {
@@ -256,7 +257,7 @@ public class DeviceTimeIndex implements ITimeIndex {
         }
       }
 
-      p = StorageEngine.getTimePartition(endTimes[index]);
+      p = StorageEngineV2.getTimePartition(endTimes[index]);
       if (partitionId != p) {
         return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }
@@ -359,6 +360,17 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean mayContainsDevice(String device) {
     return deviceToIndex.containsKey(device);
+  }
+
+  @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
+      return null;
+    } else {
+      int i = index;
+      return new long[] {startTimes[i], endTimes[i]};
+    }
   }
 
   @Override

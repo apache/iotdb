@@ -70,7 +70,7 @@ public class DataRegionConsensusImpl {
                               .setRpc(
                                   RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
-                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadNum())
+                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadCount())
                                       .setRpcMinConcurrentClientNum(
                                           conf.getRpcMinConcurrentClientNum())
                                       .setRpcMaxConcurrentClientNum(
@@ -108,6 +108,8 @@ public class DataRegionConsensusImpl {
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          conf.getDataRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -127,11 +129,34 @@ public class DataRegionConsensusImpl {
                                               conf
                                                   .getDataRatisConsensusLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
+                                      .setRequestTimeout(
+                                          TimeDuration.valueOf(
+                                              conf.getDataRatisConsensusRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
                                       .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
+                                      .build())
+                              .setRatisConsensus(
+                                  RatisConfig.RatisConsensus.newBuilder()
+                                      .setClientRequestTimeoutMillis(
+                                          conf.getDataRatisConsensusRequestTimeoutMs())
+                                      .setClientMaxRetryAttempt(
+                                          conf.getDataRatisConsensusMaxRetryAttempts())
+                                      .setClientRetryInitialSleepTimeMs(
+                                          conf.getDataRatisConsensusInitialSleepTimeMs())
+                                      .setClientRetryMaxSleepTimeMs(
+                                          conf.getDataRatisConsensusMaxSleepTimeMs())
                                       .build())
                               .build())
                       .build(),

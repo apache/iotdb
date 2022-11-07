@@ -29,7 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -37,8 +37,8 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
-import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -186,10 +186,7 @@ public class PartitionInfoTest {
     Assert.assertEquals(regionInfoList1.getRegionInfoList().size(), 20);
     regionInfoList1
         .getRegionInfoList()
-        .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
-            });
+        .forEach((regionInfo) -> Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1"));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
     RegionInfoListResp regionInfoList2 =
@@ -198,10 +195,9 @@ public class PartitionInfoTest {
     regionInfoList2
         .getRegionInfoList()
         .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(
-                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
-            });
+            (regionInfo) ->
+                Assert.assertEquals(
+                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     RegionInfoListResp regionInfoList3 =
@@ -210,10 +206,9 @@ public class PartitionInfoTest {
     regionInfoList3
         .getRegionInfoList()
         .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(
-                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
-            });
+            (regionInfo) ->
+                Assert.assertEquals(
+                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion));
     showRegionReq.setConsensusGroupType(null);
     showRegionReq.setStorageGroups(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =

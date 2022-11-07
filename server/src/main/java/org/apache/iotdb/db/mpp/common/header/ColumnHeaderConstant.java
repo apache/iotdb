@@ -76,10 +76,10 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
   // column names for show triggers statement
-  public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
+  public static final String COLUMN_TRIGGER_NAME = "TriggerName";
   public static final String COLUMN_TRIGGER_EVENT = "Event";
   public static final String COLUMN_TRIGGER_TYPE = "Type";
-  public static final String COLUMN_TRIGGER_STATE = "STATE";
+  public static final String COLUMN_TRIGGER_STATE = "State";
   public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
   public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
   public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
@@ -89,8 +89,8 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_TYPE = "Type";
   public static final String COLUMN_SHOW_REGION_STORAGE_GROUP = "Storage Group";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
-  public static final String COLUMN_SERIES_SLOTS = "SeriesSlots";
-  public static final String COLUMN_TIME_SLOTS = "TimeSlots";
+  public static final String COLUMN_SERIES_SLOT_ID = "SeriesSlotId";
+  public static final String COLUMN_TIME_SLOT_ID = "TimeSlotId";
   public static final String COLUMN_ROLE = "Role";
 
   // column names for show datanodes
@@ -113,7 +113,19 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_PIPE_ROLE = "role";
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_ATTRIBUTES = "attributes";
   public static final String COLUMN_PIPE_MESSAGE = "message";
+
+  // column names for select into
+  public static final String COLUMN_SOURCE_DEVICE = "source device";
+  public static final String COLUMN_SOURCE_COLUMN = "source column";
+  public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
+  public static final String COLUMN_WRITTEN = "written";
+
+  // column names for show cq
+  public static final String COLUMN_CQ_ID = "cq id";
+  public static final String COLUMN_QUERY = "query";
+  public static final String COLUMN_STATE = "state";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -207,8 +219,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
+          new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32),
+          new ColumnHeader(COLUMN_TIME_SLOT_ID, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
           new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
@@ -274,14 +286,34 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> getRoutingColumnHeaders =
+  public static final List<ColumnHeader> selectIntoColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
+
+  public static final List<ColumnHeader> selectIntoAlignByDeviceColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_SOURCE_DEVICE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
+
+  public static final List<ColumnHeader> getRegionIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64));
+      ImmutableList.of(new ColumnHeader(COLUMN_TIME_SLOT_ID, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_CQ_ID, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_QUERY, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_STATE, TSDataType.TEXT));
 }

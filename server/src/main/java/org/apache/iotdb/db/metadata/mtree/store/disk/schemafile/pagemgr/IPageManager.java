@@ -51,6 +51,8 @@ public interface IPageManager {
 
   void flushDirtyPages() throws IOException;
 
+  void close() throws IOException;
+
   int getLastPageIndex();
 
   @Deprecated

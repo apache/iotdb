@@ -898,6 +898,34 @@ public class ExpressionAnalyzer {
             false);
       }
       return new Pair<>(null, true);
+    } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)) {
+      return new Pair<>(null, true);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static boolean checkIfTimeFilterExist(Expression predicate) {
+    if (predicate instanceof TernaryExpression) {
+      return checkIfTimeFilterExist(((TernaryExpression) predicate).getFirstExpression())
+          || checkIfTimeFilterExist(((TernaryExpression) predicate).getSecondExpression())
+          || checkIfTimeFilterExist(((TernaryExpression) predicate).getThirdExpression());
+    } else if (predicate instanceof BinaryExpression) {
+      return checkIfTimeFilterExist(((BinaryExpression) predicate).getLeftExpression())
+          || checkIfTimeFilterExist(((BinaryExpression) predicate).getRightExpression());
+    } else if (predicate instanceof UnaryExpression) {
+      return checkIfTimeFilterExist(((UnaryExpression) predicate).getExpression());
+    } else if (predicate instanceof FunctionExpression) {
+      boolean timeFilterExist = false;
+      for (Expression childExpression : predicate.getExpressions()) {
+        timeFilterExist = timeFilterExist || checkIfTimeFilterExist(childExpression);
+      }
+      return timeFilterExist;
+    } else if (predicate instanceof TimeSeriesOperand || predicate instanceof ConstantOperand) {
+      return false;
+    } else if (predicate instanceof TimestampOperand) {
+      return true;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());

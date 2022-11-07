@@ -35,14 +35,6 @@ monitorType: DROPWIZARD
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: ALL
 
-# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - LOGBACK
-  - FILE
-  - PROCESS
-  - SYSTEM
-
 # The period of the collection of some metrics in asynchronous way, such as tsfile size.
 asyncCollectPeriodInSecond: 10
 
@@ -56,5 +48,5 @@ ioTDBReporterConfig:
   username: user
   password: password
   maxConnectionNumber: 1
-  database: metric
+  location: metric
   pushPeriodInSecond: 5

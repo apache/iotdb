@@ -88,7 +88,7 @@ public class MultiLeaderConsensusTest {
       servers.add(
           (MultiLeaderConsensus)
               ConsensusFactory.getConsensusImpl(
-                      ConsensusFactory.MultiLeaderConsensus,
+                      ConsensusFactory.MULTI_LEADER_CONSENSUS,
                       ConsensusConfig.newBuilder()
                           .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
@@ -100,7 +100,7 @@ public class MultiLeaderConsensusTest {
                           new IllegalArgumentException(
                               String.format(
                                   ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.MultiLeaderConsensus))));
+                                  ConsensusFactory.MULTI_LEADER_CONSENSUS))));
       servers.get(i).start();
     }
   }

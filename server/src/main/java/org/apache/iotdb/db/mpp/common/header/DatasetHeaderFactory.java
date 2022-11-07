@@ -129,8 +129,8 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 
-  public static DatasetHeader getGetRegionHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.getRoutingColumnHeaders, true);
+  public static DatasetHeader getGetRegionIdHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getRegionIdColumnHeaders, true);
   }
 
   public static DatasetHeader getGetSeriesSlotListHeader() {
@@ -139,5 +139,15 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getGetTimeSlotListHeader() {
     return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
+  }
+
+  public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
+    return isAlignByDevice
+        ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.selectIntoColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowContinuousQueriesHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showContinuousQueriesColumnHeaders, true);
   }
 }

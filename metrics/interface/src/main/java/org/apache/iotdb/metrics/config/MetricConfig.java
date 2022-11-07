@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -45,10 +44,6 @@ public class MetricConfig {
   /** The level of metric service */
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
-  /** The list of predefined metrics in metric service */
-  private List<PredefinedMetric> predefinedMetrics =
-      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
-
   private Integer asyncCollectPeriodInSecond = 5;
 
   /** The http server's port for prometheus reporter to get metric data. */
@@ -68,8 +63,8 @@ public class MetricConfig {
     private String password = "root";
     /** The max number of connection */
     private Integer maxConnectionNumber = 3;
-    /** The monitor database of iotdb */
-    private String database = "_metric";
+    /** The location of iotdb metrics */
+    private String location = "metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
 
@@ -113,12 +108,12 @@ public class MetricConfig {
       this.maxConnectionNumber = maxConnectionNumber;
     }
 
-    public String getDatabase() {
-      return database;
+    public String getLocation() {
+      return location;
     }
 
-    public void setDatabase(String database) {
-      this.database = database;
+    public void setLocation(String location) {
+      this.location = location;
     }
 
     public Integer getPushPeriodInSecond() {
@@ -142,13 +137,13 @@ public class MetricConfig {
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)
           && Objects.equals(password, that.password)
-          && Objects.equals(database, that.database)
+          && Objects.equals(location, that.location)
           && Objects.equals(pushPeriodInSecond, that.pushPeriodInSecond);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(host, port, username, password, database, pushPeriodInSecond);
+      return Objects.hash(host, port, username, password, location, pushPeriodInSecond);
     }
   }
 
@@ -162,7 +157,6 @@ public class MetricConfig {
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
-    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
@@ -213,14 +207,6 @@ public class MetricConfig {
     this.metricLevel = metricLevel;
   }
 
-  public List<PredefinedMetric> getPredefinedMetrics() {
-    return predefinedMetrics;
-  }
-
-  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
-    this.predefinedMetrics = predefinedMetrics;
-  }
-
   public Integer getAsyncCollectPeriodInSecond() {
     return asyncCollectPeriodInSecond;
   }
@@ -263,7 +249,6 @@ public class MetricConfig {
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
-        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
         && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());

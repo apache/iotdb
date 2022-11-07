@@ -86,7 +86,11 @@ public class ClusterScheduler implements IScheduler {
               stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              scheduledExecutor, queryContext, instances, internalServiceClientManager);
+              scheduledExecutor,
+              queryContext,
+              instances,
+              internalServiceClientManager,
+              stateTracker);
     }
   }
 
@@ -134,7 +138,7 @@ public class ClusterScheduler implements IScheduler {
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
-    logger.info("state tracker starts");
+    logger.debug("state tracker starts");
   }
 
   @Override

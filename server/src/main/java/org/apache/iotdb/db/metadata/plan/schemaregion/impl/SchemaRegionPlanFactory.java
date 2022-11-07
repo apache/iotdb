@@ -28,8 +28,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,6 +71,12 @@ public class SchemaRegionPlanFactory {
         return new PreDeleteTimeSeriesPlanImpl();
       case ROLLBACK_PRE_DELETE_TIMESERIES:
         return new RollbackPreDeleteTimeSeriesPlanImpl();
+      case PRE_DEACTIVATE_TEMPLATE:
+        return new PreDeactivateTemplatePlanImpl();
+      case ROLLBACK_PRE_DEACTIVATE_TEMPLATE:
+        return new RollbackPreDeactivateTemplatePlanImpl();
+      case DEACTIVATE_TEMPLATE:
+        return new DeactivateTemplatePlanImpl();
       default:
         throw new UnsupportedOperationException(
             String.format(
@@ -136,5 +145,20 @@ public class SchemaRegionPlanFactory {
   public static IRollbackPreDeleteTimeSeriesPlan getRollbackPreDeleteTimeSeriesPlan(
       PartialPath path) {
     return new RollbackPreDeleteTimeSeriesPlanImpl(path);
+  }
+
+  public static IPreDeactivateTemplatePlan getPreDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new PreDeactivateTemplatePlanImpl(templateSetInfo);
+  }
+
+  public static IRollbackPreDeactivateTemplatePlan getRollbackPreDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new RollbackPreDeactivateTemplatePlanImpl(templateSetInfo);
+  }
+
+  public static IDeactivateTemplatePlan getDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new DeactivateTemplatePlanImpl(templateSetInfo);
   }
 }

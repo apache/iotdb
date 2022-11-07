@@ -75,7 +75,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   private final ICompactionPerformer performer = new ReadPointCompactionPerformer();
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
@@ -5059,9 +5060,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
-    deleteTimeseriesInMManager(seriesPaths);
     setDataType(TSDataType.TEXT);
-    registerTimeseriesInMManger(2, 7, true);
     List<Integer> deviceIndex = new ArrayList<>();
     deviceIndex.add(1);
     deviceIndex.add(3);

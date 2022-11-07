@@ -22,59 +22,144 @@ echo ----------------------------
 echo Starting IoTDB ConfigNode
 echo ----------------------------
 
-if [ -z "${CONFIGNODE_HOME}" ]; then
-  export CONFIGNODE_HOME="$(dirname "$0")/.."
-fi
 
-CONFIGNODE_CONF=${CONFIGNODE_HOME}/conf
-CONFIGNODE_LOGS=${CONFIGNODE_HOME}/logs
 
-is_conf_path=false
-for arg; do
-  shift
-  if [ "$arg" == "-c" ]; then
-    is_conf_path=true
-    continue
-  fi
-  if [ $is_conf_path == true ]; then
-    CONFIGNODE_CONF=$arg
-    is_conf_path=false
-    continue
-  fi
-  set -- "$@" "$arg"
+source "$(dirname "$0")/iotdb-common.sh"
+
+# iotdb server runs on foreground by default
+foreground="yes"
+
+IOTDB_HEAP_DUMP_COMMAND=""
+
+echo "all parameters are $*"
+while true; do
+    case "$1" in
+        -c)
+            CONFIGNODE_CONF="$2"
+            shift 2
+            ;;
+        -p)
+            pidfile="$2"
+            shift 2
+        ;;
+        -f)
+            foreground="yes"
+            shift
+        ;;
+        -d)
+            foreground=""
+            shift
+        ;;
+        -g)
+            PRINT_GC="yes"
+            shift
+        ;;
+        -H)
+            IOTDB_HEAP_DUMP_COMMAND="$IOTDB_HEAP_DUMP_COMMAND -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$2"
+            shift 2
+        ;;
+        -E)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:ErrorFile=$2"
+            shift 2
+        ;;
+        -D)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
+            #checkConfigNodeEnvVariables is in iotdb-common.sh
+            checkConfigNodeEnvVariables $2
+            shift 2
+        ;;
+        -X)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:$2"
+            shift 2
+        ;;
+        -h)
+            echo "Usage: $0 [-v] [-f] [-d] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
+            exit 0
+        ;;
+        -v)
+            #SHOW_VERSION="yes"
+            break
+            echo "show version is not supported in current version on ConfigNode"
+            exit 1
+        ;;
+        --)
+            shift
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+        "")
+            #if we do not use getopt, we then have to process the case that there is no argument.
+            #in some systems, when there is no argument, shift command may throw error, so we skip directly
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+        *)
+            echo "Error parsing arguments! Unknown argument \"$1\"" >&2
+            exit 1
+        ;;
+    esac
 done
 
-CONF_PARAMS="-s "$*
+#checkAllVariables is in iotdb-common.sh
+checkAllConfigNodeVariables
 
-if [ -f "$CONFIGNODE_CONF/confignode-env.sh" ]; then
-  if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-    . "$CONFIGNODE_CONF/confignode-env.sh" "printgc"
-  else
-    . "$CONFIGNODE_CONF/confignode-env.sh"
-  fi
-else
-  echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
-fi
 
-if [ -d ${CONFIGNODE_HOME}/lib ]; then
-  LIB_PATH=${CONFIGNODE_HOME}/lib
-else
-  LIB_PATH=${CONFIGNODE_HOME}/../lib
-fi
+
+PARAMS="-s $PARAMS"
+
+#initEnv is in iotdb-common.sh
+initConfigNodeEnv
+
 
 CLASSPATH=""
-for f in ${LIB_PATH}/*.jar; do
+for f in ${CONFIGNODE_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 classname=org.apache.iotdb.confignode.service.ConfigNode
 
 launch_service() {
-  class="$1"
-  confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
-  confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
-  confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
-  exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
-  return $?
+    class="$1"
+    iotdb_parms="-Dlogback.configurationFile=${CONFIGNODE_LOG_CONFIG}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_DATA_HOME=${CONFIGNODE_DATA_HOME}"
+  	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${CONFIGNODE_HOME}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
+  	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${CONFIGNODE_CONF}"
+  	iotdb_parms="$iotdb_parms -Dname=iotdb\.ConfigNode"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${CONFIGNODE_LOGS}"
+
+  	  if [ "x$pidfile" != "x" ]; then
+         iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"
+      fi
+
+    # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
+      if [ "x$foreground" == "xyes" ]; then
+          iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
+          if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
+            [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+              # shellcheck disable=SC2154
+              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+          else
+              [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+          fi
+      # Startup IoTDB, background it, and write the pid.
+      else
+          if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
+                exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
+                [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+                true
+          else
+                exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
+                [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+                true
+          fi
+      fi
+
+  	return $?
+
 }
 
 # Start up the service

@@ -182,7 +182,9 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
+    this.walNode =
+        WALManager.getInstance()
+            .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
@@ -204,7 +206,9 @@ public class TsFileProcessor {
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
+    this.walNode =
+        WALManager.getInstance()
+            .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
@@ -993,14 +997,14 @@ public class TsFileProcessor {
               : workMemTable;
 
       try {
-        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
-        // flushing memTable in System module.
-        addAMemtableIntoFlushingList(tmpMemTable);
         for (ISyncManager syncManager :
             SyncService.getInstance()
                 .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
           syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
+        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
+        // flushing memTable in System module.
+        addAMemtableIntoFlushingList(tmpMemTable);
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
       } catch (Exception e) {
@@ -1288,10 +1292,6 @@ public class TsFileProcessor {
       }
     }
 
-    for (FlushListener flushListener : flushListeners) {
-      flushListener.onMemTableFlushed(memTableToFlush);
-    }
-
     try {
       flushQueryLock.writeLock().lock();
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
@@ -1328,6 +1328,11 @@ public class TsFileProcessor {
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
+
+    // call flushed listener after memtable is released safely
+    for (FlushListener flushListener : flushListeners) {
+      flushListener.onMemTableFlushed(memTableToFlush);
+    }
 
     // retry to avoid unnecessary read-only mode
     int retryCnt = 0;

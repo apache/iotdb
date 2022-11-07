@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -894,6 +895,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
@@ -1147,6 +1149,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testUnsetSchemaTemplate() throws MetadataException {
 
     List<List<String>> measurementList = new ArrayList<>();
@@ -1211,6 +1214,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
@@ -1416,6 +1420,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testSetDeviceTemplate() throws MetadataException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
@@ -1554,6 +1559,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testShowTimeseriesWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -1676,6 +1682,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void minimumTestForWildcardInTemplate() throws MetadataException {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
@@ -1695,6 +1702,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testCountTimeseriesWithTemplate() throws IOException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -1778,6 +1786,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testCountDeviceWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -2475,6 +2484,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.setStorageGroup(new PartialPath("root.sg"));

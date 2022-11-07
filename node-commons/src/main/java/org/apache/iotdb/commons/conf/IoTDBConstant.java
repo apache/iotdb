@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
@@ -48,14 +50,18 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
-  public static final String CONFIG_NODE_ID = "config_node_id";
-  public static final String DATA_NODE_ID = "data_node_id";
-  public static final String RPC_ADDRESS = "rpc_address";
-  public static final String RPC_PORT = "rpc_port";
-  public static final String INTERNAL_ADDRESS = "internal_address";
-  public static final String INTERNAL_PORT = "internal_port";
-  public static final String CONSENSUS_PORT = "consensus_port";
-  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+  public static final String DN_RPC_ADDRESS = "dn_rpc_address";
+  public static final String DN_RPC_PORT = "dn_rpc_port";
+
+  public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
+  public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
+
+  public static final String CN_INTERNAL_PORT = "cn_internal_port";
+  public static final String DN_INTERNAL_PORT = "dn_internal_port";
+  public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+
+  public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
+  public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -84,6 +90,8 @@ public class IoTDBConstant {
   public static final long KB = 1024L;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
+
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
@@ -198,7 +206,7 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -227,10 +235,6 @@ public class IoTDBConstant {
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
-  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
-
-  public static final String EXT_LIMITER = "limiter";
-
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
@@ -243,6 +247,9 @@ public class IoTDBConstant {
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;
@@ -278,9 +285,16 @@ public class IoTDBConstant {
   public static final String NODE_STATUS_RUNNING = "Running";
   public static final String NODE_STATUS_Down = "Down";
 
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
+
   // client version number
   public enum ClientVersion {
     V_0_12,
     V_0_13
   }
+
+  // select into
+  public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  public static final String DOUBLE_COLONS = "::";
 }
