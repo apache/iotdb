@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import java.util.List;
 
@@ -39,10 +39,13 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
+    long startTime = System.nanoTime();
     PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
     // optimize the query logical plan
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement().isQuery()) {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.LOGICAL_PLANNER, System.nanoTime() - startTime);
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }

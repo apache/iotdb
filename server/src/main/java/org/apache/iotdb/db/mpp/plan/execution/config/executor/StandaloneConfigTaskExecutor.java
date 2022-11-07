@@ -71,6 +71,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -710,6 +711,18 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         new IoTDBException(
             "Executing show continuous queries in standalone mode is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> tracing(boolean enableTracing) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (enableTracing) {
+      QueryStatistics.getInstance().enableTracing();
+    } else {
+      QueryStatistics.getInstance().disableTracing();
+    }
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 }

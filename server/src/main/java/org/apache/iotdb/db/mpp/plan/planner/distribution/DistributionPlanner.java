@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import java.util.List;
 
@@ -65,9 +65,11 @@ public class DistributionPlanner {
   }
 
   public DistributedQueryPlan planFragments() {
+    long startTime = System.nanoTime();
+
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
@@ -80,8 +82,15 @@ public class DistributionPlanner {
     if (context.getQueryType() == QueryType.READ) {
       SetSinkForRootInstance(subPlan, fragmentInstances);
     }
-    return new DistributedQueryPlan(
-        logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+    DistributedQueryPlan distributedQueryPlan =
+        new DistributedQueryPlan(
+            logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+
+    if (analysis.getStatement().isQuery()) {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+    }
+    return distributedQueryPlan;
   }
 
   // Convert fragment to detailed instance

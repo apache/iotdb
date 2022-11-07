@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import static org.apache.iotdb.db.mpp.common.QueryId.mockQueryId;
 
@@ -40,7 +41,14 @@ public class Analyzer {
   }
 
   public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+    long startTime = System.nanoTime();
+    Analysis analysis =
+        new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+    if (statement.isQuery()) {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.ANALYZER, System.nanoTime() - startTime);
+    }
+    return analysis;
   }
 
   public static void validate(Statement statement) {

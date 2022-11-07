@@ -58,6 +58,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -266,6 +267,7 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    long startTime = System.nanoTime();
     this.scheduler =
         config.isClusterMode()
             ? new ClusterScheduler(
@@ -285,6 +287,10 @@ public class QueryExecution implements IQueryExecution {
                 scheduledExecutor,
                 internalServiceClientManager);
     this.scheduler.start();
+    if (rawStatement.isQuery()) {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.DISPATCHER, System.nanoTime() - startTime);
+    }
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization

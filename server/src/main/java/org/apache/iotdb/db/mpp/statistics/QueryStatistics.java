@@ -61,6 +61,13 @@ public class QueryStatistics {
   public static final String SINGLE_INPUT_AGG_OPERATOR = "SingleInputAggregationOperator";
 
   public static final String PAGE_READER = "IPageReader";
+  public static final String PARSER = "Parser";
+  public static final String ANALYZER = "Analyzer";
+  public static final String SCHEMA_FETCHER = "SchemaFetcher";
+  public static final String PARTITION_FETCHER = "PartitionFetcher";
+  public static final String LOGICAL_PLANNER = "LogicalPlanner";
+  public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
+  public static final String DISPATCHER = "Dispatcher";
 
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
@@ -94,12 +101,12 @@ public class QueryStatistics {
     }
   }
 
-  public void traceOff() {
+  public void disableTracing() {
     tracing.set(false);
     operationStatistics.clear();
   }
 
-  public void tradeOn() {
+  public void enableTracing() {
     tracing.set(true);
     operationStatistics.clear();
   }

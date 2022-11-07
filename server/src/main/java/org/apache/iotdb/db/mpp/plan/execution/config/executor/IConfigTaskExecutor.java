@@ -161,4 +161,6 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
 
   SettableFuture<ConfigTaskResult> showContinuousQueries();
+
+  SettableFuture<ConfigTaskResult> tracing(boolean enableTracing);
 }
