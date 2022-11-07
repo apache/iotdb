@@ -674,7 +674,7 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (actualPaths.isEmpty()) {
-        return new ArrayList<>();
+        return Collections.singletonList(new NullOperand());
       }
       List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -1186,7 +1186,7 @@ public class ExpressionAnalyzer {
         measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
       }
       return new TimeSeriesOperand(measurementWithSchema);
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+    } else if (expression instanceof LeafOperand) {
       return expression;
     } else {
       throw new IllegalArgumentException(

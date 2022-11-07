@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 /**
  * This column is used to represent columns that only contain null values. But its positionCount has
@@ -30,7 +31,21 @@ public class NullColumn implements Column {
 
   private final int positionCount;
 
+  private final int arrayOffset;
+
   public NullColumn(int positionCount) {
+    this.positionCount = positionCount;
+    arrayOffset = 0;
+  }
+
+  public NullColumn(int arrayOffset, int positionCount) {
+    if (arrayOffset < 0) {
+      throw new IllegalArgumentException("arrayOffset is negative");
+    }
+    this.arrayOffset = positionCount;
+    if (positionCount < 0) {
+      throw new IllegalArgumentException("positionCount is negative");
+    }
     this.positionCount = positionCount;
   }
 
@@ -71,12 +86,16 @@ public class NullColumn implements Column {
 
   @Override
   public Column getRegion(int positionOffset, int length) {
-    return this;
+    checkValidRegion(getPositionCount(), positionOffset, length);
+    return new NullColumn(positionOffset + arrayOffset, length);
   }
 
   @Override
   public Column subColumn(int fromIndex) {
-    return this;
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new NullColumn(arrayOffset + fromIndex, positionCount - fromIndex);
   }
 
   @Override
