@@ -132,11 +132,13 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -427,9 +429,20 @@ public class PlanExecutor implements IPlanExecutor {
       case PAUSE_ARCHIVING:
         operatePauseArchiving((PauseArchivingPlan) plan);
         return true;
+      case TRACING:
+        controlTracing((TracingPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
+    }
+  }
+
+  private void controlTracing(TracingPlan plan) {
+    if (plan.isTracingOn()) {
+      QueryStatistics.getInstance().enableTracing();
+    } else {
+      QueryStatistics.getInstance().disableTracing();
     }
   }
 

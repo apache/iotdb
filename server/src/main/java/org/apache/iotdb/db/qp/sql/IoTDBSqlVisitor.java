@@ -2127,6 +2127,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return settleOperator;
   }
 
+  // Tracing on/off
+
+  @Override
+  public Operator visitTracing(IoTDBSqlParser.TracingContext ctx) {
+    return new TracingOperator(SQLConstant.TOK_TRACING, ctx.ON() != null);
+  }
+
   // Set System To ReadOnly/Writable
 
   @Override

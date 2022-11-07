@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class TracingOperator extends Operator {
 
-  private boolean isTracingOn;
+  private final boolean isTracingOn;
 
   public TracingOperator(int tokenIntType, boolean isTracingOn) {
     super(tokenIntType);

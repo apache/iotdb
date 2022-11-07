@@ -27,7 +27,7 @@ import java.util.List;
 
 public class TracingPlan extends PhysicalPlan {
 
-  private boolean isTracingOn;
+  private final boolean isTracingOn;
 
   public TracingPlan(boolean isTracingOn) {
     super(OperatorType.TRACING);
