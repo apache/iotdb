@@ -22,3 +22,37 @@
 # REST API Write
 
 Refer to [insertTablet](../API/RestService.md#inserttablet)
+
+Example：
+
+```JSON
+{
+      "timestamps": [
+            1,
+            2,
+            3
+      ],
+      "measurements": [
+            "temperature",
+            "status"
+      ],
+      "dataTypes": [
+            "FLOAT",
+            "BOOLEAN"
+      ],
+      "values": [
+            [
+                  1.1,
+                  2.2,
+                  3.3
+            ],
+            [
+                  false,
+                  true,
+                  true
+            ]
+      ],
+      "isAligned": false,
+      "deviceId": "root.ln.wf01.wt01"
+}
+```

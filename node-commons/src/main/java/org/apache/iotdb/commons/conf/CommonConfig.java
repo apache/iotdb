@@ -117,7 +117,7 @@ public class CommonConfig {
   private volatile String statusReason = null;
 
   /** Disk Monitor */
-  private double diskSpaceWarningThreshold = 5.0;
+  private double diskSpaceWarningThreshold = 0.05;
 
   CommonConfig() {}
 

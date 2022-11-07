@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,9 +42,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBInsertNullIT {
   private static final List<String> sqls = new ArrayList<>();
   private static Connection connection;
@@ -103,10 +107,8 @@ public class IoTDBInsertNullIT {
       statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(2,true,null,2)");
       statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(3,true,3.0,null)");
 
-      boolean hasResultSet = statement.execute("select * from root.sg.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
+        assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -127,10 +129,10 @@ public class IoTDBInsertNullIT {
                 .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
                 .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(3, cnt);
+        assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -151,10 +153,8 @@ public class IoTDBInsertNullIT {
       statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(2,true,null,2)");
       statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(3,true,3.0,null)");
 
-      boolean hasResultSet = statement.execute("select * from root.sg.d2");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d2")) {
+        assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -175,10 +175,10 @@ public class IoTDBInsertNullIT {
                 .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
                 .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(3, cnt);
+        assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -198,8 +198,8 @@ public class IoTDBInsertNullIT {
     List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
     for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
       Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
-      Assert.assertNotNull(typeIndex);
-      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      assertNotNull(typeIndex);
+      assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
       actualIndexToExpectedIndexList.add(typeIndex);
     }
     return actualIndexToExpectedIndexList;

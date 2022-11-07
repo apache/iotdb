@@ -51,12 +51,12 @@ public class ConfigNodeStartupCheck {
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
-    // the target_config_nodes needs to point to itself
+    // the target_config_node_list needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
             || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          IoTDBConstant.CN_TARGET_CONFIG_NODES,
+          IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }
@@ -102,7 +102,7 @@ public class ConfigNodeStartupCheck {
     // The ip of target ConfigNode couldn't be 0.0.0.0
     if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
       throw new ConfigurationException(
-          "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+          "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
   }
 

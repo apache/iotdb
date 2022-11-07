@@ -41,7 +41,7 @@ while true; do
             foreground="yes"
             shift
         ;;
-        -b)
+        -d)
             foreground=""
             shift
         ;;
@@ -68,7 +68,7 @@ while true; do
             shift 2
         ;;
         -h)
-            echo "Usage: $0 [-v] [-f] [-b] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
+            echo "Usage: $0 [-v] [-f] [-d] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
             exit 0
         ;;
         -v)

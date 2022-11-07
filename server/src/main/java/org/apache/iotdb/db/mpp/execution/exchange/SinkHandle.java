@@ -170,48 +170,13 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  private void sendEndOfDataBlockEvent() throws Exception {
-    logger.debug("[NotifyNoMoreTsBlock]");
-    int attempt = 0;
-    TEndOfDataBlockEvent endOfDataBlockEvent =
-        new TEndOfDataBlockEvent(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            nextSequenceId - 1);
-    while (attempt < MAX_ATTEMPT_TIMES) {
-      attempt += 1;
-      try (SyncDataNodeMPPDataExchangeServiceClient client =
-          mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
-        break;
-      } catch (Throwable e) {
-        logger.error("Failed to send end of data block event, attempt times: {}", attempt, e);
-        if (attempt == MAX_ATTEMPT_TIMES) {
-          throw e;
-        }
-        Thread.sleep(retryIntervalInMs);
-      }
-    }
-  }
-
   @Override
   public synchronized void setNoMoreTsBlocks() {
     logger.debug("[StartSetNoMoreTsBlocks]");
     if (aborted || closed) {
       return;
     }
-    try {
-      sendEndOfDataBlockEvent();
-    } catch (Exception e) {
-      throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
-    }
-    noMoreTsBlocks = true;
-
-    if (isFinished()) {
-      sinkHandleListener.onFinish(this);
-    }
-    sinkHandleListener.onEndOfBlocks(this);
+    executorService.submit(new SendEndOfDataBlockEventTask());
   }
 
   @Override
@@ -410,6 +375,53 @@ public class SinkHandle implements ISinkHandle {
             }
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent} to downstream fragment
+   * instance.
+   */
+  class SendEndOfDataBlockEventTask implements Runnable {
+
+    @Override
+    public void run() {
+      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
+        logger.debug("[NotifyNoMoreTsBlock]");
+        int attempt = 0;
+        TEndOfDataBlockEvent endOfDataBlockEvent =
+            new TEndOfDataBlockEvent(
+                remoteFragmentInstanceId,
+                remotePlanNodeId,
+                localFragmentInstanceId,
+                nextSequenceId - 1);
+        while (attempt < MAX_ATTEMPT_TIMES) {
+          attempt += 1;
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+            client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+            break;
+          } catch (Throwable e) {
+            logger.error("Failed to send end of data block event, attempt times: {}", attempt, e);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              logger.error("Failed to send end of data block event after all retry", e);
+              sinkHandleListener.onFailure(SinkHandle.this, e);
+              return;
+            }
+            try {
+              Thread.sleep(retryIntervalInMs);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+              sinkHandleListener.onFailure(SinkHandle.this, e);
+            }
+          }
+        }
+        noMoreTsBlocks = true;
+        if (isFinished()) {
+          sinkHandleListener.onFinish(SinkHandle.this);
+        }
+        sinkHandleListener.onEndOfBlocks(SinkHandle.this);
       }
     }
   }

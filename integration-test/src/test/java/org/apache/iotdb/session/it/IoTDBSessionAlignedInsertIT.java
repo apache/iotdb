@@ -52,7 +52,7 @@ public class IoTDBSessionAlignedInsertIT {
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1.vector";
   private static final String ROOT_SG1_D1 = "root.sg_1.d1";
   private static final String ROOT_SG1_D2 = "root.sg_1.d2";
-  private static final double delta = 1e-8;
+  private static final double DELTA_DOUBLE = 1e-7d;
 
   private int originMaxDegreeOfIndexNode;
 
@@ -155,7 +155,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), delta);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);
@@ -179,7 +179,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), delta);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);
