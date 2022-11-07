@@ -61,14 +61,14 @@ public class TimePartitionManagerTest {
   @Test
   public void testRegisterPartitionInfo() {
     TimePartitionInfo timePartitionInfo1 =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, true);
+        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0, true);
     timePartitionManager.registerTimePartitionInfo(timePartitionInfo1);
 
     assertEquals(
         timePartitionInfo1, timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L));
 
     TimePartitionInfo timePartitionInfo2 =
-        new TimePartitionInfo(new DataRegionId(1), 1L, true, Long.MAX_VALUE, true);
+        new TimePartitionInfo(new DataRegionId(1), 1L, true, Long.MAX_VALUE, 0, true);
     timePartitionManager.registerTimePartitionInfo(timePartitionInfo2);
 
     Assert.assertFalse(
@@ -80,7 +80,7 @@ public class TimePartitionManagerTest {
   @Test
   public void testUpdate() {
     TimePartitionInfo timePartitionInfo =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, true);
+        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0, true);
     timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
 
     timePartitionManager.flushMemtable(new DataRegionId(1), 0L, 100L, 100L, false);
@@ -103,7 +103,7 @@ public class TimePartitionManagerTest {
   public void testMemoryControl() {
     for (int i = 0; i < 5; i++) {
       TimePartitionInfo timePartitionInfo =
-          new TimePartitionInfo(new DataRegionId(i), 0L, true, Long.MAX_VALUE, true);
+          new TimePartitionInfo(new DataRegionId(i), 0L, true, Long.MAX_VALUE, 0, true);
       timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
     }
     timePartitionManager.flushMemtable(new DataRegionId(0), 0L, 100L, 20L, false);
@@ -112,7 +112,7 @@ public class TimePartitionManagerTest {
     timePartitionManager.flushMemtable(new DataRegionId(3), 0L, 103L, 20L, false);
     timePartitionManager.flushMemtable(new DataRegionId(4), 0L, 104L, 20L, true);
     timePartitionManager.registerTimePartitionInfo(
-        new TimePartitionInfo(new DataRegionId(0), 1L, true, Long.MAX_VALUE, true));
+        new TimePartitionInfo(new DataRegionId(0), 1L, true, Long.MAX_VALUE, 0, true));
 
     timePartitionManager.flushMemtable(new DataRegionId(0), 1L, 105L, 20L, true);
 

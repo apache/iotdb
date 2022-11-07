@@ -373,7 +373,7 @@ public class DataRegion {
 
   private Map<Long, List<TsFileResource>> splitResourcesByPartition(
       List<TsFileResource> resources) {
-    Map<Long, List<TsFileResource>> ret = new HashMap<>();
+    Map<Long, List<TsFileResource>> ret = new TreeMap<>();
     for (TsFileResource resource : resources) {
       ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
     }
@@ -496,15 +496,23 @@ public class DataRegion {
       }
       WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
-      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, true);
-        }
+      long latestPartitionId =
+          ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+      for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
+        recoverFilesInPartition(
+            partitionFiles.getKey(),
+            DataRegionRecoveryContext,
+            partitionFiles.getValue(),
+            true,
+            partitionFiles.getKey() == latestPartitionId);
       }
-      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        for (TsFileResource tsFileResource : value) {
-          recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, false);
-        }
+      for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpUnseqTsFiles.entrySet()) {
+        recoverFilesInPartition(
+            partitionFiles.getKey(),
+            DataRegionRecoveryContext,
+            partitionFiles.getValue(),
+            false,
+            false);
       }
       // wait until all unsealed TsFiles have been recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
@@ -763,6 +771,8 @@ public class DataRegion {
       // the last file is not closed, continue writing to it
       RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
       long timePartitionId = tsFileResource.getTimePartition();
+      TimePartitionManager.getInstance()
+          .openMemtable(new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
               dataRegionId,
@@ -796,7 +806,6 @@ public class DataRegion {
         }
         tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
       }
-      updateLastFlushTime(tsFileResource, isSeq);
     }
     tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
@@ -820,13 +829,38 @@ public class DataRegion {
       }
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
-      updateLastFlushTime(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (DataRegionException | IOException e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
       // update recovery context
       context.incrementRecoveredFilesNum();
+    }
+  }
+
+  private void recoverFilesInPartition(
+      long partitionId,
+      DataRegionRecoveryContext context,
+      List<TsFileResource> resourceList,
+      boolean isSeq,
+      boolean isLatestPartition) {
+    for (TsFileResource tsFileResource : resourceList) {
+      recoverSealedTsFiles(tsFileResource, context, isSeq);
+    }
+    if (isLatestPartition && isSeq) {
+      lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+      for (TsFileResource tsFileResource : resourceList) {
+        updateLastFlushTime(tsFileResource, true);
+      }
+      TimePartitionManager.getInstance()
+          .registerTimePartitionInfo(
+              new TimePartitionInfo(
+                  new DataRegionId(Integer.valueOf(dataRegionId)),
+                  partitionId,
+                  false,
+                  Long.MAX_VALUE,
+                  lastFlushTimeMap.getMemSize(partitionId),
+                  true));
     }
   }
 
@@ -868,6 +902,7 @@ public class DataRegion {
                     timePartitionId,
                     true,
                     Long.MAX_VALUE,
+                    0,
                     tsFileManager.isLatestTimePartition(timePartitionId)));
       }
 
@@ -921,6 +956,7 @@ public class DataRegion {
                     timePartitionId,
                     true,
                     Long.MAX_VALUE,
+                    0,
                     tsFileManager.isLatestTimePartition(timePartitionId)));
       }
 
@@ -1003,6 +1039,7 @@ public class DataRegion {
                     beforeTimePartition,
                     true,
                     Long.MAX_VALUE,
+                    0,
                     tsFileManager.isLatestTimePartition(beforeTimePartition)));
       }
 
@@ -1037,6 +1074,7 @@ public class DataRegion {
                         curTimePartition,
                         true,
                         Long.MAX_VALUE,
+                        0,
                         tsFileManager.isLatestTimePartition(curTimePartition)));
           }
 
@@ -1149,6 +1187,7 @@ public class DataRegion {
                     beforeTimePartition,
                     true,
                     Long.MAX_VALUE,
+                    0,
                     tsFileManager.isLatestTimePartition(beforeTimePartition)));
       }
 
@@ -3511,6 +3550,7 @@ public class DataRegion {
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,
+                      0,
                       tsFileManager.isLatestTimePartition(timePartitionId)));
         }
 
@@ -3583,6 +3623,7 @@ public class DataRegion {
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,
+                      0,
                       tsFileManager.isLatestTimePartition(timePartitionId)));
         }
 

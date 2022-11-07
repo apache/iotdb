@@ -79,8 +79,10 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
     Map<String, Long> flushTimeMapForPartition =
-        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
-            timePartitionId, l -> new HashMap<>());
+        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
+    if (flushTimeMapForPartition == null) {
+      return;
+    }
     long memIncr = 0;
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.put(entry.getKey(), entry.getValue()) == null) {
@@ -94,10 +96,12 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
-    if (partitionLatestFlushedTimeForEachDevice
-            .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-            .put(path, time)
-        == null) {
+    Map<String, Long> flushTimeMapForPartition =
+        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
+    if (flushTimeMapForPartition == null) {
+      return;
+    }
+    if (flushTimeMapForPartition.put(path, time) == null) {
       long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
       memCostForEachPartition.compute(
           timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
@@ -116,19 +120,22 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void updateFlushedTime(long timePartitionId, String path, long time) {
-    partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-        .compute(
-            path,
-            (k, v) -> {
-              if (v == null) {
-                long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
-                memCostForEachPartition.compute(
-                    timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
-                return time;
-              }
-              return Math.max(v, time);
-            });
+    Map<String, Long> flushTimeMapForPartition =
+        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
+    if (flushTimeMapForPartition == null) {
+      return;
+    }
+    flushTimeMapForPartition.compute(
+        path,
+        (k, v) -> {
+          if (v == null) {
+            long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
+            memCostForEachPartition.compute(
+                timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
+            return time;
+          }
+          return Math.max(v, time);
+        });
   }
 
   @Override

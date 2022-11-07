@@ -39,11 +39,13 @@ public class TimePartitionInfo {
       long partitionId,
       boolean isActive,
       long lastSystemFlushTime,
+      long memsize,
       boolean isLatestPartition) {
     this.dataRegionId = dataRegionId;
     this.partitionId = partitionId;
     this.isActive = isActive;
     this.lastSystemFlushTime = lastSystemFlushTime;
+    this.memSize = memsize;
     this.isLatestPartition = isLatestPartition;
   }
 
