@@ -129,6 +129,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1439,6 +1440,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
 
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> tracing(boolean enableTracing) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (enableTracing) {
+      QueryStatistics.getInstance().enableTracing();
+    } else {
+      QueryStatistics.getInstance().disableTracing();
+    }
+    future.setException(
+        new IoTDBException(
+            "The statement is executed locally but not broadcast to the cluster.",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 }

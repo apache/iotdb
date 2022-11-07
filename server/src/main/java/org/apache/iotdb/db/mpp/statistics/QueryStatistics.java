@@ -78,12 +78,12 @@ public class QueryStatistics {
     }
   }
 
-  public void traceOff() {
+  public void disableTracing() {
     tracing.set(false);
     operationStatistics.clear();
   }
 
-  public void tradeOn() {
+  public void enableTracing() {
     tracing.set(true);
     operationStatistics.clear();
   }
