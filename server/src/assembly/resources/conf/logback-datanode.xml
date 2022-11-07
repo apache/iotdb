@@ -268,7 +268,7 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_STATISTICS">
         <file>${IOTDB_HOME}/logs/log_datanode_query_statistics.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-slow-sql-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-query-statistics-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
